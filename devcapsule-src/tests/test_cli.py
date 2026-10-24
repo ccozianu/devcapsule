@@ -261,7 +261,7 @@ def test_capability_first_dogfood_init_resolve_and_run(tmp_path: Path) -> None:
                 f"host-directory:{path}",
             ]) == 0
         assert cli.main([
-            "project", "--path", str(project), "config", "set", "runtime.memory-limit", "8GiB"
+            "project", "--path", str(project), "config", "set", "memory", "8GiB"
         ]) == 0
         assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
 
@@ -273,7 +273,7 @@ def test_capability_first_dogfood_init_resolve_and_run(tmp_path: Path) -> None:
             assert cli.main(
                 [
                     "project", "--path", str(project), "run",
-                    "--set", "runtime.memory-limit", "4GiB",
+                    "--set", "memory", "4GiB",
                     "--", "--cap-add", "SYS_PTRACE",
                 ]
             ) == 0

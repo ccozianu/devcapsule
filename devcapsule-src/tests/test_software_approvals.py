@@ -39,6 +39,8 @@ def pin(project: Path, component: str, authorization: str, terms: str, version: 
         "delivery-policy": "local-materialization",
         "artifacts": {"linux-amd64": {"url": f"https://example.test/{component}-{version}", "sha256": "e" * 64}},
     }
+    if component == "antigravity-cli":
+        lock["components"][component]["artifacts"]["linux-amd64"]["archive-member"] = "bin/antigravity"
     from devcapsule.configuration.file_formats import render_toml
     path.write_text(render_toml(lock))
 
@@ -72,6 +74,21 @@ def test_a_bumped_approved_download_is_a_software_approval(checkout) -> None:
     assert lines[1] == f"- Claude Code 1.1.0, downloaded from Anthropic under {CLAUDE_TERMS} (claude-code-download)"
 
 
+def test_trusted_vendor_suppresses_the_version_approval_offer(checkout, monkeypatch) -> None:
+    project, record, _ = checkout
+    approved_then_bumped(project, record)
+    assert invoke(project, "config", "trust", "accept", "claude-code") == 0
+    _, manifest = manifest_for(project)
+    assert offer.pending_for(project, manifest) == ()
+    monkeypatch.setattr(offer, "confirmation_key", lambda: pytest.fail("trusted vendor asked again"))
+    launch = install_external_fakes(monkeypatch, [])
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+    assert invoke(project, "run", "--authorize", "host-x11", "true", "--no-update-check") == 0
+    assert launch.call_count == 1
+    assert invoke(project, "config", "authorize", "claude-code-download", "false") == 0
+    assert offer.pending_for(project, manifest) is None
+
+
 def test_nothing_pending_is_an_empty_list(checkout) -> None:
     project, record, _ = checkout
     pin(project, "claude-code", "claude-code-download", CLAUDE_TERMS, "1.0.0")
@@ -100,7 +117,13 @@ def test_any_other_pending_decision_disqualifies_the_list(checkout, other: str) 
         manifest_path.write_text(manifest_path.read_text() + '\n[host.browser.host-open.recommended]\nvalue = true\njustification = "Open links on the host."\n')
         assert invoke(project, "config", "authorize", "host-browser", "true") == 0
         manifest_path.write_text(manifest_path.read_text().replace('"Open links on the host."', '"Open links on the host, changed."'))
-    assert pending(project, record) is None
+    if other == "stale-host-access":
+        # A host answer under a changed recommendation is kept, not pending
+        # (D-0012, answer 23): the approvals stay one question.
+        approvals = pending(project, record)
+        assert approvals is not None and [item.name for item in approvals] == ["claude-code-download"]
+    else:
+        assert pending(project, record) is None
 
 
 def test_the_previous_version_comes_from_the_newest_known_good_record(checkout) -> None:
@@ -145,9 +168,11 @@ def test_run_asks_once_and_launches_on_y(checkout, monkeypatch, capsys) -> None:
 
     monkeypatch.setattr(Path, "replace", replace)
     with patch.object(offer, "confirmation_key", side_effect=accept) as read_key:
-        assert invoke(project, "run", "--no-update-check") == 0
+        # The fixture's base has no contained desktop: host X11 by explicit consent, for this launch.
+        assert invoke(project, "run", "--no-update-check", "--authorize", "host-x11", "true") == 0
     read_key.assert_called_once_with()
-    assert replacements == [record, resolution]  # atomic record replacement precedes resolution
+    # Atomic record replacement precedes the resolution; the launch derives the plan again.
+    assert replacements[:2] == [record, resolution] and set(replacements) == {record, resolution}
     out = capsys.readouterr().out
     assert "Claude Code 1.1.0, downloaded from Anthropic" in out
     assert "Approve all of them? Press y" in out
@@ -202,16 +227,19 @@ def test_run_with_other_pending_decisions_refuses_as_before(checkout, monkeypatc
     approved_then_bumped(project, record)
     pin(project, "antigravity-cli", "antigravity-download", ANTIGRAVITY_TERMS, "2.0.0")  # never answered
     launch = install_external_fakes(monkeypatch, [])
-    monkeypatch.setattr(offer.sys.stdin, "isatty", lambda: True)
-    monkeypatch.setattr(offer, "confirmation_key", lambda: "y")
-    assert invoke(project, "run", "--no-update-check") == 2
+    # Without a terminal: a decision only the developer can take ends the
+    # launch with status 3, naming it; with one, the launch would ask it.
+    monkeypatch.setattr(offer.sys.stdin, "isatty", lambda: False)
+    monkeypatch.setattr(offer, "confirmation_key", lambda: pytest.fail("asked"))
+    assert invoke(project, "run", "--no-update-check") == 3
     captured = capsys.readouterr()
     assert "Approve all of them?" not in captured.out
-    # The refusal is the one a changed lock always had: resolve first, which then lists the decisions.
-    assert "Local resolution is stale (platform-lock)" in captured.err
-    assert invoke(project, "config", "resolve") == 2
+    # The download's channel is the workstation's question (D-0011), named by its channel.
+    assert "antigravity-cli" in captured.err and "Nothing was written" in captured.err
+    assert "--trust antigravity-cli" in captured.err
+    assert invoke(project, "config", "resolve") == 3
     err = capsys.readouterr().err
-    assert "decisions required" in err and "antigravity-download: missing-required" in err
+    assert "antigravity-cli" in err
     assert launch.call_count == 0
 
 
@@ -221,8 +249,8 @@ def test_print_command_never_asks_or_writes(checkout, monkeypatch, capsys) -> No
     before = record.read_bytes()
     monkeypatch.setattr(offer.sys.stdin, "isatty", lambda: True)
     monkeypatch.setattr(offer, "confirmation_key", lambda: pytest.fail("asked"))
-    assert invoke(project, "run", "--print-command", "--no-update-check") == 2
-    assert "Local resolution is stale (platform-lock)" in capsys.readouterr().err
+    assert invoke(project, "run", "--print-command", "--no-update-check") == 3
+    assert "claude-code-download" in capsys.readouterr().err
     assert record.read_bytes() == before
 
 
@@ -396,8 +424,8 @@ def test_inspecting_approvals_defers_activation_recovery(checkout, monkeypatch, 
     err = capsys.readouterr().err
     assert "Interrupted activation" in err and "config resolve" in err
     assert {p: p.read_bytes() for p in before} == before
-    assert invoke(project, "config", "resolve") == 2  # recovers, then reports the stale consent
-    assert "claude-code-download: stale" in capsys.readouterr().err
+    assert invoke(project, "config", "resolve") == 3  # recovers, then reports the pending consent
+    assert "claude-code-download" in capsys.readouterr().err
     assert not journal.exists()
     assert invoke(project, "config", "approve", "--all") == 0
 
@@ -453,3 +481,23 @@ def test_broken_newest_history_does_not_hide_a_valid_record(tmp_path, record) ->
     good.write_text(render_toml({"lock": '[components.claude-code]\nversion = "1.0.0"', "last-success": 20}))
     with patch.object(Path, "glob", return_value=iter([bad, good])):
         assert offer.previous_versions(tmp_path) == {"claude-code": "1.0.0"}
+
+
+@pytest.mark.parametrize("interactive", [False, True])
+def test_software_approval_is_not_saved_while_a_required_input_is_pending(checkout, monkeypatch, interactive: bool) -> None:
+    project, record, resolution = checkout
+    approved_then_bumped(project, record)
+    assert invoke(project, 'config', 'require', 'env', 'NEW_INPUT', '--because', 'new service') == 0
+    before = record.read_bytes(), resolution.read_bytes()
+    launch = install_external_fakes(monkeypatch, [])
+    import io
+    from devcapsule.compat import DecisionPending
+    monkeypatch.setattr('sys.stdin', io.StringIO('y\n'))
+    monkeypatch.setattr(offer.sys.stdin, 'isatty', lambda: interactive)
+    monkeypatch.setattr(offer, 'confirmation_key', lambda: 'y' if interactive else pytest.fail('asked without a terminal'))
+    def closed_input(*args) -> str:
+        raise DecisionPending('terminal closed')
+    monkeypatch.setattr('devcapsule.commands._run_flow._hidden', closed_input)
+    assert invoke(project, 'run', '--no-update-check') == 3
+    assert (record.read_bytes(), resolution.read_bytes()) == before
+    launch.assert_not_called()

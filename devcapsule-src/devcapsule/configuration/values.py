@@ -15,6 +15,11 @@ CONFIGURATION_VALUE_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)
 
 MEMORY_SIZE_PATTERN = re.compile(r"^([1-9][0-9]*)(B|KiB|MiB|GiB|TiB)$")
 
+# What a user types for a memory size: the canonical form above, or Docker's
+# spellings (``6g``, ``6G``, ``512m``, ``6GB``), which the owner and every
+# ``docker run`` user know. Stored values are always canonical.
+MEMORY_SIZE_INPUT_PATTERN = re.compile(r"^([1-9][0-9]*)\s*([KkMmGgTt])?(?:[Ii]?[Bb])?$")
+
 
 CONFIGURATION_VALUE_TYPES = {"string", "integer", "boolean", "memory-size"}
 
@@ -32,6 +37,20 @@ SHIPPED_COMMAND_VALUE_NAME = "runtime.devcapsule-command"
 SHIPPED_COMMAND_EFFECT = "devcapsule.command-name"
 
 RuntimeEffects = dict[str, int | str]
+
+# The values the launcher owns on every project (CLI UX redesign work order,
+# answer 6): the container's memory limit and CPU count. They need no
+# declaration; a project may recommend them, a workstation has defaults for
+# them, a checkout may set them. ``memory`` carries the ``docker.memory-limit``
+# effect that a manifest's declared value used to carry under its own name;
+# such a declaration is read as the recommendation for ``memory`` and its
+# name as an alias, so recorded answers keep working.
+LAUNCHER_VALUE_NAMES = ("memory", "cpus")
+LAUNCHER_VALUE_DESCRIPTIONS = {
+    "memory": "Hard memory limit of the capsule's container, such as 6GiB or 6g.",
+    "cpus": "Number of CPUs the capsule's container may use.",
+}
+MEMORY_LIMIT_EFFECT = "docker.memory-limit"
 
 
 def configuration_value_declarations(
@@ -170,11 +189,7 @@ def _normalize_declared_value(
         if isinstance(value, str) and value.lower() in {"true", "false"}:
             return value.lower() == "true"
         raise ProjectConfigurationError(f"{field} must be true or false.")
-    if not isinstance(value, str) or MEMORY_SIZE_PATTERN.fullmatch(value) is None:
-        raise ProjectConfigurationError(
-            f"{field} must be a positive memory size using B, KiB, MiB, GiB, or TiB, for example 8GiB."
-        )
-    return value
+    return normalize_memory_size(value, field_name=field)
 
 
 def checkout_omitted_values(checkout: Mapping[str, Any]) -> tuple[str, ...]:
@@ -194,7 +209,13 @@ def checkout_omitted_values(checkout: Mapping[str, Any]) -> tuple[str, ...]:
 def resolve_configuration_values(
     manifest: Mapping[str, Any], checkout: Mapping[str, Any]
 ) -> tuple[dict[str, ConfigurationScalar], RuntimeEffects]:
-    """Validate checkout values and derive curated runtime effects from metadata."""
+    """Validate the checkout's declared values and derive their runtime effects.
+
+    The launcher-owned ``memory`` and ``cpus`` are not declared values; they
+    are resolved by :mod:`launcher_values` and merged by the review. A
+    declared value carrying the memory-limit effect is an alias of ``memory``
+    and is left to that module too.
+    """
 
     declarations = configuration_value_declarations(manifest)
     configuration = checkout.get("configuration", {})
@@ -208,7 +229,8 @@ def resolve_configuration_values(
     problems: list[str] = []
     normalized: dict[str, ConfigurationScalar] = {}
     effects: RuntimeEffects = {}
-    for name in sorted(set(raw_values) | set(omitted) | set(declarations)):
+    aliases = set(legacy_memory_names(manifest))
+    for name in sorted((set(raw_values) | set(omitted) | set(declarations)) - set(LAUNCHER_VALUE_NAMES) - aliases):
         try:
             declaration = declarations.get(name)
             if declaration is None:
@@ -233,12 +255,56 @@ def resolve_configuration_values(
     if problems:
         raise ProjectConfigurationError("\n".join(problems))
     for name, value in normalized.items():
-        effect = declarations[name].get("runtime-effect")
-        if effect == "docker.memory-limit":
-            effects["memory-limit-bytes"] = memory_size_bytes(str(value))
-        elif effect == "devcapsule.command-name":
+        if declarations[name].get("runtime-effect") == "devcapsule.command-name":
             effects["devcapsule-command"] = str(value)
     return normalized, effects
+
+
+def normalize_launcher_value(name: str, value: object, *, field_name: str | None = None) -> str | int:
+    """Canonicalize a memory limit or a CPU count as typed; refuse anything else, naming the field."""
+    field = field_name or name
+    if name == "memory":
+        return normalize_memory_size(value, field_name=field)
+    if name == "cpus":
+        if isinstance(value, bool) or (isinstance(value, int) and value < 1) or (
+            isinstance(value, str) and not value.strip().isdecimal()
+        ) or not isinstance(value, (int, str)):
+            raise ProjectConfigurationError(f"{field} must be a positive integer number of CPUs; found {value!r}.")
+        count = int(value)
+        if count < 1:
+            raise ProjectConfigurationError(f"{field} must be a positive integer number of CPUs; found {value!r}.")
+        return count
+    raise ProjectConfigurationError(f"The launcher owns no value named {name!r}; it owns " + ", ".join(LAUNCHER_VALUE_NAMES) + ".")
+
+
+def legacy_memory_names(manifest: Mapping[str, Any]) -> tuple[str, ...]:
+    """The names a manifest declares with the memory-limit effect: aliases of ``memory``."""
+    return tuple(sorted(
+        name for name, declaration in configuration_value_declarations(manifest).items()
+        if declaration.get("runtime-effect") == MEMORY_LIMIT_EFFECT and name not in LAUNCHER_VALUE_NAMES
+    ))
+
+
+def normalize_memory_size(value: object, *, field_name: str = "memory size") -> str:
+    """Canonicalize a typed memory size to the stored ``<n><unit>`` form.
+
+    Accepts the canonical ``6GiB`` and Docker's ``6g``/``6G``/``6GB``/``512m``;
+    a unit letter alone means the binary unit (``g`` is GiB, as Docker reads
+    it). Raise ProjectConfigurationError for anything else, naming the field.
+    """
+    if not isinstance(value, str):
+        raise ProjectConfigurationError(f"{field_name} must be a memory size such as 6GiB or 6g.")
+    candidate = value.strip()
+    if MEMORY_SIZE_PATTERN.fullmatch(candidate):
+        return candidate
+    match = MEMORY_SIZE_INPUT_PATTERN.fullmatch(candidate)
+    if match is None:
+        raise ProjectConfigurationError(
+            f"{field_name} must be a positive memory size such as 6GiB, 6g or 512m; found {value!r}."
+        )
+    quantity, unit = match.group(1), (match.group(2) or "").upper()
+    suffix = {"": "B", "K": "KiB", "M": "MiB", "G": "GiB", "T": "TiB"}[unit]
+    return f"{quantity}{suffix}"
 
 
 def memory_size_bytes(value: str) -> int:

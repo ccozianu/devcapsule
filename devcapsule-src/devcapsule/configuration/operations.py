@@ -20,7 +20,7 @@ import tomllib
 from pathlib import Path
 import re
 import sys
-from typing import Any, Mapping, Sequence, TextIO
+from typing import Any, Mapping, TextIO
 
 from devcapsule.components.antigravity_cli import DEFINITION as ANTIGRAVITY_CLI
 from devcapsule.elicitation import SOURCE_EXISTING_RECORD, SOURCE_COMMAND_LINE, SOURCE_PROMPT, AnswerKey, Elicitor
@@ -30,6 +30,7 @@ from devcapsule.project import sanitize_name
 from devcapsule.platforms import Platform, UnsupportedPlatformError
 from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix
 
+from .trust import WorkstationTrust
 from .authorization import (
     AuthorizationDeclaration,
     CURATED_HOST_RECOMMENDATIONS,
@@ -39,16 +40,22 @@ from .authorization import (
     normalize_authorization_value,
     render_authorization_value,
 )
+from .capabilities import CapabilityPolicy, LocalCapabilities
+from .capability_commands import check_documents, parse_tool_names, pin_selection
+from .capability_selection import compose_lock, effective_lock, generate_lock, local_pins
 from .file_formats import (
     AuthorizationScalar,
+    ConfigurationFileKind,
     ProjectConfigurationError,
     quote_toml,
     render_checkout,
     render_toml,
     render_toml_scalar,
+    validate_file_format,
 )
 from .freshness import stale_resolution_inputs
 from .manifest import validate_manifest
+from .manifest_document import CURRENT_MANIFEST_SCHEMA_VERSION, capability_table, render_manifest
 from .model import Configuration
 from .nodes import (
     CARRIER_FAMILY_AUTHORIZE,
@@ -63,8 +70,10 @@ from .storage import (
     load_checkout,
     load_resolution,
     load_toml,
+    load_workstation,
     lock_for,
     manifest_for,
+    require_settled,
 )
 from .values import checkout_omitted_values, normalize_configuration_value
 
@@ -80,11 +89,9 @@ def _current_matrix() -> ResolutionMatrix:
 __all__ = [
     "CheckoutRecord",
     "InitializeReport",
-    "NeedReport",
     "InitializeRequest",
     "ProvidedAnswer",
     "ResolveReport",
-    "add_capability_need",
     "initialize_project",
     "resolve_checkout",
 ]
@@ -116,11 +123,22 @@ class CheckoutRecord:
 
     def __init__(self, manifest: Mapping[str, Any], root: Path) -> None:
         input_path, _resolution_path = checkout_record_paths(manifest, root)
-        self.input_path = input_path
-        self.document = (
+        document = (
             load_checkout(input_path, manifest, root) if input_path.is_file()
             else tomllib.loads(render_checkout(manifest, root, {}, {}))
         )
+        self._load(input_path, document)
+
+    @classmethod
+    def staged(cls, input_path: Path, document: Mapping[str, Any]) -> CheckoutRecord:
+        """Edit an owned copy without reading or writing a checkout record."""
+        record = cls.__new__(cls)
+        record._load(input_path, deepcopy(dict(document)))
+        return record
+
+    def _load(self, input_path: Path, document: dict[str, Any]) -> None:
+        self.input_path = input_path
+        self.document = document
         self._original = deepcopy(self.document)
         # Each editable collection belongs to the retained document. No
         # projection/serialization pair can drop an unrelated answer.
@@ -159,7 +177,8 @@ class CheckoutRecord:
             answer = {"value": value, "recommendation-digest": declaration.recommendation_digest}
         self.authorization[name] = answer
 
-    def write(self) -> None:
+    def export(self) -> dict[str, Any]:
+        """Return the document that write would publish, without new empty tables."""
         if self.omitted_values:
             self.document["configuration"]["omitted-values"] = sorted(self.omitted_values)
         else:
@@ -174,7 +193,10 @@ class CheckoutRecord:
                         continue
                 result[key] = item
             return result
-        atomic_write(self.input_path, render_toml(without_new_empty_tables(self.document, self._original)))
+        return without_new_empty_tables(self.document, self._original)
+
+    def write(self) -> None:
+        atomic_write(self.input_path, render_toml(self.export()))
 
 
 def resolve_checkout(start_path: Path) -> ResolveReport:
@@ -196,10 +218,12 @@ def resolve_checkout(start_path: Path) -> ResolveReport:
         atomic_write(input_path, render_checkout(manifest, root, {}, {}))
         registered = input_path
     checkout = load_checkout(input_path, manifest, root)
-    configuration = Configuration(manifest, lock, checkout)
+    workstation = load_workstation()
+    configuration = Configuration(manifest, lock, checkout, workstation)
     configuration.review().require_ready(root)
     resolution = configuration.resolve()
-    base_selection = authorized_base_selection(lock, checkout) if "base" in lock else None
+    base_selection = (authorized_base_selection(lock, checkout, trust=WorkstationTrust.read(workstation))
+                      if "base" in lock else None)
     if base_selection is not None and base_selection.local_image_identity is not None:
         local_base = required_local_image(base_selection.reference)
         validate_base_image(local_base, platform=str(lock["platform"]),
@@ -224,10 +248,20 @@ class ProvidedAnswer:
 
 @dataclass(frozen=True)
 class InitializeRequest:
-    """Everything ``devcapsule project init`` collected from its command line."""
+    """Everything ``devcapsule project init`` collected from its command line.
+
+    ``require`` and ``offer`` are the project's: the tools every checkout
+    must have (``TOOL`` or ``TOOL=MAJOR`` for an SDK major) and the tools a
+    developer may leave out. ``ide`` and ``agents`` are the owner's own
+    checkout's choices, recorded in the owner's checkout record and never in
+    the manifest (R-CONFIG-001, refinement of 2026-10-06).
+    """
 
     directory: Path
-    need: tuple[str, ...] = ()
+    require: tuple[str, ...] = ()
+    offer: tuple[str, ...] = ()
+    ide: str | None = None
+    agents: tuple[str, ...] = ()
     project_name: str | None = None
     slug: str | None = None
     creator: str | None = None
@@ -255,13 +289,18 @@ class InitializeReport:
     creator: str
     slug: str
     project_mount: str
-    capabilities: tuple[str, ...]
+    required: tuple[str, ...]
+    offered: tuple[str, ...]
+    sdk_majors: tuple[tuple[str, int], ...]
     lock_path: Path
     lock_action: str
     base_display: str
     # (name, rendered value, justification) for every recommendation the
     # manifest carries after this init.
     recommendations: tuple[tuple[str, str, str], ...]
+    # The owner's own checkout: the IDE and the agents selected for it.
+    ide: str | None
+    agents: tuple[str, ...]
     # Authorization nodes by how this invocation settled them: answered
     # here (a flag or a prompt), carried forward from the existing checkout
     # record because their digest still matched, or explicitly accepted by
@@ -271,23 +310,37 @@ class InitializeReport:
     carried: tuple[str, ...]
     recommended: tuple[str, ...]
     checkout_record: Path
-    resolve: ResolveReport
+    # None when the owner's checkout has no IDE yet: nothing to resolve.
+    resolve: ResolveReport | None
 
     def render(self) -> str:
+        majors = {name: major for name, major in self.sdk_majors}
+        required = " ".join(f"{name}={majors[name]}" if name in majors else name for name in self.required) or "none"
         lines = [
             f"{self.manifest_action} {self.manifest_path}",
             f"Project: {self.project_name} — {self.creator}/{self.slug}",
             f"Project mount: {self.project_mount}",
-            f"Capabilities: {' '.join(self.capabilities)}",
-            f"{self.lock_action} {self.lock_path} (base {self.base_display})",
+            f"Requires: {required}",
         ]
+        if self.offered:
+            lines.append(f"Offers: {' '.join(self.offered)}")
+        lines.append(f"{self.lock_action} {self.lock_path} (base {self.base_display})")
         for name, value, justification in self.recommendations:
             line = f"Recommended {name} = {value} for every checkout"
             lines.append(f"{line} ({justification})." if justification else f"{line}.")
+        selection = [self.ide] if self.ide else []
+        selection.extend(self.agents)
+        lines.append("Your checkout: " + (" ".join(selection) if selection else "no IDE and no agent selected yet"))
         lines.extend(_authorization_lines(self.answered, self.carried, self.recommended))
         lines.append(f"Checkout record: {self.checkout_record}")
-        lines.append(self.resolve.render())
-        lines.append("Project initialized; 'devcapsule project run' starts it.")
+        if self.resolve is not None:
+            lines.append(self.resolve.render())
+            lines.append("Project initialized; 'devcapsule project run' starts it.")
+        else:
+            lines.append(
+                "Project initialized. Choose your IDE with 'devcapsule project config ide IDE' "
+                "(python-ide, frontend-ide, java-ide, eclipse-ide or dotnet-ide), then 'devcapsule project run'."
+            )
         return "\n".join(lines)
 
 
@@ -321,83 +374,51 @@ class _Authorizations:
         (self.carried if source == SOURCE_EXISTING_RECORD else self.answered).append(name)
 
 
-@dataclass(frozen=True)
-class NeedReport:
-    """Outcome of ``config need``: what changed in the need, and what followed."""
-
-    manifest_path: Path
-    previous_need: tuple[str, ...]
-    need: tuple[str, ...]
-    lock_path: Path
-    lock_changed: bool
-    base_display: str
-    answered: tuple[str, ...]
-    carried: tuple[str, ...]
-    recommended: tuple[str, ...]
-    checkout_record: Path
-    resolve: ResolveReport
-
-    def render(self) -> str:
-        added = tuple(name for name in self.need if name not in self.previous_need)
-        if added:
-            lines = [
-                f"Need: added {', '.join(added)} → {' '.join(self.need)} ({self.manifest_path})"
-            ]
-        else:
-            lines = [
-                "Need: unchanged — already in capabilities.need "
-                f"({' '.join(self.need)}); {self.manifest_path} not rewritten"
-            ]
-        if self.lock_changed:
-            lines.append(f"Lock: regenerated {self.lock_path} (base {self.base_display})")
-        else:
-            lines.append(f"Lock: unchanged (base {self.base_display})")
-        lines.extend(_authorization_lines(self.answered, self.carried, self.recommended))
-        lines.append(f"Checkout record: {self.checkout_record}")
-        lines.append(self.resolve.render())
-        lines.append("Ready; 'devcapsule project run' starts it.")
-        return "\n".join(lines)
-
-
 def initialize_project(
     request: InitializeRequest,
     *,
     input_stream: TextIO | None = None,
     output_stream: TextIO | None = None,
 ) -> InitializeReport:
-    """Bring the four owned artifacts into existence, in owner order.
+    """Bring the owned artifacts into existence, in owner order.
 
     The settled postcondition (*Initializing A New Project* in the
     v1-user-experience design note): a valid manifest and a platform lock for
-    this platform exist, the owner's checkout record is registered, and a
-    fresh resolution stands — achieved by invoking the same resolution the
-    standalone command runs.  The three entry states are handled in order:
-    nothing initialized (author everything), partially initialized (honor
-    what exists, complete what is missing — repair is init's own job), and
-    fully initialized (fail loudly naming ``--regenerate``).
+    this platform exist, the owner's checkout record is registered with the
+    owner's IDE and agents, and, when an IDE is chosen, a fresh resolution
+    stands — achieved by invoking the same resolution the standalone command
+    runs.  The manifest holds the project's requirements and offers in the
+    ``required`` form of schema 2; the lock is project-only (no IDE), and the
+    IDE and agents are pinned in the owner's checkout record, as for every
+    other developer.  The three entry states are handled in order: nothing
+    initialized (author everything), partially initialized (honor what exists,
+    complete what is missing — repair is init's own job), and fully initialized
+    (fail loudly naming ``--regenerate``).
     """
 
     root = request.directory.expanduser().resolve()
     if not root.is_dir():
         raise ProjectConfigurationError(f"Project directory does not exist: {root}")
+    require_settled(root)
     manifest_path = root / ".devcapsule" / "devcapsule.toml"
     try:
         platform = Platform.current()
     except UnsupportedPlatformError as exc:
         raise ProjectConfigurationError(str(exc)) from exc
     lock_path = root / ".devcapsule" / f"devcapsule.{platform}.lock"
+    matrix = _current_matrix()
 
     existing_manifest: dict[str, Any] | None = None
+    existing_lock: dict[str, Any] | None = None
     if manifest_path.is_file():
         # A hand-authored or carried-over manifest is the ordinary form of
         # partial initialization, not an error: honor it and generate what
         # follows from it.
         existing_manifest = load_toml(manifest_path)
         validate_manifest(existing_manifest, manifest_path)
-        if any(key in existing_manifest["capabilities"] for key in ("required", "optional", "sdk-major")):
-            raise ProjectConfigurationError("This project uses required/optional capability policy. Use 'project config capabilities' to change it, or 'project config resolve' to prepare this checkout.")
         if lock_path.is_file():
-            lock_for(root, existing_manifest)
+            existing_lock = load_toml(lock_path)
+            validate_file_format(existing_lock, ConfigurationFileKind.lock, lock_path)
         input_path, output_path = checkout_record_paths(existing_manifest, root)
         if input_path.is_file():
             load_checkout(input_path, existing_manifest, root)
@@ -429,45 +450,45 @@ def initialize_project(
         input_stream=input_stream,
         output_stream=output_stream,
     )
-    identity = _elicit_identity(elicitor, root, existing_manifest)
+    identity = _elicit_identity(elicitor, root, existing_manifest, matrix)
     authored = frozenset(answer.name for answer in request.answers if answer.justification is not None)
-    # Fail now if identity or capabilities are unanswered: the lock cannot be
+    # Fail now if identity or requirements are unanswered: the lock cannot be
     # generated without them, so later questions are unreachable and their
     # supplied answers must not be misreported as unknown.
     if elicitor.missing():
         elicitor.finish(require_all_consumed=False)
 
-    # The lock, in memory first. Every name a supplied answer may use is
-    # fixed by the capabilities and the lock, both known here, so a
-    # misspelled or wrong-family name is rejected before the first question
-    # is asked and before anything is written.
-    generated = None
+    # The lock, in memory first, project-only: the IDE and the agents are
+    # each developer's and pinned in their checkout record. Every name a
+    # supplied answer may use is fixed by the requirements, the owner's own
+    # selection and the lock, all known here, so a misspelled or wrong-family
+    # name is rejected before the first question is asked and before anything
+    # is written.
     if lock_path.is_file() and not request.regenerate:
         lock_action = "Kept"
-        preview_lock = load_toml(lock_path)
+        shared_lock = load_toml(lock_path)
     else:
         lock_action = "Regenerated" if lock_path.is_file() else "Created"
-        generated = MATRICES[platform].resolve(
-            list(identity.capabilities), allow_unverified=request.allow_unverified
-        )
-        if generated.unverified:
-            # The owner's 2026-09-06 ruling: name the elements, call it what
-            # it is — an experiment — and say that the lock carries the fact
-            # to everyone who uses it.
-            print(
-                "Running as an experiment. Not yet validated: "
-                + "; ".join(generated.unverified)
-                + ".\nThe lock records this for everyone who uses it; if it works, "
-                "let the DevCapsule maintainers know so the matrix can learn.",
-                file=sys.stderr,
-            )
-        preview_lock = tomllib.loads(generated.render_lock())
-    _reject_undeclared_answers(
-        request.answers,
-        existing_manifest if existing_manifest is not None else _preview_manifest(identity),
-        preview_lock,
-        authoring=frozenset(CURATED_HOST_RECOMMENDATIONS) if existing_manifest is None else authored,
-    )
+        shared_lock = generate_lock(identity.policy, matrix, previous=existing_lock,
+                                    allow_unverified=request.allow_unverified)
+        _report_unverified(shared_lock)
+    # A manifest written before 0.3.0 rc4 may require the IDE itself; then
+    # the lock carries it and the owner's checkout has no IDE question.
+    lock_has_ide = bool(shared_lock.get("components", {}).get("interactive-surface"))
+    existing_selection = _existing_selection(root, existing_manifest)
+    selection = _elicit_owner_selection(elicitor, request, matrix, existing_selection,
+                                        ask_ide=not lock_has_ide, fresh=existing_manifest is None)
+    runnable = lock_has_ide or selection.ide is not None
+    preview_manifest = existing_manifest if existing_manifest is not None else _preview_manifest(identity)
+    if existing_manifest is None:
+        # A bad mount path or slug is refused here, before the first write.
+        validate_manifest(preview_manifest, manifest_path)
+    authoring = frozenset(CURATED_HOST_RECOMMENDATIONS) if existing_manifest is None else authored
+    if runnable:
+        preview_lock = _preview_effective_lock(preview_manifest, shared_lock, selection, matrix)
+        _reject_undeclared_answers(request.answers, preview_manifest, preview_lock, authoring=authoring)
+    else:
+        _reject_answers_needing_an_ide(request.answers, preview_manifest, shared_lock, authoring=authoring)
 
     recommendations = _elicit_recommendations(
         elicitor, existing_manifest, authored=authored,
@@ -477,20 +498,39 @@ def initialize_project(
     if elicitor.missing():
         elicitor.finish(require_all_consumed=False)
 
-    manifest_action = _write_manifest(
+    manifest_action, manifest_text = _prepare_manifest(
         manifest_path, existing_manifest, identity, recommendations
     )
-    manifest = load_toml(manifest_path)
+    manifest = tomllib.loads(manifest_text)
     validate_manifest(manifest, manifest_path)
-
-    if generated is not None:
-        # World-readable like any committed project file; the 0600 default is
-        # for developer-owned records.
-        atomic_write(lock_path, generated.render_lock(), mode=0o644)
-    _, lock = lock_for(root, manifest)
-
-    declarations = authorization_declarations(manifest, lock)
+    check_documents(manifest, shared_lock)
+    # All artifacts stay in memory until every answer is accepted. A batch
+    # failure must leave shared files and the private record untouched.
     record = CheckoutRecord(manifest, root)
+    _stage_owner_selection(record, manifest, shared_lock, matrix, selection, request.allow_unverified)
+
+    def persist() -> None:
+        if manifest_action != "Honored existing":
+            atomic_write(manifest_path, manifest_text, mode=0o644)
+        if lock_action != "Kept":
+            atomic_write(lock_path, render_toml(shared_lock), mode=0o644)
+        record.write()
+
+    if not runnable:
+        # Nothing to resolve without an IDE: the owner's checkout waits for
+        # that one choice, and the report says so. Host answers given on the
+        # command line are still recorded.
+        _elicit_host_answers(elicitor, manifest, shared_lock, record)
+        elicitor.finish()
+        persist()
+        return _initialize_report(
+            manifest_path, manifest_action, identity, lock_path, lock_action,
+            base_display=_base_display(shared_lock), recommendations=recommendations,
+            selection=selection, answered=(), carried=(), recommended=(),
+            checkout_record=record.input_path, resolve=None,
+        )
+    lock = effective_lock(manifest, compose_lock(manifest, shared_lock, record.document), record.document, warn=False)
+    declarations = authorization_declarations(manifest, lock)
     settled = _elicit_acquisitions(
         elicitor,
         declarations,
@@ -501,14 +541,29 @@ def initialize_project(
     accepted_recommendations = _elicit_host_answers(elicitor, manifest, lock, record)
     _elicit_extra_answers(elicitor, request.answers, manifest, lock, record)
     elicitor.finish()
-    record.write()
+    persist()
 
     resolve_report = resolve_checkout(root)
     base_declaration = declarations.get("base-image")
-    if base_declaration is not None:
-        base_display = base_declaration.display_value or str(base_declaration.recommended_value)
-    else:
-        base_display = str(lock.get("image", {}).get("reference", "image lock"))
+    base_display = (
+        base_declaration.display_value or str(base_declaration.recommended_value)
+        if base_declaration is not None else _base_display(lock)
+    )
+    return _initialize_report(
+        manifest_path, manifest_action, identity, lock_path, lock_action,
+        base_display=base_display, recommendations=recommendations, selection=selection,
+        answered=tuple(settled.answered), carried=tuple(settled.carried),
+        recommended=accepted_recommendations, checkout_record=record.input_path,
+        resolve=resolve_report,
+    )
+
+
+def _initialize_report(
+    manifest_path: Path, manifest_action: str, identity: _ProjectIdentity, lock_path: Path, lock_action: str,
+    *, base_display: str, recommendations: list[tuple[str, str]], selection: _OwnerSelection,
+    answered: tuple[str, ...], carried: tuple[str, ...], recommended: tuple[str, ...],
+    checkout_record: Path, resolve: ResolveReport | None,
+) -> InitializeReport:
     return InitializeReport(
         manifest_path=manifest_path,
         manifest_action=manifest_action,
@@ -516,7 +571,9 @@ def initialize_project(
         creator=identity.creator,
         slug=identity.slug,
         project_mount=identity.mount,
-        capabilities=identity.capabilities,
+        required=identity.policy.required,
+        offered=identity.policy.optional,
+        sdk_majors=identity.policy.sdk_major,
         lock_path=lock_path,
         lock_action=lock_action,
         base_display=base_display,
@@ -524,12 +581,155 @@ def initialize_project(
             (name, render_authorization_value(CURATED_HOST_RECOMMENDATIONS[name][1]), justification)
             for name, justification in recommendations
         ),
-        answered=tuple(settled.answered),
-        carried=tuple(settled.carried),
-        recommended=accepted_recommendations,
-        checkout_record=record.input_path,
-        resolve=resolve_report,
+        ide=selection.ide,
+        agents=selection.agents,
+        answered=answered,
+        carried=carried,
+        recommended=recommended,
+        checkout_record=checkout_record,
+        resolve=resolve,
     )
+
+
+def _base_display(lock: Mapping[str, Any]) -> str:
+    base = lock.get("base")
+    if isinstance(base, dict) and isinstance(base.get("reference"), str):
+        contract = base.get("contract")
+        return f"{contract} — {base['reference']}" if isinstance(contract, str) else str(base["reference"])
+    return str(lock.get("image", {}).get("reference", "image lock"))
+
+
+def _report_unverified(lock: Mapping[str, Any]) -> None:
+    """Name what a generated lock or selection runs as an experiment, the owner's 2026-09-06 ruling.
+
+    The matrix records the unvalidated combinations in the lock it renders,
+    so everyone who uses the lock reads the same fact.
+    """
+    unverified = lock.get("unverified-combinations")
+    if isinstance(unverified, str) and unverified:
+        print(
+            "Running as an experiment. Not yet validated: "
+            + unverified
+            + ".\nThe lock records this for everyone who uses it; if it works, "
+            "let the DevCapsule maintainers know so the matrix can learn.",
+            file=sys.stderr,
+        )
+
+
+@dataclass(frozen=True)
+class _OwnerSelection:
+    """The owner's own checkout choices: one IDE capability or none, and agent capabilities."""
+
+    ide: str | None
+    agents: tuple[str, ...]
+
+    @property
+    def selected(self) -> tuple[str, ...]:
+        return tuple(sorted(({self.ide} if self.ide else set()) | set(self.agents)))
+
+
+def _existing_selection(root: Path, manifest: Mapping[str, Any] | None) -> _OwnerSelection:
+    """What the owner's checkout record already selects, when it exists."""
+    if manifest is None:
+        return _OwnerSelection(None, ())
+    input_path, _ = checkout_record_paths(manifest, root)
+    if not input_path.is_file():
+        return _OwnerSelection(None, ())
+    local = LocalCapabilities.read(load_toml(input_path))
+    matrix = _current_matrix()
+    surfaces = {name for name in matrix.local_capabilities() if not name.endswith("-agent")}
+    ide = next((name for name in local.selected if name in surfaces), None)
+    return _OwnerSelection(ide, tuple(name for name in local.selected if name not in surfaces))
+
+
+def _elicit_owner_selection(
+    elicitor: Elicitor, request: InitializeRequest, matrix: ResolutionMatrix, existing: _OwnerSelection,
+    *, ask_ide: bool = True, fresh: bool = True,
+) -> _OwnerSelection:
+    """Ask the owner's own IDE and agents, for the owner's checkout alone.
+
+    The IDE is asked interactively with Enter meaning "decide later": a
+    project does not need an IDE to be initialized, a checkout needs one to
+    run. Agents join through ``--agent`` or the default-agent offer. With
+    ``ask_ide`` false the lock already carries the IDE (a manifest from
+    before 0.3.0 rc4) and only an explicit ``--ide`` is taken.
+    """
+    surfaces = sorted(name for name in matrix.local_capabilities() if not name.endswith("-agent"))
+    agent_names = sorted(name for name in matrix.local_capabilities() if name.endswith("-agent"))
+    answer = elicitor.seek(
+        "ide",
+        description=f"Your IDE for this checkout ({', '.join(surfaces)}; Enter to decide later)",
+        remedy="--ide IDE",
+        existing=existing.ide,
+        empty_answer="none",
+        omitted_answer="none",
+        mandatory=ask_ide,
+        validate=_ide_validator(matrix, surfaces),
+    )
+    ide = None if answer is None or answer.value == "none" else answer.value
+    agents = tuple(sorted({_agent_name(matrix, agent_names, name) for name in request.agents} | set(existing.agents)))
+    agents = _with_default_agent(elicitor, agents, offer=fresh and not existing.selected, matrix=matrix)
+    return _OwnerSelection(ide, agents)
+
+
+def _ide_validator(matrix: ResolutionMatrix, surfaces: list[str]) -> Any:
+    by_component = {matrix.providers(name)[0]: name for name in surfaces}
+
+    def validate(value: str) -> str:
+        candidate = value.strip()
+        if candidate.lower() == "none":
+            return "none"
+        candidate = by_component.get(candidate, candidate)
+        if candidate not in surfaces:
+            raise ProjectConfigurationError(f"Unknown IDE {value!r}; choose one of {', '.join(surfaces)}.")
+        return candidate
+
+    return validate
+
+
+def _agent_name(matrix: ResolutionMatrix, agent_names: list[str], value: str) -> str:
+    candidate = value.strip()
+    by_component = {matrix.providers(name)[0]: name for name in agent_names}
+    candidate = by_component.get(candidate, candidate)
+    if candidate not in agent_names:
+        raise ProjectConfigurationError(f"Unknown agent {value!r}; choose from {', '.join(agent_names)}.")
+    return candidate
+
+
+def _preview_effective_lock(
+    manifest: Mapping[str, Any], shared_lock: Mapping[str, Any], selection: _OwnerSelection, matrix: ResolutionMatrix,
+) -> dict[str, Any]:
+    """The lock the owner's checkout will run, before anything is written: the shared lock with the owner's pins."""
+    if not selection.selected:
+        return dict(shared_lock)
+    policy = CapabilityPolicy.read(manifest)
+    local = LocalCapabilities(selected=selection.selected)
+    pins = pin_selection(matrix, policy, local, shared_lock, LocalCapabilities(), {}, allow_unverified=True)
+    checkout = {"devcapsule-checkout-schema-version": 1,
+                "capabilities": {"selected": list(selection.selected), "without": [], "lock": render_toml(pins)}}
+    return effective_lock(manifest, compose_lock(manifest, shared_lock, checkout), checkout, warn=False)
+
+
+def _stage_owner_selection(
+    record: CheckoutRecord, manifest: Mapping[str, Any], shared_lock: Mapping[str, Any], matrix: ResolutionMatrix,
+    selection: _OwnerSelection, allow_unverified: bool,
+) -> None:
+    """Put the owner's IDE and agents, with their pins, into the staged checkout record.
+
+    The same pins ``config ide`` and ``config agent add`` record; nothing is
+    written here. An empty selection leaves whatever the record selects.
+    """
+    if not selection.selected:
+        return
+    policy = CapabilityPolicy.read(manifest)
+    previous = LocalCapabilities.read(record.document)
+    local = LocalCapabilities(selected=selection.selected, without=previous.without)
+    local.validate(policy)
+    pins = pin_selection(matrix, policy, local, shared_lock, previous, local_pins(record.document),
+                         allow_unverified=allow_unverified)
+    _report_unverified(pins)
+    record.document["capabilities"] = {"selected": list(local.selected), "without": list(local.without),
+                                       "lock": render_toml(pins)}
 
 
 @dataclass(frozen=True)
@@ -538,7 +738,7 @@ class _ProjectIdentity:
     slug: str
     creator: str
     mount: str
-    capabilities: tuple[str, ...]
+    policy: CapabilityPolicy
 
 
 def _init_command_line(request: InitializeRequest) -> dict[AnswerKey, str]:
@@ -550,8 +750,12 @@ def _init_command_line(request: InitializeRequest) -> dict[AnswerKey, str]:
     """
 
     command_line: dict[AnswerKey, str] = {}
-    if request.need:
-        command_line[("need", "value")] = " ".join(request.need)
+    if request.require:
+        command_line[("require", "value")] = " ".join(request.require)
+    if request.offer:
+        command_line[("offer", "value")] = " ".join(request.offer)
+    if request.ide is not None:
+        command_line[("ide", "value")] = request.ide
     for key, value in (
         ("name", request.project_name),
         ("slug", request.slug),
@@ -572,20 +776,20 @@ def _init_command_line(request: InitializeRequest) -> dict[AnswerKey, str]:
 def _preview_manifest(identity: _ProjectIdentity) -> dict[str, Any]:
     """The manifest a fresh init is about to author, as a mapping, before any write.
 
-    Only what the node registry reads: the capabilities and the identity.
+    Only what the node registry reads: the requirements and the identity.
     Recommendations are absent because they are asked after this preview is
     used; see ``authoring`` in :func:`_reject_undeclared_answers`.
     """
 
     return {
-        "devcapsule-schema-version": 1,
-        "capabilities": {"need": list(identity.capabilities)},
+        "devcapsule-schema-version": CURRENT_MANIFEST_SCHEMA_VERSION,
         "project": {
             "name": identity.name,
             "slug": identity.slug,
             "creator": identity.creator,
             "mount": identity.mount,
         },
+        "capabilities": capability_table(identity.policy),
     }
 
 
@@ -598,12 +802,12 @@ def _reject_undeclared_answers(
 ) -> None:
     """Fail on a misspelled or wrong-family answer name before anything is asked or written.
 
-    The names an init can answer are fixed by the capabilities and the lock,
-    both known before the first prompt, so ``--authorize docker host`` for
-    ``docker-daemon`` is reported then, with nothing on disk and no prompt
-    consumed. Until 2026-09-26 this check ran last, after every prompt and
-    after the manifest and lock were written, and its failure discarded every
-    answer the owner had just given.
+    The names an init can answer are fixed by the requirements, the owner's
+    selection and the lock, all known before the first prompt, so
+    ``--authorize docker host`` for ``docker-daemon`` is reported then, with
+    nothing on disk and no prompt consumed. Until 2026-09-26 this check ran
+    last, after every prompt and after the manifest and lock were written,
+    and its failure discarded every answer the owner had just given.
 
     ``authoring`` names the curated host recommendations this invocation may
     still record. Such a name is an authorization node only once the project
@@ -623,11 +827,30 @@ def _reject_undeclared_answers(
         registry.answerable(answer.name, answer.family)
 
 
+def _reject_answers_needing_an_ide(
+    answers: tuple[ProvidedAnswer, ...], manifest: Mapping[str, Any], lock: Mapping[str, Any],
+    *, authoring: frozenset[str],
+) -> None:
+    """Without an IDE there are no set or bind nodes yet; only host answers can be recorded."""
+    declarations = authorization_declarations(manifest, lock)
+    for answer in answers:
+        if answer.family != CARRIER_FAMILY_AUTHORIZE:
+            raise ProjectConfigurationError(
+                f"--{answer.family} {answer.name} needs the checkout's IDE first: add --ide IDE, "
+                "or record the answer later with the config family."
+            )
+        if answer.name not in declarations and answer.name not in authoring:
+            raise ProjectConfigurationError(
+                f"Authorization {answer.name!r} is not declared by this project; declared: "
+                + ", ".join(sorted(declarations)) + "."
+            )
+
+
 def _elicit_identity(
-    elicitor: Elicitor, root: Path, existing_manifest: Mapping[str, Any] | None
+    elicitor: Elicitor, root: Path, existing_manifest: Mapping[str, Any] | None, matrix: ResolutionMatrix,
 ) -> _ProjectIdentity:
     project = (existing_manifest or {}).get("project", {})
-    existing_need = (existing_manifest or {}).get("capabilities", {}).get("need")
+    existing_policy = CapabilityPolicy.read(existing_manifest) if existing_manifest is not None else None
 
     def existing_field(key: str) -> str | None:
         value = project.get(key)
@@ -662,67 +885,127 @@ def _elicit_identity(
         existing=existing_field("mount"),
         default=f"/workspace/{slug.value}",
     )
-    need = elicitor.seek(
-        "need",
-        description=(
-            "Capabilities the project needs, space-separated "
-            f"({', '.join(_current_matrix().capabilities())})"
-        ),
-        remedy="--need CAPABILITY [--need CAPABILITY ...]",
-        existing=" ".join(str(item) for item in existing_need) if existing_need else None,
-        validate=_normalize_need_string,
+    tools = sorted(set(matrix.capabilities()) - matrix.local_capabilities())
+    majors = dict(existing_policy.sdk_major) if existing_policy is not None else {}
+    existing_require = (
+        " ".join(f"{item}={majors[item]}" if item in majors else item for item in existing_policy.required)
+        if existing_policy is not None else None
     )
-    capabilities = tuple(need.value.split()) if need else ()
-    capabilities = _with_default_agent(elicitor, capabilities, existing_need)
+    # A manifest written before 0.3.0 rc4 may require an IDE or an agent
+    # (the ``need`` form mixed them with the tools); such a declaration is
+    # grandfathered as it stands, never introduced anew.
+    grandfathered = frozenset(existing_policy.required) & matrix.local_capabilities() if existing_policy else frozenset()
+    require = elicitor.seek(
+        "require",
+        description=(
+            "Tools the project requires, space-separated, TOOL=MAJOR for an SDK major "
+            f"({', '.join(tools)}; Enter for none)"
+        ),
+        remedy="--require TOOL [--require TOOL ...]",
+        existing=existing_require if existing_require is not None else None,
+        empty_answer="none",
+        omitted_answer="none",
+        validate=_require_validator(matrix, grandfathered),
+    )
+    offer = elicitor.seek(
+        "offer",
+        description="Tools the project offers",
+        remedy="--offer TOOL [--offer TOOL ...]",
+        mandatory=False,
+        existing=" ".join(existing_policy.optional) if existing_policy is not None and existing_policy.optional else None,
+        validate=_require_validator(matrix, grandfathered),
+    )
+    required_names, sdk_majors = _split_tools(matrix, require.value if require else "none", grandfathered)
+    offered_names, offered_majors = _split_tools(matrix, offer.value if offer else "none", grandfathered)
+    if offered_majors:
+        raise ProjectConfigurationError("An SDK major applies to a required tool, not an offered one.")
+    if existing_policy is not None and not existing_policy.layered and existing_policy.required == required_names:
+        # A legacy ``need`` manifest is honored as it is, IDE and agents included.
+        policy = existing_policy
+    else:
+        policy = CapabilityPolicy(
+            tuple(sorted(set(required_names))),
+            tuple(sorted(set(offered_names))),
+            tuple(sorted(sdk_majors.items())),
+            layered=True,
+        )
     return _ProjectIdentity(
         name=name.value if name else "",
         slug=slug.value,
         creator=creator.value if creator else "",
         mount=mount.value if mount else "",
-        capabilities=capabilities,
+        policy=policy,
     )
+
+
+def _require_validator(matrix: ResolutionMatrix, grandfathered: frozenset[str] = frozenset()) -> Any:
+    def validate(value: str) -> str:
+        if value.strip().lower() == "none":
+            return "none"
+        names, majors = _split_tools(matrix, value, grandfathered)
+        return " ".join(f"{name}={majors[name]}" if name in majors else name for name in names)
+
+    return validate
+
+
+def _split_tools(
+    matrix: ResolutionMatrix, value: str, grandfathered: frozenset[str] = frozenset(),
+) -> tuple[tuple[str, ...], dict[str, int]]:
+    """Canonical tool names and SDK majors from a space- or comma-separated answer.
+
+    IDE and agent names are refused, as every developer's, except the
+    ``grandfathered`` ones an existing manifest already requires.
+    """
+    if value.strip().lower() == "none":
+        return (), {}
+    items = [item for item in value.replace(",", " ").split() if item]
+    kept = [item for item in items if item in grandfathered]
+    names, majors = parse_tool_names(matrix, [item for item in items if item not in grandfathered])
+    return tuple(sorted({*names, *kept})), majors
 
 
 def _with_default_agent(
     elicitor: Elicitor,
-    capabilities: tuple[str, ...],
-    existing_need: object,
+    agents: tuple[str, ...],
+    *,
+    offer: bool,
+    matrix: ResolutionMatrix,
 ) -> tuple[str, ...]:
-    """Offer the default-selected agent when a fresh need does not name one.
+    """Offer the default-selected agent for the owner's checkout when none was named.
 
     Per the component-catalog delivery contract (2026-08-30), the Antigravity
     CLI is default-selected: "available by default" without living in any
-    base. Concretely: an interactive init whose freshly authored need omits
-    ``antigravity-agent`` asks once, with Enter meaning yes; a noninteractive
-    init keeps its explicit ``--need`` list unchanged (the remedy *is* the
-    need flag), and a re-init of an existing manifest never grows an authored
-    need behind the owner's back.
+    base. Concretely: an interactive init whose fresh checkout names no agent
+    asks once, with Enter meaning yes; a noninteractive init keeps its
+    explicit ``--agent`` list unchanged (the remedy *is* the agent flag), and
+    a re-init over an existing checkout selection never grows it behind the
+    owner's back.
     """
 
     default_capability = ANTIGRAVITY_CLI.capability
-    if not capabilities or existing_need or default_capability in capabilities:
-        return capabilities
-    grown = tuple(sorted((*capabilities, default_capability)))
+    if agents or not offer:
+        return agents
+    grown = tuple(sorted((*agents, default_capability)))
     try:
         # Only offer a default that resolves: while the matrix lacks verified
-        # edges combining the agent with this need's surface or siblings, the
-        # default silently does not apply rather than failing the init.
-        _current_matrix().resolve(grown)
+        # edges for the agent, the default silently does not apply rather
+        # than failing the init.
+        matrix.resolve(grown, project_only=True)
     except ProjectConfigurationError:
-        return capabilities
+        return agents
     answer = elicitor.seek(
         "default-agent",
         description=(
-            f"Select the default agent component ({default_capability})? (yes/no)"
+            f"Select the default agent component ({default_capability}) for your checkout? (yes/no)"
         ),
-        remedy=f"--need {default_capability}",
+        remedy=f"--agent {default_capability}",
         empty_answer="yes",
         omitted_answer="no",
         validate=_yes_no_validator("default-agent"),
     )
     if answer is not None and answer.value == "yes":
         return grown
-    return capabilities
+    return agents
 
 
 def _yes_no_validator(name: str) -> Any:
@@ -1212,98 +1495,6 @@ def apply_configuration_answers(
                 record.environment_bindings[answer.name] = value
 
 
-def add_capability_need(
-    root: Path,
-    names: Sequence[str],
-    answers: tuple[ProvidedAnswer, ...] = (),
-    *,
-    allow_unverified: bool = False,
-) -> NeedReport:
-    """Grow the project's capability need; everything downstream re-derives.
-
-    The manifest gains the new names in its authored ``need`` line (a
-    surgical textual edit — authored content is never rewritten from its
-    parsed form), then the regenerate path rebuilds the lock from the
-    current matrix, elicits any acquisition gates the new components bring
-    (``--authorize`` carriers answer them noninteractively), and refreshes
-    the resolution — so ``project run`` works immediately afterward.
-    Adding an already-needed capability converges to the same state.
-    """
-
-    resolved_root = root.expanduser().resolve()
-    manifest_path = resolved_root / ".devcapsule" / "devcapsule.toml"
-    if not manifest_path.is_file():
-        raise ProjectConfigurationError(
-            f"{resolved_root} carries no project manifest; run 'devcapsule project init' first."
-        )
-    manifest = load_toml(manifest_path)
-    validate_manifest(manifest, manifest_path)
-    if any(key in manifest["capabilities"] for key in ("required", "optional", "sdk-major")):
-        raise ProjectConfigurationError("Use 'project config capabilities --required ...' to replace required capabilities; --optional and --local select the other scopes.")
-    matrix = _current_matrix()
-    current = matrix.normalize(manifest.get("capabilities", {}).get("need", []))
-    requested = matrix.normalize([*current, *names])
-    if requested != current:
-        # Pre-flight the grown need before touching authored content: an
-        # unresolvable set (a second surface, no verified combination) must
-        # leave the manifest exactly as it was. The experiment lever is the
-        # same one init offers, so the refusal's remedy is reachable here.
-        matrix.resolve(requested, allow_unverified=allow_unverified)
-        _rewrite_manifest_need(manifest_path, requested)
-    lock_path = resolved_root / ".devcapsule" / f"devcapsule.{Platform.current()}.lock"
-    lock_before = lock_path.read_bytes() if lock_path.is_file() else None
-    report = initialize_project(
-        InitializeRequest(
-            directory=resolved_root,
-            answers=answers,
-            regenerate=True,
-            allow_unverified=allow_unverified,
-        )
-    )
-    # The init report describes an initialization; this verb changed a need,
-    # and its report says exactly what that did and did not change.
-    return NeedReport(
-        manifest_path=manifest_path,
-        previous_need=current,
-        need=requested,
-        lock_path=report.lock_path,
-        lock_changed=report.lock_path.read_bytes() != lock_before,
-        base_display=report.base_display,
-        answered=report.answered,
-        carried=report.carried,
-        recommended=report.recommended,
-        checkout_record=report.checkout_record,
-        resolve=report.resolve,
-    )
-
-
-def _rewrite_manifest_need(manifest_path: Path, need: tuple[str, ...]) -> None:
-    """Replace the single authored ``need = […]`` line under ``[capabilities]``."""
-
-    text = manifest_path.read_text(encoding="utf-8")
-    lines = text.splitlines(keepends=True)
-    in_capabilities = False
-    replaced = False
-    for index, line in enumerate(lines):
-        stripped = line.strip()
-        if stripped.startswith("[") and stripped.endswith("]"):
-            in_capabilities = stripped == "[capabilities]"
-            continue
-        if in_capabilities and re.match(r"need\s*=\s*\[.*\]\s*$", stripped):
-            newline = "\n" if line.endswith("\n") else ""
-            lines[index] = (
-                "need = [" + ", ".join(quote_toml(name) for name in need) + "]" + newline
-            )
-            replaced = True
-            break
-    if not replaced:
-        raise ProjectConfigurationError(
-            f"{manifest_path} has no single-line 'need = [...]' under [capabilities]; "
-            "use 'devcapsule project config capabilities --required ...' to edit it through the supported writer."
-        )
-    atomic_write(manifest_path, "".join(lines), mode=0o644)
-
-
 def _fully_initialized(root: Path, manifest: Mapping[str, Any]) -> bool:
     """Whether all four owned artifacts stand with a fresh resolution.
 
@@ -1311,9 +1502,13 @@ def _fully_initialized(root: Path, manifest: Mapping[str, Any]) -> bool:
     makes a plain re-init meaningless.
     """
 
-    _path, lock = lock_for(root, manifest)
     input_path, output_path = checkout_record_paths(manifest, root)
     if not input_path.is_file() or not output_path.is_file():
+        return False
+    try:
+        _path, lock = lock_for(root, manifest)
+    except ProjectConfigurationError:
+        # No IDE selected yet, or an unreadable selection: not fully initialized.
         return False
     checkout = load_checkout(input_path, manifest, root)
     resolution = load_resolution(output_path)
@@ -1372,26 +1567,16 @@ def _apply_answers_to_standing_checkout(
             base_declaration.recommended_value
         )
     else:
-        base_display = str(lock.get("image", {}).get("reference", "image lock"))
-    return InitializeReport(
-        manifest_path=manifest_path,
-        manifest_action="Kept",
-        project_name=str(project["name"]),
-        creator=str(project["creator"]),
-        slug=str(project["slug"]),
-        project_mount=str(project["mount"]),
-        capabilities=MATRICES[platform].normalize(
-            manifest.get("capabilities", {}).get("need", [])
-        ),
-        lock_path=lock_path,
-        lock_action="Kept",
-        base_display=base_display,
-        recommendations=(),
-        answered=tuple(settled.answered),
-        carried=tuple(settled.carried),
-        recommended=(),
-        checkout_record=record.input_path,
-        resolve=resolve_report,
+        base_display = _base_display(lock)
+    identity = _ProjectIdentity(
+        name=str(project["name"]), slug=str(project["slug"]), creator=str(project["creator"]),
+        mount=str(project["mount"]), policy=CapabilityPolicy.read(manifest),
+    )
+    return _initialize_report(
+        manifest_path, "Kept", identity, lock_path, "Kept",
+        base_display=base_display, recommendations=[], selection=_existing_selection(root, manifest),
+        answered=tuple(settled.answered), carried=tuple(settled.carried), recommended=(),
+        checkout_record=record.input_path, resolve=resolve_report,
     )
 
 
@@ -1402,41 +1587,28 @@ def _normalize_creator(value: str) -> str:
     return candidate if ":" in candidate else f"mailto:{candidate}"
 
 
-def _normalize_need_string(value: str) -> str:
-    names = [item for item in value.replace(",", " ").split() if item]
-    return " ".join(_current_matrix().normalize(names))
-
-
-def _write_manifest(
+def _prepare_manifest(
     manifest_path: Path,
     existing_manifest: Mapping[str, Any] | None,
     identity: _ProjectIdentity,
     recommendations: list[tuple[str, str]],
-) -> str:
-    """Author a fresh manifest, or append only what an existing one lacks.
+) -> tuple[str, str]:
+    """Prepare a fresh manifest, or append only what an existing one lacks, without IO writes.
 
     An existing manifest is authored content: it is never rewritten from its
     parsed form, which would destroy comments and fields init does not model.
     """
 
     if existing_manifest is None:
-        lines = [
-            "devcapsule-schema-version = 1",
-            "",
-            "[capabilities]",
-            "need = [" + ", ".join(quote_toml(name) for name in identity.capabilities) + "]",
-            "",
-            "[project]",
-            f"name = {quote_toml(identity.name)}",
-            f"slug = {quote_toml(identity.slug)}",
-            f"creator = {quote_toml(identity.creator)}",
-            f"mount = {quote_toml(identity.mount)}",
-        ]
+        document = _preview_manifest(identity)
         for name, justification in recommendations:
-            lines.extend(_recommendation_block(name, justification))
-        manifest_path.parent.mkdir(mode=0o755, exist_ok=True)
-        atomic_write(manifest_path, "\n".join(lines) + "\n", mode=0o644)
-        return "Created"
+            path, supported = CURATED_HOST_RECOMMENDATIONS[name]
+            node: dict[str, Any] = document.setdefault("host", {})
+            for key in path:
+                node = node.setdefault(key, {})
+            node["value"] = supported
+            node["justification"] = justification
+        return "Created", render_manifest(document)
 
     host = existing_manifest.get("host", {})
     appended = False
@@ -1450,9 +1622,8 @@ def _write_manifest(
         ) + "\n"
         appended = True
     if appended:
-        atomic_write(manifest_path, content, mode=0o644)
-        return "Updated"
-    return "Honored existing"
+        return "Updated", content
+    return "Honored existing", content
 
 
 def _recommendation_block(name: str, justification: str) -> list[str]:

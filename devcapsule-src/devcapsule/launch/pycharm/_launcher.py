@@ -76,7 +76,9 @@ from ..command_output import render_command
 from ...build_info import BuildInfoError, current_build_info
 from ...images.contract import WEBCONSOLE_RECIPE, WebConsoleAvailability
 from ...materialization import RUNTIME_PLAN_PATH
-from ...runtime_configuration import CONFIGURATION_PATH, CONTEXT_PATH, LaunchConfiguration
+from ...commands._console_channel import ChannelWatcher
+from ...configuration.console_channel import LISTING_FILE, listing_document, write_complete
+from ...runtime_configuration import CHANNEL_PATH, CONFIGURATION_PATH, CONTEXT_PATH, LaunchConfiguration
 from ...project import ProjectMountError
 from ...runtime import (
     plan_shared_runtime,
@@ -122,6 +124,9 @@ class TempRuntimeFiles:
     display_token_file: Path | None = None
     console_token_file: Path | None = None
     launch_context_file: Path | None = None
+    # The console's configuration channel: a directory the capsule writes
+    # requests into and reads the launch-time listing from; CHANNEL_PATH inside.
+    configuration_directory: Path | None = None
 
 
 SUDOERS_POLICY_PATH = "/etc/sudoers.d/devcapsule-development-sudo"
@@ -198,6 +203,8 @@ class PycharmRunOptions:
     ignore_config_lock: bool = False
     network_mode: str = "host"
     memory_limit_bytes: int | None = None
+    # The CPU count the capsule may use, Docker's --cpus; None leaves it unlimited.
+    cpus: int | None = None
     runtime_plan: RuntimePlan | None = None
     launch_configuration: LaunchConfiguration | None = None
     use_image_process: bool = False
@@ -260,6 +267,7 @@ class PycharmRunConfig:
     memory_limit_bytes: int | None
     runtime_plan: RuntimePlan | None
     use_image_process: bool
+    cpus: int | None = None
     launch_configuration: LaunchConfiguration | None = None
     host_browser_socket: Path | None = None
     display_transport: str = HOST_X11_DISPLAY_TRANSPORT
@@ -366,12 +374,17 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
                 # printed command does; Docker receives the command unchanged.
                 _session_events.info("docker run: %s", shlex.join(
                     redact_environment(command, inline_environment_names(config.extra_docker_args))))
+                watcher = channel_watcher(config, files)
+                if watcher is not None:
+                    watcher.start()
                 try:
                     result = run_attached(
                         command, runtime_env, container_name=config.name, on_interrupt=stop_watching.set,
                     )
                 finally:
                     stop_watching.set()
+                    if watcher is not None:
+                        watcher.stop()
                 exit_code = INTERRUPTED_EXIT_CODE if result.interrupted else result.exit_code
                 if not result.stopped:
                     _session_events.info(
@@ -574,7 +587,7 @@ def describe_run_command(command: list[str], config: PycharmRunConfig,
         ("Shadow file", files.shadow_file), ("Sudo policy", files.sudoers_file),
         ("Git token file", files.token_file), ("Runtime plan", files.runtime_plan_file),
         ("Display token", files.display_token_file), ("Console token", files.console_token_file),
-        ("Launch context", files.launch_context_file),
+        ("Launch context", files.launch_context_file), ("Configuration channel", files.configuration_directory),
     ):
         if path is not None:
             comments.append(f"Temporary {label}: {path}")
@@ -1049,6 +1062,7 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         ignore_config_lock=ignore_config_lock,
         network_mode=options.network_mode,
         memory_limit_bytes=options.memory_limit_bytes,
+        cpus=options.cpus,
         runtime_plan=selected_runtime_plan,
         launch_configuration=options.launch_configuration,
         use_image_process=options.use_image_process,
@@ -1314,6 +1328,8 @@ def build_docker_args(
             "--mount", f"type=bind,src={config.launch_configuration.directory},dst={CONFIGURATION_PATH},ro",
             "--mount", f"type=bind,src={files.launch_context_file},dst={CONTEXT_PATH},ro",
         ])
+        if files.configuration_directory is not None:
+            args.extend(["--mount", f"type=bind,src={files.configuration_directory},dst={CHANNEL_PATH}"])
     if config.git_user_name:
         args.extend(["--env", f"GIT_USER_NAME={config.git_user_name}"])
     if config.git_user_email:
@@ -1358,6 +1374,10 @@ def build_docker_args(
         if config.memory_limit_bytes <= 0:
             raise PycharmRunError("The container memory limit must be positive.")
         args.extend(["--memory", str(config.memory_limit_bytes)])
+    if config.cpus is not None:
+        if config.cpus <= 0:
+            raise PycharmRunError("The container CPU count must be positive.")
+        args.extend(["--cpus", str(config.cpus)])
     args.extend(config.extra_docker_args)
     return args
 
@@ -1529,8 +1549,12 @@ LAUNCHER_OWNED_DOCKER_OPTIONS: dict[str, str] = {
     "-u": "the launcher derives the container identity from the host user",
     "--network": "authorize it: '--authorize network host' or the config family",
     "--net": "authorize it: '--authorize network host' or the config family",
-    "--memory": "set the runtime.memory-limit configuration value",
-    "-m": "set the runtime.memory-limit configuration value",
+    "--memory": "set it: 'devcapsule project config set memory SIZE'",
+    "-m": "set it: 'devcapsule project config set memory SIZE'",
+    "--cpus": "set it: 'devcapsule project config set cpus N'",
+    "-c": "set the CPU count instead: 'devcapsule project config set cpus N'",
+    "--cpu-shares": "set the CPU count instead: 'devcapsule project config set cpus N'",
+    "--cpuset-cpus": "set the CPU count instead: 'devcapsule project config set cpus N'",
     "--shm-size": "the surface declares shared-memory-size in its runtime template",
     "--ipc": "the launcher owns IPC isolation",
     "--pids-limit": "the launcher owns the PID budget",
@@ -1635,6 +1659,11 @@ def prepare_temp_runtime_files(config: PycharmRunConfig, env: Mapping[str, str])
             files.launch_context_file = make_temp(runtime_parent, "devcapsule-launch-context.")
             files.launch_context_file.write_text(json.dumps(config.launch_configuration.document) + "\n", encoding="utf-8")
             files.launch_context_file.chmod(0o600)
+            files.configuration_directory = Path(tempfile.mkdtemp(prefix="devcapsule-configuration.", dir=runtime_parent))
+            files.configuration_directory.chmod(0o700)
+            if config.launch_configuration.listing is not None:
+                write_complete(files.configuration_directory / LISTING_FILE,
+                               listing_document(config.launch_configuration.listing))
         return files
     except BaseException:
         cleanup_temp_runtime_files(files)
@@ -1803,7 +1832,17 @@ def resolve_git_token_file(
     return git_token_file
 
 
+def channel_watcher(config: PycharmRunConfig, files: TempRuntimeFiles) -> ChannelWatcher | None:
+    """The watcher answering the console's requests for this run, or ``None`` for a launch without the channel."""
+    if files.configuration_directory is None or config.launch_configuration is None:
+        return None
+    record = config.launch_configuration.directory / str(config.launch_configuration.document["checkout-file"])
+    return ChannelWatcher(files.configuration_directory, config.project, record)
+
+
 def cleanup_temp_runtime_files(files: TempRuntimeFiles) -> None:
+    if files.configuration_directory is not None:
+        shutil.rmtree(files.configuration_directory, ignore_errors=True)
     for path in [
         files.xauth_file,
         files.passwd_file,

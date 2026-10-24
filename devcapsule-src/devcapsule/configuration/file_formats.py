@@ -26,6 +26,14 @@ class ProjectConfigurationError(CliError):
     """An actionable project configuration failure."""
 
 
+# The manifest schema versions this launcher reads. Version 2 (2026-10-24)
+# adds the project's environment declarations and ordinary recommendations;
+# a version-1 manifest is read as it is and never rewritten by an unrelated
+# command. Writers emit the current version, defined with the manifest's
+# vocabulary in ``manifest_document``.
+MANIFEST_SCHEMA_VERSIONS = (1, 2)
+
+
 class ConfigurationFileKind(Enum):
     """A configuration file's purpose and the field declaring its format version.
 
@@ -58,7 +66,8 @@ def validate_file_format(document: Mapping[str, Any], file_kind: ConfigurationFi
 
     ``file_kind`` selects the expected format; ``source`` identifies the input
     in error messages, usually by path. Raise ProjectConfigurationError for an
-    unsupported version or malformed structure. Only version 1 is supported.
+    unsupported version or malformed structure. Manifests may be version 1 or
+    2; every other file kind is version 1.
 
     Checkout records also reject unknown fields and check any embedded version
     lock. Saved plans require string source hashes and a supported hash scope.
@@ -67,13 +76,18 @@ def validate_file_format(document: Mapping[str, Any], file_kind: ConfigurationFi
     This function leaves the input unchanged.
     """
     version = document.get(file_kind.value)
-    if type(version) is not int or version != 1:
+    supported = MANIFEST_SCHEMA_VERSIONS if file_kind is ConfigurationFileKind.manifest else (1,)
+    if type(version) is not int or version not in supported:
+        accepted = " or ".join(str(item) for item in supported)
         raise ProjectConfigurationError(
             f"{source} has an unsupported {file_kind.name} schema version: {version!r}; "
-            f"requires {file_kind.value} = 1. The file has not been converted."
+            f"requires {file_kind.value} = {accepted}. The file has not been converted."
         )
     paths = {
-        ConfigurationFileKind.manifest: ("project", "capabilities", "configuration.values", "host"),
+        ConfigurationFileKind.manifest: (
+            "project", "capabilities", "configuration.values", "host",
+            "environment.required", "environment.optional", "recommendations",
+        ),
         ConfigurationFileKind.lock: ("components", "base", "materialization", "image"),
         ConfigurationFileKind.checkout: (
             "project", "checkout", "configuration.values", "configuration.bindings.host-directory",
@@ -174,7 +188,8 @@ def canonical_digest(value: Mapping[str, Any]) -> str:
 
 def quote_toml(value: str) -> str:
     """Return a quoted TOML string, escaping quotes and control characters."""
-    return json.dumps(value, ensure_ascii=False)
+    # JSON permits DEL literally; TOML basic strings require it escaped.
+    return json.dumps(value, ensure_ascii=False).replace("\x7f", "\\u007f")
 
 
 def render_toml_scalar(value: ConfigurationScalar) -> str:

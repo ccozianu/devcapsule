@@ -121,23 +121,38 @@ def _refuse_ambiguous(arguments: list[str]) -> None:
         )
 
 
-def read_environment(path: Path) -> dict[str, str]:
+def read_environment(path: Path) -> dict[str, str | None]:
+    """The saved environment by name: the saved value, or ``None`` when the
+    variable is passed through from the host's environment (``--env NAME``)."""
     arguments = read_arguments(path)
     _refuse_ambiguous(arguments)
-    return {value.partition("=")[0]: value.partition("=")[2]
-            for _, _, value in environment_options(arguments)}
+    result: dict[str, str | None] = {}
+    for _, _, value in environment_options(arguments):
+        name, separator, saved = value.partition("=")
+        result[name] = saved if separator else None
+    return result
 
 
-def update_environment(path: Path, name: str, value: str | None) -> None:
+def update_environment(path: Path, name: str, value: str | None, *, from_host: bool = False) -> None:
+    """Save ``name`` with ``value``, bind it to the host's variable (``from_host``), or remove it (``None``).
+
+    A bound variable is the token ``--env NAME``: Docker reads the host's
+    variable at each launch, and nothing is stored here.
+    """
     validate_name(name)
     if value is not None:
         validate_value(value)
+    if from_host and value is not None:
+        raise ProjectConfigurationError("A variable is either saved with a value or taken from the host, not both.")
 
     def update(arguments: list[str]) -> list[str]:
         _refuse_ambiguous(arguments)
         matching = [(start, end) for start, end, item in environment_options(arguments)
                     if item.partition("=")[0] == name]
-        replacement = [] if value is None else ["--env", f"{name}={value}"]
+        if from_host:
+            replacement = ["--env", name]
+        else:
+            replacement = [] if value is None else ["--env", f"{name}={value}"]
         if not matching:
             # The front of the list is never an operand, so a later edit can
             # still recognize what this one saved.

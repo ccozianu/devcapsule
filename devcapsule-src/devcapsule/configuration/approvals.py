@@ -63,6 +63,7 @@ def pending_software_approvals(
     checkout: Mapping[str, Any],
     *,
     previous_versions: Mapping[str, str] | None = None,
+    trust: Mapping[str, Any] | None = None,
 ) -> tuple[SoftwareApproval, ...] | None:
     """The approvals a launch may ask for in one question.
 
@@ -71,7 +72,8 @@ def pending_software_approvals(
     kind, in which case the review's own refusal applies.
     """
 
-    reviews = review_authorizations(manifest, lock, checkout)
+    from .trust import WorkstationTrust
+    reviews = review_authorizations(manifest, lock, checkout, WorkstationTrust.read(trust or {}))
     pending = [item for item in reviews if item.problem is not None]
     if not pending:
         return ()
