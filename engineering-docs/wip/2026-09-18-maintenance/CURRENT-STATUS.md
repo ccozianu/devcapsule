@@ -284,6 +284,21 @@ begin the rewrite until project-management assigns it.
 
 ## Current State
 
+**2026-10-24, evening: rc4 tagged, published and verified.** The owner
+merged PR #274 at `c04cb4e`; `78a9c66` is an ancestor of `main`;
+`v0.3.0-rc4` on `78a9c66`, the candidate gate `mainline` with no
+unintegrated commits from a detached checkout, record at
+`/opt/devcapsule-gate/rc4-release-protocol.json`; pushed with the branch;
+backend run 40123896286 passed; the prerelease is public with its three
+assets; the download under `~/.cache/devcapsule-releases/v0.3.0-rc4`
+verifies, SHA-256 `474fea1e…`, `devcapsule version` reporting `0.3.0rc4`
+at `78a9c66`. The overview's rc4 entry and the changelog's candidate-4
+line are written. The AI Learning setup the owner asked for is delivered
+in chat from the dry run described below. Next, the owner's: test the
+redesigned commands on the download; then the diagnostics snapshot, image
+cleanup and C20 for the next candidate; the documentation language review
+before the final tag, booked with project-management.
+
 **2026-10-24, evening: rc4 in preparation.** The owner merged the CLI UX
 stack, #260 to #269, the release tip at `3cc8a50`. The full `nox -s build`
 on it failed in the packaging integration: one test of seventeen expected

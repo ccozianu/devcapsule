@@ -1,6 +1,6 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-24. Stage: **candidate 4 in preparation: the CLI UX redesign stack merged by the owner, the packaging gate's test brought to the new contract, the pre-candidate merge into `main` next, then the tag**.
+Updated: 2026-10-24. Stage: **candidate 4 published and verified as downloaded; it carries the CLI UX redesign; the owner's test of the redesigned commands on the download next, then the diagnostics snapshot, image cleanup and C20**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Changelog since 0.2.15](changelog.md) ·
@@ -355,7 +355,31 @@ replacement.
 - Not in rc3: forced configuration, the diagnostics snapshot, the
   schema-version slice; see the direction of 2026-10-24 above.
 
-### RC4 — in preparation 2026-10-24
+### RC4 — tagged 2026-10-24
+
+- Tag `v0.3.0-rc4` on `78a9c6617226599f457504929d747faa9387830b`, the release
+  branch's tip at the pre-candidate merge (PR #274 from the throwaway copy
+  `4PR-5-release-0.3.0`, merged by the owner at `c04cb4e`).
+- Candidate gate from a detached checkout of the tag before the push:
+  method `mainline`, no unintegrated commits, version `0.3.0rc4`; record at
+  `/opt/devcapsule-gate/rc4-release-protocol.json`.
+- Backend run [40123896286](https://github.com/ccozianu/devcapsule/actions/runs/40123896286)
+  passed; the [prerelease](https://github.com/ccozianu/devcapsule/releases/tag/v0.3.0-rc4)
+  is public, non-draft, with the three assets.
+- Downloaded over HTTPS into `/home/devcapsule/.cache/devcapsule-releases/v0.3.0-rc4`:
+  the checksum file verifies the executable, SHA-256
+  `474fea1e04a5c87f99cac61ec50d980a88244f1ed9a74a267eb0e7ef51494995`; the
+  manifest records the tag, the branch, the source revision and the
+  `mainline` disposition; `devcapsule version` from an empty directory
+  reports `0.3.0rc4`, build `v0.3.0-rc4`, at `78a9c66…`.
+- Next: the owner's test of the redesigned commands on the download,
+  `init`, `config require|offer|recommend`, `config show|check`, `run`
+  asking at the terminal, `config trust`, the console's configuration
+  requests; then the diagnostics snapshot, image cleanup and C20 for the
+  next candidate; provider acceptance of the agent pins and the network
+  node's check on a fresh project, still open.
+
+How the candidate was prepared:
 
 - The release branch's tip after the owner's merge of the stack is
   `3cc8a50`, PR #269. The full gate on it: mypy clean over 242 files,
@@ -378,9 +402,9 @@ replacement.
   with its tests passed; the documentation contract passed on the same
   `docs/` content, 188 pages, at the slice-6 tip.
 - The throwaway copy `4PR-5-release-0.3.0`, the release tip plus the
-  cherry-pick of `62fa063` keeping `main`'s version files, test-merges
-  into `main` cleanly; the pull request into `main` is the owner's merge,
-  then the tag `v0.3.0-rc4` on the release tip, the commit of this record.
+  cherry-pick of `62fa063` keeping `main`'s version files, test-merged
+  into `main` cleanly and was PR #274, merged by the owner; the tag
+  followed on the release tip, `78a9c66`, the record commit.
 - Carries, beyond rc3: the CLI UX redesign of the direction above, every
   slice reviewed by the Codex and gpt-6-astra pair (#262, #264, #267,
   #270, #271, #272) with the reviews merged. The resolution matrix is
