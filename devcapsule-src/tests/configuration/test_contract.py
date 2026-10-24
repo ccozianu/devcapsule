@@ -73,7 +73,7 @@ def test_second_checkout_cannot_inherit_the_first_checkouts_authority(checkout, 
     ('string', 'text', 'text'), ('string', '', None), ('string', False, None),
     ('integer', '-12', -12), ('integer', 0, 0), ('integer', True, None), ('integer', 1.5, None),
     ('boolean', 'TRUE', True), ('boolean', 'false', False), ('boolean', 1, None), ('boolean', 'yes', None),
-    ('memory-size', '8GiB', '8GiB'), ('memory-size', '0GiB', None), ('memory-size', '8GB', None),
+    ('memory-size', '8GiB', '8GiB'), ('memory-size', '0GiB', None), ('memory-size', '8GB', '8GiB'), ('memory-size', '8 gigs', None),
     ('string', 'default', None), ('string', 'none', None),
 ])
 def test_scalar_value_domain_partition(kind, raw, expected):

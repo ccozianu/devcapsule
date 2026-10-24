@@ -160,6 +160,17 @@ own review loop and brief under `evidence/2026-10-24-cli-ux/`:
 6. **Removals, documentation, changelog**: Part 4 of the work order, the
    user pages, the command reference, rc4's changelog section.
 
+Slice 0 is #260. Slice 1 is #261, `ws-maintenance/cli-ux-1-manifest`,
+delivered 2026-10-24: 1813 unit tests, 36 deselected, one xfail and one
+xpass; mypy clean; 37 new tests; its brief is
+[brief-pr261-1.md](evidence/2026-10-24-cli-ux/brief-pr261-1.md). The
+Codex gpt-6-astra pair's PR261.1 is #262, accepted at `468b1a2` without a
+round and merged at `45bbf61`: the writer dropped root scalars and typed
+extension values and left DEL unescaped; a manifest-only promotion rewrote
+the lock; owner edits dropped unknown fields; init wrote shared files before
+the consent batch failure; the rc3 flag mapping mishandled component aliases;
+64 regression cases; the reviewer's gate 1877 unit tests, mypy clean.
+
 ## Current State
 
 **2026-10-24: rc3 tagged, published and verified.** The owner merged

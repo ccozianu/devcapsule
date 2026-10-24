@@ -8,6 +8,7 @@ from devcapsule.project import normalize_project_mount, ProjectMountError
 from .file_formats import ConfigurationFileKind, ProjectConfigurationError, validate_file_format
 from .values import configuration_value_declarations
 from .capabilities import CapabilityPolicy
+from .manifest_document import EnvironmentPolicy, Recommendations, capability_reasons
 
 
 def validate_manifest(value: Mapping[str, Any], path: Path) -> None:
@@ -24,6 +25,12 @@ def validate_manifest(value: Mapping[str, Any], path: Path) -> None:
         raise ProjectConfigurationError(f"{path}: {exc}") from exc
     CapabilityPolicy.read(value)
     configuration_value_declarations(value, source=str(path))
+    try:
+        capability_reasons(value)
+        EnvironmentPolicy.read(value)
+        Recommendations.read(value)
+    except ProjectConfigurationError as exc:
+        raise ProjectConfigurationError(f"{path}: {exc}") from exc
 
 
 def configuration_manifest(manifest: Mapping[str, Any]) -> dict[str, Any]:
@@ -31,9 +38,11 @@ def configuration_manifest(manifest: Mapping[str, Any]) -> dict[str, Any]:
 
     Workflow and descriptive project metadata cannot change a derived runtime.
     Authorization fingerprints are independently scoped to their questions.
+    The environment the project asks for and its ordinary recommendations are
+    inputs of the derived plan, so they are part of the projection.
     """
     return {
         "devcapsule-schema-version": manifest.get("devcapsule-schema-version"),
         "project": {key: manifest.get("project", {}).get(key) for key in ("creator", "slug", "mount")},
-        **{key: manifest.get(key, {}) for key in ("capabilities", "configuration", "host")},
+        **{key: manifest.get(key, {}) for key in ("capabilities", "configuration", "host", "environment", "recommendations")},
     }
