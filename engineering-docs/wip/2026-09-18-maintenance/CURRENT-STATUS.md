@@ -284,6 +284,26 @@ begin the rewrite until project-management assigns it.
 
 ## Current State
 
+**2026-10-25: capabilities and components, slice 3 accepted; the stack is
+complete.** Slice 3, the retired spellings deleted, the documentation on
+the model, the configuration entry page and the candidate-5 changelog, is
+[PR #279](https://github.com/ccozianu/devcapsule/pull/279) on
+`ws-maintenance/capabilities-3-docs` into slice 2's branch, Codex session
+`01a1702e-7625-7230-adc1-7a9fb6d98e4b`. One review round: the console's
+configuration channel still named the deleted `agent` and `tool` verbs on
+both sides (the brief's "do not touch the web console" caused it; the
+round lifted it), the listing labelled rows "agent" by a credentials-slot
+rule, `init` kept its own grammar and lacked `--with`, the pages carried
+the previous day's date; fixed at `1ae09df`. Accepted there: full gate
+from a separate worktree, mypy 246 files, 2281 unit tests, packaging
+integration 17, console 326; the documentation check 189 pages; the
+commands and the channel classifier verified by hand. The three slices
+(#276, #277, #279) are the owner's to merge in order into
+`release-0.3.0`; each later PR targets the previous slice's branch, so
+GitHub retargets it as the earlier one merges. The next candidate, rc5,
+follows the merges, with the diagnostics snapshot, image cleanup and C20
+still to come, and the documentation language review before the final tag.
+
 **2026-10-24, late: the next work order drafted.** Reviewing rc4's
 vocabulary, the owner found the split of components into IDEs, agents
 and tools unjustified and settled the model with the agent in
