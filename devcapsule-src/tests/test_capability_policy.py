@@ -276,7 +276,7 @@ def test_io_failure_before_commit_rolls_back(project: Path, monkeypatch: pytest.
 
 def test_cli_check_and_capability_mutation(project: Path, capsys: pytest.CaptureFixture[str]) -> None:
     prefix = ["project", "--path", str(project), "config"]
-    assert cli.main([*prefix, "check"]) == 0
+    assert cli.main([*prefix, "check"]) == 3  # the base consent is pending
     assert cli.main([*prefix, "require", "tool", "python=3"]) == 0
     assert cli.main([*prefix, "capabilities", "--required", "python"]) == 2
     assert "config require tool" in capsys.readouterr().err
@@ -449,7 +449,7 @@ def test_cannot_preserve_missing_opaque_optional_provider() -> None:
 
 def test_choose_local_ide_before_resolving_required_only_project(project: Path) -> None:
     commands.configure(project, required=["python"])
-    with pytest.raises(ProjectConfigurationError, match="Choose a local IDE"):
+    with pytest.raises(ProjectConfigurationError, match="Choose your IDE"):
         lock_for(project, load_toml(commands.paths(project)[0]))
 
 
@@ -751,7 +751,7 @@ def test_new_project_may_select_an_agent_before_choosing_an_ide(tmp_path: Path, 
     assert cli.main(["project", "--path", str(root), "init", "--require", "python", "--agent", "codex-agent",
                      "--creator", "mailto:owner@example.test"]) == 0
     manifest = load_toml(commands.paths(root)[0])
-    with pytest.raises(ProjectConfigurationError, match="Choose a local IDE"):
+    with pytest.raises(ProjectConfigurationError, match="Choose your IDE"):
         lock_for(root, manifest)
     commands.configure(root, local=["codex-agent", "python-ide"])
     assert set(lock_for(root, manifest)[1]["components"]) == {"interactive-surface", "pycharm", "codex"}

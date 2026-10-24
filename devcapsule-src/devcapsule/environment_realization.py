@@ -258,6 +258,7 @@ def omit_unavailable_optional(selected: ResolvedProject, url: str) -> ResolvedPr
     lock, _ = usable_lock(policy, selected.lock, choice)
     checkout = deepcopy(selected.checkout)
     checkout.setdefault("capabilities", {})["without"] = list(choice.without)
-    configuration = Configuration(selected.manifest, lock, checkout)
+    from devcapsule.configuration.storage import load_workstation
+    configuration = Configuration(selected.manifest, lock, checkout, load_workstation())
     configuration.review().require_ready(selected.root)
     return replace(selected, lock=lock, checkout=checkout, resolution=configuration.resolve().document())

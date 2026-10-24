@@ -28,7 +28,8 @@ from .values import checkout_omitted_values
 
 
 def render_resolution(manifest: Mapping[str, Any], lock: Mapping[str, Any],
-                      checkout: Mapping[str, Any], review: ConfigurationReview) -> str:
+                      checkout: Mapping[str, Any], review: ConfigurationReview,
+                      workstation: Mapping[str, Any] | None = None) -> str:
     if not review.ready:
         raise ProjectConfigurationError("Cannot publish an incomplete configuration.")
     image = lock.get("image", {}).get("reference")
@@ -38,7 +39,7 @@ def render_resolution(manifest: Mapping[str, Any], lock: Mapping[str, Any],
     values, runtime_effects = review.values, review.runtime_effects
     bindings, secret_bindings = review.bindings, review.secret_bindings
     authorizations = review.resolved_authorizations()
-    sources = resolution_source_digests(manifest, lock, checkout)
+    sources = resolution_source_digests(manifest, lock, checkout, workstation)
     lines = [
         "devcapsule-resolved-schema-version = 1",
         "",
@@ -46,7 +47,7 @@ def render_resolution(manifest: Mapping[str, Any], lock: Mapping[str, Any],
         f"manifest = {quote_toml(sources['manifest'])}",
         f"platform-lock = {quote_toml(sources['platform-lock'])}",
         f"checkout-input = {quote_toml(sources['checkout-input'])}",
-        'workstation-config = "absent"',
+        f"workstation-config = {quote_toml(sources['workstation-config'])}",
         'manifest-scope = "configuration-v1"',
         *([f"capability-baseline = {quote_toml(sources['capability-baseline'])}"] if "capability-baseline" in sources else []),
         "",
@@ -119,12 +120,13 @@ def render_resolution(manifest: Mapping[str, Any], lock: Mapping[str, Any],
 
 
 def same_effective_resolution(manifest: Mapping[str, Any], lock: Mapping[str, Any],
-                              checkout: Mapping[str, Any], resolution: Mapping[str, Any]) -> bool:
+                              checkout: Mapping[str, Any], resolution: Mapping[str, Any],
+                              workstation: Mapping[str, Any] | None = None) -> bool:
     """Compare a predecessor's derived meaning, not its retired digest algorithm."""
-    review = review_configuration(manifest, lock, checkout)
+    review = review_configuration(manifest, lock, checkout, workstation)
     if not review.ready:
         return False
-    expected = tomllib.loads(render_resolution(manifest, lock, checkout, review))
+    expected = tomllib.loads(render_resolution(manifest, lock, checkout, review, workstation))
     return Resolution(expected).same_meaning_as(Resolution(resolution))
 
 
@@ -142,6 +144,7 @@ class Resolution:
         component = runtime.get("component")
         mount = runtime.get("project-mount")
         memory = runtime.get("memory-limit-bytes")
+        cpus = runtime.get("cpus")
         image = runtime.get("image")
         try:
             RuntimeCommand(runtime.get("devcapsule-command", RuntimeCommand.STANDARD))
@@ -156,6 +159,8 @@ class Resolution:
             raise ProjectConfigurationError(str(exc)) from exc
         if memory is not None and (type(memory) is not int or memory <= 0):
             raise ProjectConfigurationError("Resolved runtime.memory-limit-bytes must be a positive integer.")
+        if cpus is not None and (type(cpus) is not int or cpus <= 0):
+            raise ProjectConfigurationError("Resolved runtime.cpus must be a positive integer.")
         if image is not None and (not isinstance(image, str) or not image):
             raise ProjectConfigurationError("Resolved runtime.image must be a non-empty string.")
 

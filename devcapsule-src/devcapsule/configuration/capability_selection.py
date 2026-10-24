@@ -129,7 +129,7 @@ def compose_lock(manifest: Mapping[str, Any], shared: Mapping[str, Any],
         return lock
     pins = local_pins(checkout)
     if not pins:
-        raise ProjectConfigurationError("Local capability pins are missing; run 'project config capabilities --local CAPABILITY ...'.")
+        raise ProjectConfigurationError("Local capability pins are missing; choose it again with 'project config ide IDE'.")
     matrix = matrix_for(lock)
     pinned = table(pins, "components")
     overlaid: set[str] = set()

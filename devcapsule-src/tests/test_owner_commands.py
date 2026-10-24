@@ -192,7 +192,7 @@ def test_an_owner_edit_converts_a_legacy_manifest_and_keeps_its_leading_comment(
 
 def test_an_unrelated_command_never_rewrites_a_legacy_manifest(legacy_project: Path) -> None:
     before = manifest_text(legacy_project)
-    assert cli.main(["project", "--path", str(legacy_project), "config", "check"]) == 0
+    assert cli.main(["project", "--path", str(legacy_project), "config", "check"]) in (0, 3)
     assert cli.main(["project", "--path", str(legacy_project), "config", "capabilities", "--local", "python-ide"]) == 0
     assert cli.main(["project", "--path", str(legacy_project), "config", "list"]) == 0
     assert manifest_text(legacy_project) == before

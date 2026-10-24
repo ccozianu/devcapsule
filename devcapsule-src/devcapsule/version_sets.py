@@ -25,6 +25,7 @@ from devcapsule.configuration.model import Configuration
 from devcapsule.configuration.capabilities import CapabilityPolicy, LocalCapabilities
 from devcapsule.configuration.capability_selection import usable_lock
 from devcapsule.configuration.storage import (
+    load_workstation,
     ResolvedProject, activate_configuration, atomic_write, checkout_record_paths,
     load_checkout, load_toml, manifest_for, recommendation_lock_for, selection_for,
 )
@@ -538,7 +539,7 @@ def _selection(workspace: Workspace, lock: dict[str, Any], *, follow: bool = Fal
         answer["reference"] = image_id
         answer["image-id"] = image_id
     checkout.setdefault("authorization", {})["base-image"] = answer
-    config = Configuration(workspace.manifest, lock, checkout)
+    config = Configuration(workspace.manifest, lock, checkout, load_workstation())
     review = config.review()
     pending_acquisitions = [item for item in review.authorizations
                             if item.problem and declarations[item.name].kind == "acquisition"]
@@ -549,7 +550,7 @@ def _selection(workspace: Workspace, lock: dict[str, Any], *, follow: bool = Fal
             checkout.setdefault("authorization", {})[item.name] = {
                 "value": True, "recommendation-digest": declarations[item.name].recommendation_digest,
             }
-        config = Configuration(workspace.manifest, lock, checkout)
+        config = Configuration(workspace.manifest, lock, checkout, load_workstation())
         review = config.review()
         pending_acquisitions = []
     if pending_acquisitions:

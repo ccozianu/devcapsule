@@ -198,6 +198,8 @@ class PycharmRunOptions:
     ignore_config_lock: bool = False
     network_mode: str = "host"
     memory_limit_bytes: int | None = None
+    # The CPU count the capsule may use, Docker's --cpus; None leaves it unlimited.
+    cpus: int | None = None
     runtime_plan: RuntimePlan | None = None
     launch_configuration: LaunchConfiguration | None = None
     use_image_process: bool = False
@@ -260,6 +262,7 @@ class PycharmRunConfig:
     memory_limit_bytes: int | None
     runtime_plan: RuntimePlan | None
     use_image_process: bool
+    cpus: int | None = None
     launch_configuration: LaunchConfiguration | None = None
     host_browser_socket: Path | None = None
     display_transport: str = HOST_X11_DISPLAY_TRANSPORT
@@ -1049,6 +1052,7 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         ignore_config_lock=ignore_config_lock,
         network_mode=options.network_mode,
         memory_limit_bytes=options.memory_limit_bytes,
+        cpus=options.cpus,
         runtime_plan=selected_runtime_plan,
         launch_configuration=options.launch_configuration,
         use_image_process=options.use_image_process,
@@ -1358,6 +1362,10 @@ def build_docker_args(
         if config.memory_limit_bytes <= 0:
             raise PycharmRunError("The container memory limit must be positive.")
         args.extend(["--memory", str(config.memory_limit_bytes)])
+    if config.cpus is not None:
+        if config.cpus <= 0:
+            raise PycharmRunError("The container CPU count must be positive.")
+        args.extend(["--cpus", str(config.cpus)])
     args.extend(config.extra_docker_args)
     return args
 
@@ -1529,8 +1537,12 @@ LAUNCHER_OWNED_DOCKER_OPTIONS: dict[str, str] = {
     "-u": "the launcher derives the container identity from the host user",
     "--network": "authorize it: '--authorize network host' or the config family",
     "--net": "authorize it: '--authorize network host' or the config family",
-    "--memory": "set the runtime.memory-limit configuration value",
-    "-m": "set the runtime.memory-limit configuration value",
+    "--memory": "set it: 'devcapsule project config set memory SIZE'",
+    "-m": "set it: 'devcapsule project config set memory SIZE'",
+    "--cpus": "set it: 'devcapsule project config set cpus N'",
+    "-c": "set the CPU count instead: 'devcapsule project config set cpus N'",
+    "--cpu-shares": "set the CPU count instead: 'devcapsule project config set cpus N'",
+    "--cpuset-cpus": "set the CPU count instead: 'devcapsule project config set cpus N'",
     "--shm-size": "the surface declares shared-memory-size in its runtime template",
     "--ipc": "the launcher owns IPC isolation",
     "--pids-limit": "the launcher owns the PID budget",

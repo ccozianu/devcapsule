@@ -56,7 +56,7 @@ def test_second_checkout_cannot_inherit_the_first_checkouts_authority(checkout, 
     original = record.read_bytes()
     second = tmp_path / 'second checkout'
     shutil.copytree(project, second)
-    assert invoke(second, 'config', 'list') == 2
+    assert invoke(second, 'config', 'list') == 0  # listed from nothing, registered by nobody
     assert invoke(second, 'checkout', 'register', 'second') == 0
     manifest = load_toml(second / '.devcapsule/devcapsule.toml')
     second_record, _ = checkout_record_paths(manifest, second)
@@ -102,8 +102,9 @@ def test_ordinary_node_transition_table(checkout, initial, action):
     )
     result = invoke(project, 'config', *args)
     if action == 'unset' and initial == 'absent':
-        assert result == 2
-        assert record.read_bytes() == before_record
+        # Forgetting an answer that was never given changes nothing and says so.
+        assert result == 0
+        assert load_toml(record) == load_toml(record) and 'editor.theme' not in load_toml(record).get('configuration', {}).get('values', {})
     else:
         assert result == 0
         config = load_toml(record).get('configuration', {})
@@ -302,7 +303,7 @@ def test_shipped_cli_recommendation_override_and_omission(checkout, capsys):
     assert load_toml(resolution)['runtime']['devcapsule-command'] == 'devcapsule0'
     assert record.read_bytes() == original  # Derived recommendation is not a local answer.
     assert invoke(project, 'config', 'list') == 0
-    assert 'project-recommended' in capsys.readouterr().out
+    assert 'project recommendation' in capsys.readouterr().out
     assert invoke(project, 'config', 'set', 'runtime.devcapsule-command', 'devcapsule') == 0
     assert invoke(project, 'config', 'resolve') == 0
     assert load_toml(resolution)['runtime']['devcapsule-command'] == 'devcapsule'
@@ -364,37 +365,81 @@ def test_invalid_shipped_cli_recommendation_is_rejected(recommended):
 
 
 def test_config_list_is_data_only_and_show_carries_the_review(checkout, capsys):
-    # Owner direction 2026-09-24: the listing is data; advice lives in `show`,
-    # and `show` must not tell a fresh checkout to resolve.
+    # Owner direction 2026-10-24 (the CLI UX work order, principle 6): the
+    # listing shows the effective value, its source and what is pending, and
+    # writes nothing; `list` is the same listing as `show`.
     project, record, resolution = checkout
     assert invoke(project, 'config', 'resolve') == 0
     capsys.readouterr()
     assert invoke(project, 'config', 'list') == 0
     listing = capsys.readouterr().out
-    assert 'KIND' in listing and 'SOURCE' in listing and 'generated' in listing and 'fresh' in listing
-    assert 'Sources:' not in listing
+    assert 'KIND' in listing and 'SOURCE' in listing and 'PENDING' in listing
+    assert 'Resolution: fresh' in listing and 'Nothing is pending.' in listing
     assert 'Configuration review' not in listing and 'resolve explicitly' not in listing
     assert invoke(project, 'config', 'show') == 0
     shown = capsys.readouterr().out
-    assert 'KIND' in shown and 'SOURCE' in shown
-    assert 'Sources:' in shown and str(record) in shown and str(resolution) in shown
-    assert '(as resolved)' in shown and 'changed since the resolution' not in shown
-    assert 'Configuration review: ready; the generated resolution is fresh.' in shown
-    assert 'Base:' in shown and 'ubuntu-24.04@' in shown and 'Compatibility:' in shown
-    assert 'Nothing to resolve' in shown and 'After settling' not in shown
-    # A record edited behind the resolution's back stales the checkout input;
-    # `config authorize` would re-resolve, so write the record directly.
+    assert shown == listing
+    assert str(record) in shown
+    # A record edited behind the resolution's back stales the resolution,
+    # which the listing reports as a state, not a refusal.
     table = dict(load_toml(record)['authorization'])
     table['host-browser'] = {**table['host-browser'], 'value': False}
     replace_answers(project, record, table)
     assert invoke(project, 'config', 'show') == 0
     shown = capsys.readouterr().out
-    assert 'Configuration review: ready to resolve.' in shown, shown
-    assert 'The generated resolution is stale: checkout-input; resolve explicitly:' in shown
-    assert f'checkout     {record}  (changed since the resolution)' in shown
-    # A missing required decision keeps the decisions text and instruction.
+    assert 'Resolution: stale: checkout-input' in shown
+    # A missing required decision is a pending row with its command.
     replace_answers(project, record, {name: value for name, value in table.items() if name != 'base-image'})
     assert invoke(project, 'config', 'show') == 0
     shown = capsys.readouterr().out
-    assert 'Configuration review: decisions required.' in shown
-    assert 'After settling your configuration choices, resolve explicitly:' in shown
+    assert 'Pending decisions:' in shown and 'config authorize base-image default' in shown
+    assert invoke(project, 'config', 'check') == 3
+
+
+def test_workstation_defaults_stale_only_the_workstation_input(checkout):
+    from devcapsule.configuration.storage import load_workstation
+    from devcapsule.configuration.execution import ExecutionConfiguration
+    project, record, resolution = checkout
+    # This fixture contains a plan written by the released 0.2.11 launcher.
+    manifest = load_toml(project / '.devcapsule/devcapsule.toml')
+    lock = load_toml(project / '.devcapsule/devcapsule.linux-amd64.lock')
+    local, previous = load_toml(record), load_toml(resolution)
+    assert previous['sources']['workstation-config'] == 'absent'
+    assert stale_resolution_inputs(manifest, lock, local, previous, load_workstation()) == ()
+    assert invoke(project, 'config', 'default', 'cpus', '2') == 0
+    assert stale_resolution_inputs(manifest, lock, local, previous, load_workstation()) == ('workstation-config',)
+    assert invoke(project, 'config', 'resolve') == 0
+    current = ExecutionConfiguration.load(project).project.resolution
+    assert current['runtime']['cpus'] == 2
+    assert invoke(project, 'config', 'default', 'cpus', '3') == 0
+    assert stale_resolution_inputs(manifest, lock, load_toml(record), current, load_workstation()) == ('workstation-config',)
+    assert invoke(project, 'config', 'default', 'cpus', 'none') == 0
+    assert stale_resolution_inputs(manifest, lock, local, previous, load_workstation()) == ()
+
+
+def test_old_base_listing_reports_host_x11_without_changing_consent(checkout, capsys):
+    import json
+    project, record, resolution = checkout
+    before = record.read_bytes(), resolution.read_bytes()
+    assert invoke(project, 'config', 'show', '--json') == 0
+    rows = json.loads(capsys.readouterr().out)['rows']
+    x11 = next(row for row in rows if row['name'] == 'host-x11')
+    assert x11['effective'] == 'host X11'
+    assert x11['source'] == 'legacy base default (no contained desktop)'
+    assert not x11['pending']
+    assert (record.read_bytes(), resolution.read_bytes()) == before
+
+
+def test_old_base_with_x11_denied_is_pending_in_listing(checkout, capsys):
+    import json
+    project, record, _ = checkout
+    assert invoke(project, 'config', 'deny', 'host-x11') == 0
+    before = record.read_bytes()
+    capsys.readouterr()
+    assert invoke(project, 'config', 'check', '--json') == 3
+    rows = json.loads(capsys.readouterr().out)['rows']
+    x11 = next(row for row in rows if row['name'] == 'host-x11')
+    assert x11['effective'] == 'unavailable'
+    assert 'no contained desktop' in x11['pending']
+    assert 'config authorize host-x11 true' in x11['command']
+    assert record.read_bytes() == before

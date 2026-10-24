@@ -8,7 +8,8 @@ from devcapsule import configuration
 PACKAGE = "devcapsule.configuration"
 ADAPTERS = {"storage", "execution", "operations", "history", "capability_commands", "capability_selection", "docker_arguments", "owner_commands"}
 CORE = {"file_formats", "manifest", "values", "bindings", "authorization", "nodes",
-        "review", "fingerprints", "resolution", "freshness", "model", "capabilities", "manifest_document"}
+        "review", "fingerprints", "resolution", "freshness", "model", "capabilities", "manifest_document",
+        "launcher_values", "listing", "workstation"}
 
 
 def dependencies():

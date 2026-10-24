@@ -69,6 +69,7 @@ from .storage import (
     load_checkout,
     load_resolution,
     load_toml,
+    load_workstation,
     lock_for,
     manifest_for,
     require_settled,
@@ -201,7 +202,7 @@ def resolve_checkout(start_path: Path) -> ResolveReport:
         atomic_write(input_path, render_checkout(manifest, root, {}, {}))
         registered = input_path
     checkout = load_checkout(input_path, manifest, root)
-    configuration = Configuration(manifest, lock, checkout)
+    configuration = Configuration(manifest, lock, checkout, load_workstation())
     configuration.review().require_ready(root)
     resolution = configuration.resolve()
     base_selection = authorized_base_selection(lock, checkout) if "base" in lock else None
@@ -319,7 +320,7 @@ class InitializeReport:
             lines.append("Project initialized; 'devcapsule project run' starts it.")
         else:
             lines.append(
-                "Project initialized. Choose your IDE with 'devcapsule project config capabilities --local IDE' "
+                "Project initialized. Choose your IDE with 'devcapsule project config ide IDE' "
                 "(python-ide, frontend-ide, java-ide, eclipse-ide or dotnet-ide), then 'devcapsule project run'."
             )
         return "\n".join(lines)
@@ -697,7 +698,7 @@ def _stage_owner_selection(
 ) -> None:
     """Put the owner's IDE and agents, with their pins, into the staged checkout record.
 
-    The same pins a developer's ``capabilities --local`` records; nothing is
+    The same pins ``config ide`` and ``config agent add`` record; nothing is
     written here. An empty selection leaves whatever the record selects.
     """
     if not selection.selected:

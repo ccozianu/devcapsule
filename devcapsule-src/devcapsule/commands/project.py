@@ -34,7 +34,7 @@ from devcapsule.commands.framework import (
     add_carrier_options,
     carrier_answers,
 )
-from devcapsule.components.catalog import COMPONENTS, INTERACTIVE_SURFACES
+from devcapsule.components.catalog import COMPONENTS
 from devcapsule.commands._versions import VersionsGroup
 from devcapsule.commands._upgrade_prompt import offer_upgrades
 from devcapsule.commands._software_approvals import (
@@ -50,7 +50,11 @@ from devcapsule import notifications
 from devcapsule import version_sets
 from devcapsule import runtime_configuration
 from devcapsule.runtime_configuration import CapsuleAccess
-from devcapsule.compat import CliError
+from devcapsule.compat import CliError, DecisionPending
+import difflib
+from devcapsule.configuration.capabilities import CapabilityPolicy, LocalCapabilities
+from devcapsule.configuration.listing import Listing, assess_checkout
+from devcapsule.configuration.values import LAUNCHER_VALUE_NAMES, legacy_memory_names, normalize_launcher_value
 from devcapsule.configuration.docker_arguments import (
     arguments_path, read_arguments, replace_arguments, read_environment, update_environment, validate_name,
 )
@@ -72,8 +76,6 @@ from devcapsule.configuration.review import (
     review_configuration,
 )
 from devcapsule.configuration.nodes import (
-    CARRIER_FAMILY_BIND,
-    CARRIER_FAMILY_SET,
     PROVIDER_HOST_DIRECTORY,
     build_node_registry,
 )
@@ -82,7 +84,6 @@ from devcapsule.materialization import ArtifactUnavailable
 from devcapsule.display_client import select_display_transport
 from devcapsule.images.contract import WebConsoleAvailability, web_console_availability
 from devcapsule.materialization import ImageDetails, validate_base_image
-from devcapsule.project import project_namespace
 from devcapsule.configuration.operations import (
     CheckoutRecord,
     InitializeRequest,
@@ -112,7 +113,6 @@ from devcapsule.recursive_successor import (
     SuccessorResult,
     launch_successor,
 )
-from devcapsule.resolution_matrix import compatibility_report, known_base_image
 from devcapsule.configuration.authorization import (
     AuthorizationChoice,
     AuthorizationDeclaration,
@@ -120,7 +120,6 @@ from devcapsule.configuration.authorization import (
     immutable_registry_reference,
     normalize_authorization_value,
     render_authorization_value,
-    review_authorizations,
 )
 from devcapsule.configuration.file_formats import (
     ProjectConfigurationError,
@@ -136,6 +135,7 @@ from devcapsule.configuration.storage import (
     find_checkout_record,
     load_checkout,
     load_resolution,
+    load_workstation,
     lock_for,
     manifest_for,
     named_checkout_record_paths,
@@ -144,8 +144,6 @@ from devcapsule.configuration.storage import (
 from devcapsule.configuration.bindings import (
     configuration_binding_declarations,
     managed_binding_path as _managed_binding_path,
-    component_secret_inputs,
-    resolve_secret_bindings,
 )
 from devcapsule.configuration.values import (
     configuration_value_declarations,
@@ -366,8 +364,8 @@ def _init_selection(arguments: argparse.Namespace) -> tuple[tuple[str, ...], tup
         else:
             if raw in legacy_local:
                 raise ProjectConfigurationError(
-                    f"--local {raw} is a checkout tool, not a project requirement. Initialize first, then "
-                    "select it with 'devcapsule project config capabilities --local' beside your IDE and agents."
+                    f"--local {raw} is a checkout tool, not a project requirement. Initialize first; a tool the "
+                    "project offers is in every checkout unless 'devcapsule project config tool omit' leaves it out."
                 )
             require.append(name)
     require.extend(flatten("--required"))
@@ -599,170 +597,117 @@ class ConfigResolveCommand(Command):
 
 
 @dataclass(frozen=True)
-class ConfigurationListRow:
-    kind: str
-    name: str
-    status: str
-    value: str
-    # Which document the row's status and value come from, named by the
-    # tokens the Sources block of `config show` expands to paths: checkout,
-    # manifest, lock, resolution, managed, environment.
-    source: str
-
-
-CONFIGURATION_LISTING_SCHEMA_VERSION = 1
-
-
-@dataclass(frozen=True)
-class ConfigurationListing:
-    """What `config list` printed, for `config show` to explain further."""
+class CheckoutDocuments:
+    """Everything the listing of one checkout is computed from, loaded without writing."""
 
     root: Path
     manifest: dict[str, Any]
     manifest_path: Path
-    lock: dict[str, Any]
+    shared_lock: dict[str, Any]
     lock_path: Path
+    composed_lock: dict[str, Any]
     checkout: dict[str, Any]
-    input_path: Path
-    resolution_path: Path
-    resolution_row: ConfigurationListRow
-    rows: list[ConfigurationListRow]
-    """Every row of the table, the resolution row last."""
+    input_path: Path | None
+    resolution_path: Path | None
+    workstation: dict[str, Any]
+    saved_environment: dict[str, str | None]
+
+    @property
+    def registered(self) -> bool:
+        return self.input_path is not None and self.input_path.is_file()
 
     @property
     def checkout_name(self) -> str:
-        return checkout_name_for(self.manifest, self.input_path)
+        return checkout_name_for(self.manifest, self.input_path) if self.input_path is not None else "(unregistered)"
 
     def render_identity(self) -> str:
         identity = self.manifest["project"]
-        return "\n".join([
-            f"Project: {identity['creator']}/{identity['slug']}",
+        lines = [
+            f"Project: {identity['name']} ({identity['creator']}/{identity['slug']})",
             f"Checkout: {self.root}",
             f"Checkout name: {self.checkout_name}",
-            f"Checkout input: {self.input_path}",
-            f"Generated plan: {self.resolution_path}",
-        ])
-
-    def to_document(self) -> dict[str, Any]:
-        """The listing as the stable ``config list --json`` document.
-
-        Schema version 1: ``context`` names the host selection; ``rows`` are
-        the table's rows with the table's columns as keys. Adding a key keeps
-        the version; renaming, removing or retyping one bumps it.
-        """
-        identity = self.manifest["project"]
-        return {
-            "schema-version": CONFIGURATION_LISTING_SCHEMA_VERSION,
-            "context": "host selection (next launch)",
-            "project": {"creator": identity["creator"], "slug": identity["slug"]},
-            "checkout": {"name": self.checkout_name, "launcher-path": str(self.root),
-                         "input": str(self.input_path), "resolution": str(self.resolution_path)},
-            "rows": [{"kind": row.kind, "name": row.name, "status": row.status,
-                      "source": row.source, "value": row.value} for row in self.rows],
-        }
-
-    def render_base(self) -> str:
-        """Name the base by its contract, say who built it and where the recipe
-        is, and say which locked components are validated for it and why."""
-        reference = self.lock.get("base", {}).get("reference")
-        image = known_base_image(str(reference)) if reference else None
-        lines = ["Base:"]
-        if image is None:
-            lines.append(f"  {reference}: not pinned by this DevCapsule's matrix.")
-        else:
-            lines.append(f"  {image.contract.describe()}")
-            lines.append(f"  at {image.reference}")
-            lines.append(f"  {image.built.describe()}")
-        lines.extend(f"  {line}" for line in compatibility_report(self.lock))
-        return "\n".join(lines)
-
-    def render_sources(self) -> str:
-        """Name every document behind the listing and whether the generated
-        resolution still reflects it. The tokens match the SOURCE column."""
-        resolved = load_resolution(self.resolution_path) if self.resolution_path.is_file() else {}
-        drifted = (
-            set(stale_resolution_inputs(self.manifest, self.lock, self.checkout, resolved))
-            if resolved.get("status") != "unresolved" and resolved else set()
-        )
-        def note(key: str) -> str:
-            if not resolved or resolved.get("status") == "unresolved":
-                return "not yet resolved"
-            return "changed since the resolution" if key in drifted else "as resolved"
-        lines = [
-            "Sources:",
-            f"  manifest     {self.manifest_path}  ({note('manifest')})",
-            f"  lock         {self.lock_path}  ({note('platform-lock')})",
-            f"  checkout     {self.input_path}  ({note('checkout-input')})",
-            "  workstation  absent (no workstation-level configuration exists yet)",
-            f"  resolution   {self.resolution_path}  (generated: {self.resolution_row.status})",
-            "  managed      DevCapsule-owned state directories under the XDG data home",
-            "  environment  the launching shell's environment variables",
         ]
+        lines.append(f"Checkout record: {self.input_path}" if self.registered else
+                     "Checkout record: none yet; the first 'devcapsule project run' creates it")
         return "\n".join(lines)
 
+    def resolution_state(self) -> str:
+        """The generated resolution's state: fresh, stale with the drifted inputs, or missing."""
+        if self.resolution_path is None or not self.resolution_path.is_file():
+            return "missing"
+        resolved = load_resolution(self.resolution_path)
+        if resolved.get("status") == "unresolved":
+            return "missing"
+        try:
+            from devcapsule.configuration.capability_selection import effective_lock
+            selected = effective_lock(self.manifest, self.composed_lock, self.checkout, warn=False)
+            stale = stale_resolution_inputs(self.manifest, selected, self.checkout, resolved, self.workstation)
+        except ProjectConfigurationError as exc:
+            return f"unreadable ({exc})"
+        return "stale: " + ", ".join(stale) if stale else "fresh"
 
-def _load_configuration_listing(
-    context: object | None, *, notice: Callable[[str], None] = print
-) -> ConfigurationListing | runtime_configuration.RuntimeConfiguration:
-    """Load the documents behind ``config list`` and build its table.
 
-    Inside a capsule the mounted runtime configuration is the whole listing
-    and is returned as such. Outside, a missing checkout input or resolution
-    placeholder is materialized first and reported through ``notice``, so a
-    JSON caller can keep its standard output to the document alone.
+def _load_checkout_documents(context: object | None) -> CheckoutDocuments | runtime_configuration.RuntimeConfiguration:
+    """Load the documents behind the listing; inside a capsule, the runtime context is the whole answer.
+
+    Nothing is written: an unregistered checkout is listed from an empty
+    record, and a checkout without an IDE from the shared lock alone.
     """
-    runtime_context = runtime_configuration.for_project(_project_context(context).start_path())
+    start = _project_context(context).start_path()
+    runtime_context = runtime_configuration.for_project(start)
     if runtime_context is not None:
         return runtime_context
-    root, manifest = manifest_for(_project_context(context).start_path())
-    lock_path, lock = lock_for(root, manifest)
-    input_path, resolution_path = checkout_record_paths(manifest, root)
-    if not input_path.is_file():
-        atomic_write(input_path, render_checkout(manifest, root, {}, {}))
-        notice(f"Initialized checkout input: {input_path}")
-    if not resolution_path.is_file():
-        atomic_write(
-            resolution_path,
-            'devcapsule-resolved-schema-version = 1\nstatus = "unresolved"\n',
+    root, manifest = manifest_for(start)
+    from devcapsule.configuration.storage import composition_for, recommendation_lock_for, interrupted_activation
+    record = find_checkout_record(manifest, root)
+    if record is not None and interrupted_activation(record):
+        raise ProjectConfigurationError(
+            "A checkout activation needs recovery; run 'devcapsule project config resolve'. Inspection writes nothing."
         )
-        notice(f"Initialized resolution placeholder: {resolution_path}")
-    checkout = load_checkout(input_path, manifest, root)
-    resolution_row = _configuration_resolution_row(manifest, lock, checkout, resolution_path)
-    rows = [
-        *_configuration_value_rows(manifest, checkout),
-        *_configuration_binding_rows(lock, checkout),
-        *_component_secret_rows(lock, checkout),
-        *_configuration_authorization_rows(manifest, lock, checkout),
-        resolution_row,
-    ]
-    return ConfigurationListing(
-        root, manifest, root / ".devcapsule" / "devcapsule.toml", lock, lock_path,
-        checkout, input_path, resolution_path, resolution_row, rows,
+    lock_path, composed, checkout = composition_for(root, manifest)
+    _shared_path, shared = recommendation_lock_for(root, manifest)
+    record = find_checkout_record(manifest, root)
+    input_path: Path | None = record
+    resolution_path: Path | None = None
+    if record is None:
+        try:
+            input_path, resolution_path = checkout_record_paths(manifest, root)
+        except ProjectConfigurationError:
+            input_path = None  # another checkout of this project holds the default record
+    else:
+        from devcapsule.configuration.storage import resolved_record_path
+        resolution_path = resolved_record_path(record)
+    saved: dict[str, str | None] = {}
+    if record is not None:
+        saved = read_environment(arguments_path(record))
+    return CheckoutDocuments(root, manifest, root / ".devcapsule" / "devcapsule.toml", shared, lock_path, composed,
+                             checkout, input_path, resolution_path, load_workstation(), saved)
+
+
+def _assess(documents: CheckoutDocuments) -> Listing:
+    from devcapsule.platforms import Platform
+    from devcapsule.resolution_matrix import MATRICES, known_base_image
+    matrix = MATRICES[Platform.current()]
+    answers = documents.checkout.get("authorization", {})
+    base_answer = answers.get("base-image", {}) if isinstance(answers, dict) else {}
+    base_reference = base_answer.get("reference") if isinstance(base_answer, dict) else None
+    base_reference = base_reference or documents.composed_lock.get("base", {}).get("reference")
+    base = known_base_image(str(base_reference))
+    personal = matrix.local_capabilities()
+    surfaces = {name: matrix.providers(name)[0] for name in personal if not name.endswith("-agent")}
+    agents = {name: matrix.providers(name)[0] for name in personal if name.endswith("-agent")}
+    return assess_checkout(
+        documents.manifest, documents.shared_lock, documents.composed_lock, documents.checkout,
+        workstation=documents.workstation, saved_environment=documents.saved_environment,
+        surfaces=surfaces, agents=agents, project=documents.root, registered=documents.registered,
+        base_display=base.contract.display if base is not None else None,
     )
 
 
-def _print_configuration_listing(context: object | None) -> ConfigurationListing | None:
-    """Print the checkout identity and the configuration table.
-
-    Returns the loaded documents and the rows for a caller that adds the
-    review, or ``None`` inside a capsule, where the runtime report is the
-    whole listing. The table is data: every declared value, binding, secret
-    input and authorization with its recorded status, and the generated
-    resolution's state. Advice belongs to ``config show``.
-    """
-    loaded = _load_configuration_listing(context)
-    if isinstance(loaded, runtime_configuration.RuntimeConfiguration):
-        print(loaded.configuration_report())
-        return None
-    print(loaded.render_identity())
-    _print_configuration_rows(loaded.rows)
-    return loaded
-
-
-class ConfigListCommand(Command):
-    name = "list"
+class ConfigShowCommand(Command):
+    name = "show"
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.INSPECTS
-    help = "List configured values, bindings, authorizations, and the resolution state; data only."
+    help = "Show every choice of this checkout: the value the next launch uses, its source, and what is pending. Writes nothing."
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
@@ -770,63 +715,146 @@ class ConfigListCommand(Command):
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        if not arguments.as_json:
-            _print_configuration_listing(context)
+        loaded = _load_checkout_documents(context)
+        if isinstance(loaded, runtime_configuration.RuntimeConfiguration):
+            print(json.dumps(loaded.configuration_document(), indent=2, sort_keys=True) if arguments.as_json
+                  else loaded.configuration_report())
             return 0
-        loaded = _load_configuration_listing(context, notice=lambda line: print(line, file=sys.stderr))
-        document = (loaded.configuration_document() if isinstance(loaded, runtime_configuration.RuntimeConfiguration)
-                    else loaded.to_document())
-        print(json.dumps(document, indent=2, sort_keys=True))
+        listing = _assess(loaded)
+        if arguments.as_json:
+            identity = loaded.manifest["project"]
+            document = {
+                **listing.document(),
+                "context": "host selection (next launch)",
+                "project": {"creator": identity["creator"], "slug": identity["slug"]},
+                "checkout": {"name": loaded.checkout_name, "launcher-path": str(loaded.root),
+                             "input": str(loaded.input_path) if loaded.input_path else None},
+                "resolution": loaded.resolution_state(),
+            }
+            print(json.dumps(document, indent=2, sort_keys=True))
+            return 0
+        print(loaded.render_identity())
+        print("")
+        print(listing.render())
+        print("")
+        print(listing.render_pending())
+        print(f"Resolution: {loaded.resolution_state()}")
         return 0
 
 
-class ConfigShowCommand(Command):
-    name = "show"
+class ConfigListCommand(ConfigShowCommand):
+    name = "list"
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.INSPECTS
-    help = "Show the listing, the documents every row comes from, and the review: decisions, remedies, and whether to resolve."
+    help = "The same listing as 'show'."
 
-    @classmethod
-    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        listing = _print_configuration_listing(context)
-        if listing is None:
-            return 0
-        row = listing.resolution_row
-        resolution = f"stale: {row.value}" if row.status == "stale" else row.status
-        print("")
-        print(listing.render_sources())
-        print("")
-        print(listing.render_base())
-        print("")
-        print(review_configuration(listing.manifest, listing.lock, listing.checkout).render(
-            listing.root, resolution=resolution))
-        return 0
+
+def _set_value(record: CheckoutRecord, manifest: dict[str, Any], name: str, value: str) -> str:
+    """Record one value answer; return the line that says what was recorded.
+
+    ``memory`` and ``cpus`` are the launcher's and need no declaration; a
+    declared value is validated against its declaration; ``default`` forgets
+    the checkout's answer so the value follows the project and the
+    workstation again (answer 13 of the work order); ``none`` keeps an
+    optional declared value out of the capsule.
+    """
+    keyword = value.strip().lower()
+    aliases = legacy_memory_names(manifest)
+    if name in aliases:
+        raise ProjectConfigurationError(
+            f"{name!r} is the project's old name for the memory limit; set it with 'devcapsule project config set memory SIZE'."
+        )
+    if name in LAUNCHER_VALUE_NAMES:
+        aliases = aliases if name == "memory" else ()
+        if keyword == "default":
+            record.values.pop(name, None)
+            record.omitted_values.discard(name)
+            for alias in aliases:
+                record.values.pop(alias, None)
+                record.omitted_values.discard(alias)
+            return f"Forgot {name} for this checkout; it follows the project's recommendation, then the workstation default."
+        if keyword == "none":
+            raise ProjectConfigurationError(f"{name} has no 'none'; 'default' forgets your answer, or set a value.")
+        record.set_value(name, normalize_launcher_value(name, value))
+        for alias in aliases:
+            record.values.pop(alias, None)
+            record.omitted_values.discard(alias)
+        return f"Set {name} = {record.values[name]} for this checkout."
+    declarations = configuration_value_declarations(manifest)
+    if name not in declarations and keyword == "default" and (name in record.values or name in record.omitted_values):
+        record.values.pop(name, None)
+        record.omitted_values.discard(name)
+        return f"Forgot the obsolete value {name} for this checkout."
+    if name not in declarations:
+        available = ", ".join(sorted((*LAUNCHER_VALUE_NAMES, *(key for key in declarations if key not in aliases)))) or "memory, cpus"
+        close = difflib.get_close_matches(name, available.split(", "), n=1, cutoff=0.6)
+        hint = f" Did you mean {close[0]!r}?" if close else ""
+        raise ProjectConfigurationError(f"No value named {name!r} on this project;{hint} values: {available}.")
+    if keyword == "default":
+        removed = record.values.pop(name, None)
+        record.omitted_values.discard(name)
+        if removed is None and "recommended" not in declarations[name]:
+            return f"{name} has no recorded answer for this checkout; nothing changed."
+        return f"Forgot {name} for this checkout; it follows the project's recommendation."
+    if keyword == "none":
+        if declarations[name].get("required", False):
+            raise ProjectConfigurationError(f"Configuration value {name!r} is mandatory and cannot be 'none'; record a value instead.")
+        record.omit_value(name)
+        return f"Set {name} = none (explicitly absent from the runtime configuration)."
+    record.set_value(name, normalize_configuration_value(manifest, name, value))
+    return f"Set {name} = {render_toml_scalar(record.values[name])} for this checkout."
 
 
 class ConfigSetCommand(Command):
     name = "set"
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    help = "Set one ordinary value declared by the project configuration metadata."
+    help = ("Set a value for this checkout: memory (6GiB, 6g), cpus (4), or a value the project declares. "
+            "'default' forgets your answer and follows the project and the workstation again.")
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument("node_name", metavar="NAME")
-        parser.add_argument("value", metavar="VALUE")
+        parser.add_argument("node_name", metavar="NAME", help="memory, cpus, or a declared value's name.")
+        parser.add_argument("value", metavar="VALUE", help="The value, or 'default'.")
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        name = arguments.node_name
         root, manifest = manifest_for(_project_context(context).start_path())
-        _lock_path, lock = lock_for(root, manifest)
-        build_node_registry(manifest, lock).answerable(name, CARRIER_FAMILY_SET)
         record = CheckoutRecord(manifest, root)
-        apply_configuration_answers((ProvidedAnswer("set", name, arguments.value),), manifest, lock, record)
+        print(_set_value(record, manifest, arguments.node_name, arguments.value))
         record.write()
-        if name in record.omitted_values:
-            print(f"Set {name} = none (explicitly absent from the runtime configuration)")
-        else:
-            print(f"Set {name} = {render_toml_scalar(record.values[name])}")
-        print(f"Checkout input: {record.input_path}")
+        print(f"Checkout record: {record.input_path}")
         print("Run 'devcapsule project config resolve' before launch.")
+        return 0
+
+
+class ConfigDefaultCommand(Command):
+    name = "default"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    help = ("Set this workstation's default for memory or cpus, used by every project here unless the "
+            "project recommends or the checkout sets another; 'none' removes it.")
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("node_name", metavar="NAME", help="memory or cpus.")
+        parser.add_argument("value", metavar="VALUE", help="The default, or 'none'.")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        from devcapsule.configuration.storage import load_workstation as load, write_workstation
+        from devcapsule.configuration.workstation import WorkstationDefaults
+        name = arguments.node_name
+        if name not in LAUNCHER_VALUE_NAMES:
+            raise ProjectConfigurationError(
+                f"The workstation has defaults for {', '.join(LAUNCHER_VALUE_NAMES)} only; {name!r} is not one of them."
+            )
+        defaults = WorkstationDefaults.read(load())
+        removing = arguments.value.strip().lower() == "none"
+        changed = defaults.with_value(name, None if removing else arguments.value)
+        path = write_workstation(changed.document())
+        if removing:
+            print(f"Removed the workstation default for {name}.")
+        else:
+            print(f"Workstation default {name} = {changed.values[name]}, for every project on this computer.")
+        print(f"Workstation configuration: {path}")
         return 0
 
 
@@ -843,56 +871,67 @@ def _managed_arguments_path(context: object | None) -> Path:
     return arguments_path(input_path)
 
 
-class ConfigSetEnvCommand(Command):
-    name = "set-env"
+def _hidden_value_prompt() -> str:
+    if not sys.stdin.isatty():
+        raise ProjectConfigurationError("A terminal is required for the hidden value prompt; give VALUE, or --from-host.")
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", getpass.GetPassWarning)
+            return getpass.getpass("Value: ")
+    except (getpass.GetPassWarning, EOFError):
+        raise ProjectConfigurationError("Cannot read a hidden value from this terminal.") from None
+
+
+class ConfigEnvSetCommand(Command):
+    name = "set"
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    help = "Save a checkout environment variable; omit VALUE for a hidden terminal prompt."
+    help = ("Save an environment variable for this checkout, privately: VALUE, or a hidden prompt without it; "
+            "--from-host passes the host's variable through at each launch instead.")
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument("key", metavar="KEY")
+        parser.add_argument("key", metavar="NAME")
         parser.add_argument("value", metavar="VALUE", nargs="?")
+        parser.add_argument("--from-host", action="store_true", dest="from_host",
+                            help="Save only the variable name; Docker reads its value from the host at each launch.")
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
         path = _managed_arguments_path(context)
         validate_name(arguments.key)
-        value = arguments.value
-        if value is None:
-            if not sys.stdin.isatty():
-                raise ProjectConfigurationError("A terminal is required for the hidden value prompt.")
-            try:
-                with warnings.catch_warnings():
-                    warnings.simplefilter("error", getpass.GetPassWarning)
-                    value = getpass.getpass("Value: ")
-            except (getpass.GetPassWarning, EOFError):
-                raise ProjectConfigurationError("Cannot read a hidden value from this terminal.") from None
+        if arguments.from_host:
+            if arguments.value is not None:
+                raise ProjectConfigurationError("Give VALUE or --from-host, not both.")
+            update_environment(path, arguments.key, None, from_host=True)
+            print(f"{arguments.key} is taken from the host's environment at each launch of this checkout.")
+            return 0
+        value = arguments.value if arguments.value is not None else _hidden_value_prompt()
         update_environment(path, arguments.key, value)
-        print(f"Saved {arguments.key}. Run 'devcapsule project run' to use it in a new container.")
+        print(f"Saved {arguments.key} for this checkout, privately. The next 'devcapsule project run' uses it.")
         return 0
 
 
-class ConfigUnsetEnvCommand(Command):
-    name = "unset-env"
+class ConfigEnvUnsetCommand(Command):
+    name = "unset"
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    help = "Remove a saved checkout environment variable."
+    help = "Remove a saved or passed-through environment variable from this checkout."
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument("key", metavar="KEY")
+        parser.add_argument("key", metavar="NAME")
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
         update_environment(_managed_arguments_path(context), arguments.key, None)
-        print(f"Removed {arguments.key} from the saved environment. Existing containers are unchanged.")
+        print(f"Removed {arguments.key} from this checkout's environment. A running capsule is unchanged.")
         return 0
 
 
-class ConfigListEnvCommand(Command):
-    name = "list-env"
+class ConfigEnvListCommand(Command):
+    name = "list"
     # Host-owned file is deliberately not mounted into the running capsule.
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    help = "List saved environment names on the launcher host, never their values."
+    help = "List this checkout's environment variables by name, never their values."
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
@@ -901,19 +940,32 @@ class ConfigListEnvCommand(Command):
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
         path = _managed_arguments_path(context)
-        names = sorted(read_environment(path))
+        saved = read_environment(path)
         if arguments.as_json:
-            print(json.dumps({"path": str(path), "names": names}, sort_keys=True))
-        else:
-            print(f"Docker arguments file: {path}")
-            print("\n".join(names) if names else "No saved environment variables.")
+            print(json.dumps({"path": str(path), "names": sorted(saved),
+                              "from-host": sorted(name for name, value in saved.items() if value is None)}, sort_keys=True))
+            return 0
+        print(f"Docker arguments file: {path}")
+        if not saved:
+            print("No environment variables for this checkout.")
+        for name in sorted(saved):
+            print(f"{name}  ({'from the host' if saved[name] is None else 'saved'})")
         return 0
 
 
-class ConfigSetExtraDockerArgsCommand(Command):
-    name = "set-extra-docker-args"
+class ConfigEnvGroup(Group):
+    name = "env"
+    help = "This checkout's environment variables: set (saved privately, or from the host), unset, list."
+
+    @classmethod
+    def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
+        return {"set": ConfigEnvSetCommand, "unset": ConfigEnvUnsetCommand, "list": ConfigEnvListCommand}
+
+
+class ConfigDockerArgsSetCommand(Command):
+    name = "set"
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    help = "Replace the saved Docker argument list with the tokens after '--'."
+    help = "Replace this checkout's saved 'docker run' options with the tokens after '--'."
     passthrough_dest = "docker_options"
     passthrough_metavar = "DOCKER-RUN-OPTIONS"
 
@@ -921,17 +973,17 @@ class ConfigSetExtraDockerArgsCommand(Command):
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
         options = list(arguments.docker_options)
         if not options:
-            raise ProjectConfigurationError("Supply Docker arguments after '--', or use remove-extra-docker-args.")
+            raise ProjectConfigurationError("Give the Docker options after '--'; 'docker-args clear' removes the saved ones.")
         _validate_extra_docker_args(options)
         replace_arguments(_managed_arguments_path(context), options)
-        print("Saved extra Docker arguments. They apply to new containers started by 'project run'.")
+        print("Saved the Docker options for this checkout. The next 'devcapsule project run' passes them.")
         return 0
 
 
-class ConfigListExtraDockerArgsCommand(Command):
-    name = "list-extra-docker-args"
+class ConfigDockerArgsListCommand(Command):
+    name = "list"
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    help = "List saved Docker arguments with inline environment values masked."
+    help = "List the saved 'docker run' options, environment values masked."
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
@@ -945,20 +997,55 @@ class ConfigListExtraDockerArgsCommand(Command):
             print(json.dumps({"path": str(path), "arguments": options}, sort_keys=True))
         else:
             print(f"Docker arguments file: {path}")
-            print(shlex.join(options) if options else "No saved extra Docker arguments.")
+            print(shlex.join(options) if options else "No saved Docker options.")
         return 0
 
 
-class ConfigRemoveExtraDockerArgsCommand(Command):
-    name = "remove-extra-docker-args"
+class ConfigDockerArgsClearCommand(Command):
+    name = "clear"
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    help = "Clear the complete saved Docker argument list, including saved environment options."
+    help = "Remove every saved 'docker run' option, the environment variables among them."
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
         replace_arguments(_managed_arguments_path(context), [])
-        print("Removed saved extra Docker arguments. Existing containers are unchanged.")
+        print("Removed the saved Docker options. A running capsule is unchanged.")
         return 0
+
+
+class ConfigDockerArgsGroup(Group):
+    name = "docker-args"
+    help = "Extra 'docker run' options saved for this checkout: set (after '--'), list, clear."
+
+    @classmethod
+    def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
+        return {"set": ConfigDockerArgsSetCommand, "list": ConfigDockerArgsListCommand, "clear": ConfigDockerArgsClearCommand}
+
+
+def _hidden_alias(replacement: type[Command], name: str, new_spelling: str) -> type[Command]:
+    """The 0.3.0 rc3 spelling of a command, kept hidden for one release; it runs the replacement."""
+
+    class Alias(replacement):  # type: ignore[valid-type,misc]
+        hidden = True
+        capsule_access: ClassVar[CapsuleAccess] = getattr(replacement, "capsule_access")
+        help = f"Replaced by 'config {new_spelling}'; kept for one release."
+
+        @classmethod
+        def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+            print(f"Note: 'config {name}' is now 'config {new_spelling}'.", file=sys.stderr)
+            return replacement.run(arguments, context)
+
+    Alias.name = name
+    Alias.__name__ = f"Legacy{replacement.__name__}"
+    return Alias
+
+
+ConfigSetEnvCommand = _hidden_alias(ConfigEnvSetCommand, "set-env", "env set")
+ConfigUnsetEnvCommand = _hidden_alias(ConfigEnvUnsetCommand, "unset-env", "env unset")
+ConfigListEnvCommand = _hidden_alias(ConfigEnvListCommand, "list-env", "env list")
+ConfigSetExtraDockerArgsCommand = _hidden_alias(ConfigDockerArgsSetCommand, "set-extra-docker-args", "docker-args set")
+ConfigListExtraDockerArgsCommand = _hidden_alias(ConfigDockerArgsListCommand, "list-extra-docker-args", "docker-args list")
+ConfigRemoveExtraDockerArgsCommand = _hidden_alias(ConfigDockerArgsClearCommand, "remove-extra-docker-args", "docker-args clear")
 
 
 def _validate_extra_docker_args(options: list[str]) -> None:
@@ -1061,10 +1148,40 @@ class ConfigApproveCommand(Command):
         return 0
 
 
-class ConfigUnsetCommand(Command):
-    name = "unset"
+def _forget_authorization(root: Path, manifest: dict[str, Any], name: str) -> Path:
+    """Remove the recorded answer for one host access or consent; the row returns to its default."""
+    record = CheckoutRecord(manifest, root)
+    legacy = record.host.pop(name, None)
+    removed = record.authorization.pop(name, legacy)
+    if removed is None:
+        raise ProjectConfigurationError(f"{name!r} has no recorded answer for this checkout.")
+    record.write()
+    return record.input_path
+
+
+class ConfigForgetCommand(Command):
+    name = "forget"
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    help = "Remove one recorded answer from this checkout."
+    help = "Forget your recorded answer for a host access or a consent; the next launch uses the default, or asks again."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("node_name", metavar="NAME")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        root, manifest = manifest_for(_project_context(context).start_path())
+        input_path = _forget_authorization(root, manifest, arguments.node_name)
+        print(f"Forgot {arguments.node_name} for this checkout.")
+        print(f"Checkout record: {input_path}")
+        print("Run 'devcapsule project config resolve' before launch.")
+        return 0
+
+
+class ConfigDenyCommand(Command):
+    name = "deny"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    help = "Deny a host access for this checkout, recorded: network, docker-daemon, development-sudo, host-browser, host-x11."
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
@@ -1074,50 +1191,90 @@ class ConfigUnsetCommand(Command):
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
         name = arguments.node_name
         root, manifest = manifest_for(_project_context(context).start_path())
-        _lock_path, lock = lock_for(root, manifest)
-        registry = build_node_registry(manifest, lock)
-        node = registry.node(name)
-        if node.required:
-            # Owner ruling 2026-09-03: unset removes the name from the tree,
-            # and a mandatory node without an answer only defers the failure
-            # to resolve time — refuse it here, naming the replacement verb.
-            replacement = {
-                CARRIER_FAMILY_SET: f"'devcapsule project config set {name} VALUE'",
-                CARRIER_FAMILY_BIND: f"'devcapsule project config bind {name} PROVIDER:VALUE'",
-            }.get(
-                node.family,
-                f"'devcapsule project config authorize {name} VALUE'",
-            )
-            raise ProjectConfigurationError(
-                f"Configuration node {name!r} is mandatory: resolution fails while "
-                f"it is unanswered, so 'unset' would only trade the recorded answer "
-                f"for a failure at resolve time. Record a different answer with "
-                f"{replacement} instead."
-            )
+        _lock_path, lock = _lock_for_answers(root, manifest)
+        declarations = authorization_declarations(manifest, lock)
+        declaration = declarations.get(name)
+        if declaration is None or declaration.required:
+            available = ", ".join(sorted(key for key, item in declarations.items() if not item.required)) or "none"
+            raise ProjectConfigurationError(f"{name!r} is not a host access that can be denied; deniable: {available}.")
         record = CheckoutRecord(manifest, root)
-        if node.family == CARRIER_FAMILY_SET:
-            removed = record.values.pop(name, None)
-            if removed is None and name in record.omitted_values:
-                # Unsetting an explicit omission returns the node to silence.
-                record.omitted_values.discard(name)
-                removed = "none"
-        elif node.family == CARRIER_FAMILY_BIND:
-            removed = (
-                record.directory_bindings.pop(name, None)
-                or record.environment_bindings.pop(name, None)
-                # A transitional 'state adopt' entry answers the same node.
-                or record.state.pop(name, None)
-            )
-        else:
-            legacy = record.host.pop(name, None)
-            removed = record.authorization.pop(name, legacy)
-        if removed is None:
-            raise ProjectConfigurationError(
-                f"Configuration node {name!r} has no recorded answer for this checkout."
-            )
+        record.authorize(declaration, normalize_authorization_value(declaration, "none"))
         record.write()
-        print(f"Unset {name} for this checkout.")
-        print(f"Checkout input: {record.input_path}")
+        print(f"Denied {name} for this checkout: {render_authorization_value(normalize_authorization_value(declaration, 'none'))}.")
+        print(f"Checkout record: {record.input_path}")
+        print("Run 'devcapsule project config resolve' before launch.")
+        return 0
+
+
+def _lock_for_answers(root: Path, manifest: dict[str, Any]) -> tuple[Path, dict[str, Any]]:
+    """The checkout's effective lock when it has an IDE, else the composed one: host answers need no IDE."""
+    from devcapsule.configuration.storage import composition_for
+    try:
+        return lock_for(root, manifest)
+    except ProjectConfigurationError:
+        path, composed, _checkout = composition_for(root, manifest)
+        return path, composed
+
+
+class ConfigUnsetCommand(Command):
+    """The 0.3.0 rc3 spelling: 'set NAME default', 'unbind NAME' or 'forget NAME' now."""
+
+    name = "unset"
+    hidden = True
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    help = "Replaced by 'set NAME default', 'forget NAME' and 'unbind NAME'; kept for one release."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("node_name", metavar="NAME")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        name = arguments.node_name
+        root, manifest = manifest_for(_project_context(context).start_path())
+        record = CheckoutRecord(manifest, root)
+        declarations = configuration_value_declarations(manifest)
+        if name in LAUNCHER_VALUE_NAMES or name in declarations:
+            print("Note: 'config unset' is now 'config set NAME default'.", file=sys.stderr)
+            print(_set_value(record, manifest, name, "default"))
+            record.write()
+        elif name in record.directory_bindings or name in record.environment_bindings or name in record.state:
+            print("Note: 'config unset' is now 'config unbind'.", file=sys.stderr)
+            record.directory_bindings.pop(name, None)
+            record.environment_bindings.pop(name, None)
+            record.state.pop(name, None)
+            record.write()
+            print(f"Unbound {name} for this checkout.")
+        else:
+            print("Note: 'config unset' is now 'config forget'.", file=sys.stderr)
+            _forget_authorization(root, manifest, name)
+            print(f"Forgot {name} for this checkout.")
+        print(f"Checkout record: {record.input_path}")
+        print("Run 'devcapsule project config resolve' before launch.")
+        return 0
+
+
+class ConfigUnbindCommand(Command):
+    name = "unbind"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    help = "Return a state directory or a secret input to its managed default."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("node_name", metavar="NAME")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        name = arguments.node_name
+        root, manifest = manifest_for(_project_context(context).start_path())
+        record = CheckoutRecord(manifest, root)
+        removed = (record.directory_bindings.pop(name, None) or record.environment_bindings.pop(name, None)
+                   or record.state.pop(name, None))
+        if removed is None:
+            raise ProjectConfigurationError(f"{name!r} is not bound for this checkout.")
+        record.write()
+        print(f"Unbound {name} for this checkout; the managed default applies.")
+        print(f"Checkout record: {record.input_path}")
         print("Run 'devcapsule project config resolve' before launch.")
         return 0
 
@@ -1146,7 +1303,7 @@ class ConfigAuthorizeCommand(Command):
         name = arguments.node_name
         value = arguments.value
         root, manifest = manifest_for(_project_context(context).start_path())
-        _lock_path, lock = lock_for(root, manifest)
+        _lock_path, lock = _lock_for_answers(root, manifest)
         declarations = authorization_declarations(manifest, lock)
         if arguments.all_recommended:
             if name is not None or value is not None:
@@ -1215,15 +1372,17 @@ class ConfigAuthorizeCommand(Command):
                 "This developer-owned selection overrides the published base recommendation "
                 "for this checkout."
             )
+        elif declaration.project_recommended:
+            print(f"The project's reason: {declaration.description}")
         else:
-            print(f"Recommendation: {declaration.description}")
-        print(f"Recommendation digest: {declaration.recommendation_digest}")
-        print(f"Checkout input: {input_path}")
-        print(
-            "This authorization applies to the exact recorded image, by digest or by local image "
-            "identity, and stays valid while the lock recommends that image."
-        )
-        print("Run 'devcapsule project config resolve' before materialization or launch.")
+            print(f"What this grants: {declaration.description}")
+        print(f"Checkout record: {input_path}")
+        if name == "base-image":
+            print(
+                "This consent applies to the exact recorded image, by digest or by local image "
+                "identity, and stays valid while the lock recommends that image."
+            )
+        print("Run 'devcapsule project config resolve' before launch.")
         return 0
 
 
@@ -1369,31 +1528,200 @@ class ConfigNeedCommand(Command):
         raise ProjectConfigurationError(
             "'config need' is replaced: a project requires tools with "
             f"'devcapsule project config require tool {names}'; a developer chooses an IDE or an agent "
-            "for their checkout with 'devcapsule project config capabilities --local NAME'."
+            "for their checkout with 'devcapsule project config ide IDE or config agent add AGENT'."
         )
 
 
 class ConfigCheckCommand(Command):
     name = "check"
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.INSPECTS
-    help = "Validate the project capability contract, or candidate files, without writing or launching."
+    help = ("Validate the project's contract and this checkout without writing or launching; "
+            "exit 3 naming each pending decision and its command, for scripts.")
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
         parser.add_argument("--manifest", type=Path, help="Candidate manifest; defaults to the project's manifest.")
         parser.add_argument("--lock", type=Path, help="Candidate platform lock; defaults to this platform's lock.")
+        parser.add_argument("--json", dest="as_json", action="store_true", help=STABLE_JSON_HELP)
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
         from devcapsule.configuration.capability_commands import check
-        print(check(_project_context(context).start_path(), manifest_path=arguments.manifest, lock_path=arguments.lock))
+        contract = check(_project_context(context).start_path(), manifest_path=arguments.manifest, lock_path=arguments.lock)
+        if arguments.manifest is not None or arguments.lock is not None:
+            print(json.dumps({"contract": contract.splitlines()[0], "context": "candidate contract"})
+                  if arguments.as_json else contract)
+            return 0
+        loaded = _load_checkout_documents(context)
+        if isinstance(loaded, runtime_configuration.RuntimeConfiguration):
+            note = "Host decisions cannot be assessed inside this capsule; run config check with the host launcher."
+            print(json.dumps({**loaded.configuration_document(), "contract": contract.splitlines()[0], "notes": [note]})
+                  if arguments.as_json else contract + "\n" + note)
+            return 0
+        listing = _assess(loaded)
+        if arguments.as_json:
+            print(json.dumps({**listing.document(), "contract": contract.splitlines()[0]}, indent=2, sort_keys=True))
+        else:
+            print(contract)
+        if listing.pending:
+            raise DecisionPending(listing.render_pending())
+        if not arguments.as_json:
+            print("Nothing is pending for this checkout.")
         return 0
+
+
+def _local_selection(context: object | None) -> tuple[Path, dict[str, Any], LocalCapabilities, dict[str, str], dict[str, str]]:
+    """The checkout's current selection and the catalog's IDE and agent names, for the selection verbs."""
+    from devcapsule.platforms import Platform
+    from devcapsule.resolution_matrix import MATRICES
+    root, manifest = manifest_for(_project_context(context).start_path())
+    record = find_checkout_record(manifest, root)
+    current = LocalCapabilities.read(load_checkout(record, manifest, root)) if record is not None else LocalCapabilities()
+    matrix = MATRICES[Platform.current()]
+    personal = matrix.local_capabilities()
+    surfaces = {name: matrix.providers(name)[0] for name in personal if not name.endswith("-agent")}
+    agents = {name: matrix.providers(name)[0] for name in personal if name.endswith("-agent")}
+    return root, manifest, current, surfaces, agents
+
+
+def _capability_name(value: str, names: Mapping[str, str], kind: str) -> str:
+    candidate = value.strip()
+    by_component = {component: name for name, component in names.items()}
+    candidate = by_component.get(candidate, candidate)
+    if candidate not in names:
+        raise ProjectConfigurationError(f"Unknown {kind} {value!r}; choose one of {', '.join(sorted(names))}.")
+    return candidate
+
+
+def _replace_selection(root: Path, selected: tuple[str, ...], without: tuple[str, ...] | None, allow_unverified: bool) -> None:
+    from devcapsule.configuration.capability_commands import configure
+    configure(root, local=list(selected), without=None if without is None else list(without), allow_unverified=allow_unverified)
+
+
+class ConfigIdeCommand(Command):
+    name = "ide"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    help = "Choose this checkout's IDE: python-ide, frontend-ide, java-ide, eclipse-ide or dotnet-ide."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("ide", metavar="IDE")
+        parser.add_argument("--unverified", action="store_true", dest="allow_unverified",
+                            help="Accept a combination the matrix has not validated; the record says so.")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        root, manifest, current, surfaces, _agents = _local_selection(context)
+        ide = _capability_name(arguments.ide, surfaces, "IDE")
+        selected = tuple(sorted({*(name for name in current.selected if name not in surfaces), ide}))
+        _replace_selection(root, selected, None, arguments.allow_unverified)
+        print(f"Your IDE for this checkout: {ide} ({surfaces[ide]}).")
+        print("Run 'devcapsule project config resolve' before launch.")
+        return 0
+
+
+class _AgentCommand(Command):
+    name = ""
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    adding: ClassVar[bool] = True
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("agents", nargs="+", metavar="AGENT", help="codex-agent, claude-code-agent or antigravity-agent.")
+        parser.add_argument("--unverified", action="store_true", dest="allow_unverified", help=argparse.SUPPRESS)
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        root, manifest, current, _surfaces, agents = _local_selection(context)
+        names = {_capability_name(value, agents, "agent") for value in arguments.agents}
+        selected = set(current.selected) | names if cls.adding else set(current.selected) - names
+        _replace_selection(root, tuple(sorted(selected)), None, arguments.allow_unverified)
+        verb = "Added" if cls.adding else "Removed"
+        print(f"{verb} {', '.join(sorted(names))} for this checkout. Agents: {' '.join(sorted(selected & set(agents))) or 'none'}.")
+        print("Run 'devcapsule project config resolve' before launch.")
+        return 0
+
+
+class ConfigAgentAddCommand(_AgentCommand):
+    name = "add"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    adding = True
+    help = "Add a coding agent to this checkout; its vendor's terms are asked once."
+
+
+class ConfigAgentRemoveCommand(_AgentCommand):
+    name = "remove"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    adding = False
+    help = "Remove a coding agent from this checkout."
+
+
+class ConfigAgentGroup(Group):
+    name = "agent"
+    help = "This checkout's coding agents: add, remove."
+
+    @classmethod
+    def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
+        return {"add": ConfigAgentAddCommand, "remove": ConfigAgentRemoveCommand}
+
+
+class _ToolCommand(Command):
+    name = ""
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    omitting: ClassVar[bool] = True
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("tools", nargs="+", metavar="TOOL", help="A tool the project offers, such as browser-automation.")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        root, manifest, current, _surfaces, _agents = _local_selection(context)
+        policy = CapabilityPolicy.read(manifest)
+        names = set()
+        for value in arguments.tools:
+            if value not in policy.optional:
+                raise ProjectConfigurationError(
+                    f"{value!r} is not a tool the project offers; offered: {', '.join(policy.optional) or 'none'}. "
+                    "A required tool cannot be omitted."
+                )
+            names.add(value)
+        without = set(current.without) | names if cls.omitting else set(current.without) - names
+        _replace_selection(root, current.selected, tuple(sorted(without)), False)
+        verb = "Omitted" if cls.omitting else "Restored"
+        print(f"{verb} {', '.join(sorted(names))} for this checkout. Omitted tools: {' '.join(sorted(without)) or 'none'}.")
+        print("Run 'devcapsule project config resolve' before launch.")
+        return 0
+
+
+class ConfigToolOmitCommand(_ToolCommand):
+    name = "omit"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    omitting = True
+    help = "Leave an offered tool out of this checkout's capsule."
+
+
+class ConfigToolRestoreCommand(_ToolCommand):
+    name = "restore"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    omitting = False
+    help = "Take an offered tool back into this checkout's capsule."
+
+
+class ConfigToolGroup(Group):
+    name = "tool"
+    help = "The project's offered tools in this checkout: omit, restore."
+
+    @classmethod
+    def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
+        return {"omit": ConfigToolOmitCommand, "restore": ConfigToolRestoreCommand}
 
 
 class ConfigCapabilitiesCommand(Command):
     name = "capabilities"
+    hidden = True
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    help = "Replace this checkout's IDE, agent and extra-tool selection (--local) or its omissions (--without); validate before writing."
+    help = "Replaced by 'config ide', 'config agent add|remove' and 'config tool omit|restore'; kept for one release."
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
@@ -1431,32 +1759,42 @@ class ConfigCapabilitiesCommand(Command):
 
 class ConfigGroup(Group):
     name = "config"
-    help = "Inspect and resolve layered project configuration."
+    help = "This checkout's choices and the project's contract: show what the next launch uses, change one thing, check."
 
     @classmethod
     def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
         return {
+            ConfigShowCommand.name: ConfigShowCommand,
             ConfigListCommand.name: ConfigListCommand,
             ConfigCheckCommand.name: ConfigCheckCommand,
-            ConfigCapabilitiesCommand.name: ConfigCapabilitiesCommand,
-            ConfigShowCommand.name: ConfigShowCommand,
+            ConfigIdeCommand.name: ConfigIdeCommand,
+            ConfigAgentGroup.name: ConfigAgentGroup,
+            ConfigToolGroup.name: ConfigToolGroup,
+            ConfigSetCommand.name: ConfigSetCommand,
+            ConfigDefaultCommand.name: ConfigDefaultCommand,
+            ConfigAuthorizeCommand.name: ConfigAuthorizeCommand,
+            ConfigDenyCommand.name: ConfigDenyCommand,
+            ConfigForgetCommand.name: ConfigForgetCommand,
+            ConfigBindCommand.name: ConfigBindCommand,
+            ConfigUnbindCommand.name: ConfigUnbindCommand,
+            ConfigEnvGroup.name: ConfigEnvGroup,
+            ConfigDockerArgsGroup.name: ConfigDockerArgsGroup,
+            ConfigApproveCommand.name: ConfigApproveCommand,
             ConfigResolveCommand.name: ConfigResolveCommand,
             ConfigRequireGroup.name: ConfigRequireGroup,
             ConfigOfferGroup.name: ConfigOfferGroup,
             ConfigDropGroup.name: ConfigDropGroup,
             ConfigRecommendCommand.name: ConfigRecommendCommand,
+            # The 0.3.0 rc3 spellings, hidden, each naming its replacement.
+            ConfigCapabilitiesCommand.name: ConfigCapabilitiesCommand,
             ConfigNeedCommand.name: ConfigNeedCommand,
-            ConfigSetCommand.name: ConfigSetCommand,
-            ConfigSetExtraDockerArgsCommand.name: ConfigSetExtraDockerArgsCommand,
-            ConfigListExtraDockerArgsCommand.name: ConfigListExtraDockerArgsCommand,
-            ConfigRemoveExtraDockerArgsCommand.name: ConfigRemoveExtraDockerArgsCommand,
+            ConfigUnsetCommand.name: ConfigUnsetCommand,
             ConfigSetEnvCommand.name: ConfigSetEnvCommand,
             ConfigUnsetEnvCommand.name: ConfigUnsetEnvCommand,
             ConfigListEnvCommand.name: ConfigListEnvCommand,
-            ConfigBindCommand.name: ConfigBindCommand,
-            ConfigAuthorizeCommand.name: ConfigAuthorizeCommand,
-            ConfigApproveCommand.name: ConfigApproveCommand,
-            ConfigUnsetCommand.name: ConfigUnsetCommand,
+            ConfigSetExtraDockerArgsCommand.name: ConfigSetExtraDockerArgsCommand,
+            ConfigListExtraDockerArgsCommand.name: ConfigListExtraDockerArgsCommand,
+            ConfigRemoveExtraDockerArgsCommand.name: ConfigRemoveExtraDockerArgsCommand,
         }
 
 
@@ -1719,7 +2057,7 @@ class ProjectRunCommand(Command):
         # Reject invalid launch overrides before an optional upgrade can change
         # selection. Reload afterward so this launch and its success record use
         # exactly the version set the developer has just chosen.
-        overrides, memory_override = _run_once_answers(arguments, admitted.project.manifest, admitted.project.lock)
+        overrides, memory_override, cpus_override = _run_once_answers(arguments, admitted.project.manifest, admitted.project.lock)
         # The saved Docker arguments are validated here too: a bad file refuses the
         # launch before the upgrade offer asks anything or changes the selection.
         saved_docker_args = read_arguments(arguments_path(admitted.project.checkout_path))
@@ -1792,7 +2130,7 @@ class ProjectRunCommand(Command):
                     print(f"Warning: optional tools {', '.join(sorted(omitted))} unavailable: {exc}; continuing without those enhancements.", file=sys.stderr)
                     selected = smaller
                     lock, checkout, resolved = selected.lock, selected.checkout, selected.resolution
-                    review = review_configuration(manifest, lock, checkout)
+                    review = review_configuration(manifest, lock, checkout, load_workstation())
                     authorizations = review.resolved_authorizations()
                     degraded_download = True
             image = realized.image.reference
@@ -1806,6 +2144,7 @@ class ProjectRunCommand(Command):
                 f"The resolved {component} environment has no runnable image."
             )
         memory_limit = runtime.get("memory-limit-bytes")
+        cpus = runtime.get("cpus")
         # Bindings convey host access too. --force may retain stale ordinary
         # runtime choices, but never resurrect a removed mapping or secret.
         state = dict(checkout.get("state", {}).get("adopted", {}))
@@ -1813,6 +2152,8 @@ class ProjectRunCommand(Command):
         secret_environment = review.secret_bindings
         if memory_override is not None:
             memory_limit = memory_override
+        if cpus_override is not None:
+            cpus = cpus_override
         selected_docker_daemon = host_access.docker_daemon
         selected_sudo = host_access.development_sudo
         selected_network = host_access.network
@@ -1897,6 +2238,7 @@ class ProjectRunCommand(Command):
                 enable_sudo=selected_sudo,
                 network_mode=selected_network,
                 memory_limit_bytes=memory_limit,
+                cpus=cpus if isinstance(cpus, int) else None,
                 runtime_plan=checkout_runtime_plan,
                 launch_configuration=runtime_configuration.LaunchConfiguration.capture(selected, version_sets.effective_set_id(lock, checkout)),
                 use_image_process=use_image_process,
@@ -1954,17 +2296,20 @@ def _run_once_answers(
     arguments: argparse.Namespace,
     manifest: dict[str, Any],
     lock: dict[str, Any],
-) -> tuple[dict[str, Any], int | None]:
+) -> tuple[dict[str, Any], int | None, int | None]:
     """Validate run-once --authorize/--set answers and derive their launch effects.
 
     Run-once answers use the same node names and value spellings as the
     persistent config family, are applied to this launch only, and are never
     written anywhere.  Each accepted answer is echoed conspicuously, because a
     run-once choice is a deliberate deviation from the recorded resolution.
+    ``--set memory SIZE`` and ``--set cpus N`` are the launcher's own values;
+    the result carries their overrides as bytes and a count.
     """
 
     overrides: dict[str, Any] = {}
     memory_override: int | None = None
+    cpus_override: int | None = None
     for answer in carrier_answers(arguments, families=("set", "authorize")):
         if answer.justification is not None:
             raise ProjectConfigurationError(
@@ -1987,16 +2332,20 @@ def _run_once_answers(
                 f"Run-once authorization: {answer.name} = {answer.value}", file=sys.stderr
             )
         else:
-            normalized = normalize_configuration_value(manifest, answer.name, answer.value)
-            declaration_metadata = configuration_value_declarations(manifest)[answer.name]
-            if declaration_metadata.get("runtime-effect") != "docker.memory-limit":
+            name = "memory" if answer.name in legacy_memory_names(manifest) else answer.name
+            if name not in LAUNCHER_VALUE_NAMES:
                 raise ProjectConfigurationError(
                     f"Configuration value {answer.name!r} has no run-once launch effect; "
-                    "record it persistently with 'devcapsule project config set'."
+                    "record it persistently with 'devcapsule project config set'. "
+                    "Run-once values: memory, cpus."
                 )
-            memory_override = memory_size_bytes(str(normalized))
-            print(f"Run-once value: {answer.name} = {normalized}", file=sys.stderr)
-    return overrides, memory_override
+            normalized = normalize_launcher_value(name, answer.value)
+            if name == "memory":
+                memory_override = memory_size_bytes(str(normalized))
+            else:
+                cpus_override = int(normalized)
+            print(f"Run-once value: {name} = {normalized}", file=sys.stderr)
+    return overrides, memory_override, cpus_override
 
 
 class ProjectCommand(Group):
@@ -2082,177 +2431,6 @@ def _warn_for_host_path_disclosure(show_host_paths: bool) -> None:
             "do not share it unsanitized.",
             file=sys.stderr,
         )
-
-
-def _configuration_value_rows(
-    manifest: dict[str, Any], checkout: dict[str, Any]
-) -> list[ConfigurationListRow]:
-    declarations = configuration_value_declarations(manifest)
-    configuration = checkout.get("configuration", {})
-    if not isinstance(configuration, dict):
-        return [ConfigurationListRow("value", "*", "invalid", "configuration is not a table", "checkout")]
-    raw_values = configuration.get("values", {})
-    if not isinstance(raw_values, dict):
-        return [ConfigurationListRow("value", "*", "invalid", "values is not a table", "checkout")]
-
-    rows: list[ConfigurationListRow] = []
-    for name, declaration in sorted(declarations.items()):
-        if name not in raw_values:
-            if name in configuration.get("omitted-values", []):
-                rows.append(ConfigurationListRow("value", name, "omitted", "-", "checkout"))
-            elif "recommended" in declaration:
-                value = normalize_configuration_value(manifest, name, "default")
-                rows.append(ConfigurationListRow("value", name, "project-recommended", render_toml_scalar(value), "manifest"))
-            else:
-                status = "missing-required" if declaration.get("required", False) else "unset-optional"
-                rows.append(ConfigurationListRow("value", name, status, "-", "manifest (declared, no value)"))
-            continue
-        try:
-            normalized = normalize_configuration_value(manifest, name, raw_values[name])
-        except ProjectConfigurationError as exc:
-            rows.append(ConfigurationListRow("value", name, "invalid", str(exc), "checkout"))
-        else:
-            rows.append(
-                ConfigurationListRow("value", name, "configured", render_toml_scalar(normalized), "checkout")
-            )
-    for name, value in sorted(raw_values.items(), key=lambda item: str(item[0])):
-        if name not in declarations:
-            rows.append(ConfigurationListRow("value", str(name), "undeclared", repr(value), "checkout"))
-    return rows
-
-
-def _component_secret_rows(
-    lock: dict[str, Any], checkout: dict[str, Any]
-) -> list[ConfigurationListRow]:
-    declarations = component_secret_inputs(lock)
-    try:
-        bindings = resolve_secret_bindings(lock, checkout)
-    except ProjectConfigurationError as exc:
-        return [ConfigurationListRow("secret", "*", "invalid", str(exc), "checkout")]
-    rows: list[ConfigurationListRow] = []
-    for name, declaration in sorted(declarations.items()):
-        source = bindings.get(name)
-        if source is None:
-            status = "missing-required" if declaration.required else "optional-unbound"
-            origin = "lock (declared, unbound)"
-        else:
-            status = "bound" if source in os.environ else "bound-unavailable"
-            origin = "checkout, environment" if status == "bound" else "checkout (variable unset in environment)"
-        rows.append(
-            ConfigurationListRow(
-                "secret",
-                name,
-                status,
-                f"{declaration.environment_variable} ({declaration.exposure})",
-                origin,
-            )
-        )
-    return rows
-
-
-def _configuration_binding_rows(
-    lock: dict[str, Any], checkout: dict[str, Any]
-) -> list[ConfigurationListRow]:
-    declarations = configuration_binding_declarations(lock)
-    configuration = checkout.get("configuration", {})
-    if not isinstance(configuration, dict):
-        raw_bindings: object = {}
-    else:
-        bindings = configuration.get("bindings", {})
-        raw_bindings = bindings.get("host-directory", {}) if isinstance(bindings, dict) else bindings
-    if not isinstance(raw_bindings, dict):
-        return [ConfigurationListRow("binding", "*", "invalid", "host-directory is not a table", "checkout")]
-    state = checkout.get("state", {})
-    adopted = state.get("adopted", {}) if isinstance(state, dict) else {}
-    if not isinstance(adopted, dict):
-        adopted = {}
-
-    rows: list[ConfigurationListRow] = []
-    for name in sorted(declarations):
-        bound = raw_bindings.get(name)
-        legacy = adopted.get(name)
-        if bound is not None and legacy is not None:
-            rows.append(ConfigurationListRow("binding", name, "conflict", "bound and adopted", "checkout"))
-        elif bound is not None:
-            path = Path(str(bound)).expanduser().resolve()
-            status = "bound" if isinstance(bound, str) and path.is_dir() else "invalid"
-            rows.append(ConfigurationListRow("binding", name, status, f"host-directory: {path}", "checkout"))
-        elif legacy is not None:
-            path = Path(str(legacy)).expanduser().resolve()
-            status = "adopted-legacy" if isinstance(legacy, str) and path.is_dir() else "invalid"
-            rows.append(ConfigurationListRow("binding", name, status, str(path), "checkout (state.adopted)"))
-        else:
-            rows.append(ConfigurationListRow("binding", name, "managed-default", "managed directory", "managed (lock declares the slot)"))
-    for name, value in sorted(raw_bindings.items(), key=lambda item: str(item[0])):
-        if name not in declarations:
-            rows.append(ConfigurationListRow("binding", str(name), "undeclared", str(value), "checkout"))
-    return rows
-
-
-def _configuration_authorization_rows(
-    manifest: dict[str, Any], lock: dict[str, Any], checkout: dict[str, Any]
-) -> list[ConfigurationListRow]:
-    try:
-        reviews = review_authorizations(manifest, lock, checkout)
-        declarations = authorization_declarations(manifest, lock)
-    except ProjectConfigurationError as exc:
-        return [ConfigurationListRow("authorization", "*", "invalid", str(exc), "checkout")]
-    rows = []
-    for item in reviews:
-        declaration = declarations.get(item.name)
-        # The base selection and vendor acquisitions are recommended by the
-        # lock; host access is recommended by the manifest's host tables.
-        recommender = "lock" if declaration is None or declaration.required else "manifest"
-        if declaration is not None and not declaration.project_recommended:
-            # Workstation defaults are available without project advice. Do not
-            # attribute those defaults, or a return to them, to the manifest.
-            if item.recorded == "unanswered":
-                origin = "workstation default (unanswered)"
-            elif item.status == "stale":
-                origin = "checkout (answer predates the workstation default)"
-            else:
-                origin = "checkout"
-        elif item.recorded == "unanswered":
-            origin = f"{recommender} (recommendation, unanswered)"
-        else:
-            origin = "checkout" if item.status != "stale" else f"checkout (answer predates the {recommender} recommendation)"
-        rows.append(
-            ConfigurationListRow(
-                "authorization", item.name, item.status,
-                item.recommended if item.recorded == "unanswered" else item.recorded,
-                origin,
-            )
-        )
-    return rows
-
-
-def _configuration_resolution_row(
-    manifest: dict[str, Any],
-    lock: dict[str, Any],
-    checkout: dict[str, Any],
-    resolution_path: Path,
-) -> ConfigurationListRow:
-    if not resolution_path.is_file():
-        return ConfigurationListRow("resolution", "generated", "missing", str(resolution_path), "resolution")
-    resolved = load_resolution(resolution_path)
-    if resolved.get("status") == "unresolved":
-        return ConfigurationListRow("resolution", "generated", "unresolved", str(resolution_path), "resolution")
-    stale = stale_resolution_inputs(manifest, lock, checkout, resolved)
-    if stale:
-        return ConfigurationListRow("resolution", "generated", "stale", ", ".join(stale), "resolution (inputs changed: " + ", ".join(stale) + ")")
-    return ConfigurationListRow("resolution", "generated", "fresh", str(resolution_path), "resolution")
-
-
-def _print_configuration_rows(rows: list[ConfigurationListRow]) -> None:
-    # SOURCE precedes the value: values carry digests and paths that push a
-    # trailing column past most terminal widths.
-    headers = ("KIND", "NAME", "STATUS", "SOURCE", "VALUE / RECOMMENDATION")
-    values = [(row.kind, row.name, row.status, row.source, row.value) for row in rows]
-    widths = [max(len(headers[index]), *(len(row[index]) for row in values)) for index in range(5)]
-    print("")
-    print("  ".join(header.ljust(widths[index]) for index, header in enumerate(headers)))
-    for row in values:
-        print("  ".join(value.ljust(widths[index]) for index, value in enumerate(row)))
 
 
 def _authorize_all_recommended(

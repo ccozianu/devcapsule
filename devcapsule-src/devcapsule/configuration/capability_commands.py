@@ -350,7 +350,7 @@ def parse_tool_names(matrix: ResolutionMatrix, names: Sequence[str]) -> tuple[tu
         raise ProjectConfigurationError(
             "IDE and agent choices are each developer's, not the project's: " + ", ".join(personal)
             + ". Recommend an IDE with 'devcapsule project config recommend ide NAME'; "
-            "a developer selects agents with 'devcapsule project config capabilities --local NAME'."
+            "a developer adds an agent to their checkout with 'devcapsule project config agent add NAME'."
         )
     return tuple(sorted(set(canonical))), majors
 
