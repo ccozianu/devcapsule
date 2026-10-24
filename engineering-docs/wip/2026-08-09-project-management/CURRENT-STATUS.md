@@ -361,7 +361,8 @@ The draft is
 [the work order](../../work-orders/2026-10-24-cli-ux-redesign.md); the
 owner accepted the draft's last iteration and directed, the same day, that
 it go through the review-partner loop with the Codex, gpt-6-astra pair.
-Nothing in it is implemented, and it is not 0.3.0 work; its Part 5 lists
+Nothing in it is implemented; the owner named 0.3.0 rc4 as its release on
+2026-10-24, answering Part 5 item 8; Part 5 lists
 the eleven decisions for the owner.
 
 The loop, topic 9.11: the slice is the document itself, PRn on
@@ -385,7 +386,8 @@ the owner had asked to be written to the user; moved into Part 5 at
 
 - The CLI UX redesign work order awaits the owner's decisions, Part 5,
   items 1 to 11, after the review loop settles. The specification and the
-  implementation are two later work orders, not 0.3.0.
+  implementation are two later work orders, in 0.3.0 rc4 by the owner's
+  answer to item 8.
 
 - Awaiting the human: the eleven user-docs proposal decisions, a gate of the
   0.3.0 cycle; the image-cleanup design review when maintenance reaches it.

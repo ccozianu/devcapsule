@@ -634,6 +634,9 @@ gone, with a one-release alias that says so.
 
 These questions leave the owner's Part 2 rulings intact. Where a proposal
 conflicts with a ruling or an accepted record, the question identifies it.
+Answers 1 to 9 are the owner's, given 2026-10-24. Answers 10 to 24 are the
+agent's proposals of the same day, each with its motivation, awaiting the
+owner's review; an answer the owner changes replaces the proposal.
 
 1. **How should the new flow replace D-0004's proposed V1/V2 split?**
    Adopt a revised D-0004 with terminal-first `run` and a read-only preflight,
@@ -641,11 +644,13 @@ conflicts with a ruling or an accepted record, the question identifies it.
    D-0004 is `proposed`, with no decision date. Its section 6 proposes a
    graphical flow and preserves review before execution; it does not already
    approve this terminal-first design.
+   * 1.a. Adopt a revised D-0004 with terminal-first `run` and a read-only preflight.
 2. **May a project recommend an IDE?** Permit an overridable recommendation,
    or keep IDE selection entirely personal with no project recommendation?
    R-CONFIG-001's 2026-10-06 refinement makes the selection personal. It does
    not expressly settle an optional recommendation. Item 18 demonstrates a
    refusal of a new shared requirement, not a prohibition in every legacy form.
+   * 2.a. Obviously a project may recommend and IDE. User can override with a local choice.
 3. **Must the new CLI release include D-0011 and D-0012?** Require both
    implementations before shipping, or stage the CLI with today's consent
    questions explicitly retained? Including D-0011 removes routine per-version
@@ -653,10 +658,14 @@ conflicts with a ruling or an accepted record, the question identifies it.
    one-`y` behavior; it cannot also remain the ordinary rule under D-0011.
    Changed terms and channel departures still ask. D-0012 preserves recorded checkout answers and limits new host
    questions; neither record currently names a release.
+   * 3.a. D-011 we should implement "accept all from this vendor everywhere on this workstation" feature.
+   * 3.b. Adopt and implement D-0012 with terminal-first `run` .
 4. **Should unanswered host X11 silently use the contained desktop?** Keep
    D-0012's existing explicit-choice behavior, including today's notice, or
    remove the notice while still requiring explicit consent to host X11?
    Neither alternative makes host X11 a project-granted permission.
+   * 4.a. Require explicit consent to use X11 because anything with security implication has to be explicitly set.
+          or approved by the user
 5. **Which command naming scheme should the specification use?** Adopt the
    proposed `ide`, `agent add|remove`, `tool omit|restore` and
    `require|offer|recommend` families, or retain a unified capability command
@@ -665,13 +674,15 @@ conflicts with a ruling or an accepted record, the question identifies it.
    tool. Today the capability is `codex-agent`; `codex` is its component ID.
    Part 3 mixes them and leaves the consumer's `[JUSTIFICATION]` unsettled. The IDE versions in section 3.1 are the pins
    in `resolution_matrix.py:707–768`.
-6. **Which resource values should the launcher own without project declarations?**
+   * 5.a. A capability with only one resolution should have the same name as the component. Everything with multiple/repeated values should have add|remove vocabulary
+6. **Which resource values should the launcher own without project declarations?
    Limit the initial set to memory, CPUs, shared memory and container name,
    or include other named values? State the additional names if selected.
    The specification must show how to edit their workstation defaults as
    well as checkout overrides; Part 3 currently shows only checkout editing.
    Section 3.6's 6G recommendation and index-size reason are illustrative,
    not established bootstrap requirements.
+   * 6.a. For user convenience start with memory and cpu and that's it. Anything else will be available via docker-args
 7. **Which host process should accept the console's configuration changes?**
    Use the attached launcher as proposed, or a separate launcher-side service?
    D-0010's runtime refinement permits read-only introspection today.
@@ -680,8 +691,16 @@ conflicts with a ruling or an accepted record, the question identifies it.
    preserve the user's host-access decisions. First-launch console setup remains outside this work order.
    The console experience needs a console-capable base. The 0.3.0 changelog's
    candidate-1 correction confirms that recipe 9 has no console.
+   * 7.a. The launcher, because only the launcher has access to the per-host
+     settings. The console and the launcher communicate through a temporary
+     directory mounted into the capsule: the console writes the user's input
+     there in full, as `x.y.tmp`, then renames it to `x.y`, so the launcher
+     only ever sees complete, valid files. The launcher validates and records
+     each file as the command-line form would, for the next launch.
 8. **Which release should carry the implementation?** Name a release after
    0.3.0 now, or leave it unassigned until the specification is accepted?
+   * 8.a. 0.3.0 rc4. The owner needs this in rc4; it is bureaucracy, the
+     management of details along known implementation patterns, not research.
 9. **Should projects declare application environment requirements?** Adopt
    proposed principle 7's required and optional environment inputs with reasons,
    or keep environment provisioning personal and outside the manifest?
@@ -695,72 +714,155 @@ conflicts with a ruling or an accepted record, the question identifies it.
    is not a complete application contract. The `psql` use in section 3.6 is
    illustrative, not an established bootstrap requirement. Schema sequencing
    is a separate question in item 19.
+   * 9.a. Yes. A project declares the environment it requires and the
+     environment it offers, each with the owner's reason; the values are the
+     developer's and private.
 10. **May a project forbid a personal host-access choice?** Allow an explicit
     project prohibition on a curated node, or retain principle 4's rule that
     host access remains personal? Denying `docker-daemon` does not enforce
     "never run a PostgreSQL server". This question concerns host access only;
     broader application-process enforcement needs a separately scoped proposal.
+   * 10.a. Proposed: no. A project recommends, with a reason; it never
+     forbids. The ai-learning case is expressed as `recommend docker-daemon
+     none --because "the owner supplies the database"`, and the listing shows
+     that reason beside the secure default. Motivation: principle 4 stays
+     whole; one mechanism, recommendation with reason, covers both
+     directions; a `forbid` would be the first project-side veto on a
+     personal choice and would still not stop a PostgreSQL started inside the
+     capsule, which is the thing the README was actually about.
 11. **Should generated manifests use the proposed human-readable presentation?**
     Require bare keys where valid and preserved descriptions and reasons, or
     retain the current serializer and improve explanatory listings instead?
     This is a writer-presentation choice. It does not decide schema migration
     or relocation of the workflow declaration. The lock remains generated by
     the launcher and reviewed with the project.
+   * 11.a. Proposed: yes. One writer, bare keys where TOML allows them, every
+     requirement and recommendation carrying its reason, authored comments
+     preserved on rewrite, nothing derived in the manifest. Readers stay
+     tolerant and unchanged. Motivation: the manifest is read in every code
+     review of every collaborator, and item 19 shows what the quoted writer
+     produces; a writer change is cheap and touches no reader.
 12. **What lifetime should a `run` flag have?** Keep every override run-once,
     with an explicit save mechanism, or persist answers to pending questions
     while treating overrides of recorded answers as run-once? Part 3.4 proposes
     the latter. It gives the same flag two effects based on hidden state.
     This conflicts with one meaning per flag and departs from D-0001 section 1
     and the V1 design's run-once carriers.
+   * 12.a. Proposed: every `run` flag is run-once, and `run --save` records
+     the flags given as the checkout's answers before launching. Section 3.4
+     is corrected to this. Motivation: one meaning per flag and D-0001's
+     run-once command line, with no behaviour that depends on hidden state;
+     a script still launches a fresh checkout in one line, `run --ide
+     frontend-ide --save`; an agent that forgets `--save` loses nothing but
+     is asked again.
 13. **What should resetting an ordinary value mean?** Follow the current
     project recommendation and workstation fallback dynamically, or copy the
     current effective default into the checkout as a fixed answer? The tree
     has `set NAME default` but no ordinary-value reset. Today `set NAME default`
     copies the recommendation; `config unset NAME` removes the answer.
     Host denial and forgetting an authorization must remain distinct actions.
+   * 13.a. Proposed: `set NAME default` forgets the checkout's answer, so the
+     value follows the project's recommendation and the workstation default
+     from then on; there is no copy. `unset` goes. For authorizations,
+     `forget NODE` is the same operation and `deny NODE` is a recorded
+     answer; they stay distinct. Motivation: "default" read by a user means
+     "whatever the project says", and a frozen copy that looks like following
+     is the kind of hidden state item 1 is about.
 14. **How should `run` register a second checkout of the same project?** Derive
     a distinct checkout name from its path, or ask for a name with a matching
     flag? Today a second path requires `checkout register NAME`. D-0004's
     checkout model and the V1 design require separate records and permissions.
     Neither option may silently inherit another checkout's authorization.
+   * 14.a. Proposed: `run` registers a second checkout of the same project
+     by itself, with a name derived from its path, and prints the one line
+     that says so; `checkout register NAME` remains for renaming. Each
+     checkout keeps its own record and its own answers; nothing is inherited.
+     Motivation: nobody is asked for a checkout name anywhere else in the
+     flow; a derived name costs the user nothing and the D-0004 checkout
+     model is preserved because the record is separate.
 15. **What should `run` do when no manifest exists?** Guide explicit project
     initialization, or refuse with the exact owner-side initialization command?
     Today it refuses and names `project init`. Define whether the one-command
     promise applies only to repositories that already carry DevCapsule.
     Successful legacy `init --need` leaves the owner ready to run today;
     policy `init --required` does not (Part 1 item 22).
+   * 15.a. Proposed: `run` in a repository without `.devcapsule/` refuses,
+     exit 2, with the one `project init` line that creates it. The
+     one-command promise applies to repositories that already carry
+     DevCapsule. Motivation: creating shared files in someone's repository is
+     an owner's act and belongs to an explicit command; an agent gets a
+     remedy it can run, a human gets a sentence.
 16. **How should in-capsule inspection report facts it cannot observe on the host?**
     Show recorded next-launch inputs with an explicit unknown or stale state,
     or obtain a fresh assessment through the launcher? Today runtime inspection
     reports recorded inputs, not the host-computed rows
     (`runtime_configuration.py:138–164`). Running software and next-launch
     selection must remain distinguishable under D-0010.
+   * 16.a. Proposed: at launch the launcher writes the listing it computed,
+     the same table `config show` prints, into the mounted directory of
+     item 7; inside the capsule `config show` prints that table labelled
+     "at launch, <time>" and, below it, the answers given on the console
+     since, labelled "pending, next launch". No request from the capsule to
+     the host. Motivation: the same file channel as item 7 in the other
+     direction; an agent inside sees the truth with its time instead of a
+     guess; D-0010's read-only rule holds.
 17. **How should a new mandatory project need affect an incompatible local version set?**
     Refuse with commands to select a compliant set, or guide that selection
     within `run` before launch? R-CONFIG-001 forbids silently waiving the need;
     D-0010 keeps a local selection until the developer explicitly changes it.
     Neither permits quietly replacing a saved selection on `git pull`.
+   * 17.a. Proposed: when the project adds a mandatory need the saved
+     version set cannot satisfy, `run` stops before launching, says which
+     need and which saved set, names the two remedies, `versions select` to
+     follow the project or a set that satisfies it, and exits 3. Nothing is
+     replaced silently. Motivation: R-CONFIG-001 forbids waiving the need,
+     D-0010 forbids replacing the selection unasked; the remaining choice is
+     the developer's and has a command.
 18. **Where should the workflow declaration live?** Keep `[workflow]` in the
     manifest, or define a separate authored declaration and a coordinated
     migration? Its mode is a project choice, not a fact derivable from the
     runtime lock. WORKFLOW.md topic 4.1 currently requires the manifest table.
     Sections 3.6 and 4 cannot remove it without settling its replacement
     and readers.
+   * 18.a. Proposed: `[workflow]` stays in the manifest for rc4, written by
+     the one writer of item 11, bare keys, last in the file, under a comment
+     line naming it the project's workflow choice. Relocation to its own file
+     is a later decision. Motivation: the table is the project's choice, not
+     derived, so it is not wrong where it is; moving it changes WORKFLOW.md
+     topic 4.1 and several readers for no gain a user can see, and rc4 is
+     today.
 19. **When should the new manifest vocabulary receive its schema version?**
     Extend the planned 0.3.0 schema-2 change before it ships, or assign this
     later redesign a later version? The changelog schedules schema 2 for the
-    required/optional vocabulary, while this work order excludes 0.3.0.
+    required/optional vocabulary; answer 8 puts this work order in rc4 too.
     A writer must not silently rewrite every older representation on an
     unrelated edit. Section 3.6 proposes rewriting on the owner's next edit;
     that is not a settled writer rule. R-CONFIG-001 requires compatible output
     and preservation of unrelated and unknown optional declarations. Existing schema-1 readers
     reject schema 2 (`configuration/file_formats.py:60–74`).
+   * 19.a. Proposed: schema version 2, in rc4, carries the whole vocabulary
+     of item 9 and principle 7 at once: required and offered tools, required
+     and offered environment, recommendations including the IDE, memory and
+     CPUs. A writer emits schema 2 only when the owner uses a schema-2
+     feature or edits the capability policy; an untouched schema-1 file is
+     read as it is and never rewritten by an unrelated command. Motivation:
+     one migration instead of two; R-CONFIG-001's tolerant readers; the
+     rc4 plan already carries schema 2 and the renaming alone is not worth a
+     version.
 20. **Does `--env NAME` save a value or bind a source?** Read and privately save
     the shell's current value, or record the variable name and retrieve its
     current value on each launch? Part 3.1 implies the former. Today's secret
     `bind ... host-environment:NAME` means the latter. The specification must
     state missing-source behavior and reflect the chosen spelling in the tree.
     Section 3.1 uses `--env NAME`, but section 3.7 omits it.
+   * 20.a. Proposed: Docker's own grammar. `--env NAME=VALUE` and `config
+     env NAME VALUE` save the value privately; `--env NAME` and `config env
+     NAME` with no value bind the source, the host shell's variable read at
+     each launch, and `config env NAME` with no value and a terminal offers
+     the hidden prompt. A bound source missing at launch is a pending row:
+     prompt with a terminal, exit 3 without. The tree gains `--env`.
+     Motivation: every user of `docker run` already knows this distinction;
+     one flag, two syntaxes, no new verb.
 21. **Where should the first DevCapsule channel acceptance occur?** Offer it
     during launcher setup, or at the first launch that needs the channel?
     D-0011 requires an explicit workstation trust record and names the trusted
@@ -768,21 +870,46 @@ conflicts with a ruling or an accepted record, the question identifies it.
     the record exists. Part 3.1 assumes that acceptance has already occurred.
     D-0011 offers that trust once; a local image or a different channel
     still asks.
+   * 21.a. Proposed: at the first launch on the workstation that needs the
+     channel, not at installation; one question, with `--accept-channel
+     devcapsule` as its flag for scripts, recorded per workstation as D-0011
+     says. Motivation: installation is a file download with no guaranteed
+     terminal; the first `run` is already a consent moment; asked once,
+     never per project, checkout or version.
 22. **Should configuration inspection have any write side effects?** Make
     `config show` and `config check` strictly read-only even before registration,
     or allow disclosed creation of local records? Item 23 reproduces today's
     placeholder write. Part 3.7 already proposes a write-free `check`.
+   * 22.a. Proposed: none. `config show` and `config check` write nothing,
+     ever; the checkout record is created by the first command that records
+     an answer, or by `run`. Motivation: item 23; an agent inspecting an
+     unfamiliar repository must leave no trace; the placeholder served the
+     resolve step, which goes away.
 23. **When a host recommendation changes, should a recorded answer be asked again?**
     Keep the answer and disclose the changed recommendation, or ask again while
     preserving the secure choice until answered? Part 3.3 says both "asks" and
     "stays until you change it". D-0012 exempts existing records from prompts
     caused by client upgrades, but names changed recommendations as a trigger.
+   * 23.a. Proposed: a recorded answer is kept and never asked again; the
+     listing and the launch report show the changed recommendation beside
+     it, with the project's new reason. A changed recommendation is a
+     question only for a row with no recorded answer. Motivation: consent
+     given is given; principle 1 allows no question that is not consent, and
+     re-asking a user who already decided is a nag, not consent; D-0012's
+     trigger is read as applying to unanswered rows.
 24. **Which ordinary recommendations require an answer?** Derive their values
     and disclose the source, or ask the developer to accept each one before
     launch? Part 3.2 makes every unanswered recommendation pending, while
     principle 1 limits questions to consent. Item 2 separately asks about IDE
     recommendations. This question concerns ordinary values such as memory.
 
+   * 24.a. Proposed: none. An ordinary recommendation, memory or CPUs, is
+     applied as the default and its source is shown as "project
+     recommendation"; the developer overrides it with `config set` or the
+     run flag. Section 3.2 is corrected: an unanswered ordinary
+     recommendation is a derived row, not a pending one. Motivation:
+     principle 1; no privilege is involved in a memory cap; the developer
+     who disagrees has the command.
 ## Out of scope here, catalogued above for the next pass
 
 Items 10 to 13 and 16: session lifecycle commands, exit-code mapping,
