@@ -284,6 +284,20 @@ begin the rewrite until project-management assigns it.
 
 ## Current State
 
+**2026-10-24, late: the next work order drafted.** Reviewing rc4's
+vocabulary, the owner found the split of components into IDEs, agents
+and tools unjustified and settled the model with the agent in
+conversation: capabilities (the project's word) provided by components
+(the catalog's), the surface the one special role, cardinality a property
+of the capability, and the project able to require, offer or recommend a
+capability and, optionally, recommend its resolution. The draft
+[work order](../../work-orders/2026-10-24-capabilities-and-components.md)
+refactors the redesign's output: it deletes the `-agent` kind, the
+matrix's refusal of agents in the shared contract and the three command
+families, and adds `[recommendations.resolution]`. Nine decisions wait
+for the owner in its Part 5; the agent's proposals are marked. Nothing is
+implemented.
+
 **2026-10-24, evening: rc4 tagged, published and verified.** The owner
 merged PR #274 at `c04cb4e`; `78a9c66` is an ancestor of `main`;
 `v0.3.0-rc4` on `78a9c66`, the candidate gate `mainline` with no
