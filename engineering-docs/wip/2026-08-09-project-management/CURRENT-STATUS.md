@@ -349,7 +349,32 @@ to the driver by [the release work order](../../work-orders/2026-10-18-release-0
 delivered by mail the same day. The proposal's decisions 1 and 5 are
 settled; 2, 3 and 4 stand as gates of the cycle.
 
+## 2026-10-24: The CLI UX Redesign Work Order
+
+While testing candidate 3 the owner asked for a challenge of the command
+surface's assumptions, then for a work order: the deficiencies, the
+principles as the owner ruled them on 2026-10-24, the config and run
+experience addressed to the user, and the decisions still open. The
+manifest a capable agent wrote for `ai-learning-bootstrap` on 2026-10-22
+is part of the evidence: it expresses one of the project's three needs.
+The draft is
+[the work order](../../work-orders/2026-10-24-cli-ux-redesign.md); the
+owner accepted the draft's last iteration and directed, the same day, that
+it go through the review-partner loop with the Codex, gpt-6-astra pair.
+Nothing in it is implemented, and it is not 0.3.0 work; its Part 5 lists
+the eleven decisions for the owner.
+
+The loop, topic 9.11: the slice is the document itself, PRn on
+`ws-project-management/cli-ux-work-order` against `main`; the brief and
+any round brief are under
+[`evidence/2026-10-24-cli-ux-work-order/`](evidence/2026-10-24-cli-ux-work-order/).
+Rounds and outcome are recorded here as they happen.
+
 ## Open Threads
+
+- The CLI UX redesign work order awaits the owner's decisions, Part 5,
+  items 1 to 11, after the review loop settles. The specification and the
+  implementation are two later work orders, not 0.3.0.
 
 - Awaiting the human: the eleven user-docs proposal decisions, a gate of the
   0.3.0 cycle; the image-cleanup design review when maintenance reaches it.
