@@ -410,9 +410,8 @@ def test_regeneration_preserves_an_existing_denial(checkout):
 
 def test_repeated_init_does_not_turn_acquisition_denial_into_consent(checkout):
     project, record, _ = checkout
-    assert invoke(project, "config", "need", "claude-code-agent",
-                  "--authorize", "base-image", "default",
-                  "--authorize", "claude-code-download", "true") == 0
+    assert invoke(project, "config", "capabilities", "--local", "python-ide", "claude-code-agent") == 0
+    assert invoke(project, "config", "authorize", "claude-code-download", "true") == 0
     assert invoke(project, "config", "authorize", "claude-code-download", "false") == 0
     before = record.read_bytes()
     assert invoke(project, "init", "--regenerate", "--authorize", "base-image", "default") == 2
@@ -442,7 +441,8 @@ def test_current_answers_have_one_resolved_interpretation(checkout):
 
 def test_recovery_preserves_values_bindings_secrets_and_adopted_state(checkout, monkeypatch, capsys):
     project, record, resolution = checkout
-    assert invoke(project, "config", "need", "codex-agent", "--authorize", "base-image", "default") == 0
+    assert invoke(project, "config", "capabilities", "--local", "python-ide", "codex-agent") == 0
+    assert invoke(project, "config", "authorize", "base-image", "default") == 0
     manifest_path = project / ".devcapsule/devcapsule.toml"
     manifest_path.write_text(manifest_path.read_text() + '''
 [configuration.values."editor.theme"]

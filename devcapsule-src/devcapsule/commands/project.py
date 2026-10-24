@@ -87,7 +87,6 @@ from devcapsule.configuration.operations import (
     CheckoutRecord,
     InitializeRequest,
     ProvidedAnswer,
-    add_capability_need,
     apply_configuration_answers,
     initialize_project,
     resolve_checkout,
@@ -245,23 +244,26 @@ class ProjectInitCommand(Command):
     name = "init"
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.CREATES_HERE
     help = (
-        "Initialize the project: manifest, platform lock, owner checkout record, "
-        "and a fresh resolution."
+        "Initialize the project: the manifest with what it requires and offers, the platform "
+        "lock, your own checkout record with your IDE and agents, and, once an IDE is chosen, "
+        "a fresh resolution."
     )
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
         parser.add_argument(
-            "--need",
-            action="append",
-            default=[],
-            metavar="CAPABILITY",
-            help="A capability the project needs; repeatable.",
+            "--require", action="append", default=[], metavar="TOOL[=MAJOR]",
+            help="A tool every checkout must have, such as python or node; python=3 pins the SDK major. Repeatable.",
         )
-        parser.add_argument("--required", nargs="*", metavar="CAPABILITY", help="Create a shared required/optional capability policy.")
-        parser.add_argument("--optional", nargs="*", default=[], metavar="CAPABILITY", help="Optional project enhancements.")
-        parser.add_argument("--local", nargs="*", default=[], metavar="CAPABILITY", help="Developer-local IDE/agent choices.")
-        parser.add_argument("--sdk-major", nargs="*", default=[], metavar="SDK=MAJOR", help="Required SDK major, for example python=3.")
+        parser.add_argument(
+            "--offer", action="append", default=[], metavar="TOOL",
+            help="A tool the project offers and a developer may leave out, such as browser-automation. Repeatable.",
+        )
+        parser.add_argument("--ide", metavar="IDE", help="Your IDE for this checkout: python-ide, frontend-ide, java-ide, eclipse-ide or dotnet-ide.")
+        parser.add_argument(
+            "--agent", action="append", default=[], metavar="AGENT",
+            help="A coding agent for this checkout: codex-agent, claude-code-agent or antigravity-agent. Repeatable.",
+        )
         parser.add_argument("--name", dest="project_name", help="Project display name.")
         parser.add_argument("--slug", help="Project identity slug.")
         parser.add_argument("--creator", help="Project creator URL or email address.")
@@ -274,22 +276,24 @@ class ProjectInitCommand(Command):
         parser.add_argument(
             "--less-pedantic",
             action="store_true",
-            help=(
-                "Skip confirmation prompts for values supplied explicitly — e.g. a "
-                "base-image selection is validated and recorded without soliciting "
-                "consent."
-            ),
+            help=argparse.SUPPRESS,
         )
         parser.add_argument(
             "--unverified",
             action="store_true",
             dest="allow_unverified",
             help=(
-                "If no fully verified combination satisfies the need, resolve past "
+                "If no fully verified combination satisfies the requirements, resolve past "
                 "the matrix with a gentle warning; the generated lock names every "
                 "unverified combination."
             ),
         )
+        # The spellings of 0.3.0 rc3 and earlier, accepted for one release and
+        # mapped onto the ones above: --need and --local mixed the project's
+        # tools with the developer's IDE and agents (deficiency 9 of the CLI UX
+        # work order); --required, --optional and --sdk-major are --require and --offer.
+        for legacy in ("--need", "--required", "--optional", "--local", "--sdk-major"):
+            parser.add_argument(legacy, nargs="*", action="append", default=[], help=argparse.SUPPRESS)
         add_carrier_options(parser)
 
     @classmethod
@@ -303,21 +307,14 @@ class ProjectInitCommand(Command):
             )
             for answer in carrier_answers(arguments)
         )
-        if arguments.required is not None:
-            if arguments.need or arguments.regenerate or arguments.less_pedantic or answers:
-                raise ProjectConfigurationError("--required initializes capability policy; use config commands for permissions and subsequent edits.")
-            from devcapsule.configuration.capability_commands import initialize
-            print(initialize(_project_context(context).target_path(), name=arguments.project_name,
-                             slug=arguments.slug, creator=arguments.creator, mount=arguments.project_mount,
-                             required=arguments.required, optional=arguments.optional, local=arguments.local,
-                             majors=arguments.sdk_major, allow_unverified=arguments.allow_unverified))
-            return 0
-        if arguments.optional or arguments.local or arguments.sdk_major:
-            raise ProjectConfigurationError("--optional, --local and --sdk-major require --required for a new project.")
+        require, offer, ide, agents = _init_selection(arguments)
         report = initialize_project(
             InitializeRequest(
                 directory=_project_context(context).target_path(),
-                need=tuple(arguments.need),
+                require=require,
+                offer=offer,
+                ide=ide,
+                agents=agents,
                 project_name=arguments.project_name,
                 slug=arguments.slug,
                 creator=arguments.creator,
@@ -330,6 +327,50 @@ class ProjectInitCommand(Command):
         )
         print(report.render())
         return 0
+
+
+def _init_selection(arguments: argparse.Namespace) -> tuple[tuple[str, ...], tuple[str, ...], str | None, tuple[str, ...]]:
+    """The project's requirements and offers, and the owner's IDE and agents, legacy spellings mapped.
+
+    ``--need`` and ``--local`` named IDEs and agents beside tools; here each
+    name goes where it belongs, and the mapping is announced once on stderr.
+    """
+    from devcapsule.platforms import Platform
+    from devcapsule.resolution_matrix import MATRICES
+    matrix = MATRICES[Platform.current()]
+    surfaces = {name for name in matrix.local_capabilities() if not name.endswith("-agent")}
+    agent_names = matrix.local_capabilities() - surfaces
+    require = list(arguments.require)
+    offer = list(arguments.offer)
+    ide = arguments.ide
+    agents = list(arguments.agent)
+    legacy_used: list[str] = []
+
+    def flatten(flag: str) -> list[str]:
+        values = [item for group in getattr(arguments, flag.lstrip("-").replace("-", "_")) for item in group]
+        if getattr(arguments, flag.lstrip("-").replace("-", "_")):
+            legacy_used.append(flag)
+        return values
+
+    for name in (*flatten("--need"), *flatten("--local")):
+        if name in surfaces:
+            if ide is not None and ide != name:
+                raise ProjectConfigurationError(f"Two IDEs named, {ide} and {name}; a checkout has one IDE.")
+            ide = name
+        elif name in agent_names:
+            agents.append(name)
+        else:
+            require.append(name)
+    require.extend(flatten("--required"))
+    offer.extend(flatten("--optional"))
+    require.extend(flatten("--sdk-major"))
+    if legacy_used:
+        print(
+            "Note: " + ", ".join(legacy_used) + " are the spellings of 0.3.0 rc3; use --require, --offer, "
+            "--ide and --agent. The IDE and the agents are your checkout's, the tools are the project's.",
+            file=sys.stderr,
+        )
+    return tuple(require), tuple(offer), ide, tuple(dict.fromkeys(agents))
 
 
 class CheckoutRegisterCommand(Command):
@@ -1169,53 +1210,149 @@ class ConfigAuthorizeCommand(Command):
         return 0
 
 
-class ConfigNeedCommand(Command):
-    name = "need"
+class _OwnerToolCommand(Command):
+    """One owner verb over the project's tools: ``require``, ``offer`` or ``drop``."""
+
+    name = "tool"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    verb: ClassVar[str] = ""
+    help = ""
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("names", nargs="+", metavar="TOOL" if cls.verb == "drop" else "TOOL[=MAJOR]",
+                            help="A tool capability such as python, node or browser-automation; python=3 pins an SDK major.")
+        if cls.verb != "drop":
+            parser.add_argument("--because", metavar="REASON", help="The reason a developer reads beside this tool.")
+        parser.add_argument("--preview", action="store_true", help="Validate and show the result; write nothing.")
+        parser.add_argument("--unverified", action="store_true", dest="allow_unverified",
+                            help="Accept a combination the matrix has not validated; the lock records it.")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        from devcapsule.configuration import owner_commands
+        start = _project_context(context).start_path()
+        if cls.verb == "drop":
+            print(owner_commands.drop_tools(start, arguments.names, preview=arguments.preview,
+                                            allow_unverified=arguments.allow_unverified))
+        elif cls.verb == "require":
+            print(owner_commands.require_tools(start, arguments.names, because=arguments.because,
+                                               preview=arguments.preview, allow_unverified=arguments.allow_unverified))
+        else:
+            print(owner_commands.offer_tools(start, arguments.names, because=arguments.because,
+                                             preview=arguments.preview, allow_unverified=arguments.allow_unverified))
+        return 0
+
+
+class _OwnerEnvironmentCommand(Command):
+    """One owner verb over the environment the project asks of each developer."""
+
+    name = "env"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    verb: ClassVar[str] = ""
+    help = ""
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("names", nargs="+", metavar="NAME", help="An environment variable name such as POSTGRES_HOST.")
+        if cls.verb != "drop":
+            parser.add_argument("--because", metavar="REASON", help="The reason a developer reads when asked for the value.")
+        parser.add_argument("--preview", action="store_true", help="Validate and show the result; write nothing.")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        from devcapsule.configuration import owner_commands
+        start = _project_context(context).start_path()
+        if cls.verb == "drop":
+            print(owner_commands.drop_environment(start, arguments.names, preview=arguments.preview))
+        elif cls.verb == "require":
+            print(owner_commands.require_environment(start, arguments.names, because=arguments.because, preview=arguments.preview))
+        else:
+            print(owner_commands.offer_environment(start, arguments.names, because=arguments.because, preview=arguments.preview))
+        return 0
+
+
+def _owner_group(verb: str, help_text: str, tool_help: str, env_help: str) -> type[Group]:
+    tool = type(f"Config{verb.title()}ToolCommand", (_OwnerToolCommand,),
+                {"verb": verb, "help": tool_help, "capsule_access": CapsuleAccess.MUTATES})
+    env = type(f"Config{verb.title()}EnvCommand", (_OwnerEnvironmentCommand,),
+               {"verb": verb, "help": env_help, "capsule_access": CapsuleAccess.MUTATES})
+
+    class OwnerGroup(Group):
+        name = verb
+        help = help_text
+
+        @classmethod
+        def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
+            return {"tool": tool, "env": env}
+
+    OwnerGroup.__name__ = f"Config{verb.title()}Group"
+    return OwnerGroup
+
+
+ConfigRequireGroup = _owner_group(
+    "require", "Project owners: what every checkout must have.",
+    "Require tools, regenerating the lock; TOOL=MAJOR pins an SDK major. IDE and agent choices stay each developer's.",
+    "Require environment variables every developer supplies, privately, before the first launch.",
+)
+ConfigOfferGroup = _owner_group(
+    "offer", "Project owners: what a developer may take or leave.",
+    "Offer tools a developer may omit; the lock pins them.",
+    "Offer environment variables a developer may supply.",
+)
+ConfigDropGroup = _owner_group(
+    "drop", "Project owners: remove a requirement or an offer.",
+    "Drop tools from the project's requirements and offers, with their SDK majors.",
+    "Drop environment declarations from the project.",
+)
+
+
+class ConfigRecommendCommand(Command):
+    name = "recommend"
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
     help = (
-        "Add capabilities to the project's need; the lock regenerates, new "
-        "acquisition gates elicit (--authorize NAME VALUE answers them), and "
-        "the resolution refreshes so 'project run' works immediately."
+        "Project owners: recommend an IDE, a memory limit, a CPU count, or a host access "
+        "(network host, docker-daemon host-socket, development-sudo true, host-browser true) with the reason; "
+        "'none' removes the recommendation."
     )
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument(
-            "capabilities",
-            nargs="+",
-            metavar="CAPABILITY",
-            help="Capability to add to capabilities.need; repeatable.",
-        )
-        parser.add_argument(
-            "--unverified",
-            action="store_true",
-            dest="allow_unverified",
-            help=(
-                "If the grown need has no fully validated combination, run it as "
-                "an experiment; the regenerated lock names what is unvalidated."
-            ),
-        )
+        parser.add_argument("recommendation", metavar="NAME", help="ide, memory, cpus, network, docker-daemon, development-sudo or host-browser.")
+        parser.add_argument("value", metavar="VALUE", help="The recommended value, or none.")
+        parser.add_argument("--because", metavar="REASON", help="The reason a developer reads; required for a host access.")
+        parser.add_argument("--preview", action="store_true", help="Validate and show the result; write nothing.")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        from devcapsule.configuration import owner_commands
+        print(owner_commands.recommend(_project_context(context).start_path(), arguments.recommendation,
+                                       arguments.value, because=arguments.because, preview=arguments.preview))
+        return 0
+
+
+class ConfigNeedCommand(Command):
+    """The 0.3.0 rc3 spelling, kept for one release to name its replacement."""
+
+    name = "need"
+    hidden = True
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    help = "Replaced by 'config require tool'; kept for one release to say so."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("capabilities", nargs="*", metavar="CAPABILITY")
+        parser.add_argument("--unverified", action="store_true", dest="allow_unverified")
         add_carrier_options(parser, families=("authorize",))
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        answers = tuple(
-            ProvidedAnswer(
-                family=answer.family,
-                name=answer.name,
-                value=answer.value,
-                justification=answer.justification,
-            )
-            for answer in carrier_answers(arguments)
+        names = " ".join(arguments.capabilities) or "TOOL"
+        raise ProjectConfigurationError(
+            "'config need' is replaced: a project requires tools with "
+            f"'devcapsule project config require tool {names}'; a developer chooses an IDE or an agent "
+            "for their checkout with 'devcapsule project config capabilities --local NAME'."
         )
-        report = add_capability_need(
-            _project_context(context).target_path(),
-            arguments.capabilities,
-            answers,
-            allow_unverified=arguments.allow_unverified,
-        )
-        print(report.render())
-        return 0
 
 
 class ConfigCheckCommand(Command):
@@ -1238,13 +1375,12 @@ class ConfigCheckCommand(Command):
 class ConfigCapabilitiesCommand(Command):
     name = "capabilities"
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    help = "Replace shared required/optional capabilities or developer-local selections; validate before writing."
+    help = "Replace this checkout's IDE, agent and extra-tool selection (--local) or its omissions (--without); validate before writing."
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument("--required", nargs="*", metavar="CAPABILITY", help="Replace required project capabilities.")
-        parser.add_argument("--optional", nargs="*", metavar="CAPABILITY", help="Replace optional project enhancements.")
-        parser.add_argument("--sdk-major", nargs="*", metavar="SDK=MAJOR", help="Replace required SDK-major constraints.")
+        for legacy in ("--required", "--optional", "--sdk-major"):
+            parser.add_argument(legacy, nargs="*", help=argparse.SUPPRESS)
         parser.add_argument("--local", nargs="*", metavar="CAPABILITY", help="Replace personal IDE/agent/extra-tool choices.")
         parser.add_argument("--without", nargs="*", metavar="CAPABILITY", help="Replace local omissions of project optional tools.")
         parser.add_argument("--preview", action="store_true", help="Validate and display the candidate; write nothing.")
@@ -1256,6 +1392,12 @@ class ConfigCapabilitiesCommand(Command):
         from devcapsule.configuration.capability_commands import configure, recover
         from devcapsule.configuration.storage import discover_project
         start = _project_context(context).start_path()
+        if any(getattr(arguments, key) is not None for key in ("required", "optional", "sdk_major")):
+            raise ProjectConfigurationError(
+                "The project's tools are edited with 'devcapsule project config require tool TOOL[=MAJOR]', "
+                "'config offer tool TOOL' and 'config drop tool TOOL'; 'capabilities' keeps the checkout's "
+                "--local and --without choices."
+            )
         if arguments.recover:
             if any(getattr(arguments, key) is not None for key in ("required", "optional", "sdk_major", "local", "without")) or arguments.preview or arguments.unverified:
                 raise ProjectConfigurationError("--recover is a standalone operation.")
@@ -1281,6 +1423,10 @@ class ConfigGroup(Group):
             ConfigCapabilitiesCommand.name: ConfigCapabilitiesCommand,
             ConfigShowCommand.name: ConfigShowCommand,
             ConfigResolveCommand.name: ConfigResolveCommand,
+            ConfigRequireGroup.name: ConfigRequireGroup,
+            ConfigOfferGroup.name: ConfigOfferGroup,
+            ConfigDropGroup.name: ConfigDropGroup,
+            ConfigRecommendCommand.name: ConfigRecommendCommand,
             ConfigNeedCommand.name: ConfigNeedCommand,
             ConfigSetCommand.name: ConfigSetCommand,
             ConfigSetExtraDockerArgsCommand.name: ConfigSetExtraDockerArgsCommand,

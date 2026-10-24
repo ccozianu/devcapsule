@@ -229,7 +229,9 @@ def test_io_failure_before_commit_rolls_back(project: Path, monkeypatch: pytest.
 def test_cli_check_and_capability_mutation(project: Path, capsys: pytest.CaptureFixture[str]) -> None:
     prefix = ["project", "--path", str(project), "config"]
     assert cli.main([*prefix, "check"]) == 0
-    assert cli.main([*prefix, "capabilities", "--required", "python", "--sdk-major", "python=3"]) == 0
+    assert cli.main([*prefix, "require", "tool", "python=3"]) == 0
+    assert cli.main([*prefix, "capabilities", "--required", "python"]) == 2
+    assert "config require tool" in capsys.readouterr().err
     assert cli.main([*prefix, "capabilities", "--local", "python-ide"]) == 0
     assert cli.main([*prefix, "capabilities", "--recover"]) == 0
     assert cli.main([*prefix, "capabilities", "--recover", "--local"]) != 0
@@ -283,8 +285,9 @@ def test_new_project_creation_has_no_implicit_agent(tmp_path: Path, monkeypatch:
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
     root = tmp_path / "fresh"
     root.mkdir()
-    assert cli.main(["project", "--path", str(root), "init", "--required", "python", "--optional", "browser-automation",
-                     "--sdk-major", "python=3", "--local", "eclipse-ide", "--creator", "mailto:owner@example.test"]) == 0
+    assert cli.main(["project", "--path", str(root), "init", "--require", "python=3", "--offer", "browser-automation",
+                     "--ide", "eclipse-ide", "--creator", "mailto:owner@example.test",
+                     "--authorize", "base-image", "default"]) == 0
     manifest, lock = load_toml(commands.paths(root)[0]), load_toml(commands.paths(root)[1])
     assert manifest["capabilities"] == {"required": ["python"], "optional": ["browser-automation"], "sdk-major": {"python": 3}}
     assert set(lock["components"]) == {"playwright"}
@@ -294,18 +297,19 @@ def test_new_project_creation_has_no_implicit_agent(tmp_path: Path, monkeypatch:
 
 
 @pytest.mark.parametrize("arguments", [
-    {"creator": None}, {"required": ["python-ide"]}, {"majors": ["python=0"]},
-    {"local": ["unknown"]}, {"mount": "relative/path"},
+    {"creator": None}, {"require": ("python-ide",)}, {"require": ("python=0",)},
+    {"agents": ("unknown",)}, {"project_mount": "relative/path"},
 ])
 def test_new_project_failure_writes_nothing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, arguments: dict[str, Any]) -> None:
+    from devcapsule.compat import CliError
+    from devcapsule.configuration.operations import InitializeRequest, initialize_project
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
     root = tmp_path / "fresh"
     root.mkdir()
-    kwargs: dict[str, Any] = dict(name=None, slug=None, creator="mailto:owner@example.test", mount=None,
-                                required=["python"], optional=[], majors=[], local=[])
+    kwargs: dict[str, Any] = dict(directory=root, creator="mailto:owner@example.test", require=("python",), interactive=False)
     kwargs.update(arguments)
-    with pytest.raises(ProjectConfigurationError):
-        commands.initialize(root, **kwargs)
+    with pytest.raises(CliError):
+        initialize_project(InitializeRequest(**kwargs))
     assert list(root.iterdir()) == []
     assert not (tmp_path / "config").exists()
 
@@ -510,19 +514,19 @@ def test_run_does_not_degrade_required_download_failure(project: Path, monkeypat
     assert cli.main(["project", "--path", str(project), "run", "--no-update-check"]) != 0
 
 
-def test_init_without_local_tools_and_invalid_cli_combinations(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_init_without_an_ide_leaves_the_checkout_waiting_for_one(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys) -> None:
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
     root = tmp_path / "fresh"
     root.mkdir()
     prefix = ["project", "--path", str(root), "init"]
-    assert cli.main([*prefix, "--required", "python", "--need", "python-ide"]) != 0
-    assert cli.main([*prefix, "--local", "python-ide"]) != 0
-    assert cli.main([*prefix, "--required", "python", "--creator", "mailto:owner@example.test"]) == 0
+    assert cli.main([*prefix, "--ide", "python-ide"]) != 0  # no creator
+    assert cli.main([*prefix, "--require", "python", "--creator", "mailto:owner@example.test"]) == 0
+    out = capsys.readouterr().out
+    assert "no IDE and no agent selected yet" in out and "Choose your IDE" in out
     assert commands.check(root).startswith("Configuration contract valid")
-    with pytest.raises(ProjectConfigurationError, match="already exists"):
-        commands.initialize(root, name=None, slug=None, creator="x", mount=None, required=[], optional=[], majors=[], local=[])
+    from devcapsule.configuration.operations import InitializeRequest, initialize_project
     with pytest.raises(ProjectConfigurationError, match="does not exist"):
-        commands.initialize(root / "absent", name=None, slug=None, creator="x", mount=None, required=[], optional=[], majors=[], local=[])
+        initialize_project(InitializeRequest(directory=root / "absent", creator="x", interactive=False))
 
 
 def test_direct_local_surface_conflict_is_refused() -> None:
@@ -696,8 +700,8 @@ def test_new_project_may_select_an_agent_before_choosing_an_ide(tmp_path: Path, 
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
     root = tmp_path / "fresh"
     root.mkdir()
-    commands.initialize(root, name=None, slug=None, creator="mailto:owner@example.test", mount=None,
-                        required=["python"], optional=[], majors=[], local=["codex-agent"])
+    assert cli.main(["project", "--path", str(root), "init", "--require", "python", "--agent", "codex-agent",
+                     "--creator", "mailto:owner@example.test"]) == 0
     manifest = load_toml(commands.paths(root)[0])
     with pytest.raises(ProjectConfigurationError, match="Choose a local IDE"):
         lock_for(root, manifest)

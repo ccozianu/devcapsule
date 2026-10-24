@@ -667,9 +667,9 @@ def test_project_run_starts_immediately_after_init(tmp_path: Path, capsys) -> No
                     "--path",
                     str(project),
                     "init",
-                    "--need",
+                    "--require",
                     "python",
-                    "--need",
+                    "--ide",
                     "python-ide",
                     "--creator",
                     "https://github.com/example",
@@ -681,13 +681,13 @@ def test_project_run_starts_immediately_after_init(tmp_path: Path, capsys) -> No
             == 0
         )
         capsys.readouterr()
-        lock_text = (project / ".devcapsule" / "devcapsule.linux-amd64.lock").read_text(
-            encoding="utf-8"
-        )
+        from devcapsule.configuration.execution import ExecutionConfiguration
+        # The shared lock is project-only; the checkout's effective lock carries the IDE.
+        effective_lock = ExecutionConfiguration.load(project).project.lock
         realized = SimpleNamespace(
             image=SimpleNamespace(labels={}, reference="devcapsule-local-pycharm:0123456789abcdef0123"),
             created=True,
-            locked=parse_locked_environment(tomllib.loads(lock_text)),
+            locked=parse_locked_environment(effective_lock),
         )
 
         with (

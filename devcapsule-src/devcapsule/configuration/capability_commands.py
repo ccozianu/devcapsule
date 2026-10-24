@@ -3,6 +3,8 @@
 Project replacement has one commit point (the manifest) and an undo/redo
 journal. Local replacement changes one checkout file atomically. Neither path
 answers host-access or acquisition questions on the developer's behalf.
+Project initialization is one path, in :mod:`operations`; the owner's edits
+of the shared contract are in :mod:`owner_commands`, over ``promote`` here.
 """
 from __future__ import annotations
 
@@ -17,6 +19,7 @@ from .capabilities import CapabilityPolicy, LocalCapabilities
 from .capability_selection import compose_lock, effective_lock, generate_lock, local_pins, usable_lock
 from .file_formats import ConfigurationFileKind, ProjectConfigurationError, table, validate_file_format, render_checkout, render_toml, selected_version_lock
 from .manifest import validate_manifest
+from .manifest_document import CURRENT_MANIFEST_SCHEMA_VERSION, capability_reasons, capability_table, manifest_preamble, render_manifest
 from .nodes import build_node_registry
 from .storage import atomic_write, checkout_record_paths, discover_project, load_toml, require_settled
 
@@ -64,19 +67,26 @@ def recover(root: Path) -> None:
     journal.unlink()
 
 
-def promote(root: Path, manifest: dict[str, Any], lock: dict[str, Any]) -> None:
-    """Persist an already-validated manifest/lock pair with a recovery journal.
+def promote(root: Path, manifest: dict[str, Any], lock: dict[str, Any] | None = None) -> None:
+    """Persist an already-validated manifest, and lock when given, with a recovery journal.
 
     Call ``check_documents`` first and exclude concurrent writers. Write the
     lock before the manifest; attempt recovery on OSError. Failures propagate.
     A pending journal raises ProjectConfigurationError. This updates shared
     files only; it neither writes nor resolves a developer's checkout.
+
+    The manifest is written by the one manifest writer: bare keys, the
+    owner's table order, the leading comment block of the existing file
+    kept, and the current schema version. A ``lock`` of ``None`` keeps the
+    lock file's bytes exactly, for an edit that changes the manifest alone.
     """
     manifest_path, lock_path, journal = paths(root)
     require_settled(root)
-    transaction = {"before-manifest": manifest_path.read_text() if manifest_path.exists() else "",
-                   "before-lock": lock_path.read_text() if lock_path.exists() else "",
-                   "after-manifest": render_toml(manifest), "after-lock": render_toml(lock)}
+    before_manifest = manifest_path.read_text() if manifest_path.exists() else ""
+    before_lock = lock_path.read_text() if lock_path.exists() else ""
+    transaction = {"before-manifest": before_manifest, "before-lock": before_lock,
+                   "after-manifest": render_manifest(manifest, preamble=manifest_preamble(before_manifest)),
+                   "after-lock": before_lock if lock is None else render_toml(lock)}
     atomic_write(journal, render_toml(transaction))
     try:
         atomic_write(lock_path, transaction["after-lock"], mode=0o644)
@@ -188,13 +198,15 @@ def configure_project(root: Path, manifest: dict[str, Any], lock: dict[str, Any]
     """
     policy = CapabilityPolicy.read(manifest)
     candidate_manifest = deepcopy(manifest)
-    declarations = candidate_manifest["capabilities"]
-    declarations.pop("need", None)
-    declarations["required"] = list(policy.required if required is None else required)
-    declarations["optional"] = list(policy.optional if optional is None else optional)
-    if majors is not None:
-        declarations["sdk-major"] = parse_majors(majors)
+    candidate_manifest["devcapsule-schema-version"] = CURRENT_MANIFEST_SCHEMA_VERSION
+    declarations: dict[str, Any] = {
+        "required": list(policy.required if required is None else required),
+        "optional": list(policy.optional if optional is None else optional),
+        "sdk-major": dict(policy.sdk_major) if majors is None else parse_majors(majors),
+    }
+    candidate_manifest["capabilities"] = declarations
     candidate = CapabilityPolicy.read(candidate_manifest)
+    candidate_manifest["capabilities"] = capability_table(candidate, capability_reasons(manifest))
     personal = (set(candidate.required) | set(candidate.optional)) & matrix.local_capabilities()
     # Existing shared IDE/agent declarations are grandfathered on unrelated
     # edits. A project can remove them, but new choices belong to developers.
@@ -205,7 +217,7 @@ def configure_project(root: Path, manifest: dict[str, Any], lock: dict[str, Any]
     check_documents(candidate_manifest, generated)
     if not preview:
         promote(root, candidate_manifest, generated)
-    return ("Preview; no files changed.\n" if preview else "Updated shared capability policy and lock.\n") + render_toml(declarations)
+    return ("Preview; no files changed.\n" if preview else "Updated shared capability policy and lock.\n") + render_toml(candidate_manifest["capabilities"])
 
 
 def configure_local(root: Path, manifest: dict[str, Any], shared: dict[str, Any], matrix: ResolutionMatrix, *,
@@ -310,57 +322,51 @@ def release_deselected(source: dict[str, Any], matrix: ResolutionMatrix, policy:
                 source["materialization"] = {}
 
 
-def initialize(root: Path, *, name: str | None, slug: str | None, creator: str | None,
-               mount: str | None, required: Sequence[str], optional: Sequence[str],
-               majors: Sequence[str], local: Sequence[str], allow_unverified: bool = False) -> str:
-    """Create project policy, a platform lock and a local checkout record.
+def parse_tool_names(matrix: ResolutionMatrix, names: Sequence[str]) -> tuple[tuple[str, ...], dict[str, int]]:
+    """Split ``TOOL`` and ``TOOL=MAJOR`` spellings into canonical names and SDK majors.
 
-    ``root`` must exist without shared config; ``creator`` is required.
-    Name/slug default from the directory, and mount to ``/workspace/<slug>``.
-    Capability arguments have the meanings in ``configure``; an empty ``local``
-    selects no IDE or agent. Validate all candidates before writing; invalid
-    input raises CliError. Shared promotion and the later local write are
-    separate operations, so an I/O failure can leave local setup incomplete.
-    Return setup instructions; permissions and launch resolution remain undone.
+    ``python=3`` requires Python and pins its major to 3. A component id that
+    is the sole provider of a capability is accepted for that capability
+    (``playwright`` for ``browser-automation``), so a user who knows the tool's
+    name is not sent to look up the capability's. IDE and agent names are
+    refused: they are each developer's, and the refusal names the commands
+    that record them.
     """
-    from devcapsule.project import sanitize_name
-    root = root.expanduser().resolve()
-    if not root.is_dir():
-        raise ProjectConfigurationError(f"Project directory does not exist: {root}")
-    manifest_path, lock_path, _ = paths(root)
-    require_settled(root)
-    if manifest_path.exists() or lock_path.exists():
-        raise ProjectConfigurationError("Project configuration already exists; use 'project config capabilities'.")
-    if not creator:
-        raise ProjectConfigurationError("Supply --creator URL_OR_EMAIL for the shared project identity.")
-    identity_slug = slug or sanitize_name(root.name).lower()
-    parsed = parse_majors(majors)
-    manifest = {"devcapsule-schema-version": 1,
-                "project": {"name": name or root.name, "slug": identity_slug, "creator": creator,
-                            "mount": mount or f"/workspace/{identity_slug}"},
-                "capabilities": {"required": list(required), "optional": list(optional), "sdk-major": parsed}}
-    validate_manifest(manifest, manifest_path)
-    policy = CapabilityPolicy.read(manifest)
-    matrix = MATRICES[Platform.current()]
-    personal = (set(required) | set(optional)) & matrix.local_capabilities()
+    canonical: list[str] = []
+    majors: dict[str, int] = {}
+    for item in names:
+        name, separator, major = item.partition("=")
+        name = canonical_tool_name(matrix, name)
+        if separator:
+            if not major.isdecimal() or int(major) < 1:
+                raise ProjectConfigurationError(f"SDK majors are positive integers: {item!r} is not TOOL=MAJOR.")
+            majors[name] = int(major)
+        canonical.append(name)
+    personal = sorted(set(canonical) & matrix.local_capabilities())
     if personal:
-        raise ProjectConfigurationError("IDE/agent choices belong in --local: " + ", ".join(sorted(personal)) + ".")
-    lock = generate_lock(policy, matrix, allow_unverified=allow_unverified)
-    check_documents(manifest, lock)
-    input_path, _ = checkout_record_paths(manifest, root)
-    checkout = tomllib.loads(render_checkout(manifest, root, {}, {}))
-    if local:
-        selection = LocalCapabilities.read({"capabilities": {"selected": list(local)}})
-        matrix.normalize(list(selection.selected))
-        pins = pin_selection(matrix, policy, selection, lock, LocalCapabilities(), {}, allow_unverified=allow_unverified)
-        checkout["capabilities"] = {"selected": list(selection.selected), "without": [], "lock": render_toml(pins)}
-        check_formation(manifest, effective_lock(manifest, compose_lock(manifest, lock, checkout), checkout, warn=False))
-    rendered_checkout = render_toml(checkout)
-    promote(root, manifest, lock)
-    atomic_write(input_path, rendered_checkout)
-    return ("Created project capability policy, platform lock and local checkout.\n"
-            "Choose an IDE with 'project config capabilities --local CAPABILITY' if needed; "
-            "then run 'project config resolve' and answer the reported authorization questions.")
+        raise ProjectConfigurationError(
+            "IDE and agent choices are each developer's, not the project's: " + ", ".join(personal)
+            + ". Recommend an IDE with 'devcapsule project config recommend ide NAME'; "
+            "a developer adds an agent with 'devcapsule project config agent add NAME'."
+        )
+    return tuple(sorted(set(canonical))), majors
+
+
+def canonical_tool_name(matrix: ResolutionMatrix, name: str) -> str:
+    """The capability name for ``name``, which may be a sole provider's component id."""
+    candidate = name.strip()
+    if candidate in matrix.capabilities():
+        return candidate
+    by_component = {
+        matrix.providers(capability)[0]: capability
+        for capability in matrix.capabilities()
+        if len(matrix.providers(capability)) == 1
+    }
+    if candidate in by_component:
+        return by_component[candidate]
+    raise ProjectConfigurationError(
+        f"Unknown tool {candidate!r}; this launcher knows: " + ", ".join(matrix.capabilities()) + "."
+    )
 
 
 def parse_majors(majors: Sequence[str]) -> dict[str, int]:

@@ -63,6 +63,10 @@ def artifacts(checkout):
 @pytest.mark.parametrize('artifact', list(ConfigurationFileKind))
 @pytest.mark.parametrize('version', [None, False, True, 0, 1.0, '1', 2, 99])
 def test_schema_admission_distinguishes_version_from_truthiness(artifact, version):
+    if artifact is ConfigurationFileKind.manifest and version == 2:
+        # The manifest's second schema, 2026-10-24; every other file stays at 1.
+        validate_file_format({artifact.value: version}, artifact, 'test input')
+        return
     with pytest.raises(ProjectConfigurationError, match='unsupported'):
         validate_file_format({artifact.value: version}, artifact, 'test input')
     validate_file_format({artifact.value: 1}, artifact, 'test input')
@@ -200,7 +204,7 @@ def test_removing_a_decision_cannot_reveal_a_legacy_grant(checkout, monkeypatch,
 
 def test_force_cannot_resurrect_directory_or_secret_access(checkout, monkeypatch):
     project, record, resolution = checkout
-    assert invoke(project, 'config', 'need', 'codex-agent', '--authorize', 'base-image', 'default') == 0
+    assert invoke(project, 'config', 'capabilities', '--local', 'python-ide', 'codex-agent') == 0
     assert invoke(project, 'config', 'bind', 'home', f'host-directory:{project}') == 0
     assert invoke(project, 'config', 'bind', 'codex/openai-api-key', 'host-environment:OPENAI_API_KEY') == 0
     assert invoke(project, 'config', 'resolve') == 0
@@ -323,7 +327,7 @@ def test_invalid_nodes_are_batched_within_and_across_families(checkout):
                                             'unknown-secret-b', 'unknown-state'))
 
 
-@pytest.mark.parametrize('name', ['creator', 'name', 'need', 'slug', 'project-mount'])
+@pytest.mark.parametrize('name', ['creator', 'name', 'require', 'slug', 'project-mount'])
 def test_required_configuration_cannot_inherit_an_identity_answer(checkout, name):
     project, record, resolution = checkout
     replace_document(project / '.devcapsule/devcapsule.toml', lambda d: d.update({

@@ -15,6 +15,11 @@ CONFIGURATION_VALUE_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)
 
 MEMORY_SIZE_PATTERN = re.compile(r"^([1-9][0-9]*)(B|KiB|MiB|GiB|TiB)$")
 
+# What a user types for a memory size: the canonical form above, or Docker's
+# spellings (``6g``, ``6G``, ``512m``, ``6GB``), which the owner and every
+# ``docker run`` user know. Stored values are always canonical.
+MEMORY_SIZE_INPUT_PATTERN = re.compile(r"^([1-9][0-9]*)\s*([KkMmGgTt])?(?:[Ii]?[Bb])?$")
+
 
 CONFIGURATION_VALUE_TYPES = {"string", "integer", "boolean", "memory-size"}
 
@@ -170,11 +175,7 @@ def _normalize_declared_value(
         if isinstance(value, str) and value.lower() in {"true", "false"}:
             return value.lower() == "true"
         raise ProjectConfigurationError(f"{field} must be true or false.")
-    if not isinstance(value, str) or MEMORY_SIZE_PATTERN.fullmatch(value) is None:
-        raise ProjectConfigurationError(
-            f"{field} must be a positive memory size using B, KiB, MiB, GiB, or TiB, for example 8GiB."
-        )
-    return value
+    return normalize_memory_size(value, field_name=field)
 
 
 def checkout_omitted_values(checkout: Mapping[str, Any]) -> tuple[str, ...]:
@@ -239,6 +240,28 @@ def resolve_configuration_values(
         elif effect == "devcapsule.command-name":
             effects["devcapsule-command"] = str(value)
     return normalized, effects
+
+
+def normalize_memory_size(value: object, *, field_name: str = "memory size") -> str:
+    """Canonicalize a typed memory size to the stored ``<n><unit>`` form.
+
+    Accepts the canonical ``6GiB`` and Docker's ``6g``/``6G``/``6GB``/``512m``;
+    a unit letter alone means the binary unit (``g`` is GiB, as Docker reads
+    it). Raise ProjectConfigurationError for anything else, naming the field.
+    """
+    if not isinstance(value, str):
+        raise ProjectConfigurationError(f"{field_name} must be a memory size such as 6GiB or 6g.")
+    candidate = value.strip()
+    if MEMORY_SIZE_PATTERN.fullmatch(candidate):
+        return candidate
+    match = MEMORY_SIZE_INPUT_PATTERN.fullmatch(candidate)
+    if match is None:
+        raise ProjectConfigurationError(
+            f"{field_name} must be a positive memory size such as 6GiB, 6g or 512m; found {value!r}."
+        )
+    quantity, unit = match.group(1), (match.group(2) or "").upper()
+    suffix = {"": "B", "K": "KiB", "M": "MiB", "G": "GiB", "T": "TiB"}[unit]
+    return f"{quantity}{suffix}"
 
 
 def memory_size_bytes(value: str) -> int:
