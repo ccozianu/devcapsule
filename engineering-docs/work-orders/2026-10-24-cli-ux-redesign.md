@@ -433,9 +433,11 @@ secret    codex/openai-api-key  unbound  —                     optional: bind 
 ```
 
 The effective column is always the value the next launch uses. A value
-that is the secure default says so; a value the project recommends and you
-have not answered is a pending row with the project's justification beside
-it, and `run` asks it.
+that is the secure default says so. An ordinary value the project
+recommends, memory for instance, is applied and its source reads "project
+recommendation"; nothing is asked. A host access the project recommends and
+you have not answered is a pending row with the project's justification
+beside it, and `run` asks it.
 
 ### 3.3 When the project changes
 
@@ -478,10 +480,11 @@ Nothing was written. Answer on the command line or in a terminal.
 | 3 | a decision is pending; the message names each with its flag |
 | 130 | interrupted from the terminal |
 
-Flags that answer a pending question are recorded, exactly as the prompt
-would record them. Flags that override an answer already recorded apply to
-this run only and say so on stderr. `--print-command` prints the plan and
-writes nothing.
+Every `run` flag applies to this run only and says so on stderr.
+`run --save` records the flags given as the checkout's answers before
+launching, exactly as the prompt would record them, so a script launches a
+fresh checkout in one line: `run --ide frontend-ide --save`. `--print-command`
+prints the plan and writes nothing.
 
 ### 3.5 The web console
 
@@ -564,8 +567,9 @@ server".
 ### 3.7 The command tree, config and run only
 
 ```text
-devcapsule project run [--ide NAME] [--agent NAME]... [--memory SIZE] [--authorize NODE VALUE]...
-                       [--name NAME] [--print-command] [--no-update-check] [-- DOCKER-RUN-OPTIONS]
+devcapsule project run [--ide NAME] [--agent NAME]... [--memory SIZE] [--cpus N] [--env NAME[=VALUE]]...
+                       [--authorize NODE VALUE]... [--save] [--name NAME] [--print-command]
+                       [--no-update-check] [-- DOCKER-RUN-OPTIONS]
 devcapsule project config show [--json]
 devcapsule project config ide NAME
 devcapsule project config agent add|remove NAME
