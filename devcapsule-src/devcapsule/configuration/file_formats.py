@@ -188,7 +188,8 @@ def canonical_digest(value: Mapping[str, Any]) -> str:
 
 def quote_toml(value: str) -> str:
     """Return a quoted TOML string, escaping quotes and control characters."""
-    return json.dumps(value, ensure_ascii=False)
+    # JSON permits DEL literally; TOML basic strings require it escaped.
+    return json.dumps(value, ensure_ascii=False).replace("\x7f", "\\u007f")
 
 
 def render_toml_scalar(value: ConfigurationScalar) -> str:

@@ -108,7 +108,7 @@ def _policy_edit(
     candidate = CapabilityPolicy(tuple(sorted(required)), tuple(sorted(optional)), tuple(sorted(majors.items())), layered=True)
     candidate_manifest = deepcopy(manifest)
     candidate_manifest["devcapsule-schema-version"] = CURRENT_MANIFEST_SCHEMA_VERSION
-    candidate_manifest["capabilities"] = capability_table(candidate, reasons)
+    candidate_manifest["capabilities"] = capability_table(candidate, reasons, previous=manifest["capabilities"])
     generated = generate_lock(candidate, matrix, previous=lock, allow_unverified=allow_unverified)
     check_documents(candidate_manifest, generated)
     if not preview:
@@ -163,8 +163,8 @@ def drop_tools(start: Path, names: Sequence[str], *, preview: bool = False, allo
 
 def _environment_edit(start: Path, *, change: str, names: Sequence[str], because: str | None, preview: bool) -> str:
     root, manifest, _lock, _matrix = _project(start)
-    policy = EnvironmentPolicy.read(manifest)
-    required, optional = dict(policy.required), dict(policy.optional)
+    environment = deepcopy(manifest.get("environment", {}))
+    required, optional = environment.get("required", {}), environment.get("optional", {})
     canonical = tuple(environment_name(name, field_name="environment variable") for name in names)
     if change == "drop":
         unknown = sorted(set(canonical) - set(required) - set(optional))
@@ -176,16 +176,18 @@ def _environment_edit(start: Path, *, change: str, names: Sequence[str], because
     else:
         target, other = (required, optional) if change == "require" else (optional, required)
         for name in canonical:
-            reason = because if because is not None else other.pop(name, target.get(name, ""))
-            other.pop(name, None)
-            target[name] = reason
-    candidate = EnvironmentPolicy(dict(sorted(required.items())), dict(sorted(optional.items())))
+            entry = other.pop(name, target.get(name, {}))
+            if because is not None:
+                entry["reason"] = because
+            target[name] = entry
     candidate_manifest = deepcopy(manifest)
     candidate_manifest["devcapsule-schema-version"] = CURRENT_MANIFEST_SCHEMA_VERSION
     candidate_manifest.pop("environment", None)
-    document = candidate.document()
+    document = {scope: dict(sorted(entries.items())) for scope, entries in
+                (("required", required), ("optional", optional)) if entries}
     if document:
         candidate_manifest["environment"] = document
+    candidate = EnvironmentPolicy.read(candidate_manifest)
     if not preview:
         promote(root, candidate_manifest)
     verb = {"require": "Required", "offer": "Offered", "drop": "Dropped"}[change]
@@ -193,7 +195,7 @@ def _environment_edit(start: Path, *, change: str, names: Sequence[str], because
     for scope, entries in (("Required environment", candidate.required), ("Offered environment", candidate.optional)):
         rendered = ", ".join(f"{name} ({reason})" if reason else name for name, reason in entries.items()) or "none"
         lines.append(f"{scope}: {rendered}")
-    lines.append("Values are each developer's: 'devcapsule project config env NAME' records one, privately, per checkout.")
+    lines.append("Values belong to each developer; this command stores declarations only.")
     return "\n".join(lines)
 
 
@@ -277,7 +279,6 @@ def recommend(start: Path, name: str, value: str, *, because: str | None = None,
             node = host
             for key in path:
                 node = node.setdefault(key, {})
-            node.clear()
             node["value"] = supported
             node["justification"] = because
             rendered = accepted

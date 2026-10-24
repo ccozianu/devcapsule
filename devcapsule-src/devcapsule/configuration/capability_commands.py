@@ -50,8 +50,8 @@ def recover(root: Path) -> None:
         not isinstance(value, str) for value in transaction.values()
     ):
         raise ProjectConfigurationError("Malformed capability transaction; preserve it for recovery.")
-    current = manifest_path.read_text() if manifest_path.exists() else ""
-    current_lock = lock_path.read_text() if lock_path.exists() else ""
+    current = manifest_path.read_bytes().decode("utf-8") if manifest_path.exists() else ""
+    current_lock = lock_path.read_bytes().decode("utf-8") if lock_path.exists() else ""
     if current_lock not in {transaction["before-lock"], transaction["after-lock"]}:
         raise ProjectConfigurationError("Lock changed outside the pending transaction; refusing to overwrite it.")
     if current == transaction["after-manifest"]:
@@ -60,10 +60,12 @@ def recover(root: Path) -> None:
         chosen = "before-lock"
     else:
         raise ProjectConfigurationError("Configuration changed outside the pending transaction; refusing to overwrite it.")
-    if transaction[chosen]:
-        atomic_write(lock_path, transaction[chosen], mode=0o644)
-    else:
-        lock_path.unlink(missing_ok=True)
+    # Manifest-only edits preserve even an absent or empty lock.
+    if transaction["before-lock"] != transaction["after-lock"]:
+        if transaction[chosen]:
+            atomic_write(lock_path, transaction[chosen], mode=0o644)
+        else:
+            lock_path.unlink(missing_ok=True)
     journal.unlink()
 
 
@@ -77,19 +79,20 @@ def promote(root: Path, manifest: dict[str, Any], lock: dict[str, Any] | None = 
 
     The manifest is written by the one manifest writer: bare keys, the
     owner's table order, the leading comment block of the existing file
-    kept, and the current schema version. A ``lock`` of ``None`` keeps the
+    kept, and the supplied schema version. A ``lock`` of ``None`` keeps the
     lock file's bytes exactly, for an edit that changes the manifest alone.
     """
     manifest_path, lock_path, journal = paths(root)
     require_settled(root)
-    before_manifest = manifest_path.read_text() if manifest_path.exists() else ""
-    before_lock = lock_path.read_text() if lock_path.exists() else ""
+    before_manifest = manifest_path.read_bytes().decode("utf-8") if manifest_path.exists() else ""
+    before_lock = lock_path.read_bytes().decode("utf-8") if lock_path.exists() else ""
     transaction = {"before-manifest": before_manifest, "before-lock": before_lock,
                    "after-manifest": render_manifest(manifest, preamble=manifest_preamble(before_manifest)),
                    "after-lock": before_lock if lock is None else render_toml(lock)}
     atomic_write(journal, render_toml(transaction))
     try:
-        atomic_write(lock_path, transaction["after-lock"], mode=0o644)
+        if lock is not None:
+            atomic_write(lock_path, transaction["after-lock"], mode=0o644)
         atomic_write(manifest_path, transaction["after-manifest"], mode=0o644)
     except OSError:
         recover(root)
@@ -206,7 +209,7 @@ def configure_project(root: Path, manifest: dict[str, Any], lock: dict[str, Any]
     }
     candidate_manifest["capabilities"] = declarations
     candidate = CapabilityPolicy.read(candidate_manifest)
-    candidate_manifest["capabilities"] = capability_table(candidate, capability_reasons(manifest))
+    candidate_manifest["capabilities"] = capability_table(candidate, capability_reasons(manifest), previous=manifest["capabilities"])
     personal = (set(candidate.required) | set(candidate.optional)) & matrix.local_capabilities()
     # Existing shared IDE/agent declarations are grandfathered on unrelated
     # edits. A project can remove them, but new choices belong to developers.
@@ -347,7 +350,7 @@ def parse_tool_names(matrix: ResolutionMatrix, names: Sequence[str]) -> tuple[tu
         raise ProjectConfigurationError(
             "IDE and agent choices are each developer's, not the project's: " + ", ".join(personal)
             + ". Recommend an IDE with 'devcapsule project config recommend ide NAME'; "
-            "a developer adds an agent with 'devcapsule project config agent add NAME'."
+            "a developer selects agents with 'devcapsule project config capabilities --local NAME'."
         )
     return tuple(sorted(set(canonical))), majors
 

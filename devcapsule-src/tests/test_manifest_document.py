@@ -68,6 +68,34 @@ def test_writer_round_trips_through_the_reader() -> None:
     assert tomllib.loads(render_manifest(source)) == source
 
 
+@pytest.mark.parametrize("key", ["db.url", "with spaces", 'a"b', "line\nfeed", "café", "delete\x7f", ""])
+def test_writer_quotes_keys_and_values_without_changing_them(key: str) -> None:
+    source = document(configuration={"values": {key: {"type": "string", "description": 'a "quote"\nnext\t\\end\x7f'}}},
+                      environment={"optional": {"EMPTY": {}}})
+    assert tomllib.loads(render_manifest(source)) == source
+
+
+def test_writer_preserves_tolerated_root_fields_and_extension_types() -> None:
+    source = document(workflow={"mode": "multiple-streams"})
+    source.update(tomllib.loads('''workflow-type = "multiple-streams"
+[extension]
+ratio = 1.5
+date = 2026-10-24
+time = 12:30:00
+timestamp = 2026-10-24T12:30:00Z
+entries = [{ "a.b" = {}, value = "x" }]
+'''))
+    validate_manifest(source, Path("manifest"))
+    rendered = render_manifest(source)
+    assert tomllib.loads(rendered) == source
+    assert rendered.index("[extension]") < rendered.index("# The project's workflow choice.") < rendered.index("[workflow]")
+
+
+def test_preamble_keeps_comment_whitespace_and_unicode_line_separators() -> None:
+    comment = "# note  \n# first\u2028second\n"
+    assert manifest_preamble(comment + '\n[project]\n# not leading\n') == comment
+
+
 def test_capability_table_says_only_what_is_so() -> None:
     policy = CapabilityPolicy(("node", "python"), (), (("python", 3),), layered=True)
     assert capability_table(policy, {"node": "", "python": "the backend", "gone": "dropped"}) == {
