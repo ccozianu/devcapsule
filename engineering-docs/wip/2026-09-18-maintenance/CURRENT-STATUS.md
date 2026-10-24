@@ -202,6 +202,19 @@ trust record `trust.toml` under the launcher's config root, schema 1; the
 review's `trusted` status and `superseded` host answers; the `trust`
 decision, `--trust CHANNEL`, `config trust list|accept|withdraw`; its
 brief is [brief-pr266-1.md](evidence/2026-10-24-cli-ux/brief-pr266-1.md).
+Its PR266.1 is #270, accepted at `8975126` without a round and merged at
+`694dfe8`: the integrity method bound into the acceptance, HTTPS
+checksum-pinned origins only, re-acceptance keeping earlier origins; the
+composed lock as the channel's source; the trusted base reaching
+derivation, display inspection and realization over an older per-checkout
+consent; denials normalized before trust; the staged trust reaching the
+preview; the kept host answer disclosed with its new reason; the account
+scope in the statement; 23 regression cases; the reviewer's gate 2045 unit
+tests, mypy clean. One policy question for the owner from the reviewer:
+D-0011 kept Antigravity's bare Cloud Run origin on per-version consent;
+the slice lets the user trust that deployment explicitly, with the note
+that the URL alone does not prove Google's ownership; confirm or restore
+the exception.
 
 ## Current State
 
