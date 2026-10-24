@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-24; releasing 0.3.0: rc3 in preparation by the owner's direction of 2026-10-24, carrying software approvals at launch, the saved Docker arguments and the regenerated lock, the pre-candidate pull request awaiting the owner's merge, then the tag; rc2 tagged, published and verified, the two C10 records closed on it, the network node's check on rc2 still open; rc2 was prepared with the network node and C10 merged into the release branch, each with its review-partner loop settled; the pre-candidate merge then the tag on the owner's word; forced configuration, the diagnostics snapshot and the schema-version slice move to rc4 with image cleanup and C20; the base is published in the promotion; C17 stays a gate in both halves
+State: active 2026-10-24; releasing 0.3.0: rc3 tagged, published and verified as downloaded, carrying software approvals at launch, the saved Docker arguments and the regenerated lock, the owner's test of them on the download next; rc2's two C10 records closed, the network node's check still open; rc2 was prepared with the network node and C10 merged into the release branch, each with its review-partner loop settled; the pre-candidate merge then the tag on the owner's word; forced configuration, the diagnostics snapshot and the schema-version slice move to rc4 with image cleanup and C20; the base is published in the promotion; C17 stays a gate in both halves
 
 Definition read: WORKFLOW.md@5c89396f2200, WORKFLOW-LOCAL.md@31819cc43359
 
@@ -119,6 +119,21 @@ the current release tip, whose workflow and approval changes are already
 present. The release branch is not synchronized or rewritten.
 
 ## Current State
+
+**2026-10-24: rc3 tagged, published and verified.** The owner merged
+PR #257 at `cf760b8`; `a22a215` is an ancestor of `main`; `v0.3.0-rc3` on
+`a22a215`, the candidate gate `mainline` with no unintegrated commits from
+a detached checkout, record at `/opt/devcapsule-gate/rc3-release-protocol.json`;
+pushed atomically with the branch; backend run 40052369307 passed; the
+prerelease is public with its three assets; the download under
+`~/.cache/devcapsule-releases/v0.3.0-rc3` verifies, SHA-256 `be739875…`,
+`devcapsule version` reporting `0.3.0rc3` at `a22a215`. The overview's rc3
+entry, the table and the changelog's candidate-3 date are written. Next,
+the owner's: test the saved Docker arguments and the approvals prompt on
+the download; provider acceptance of the new agent pins; the network
+node's check on a fresh project. Then rc4's slices: forced configuration,
+the diagnostics snapshot, the schema-version slice on the owner's go,
+image cleanup after the design review, C20.
 
 **2026-10-24: rc3 in preparation, by the owner's direction.** The owner
 needs the saved Docker arguments on a downloaded candidate to test
@@ -1151,7 +1166,7 @@ checklist and the evidence: [releases/v0.3.0](../../releases/v0.3.0/README.md).
 
 | Candidate | Source | Outcome |
 |---|---|---|
-| rc3 | — | in preparation 2026-10-24 by the owner's direction; carries software approvals at launch (#250, #251), the saved Docker arguments (#253, #255) and the regenerated lock; the pre-candidate PR awaits the owner's merge, then the tag |
+| rc3 | `a22a215` | tagged 2026-10-24 after PR #257; gate `mainline`; backend run 40052369307 passed; published, downloaded and verified; carries software approvals at launch (#250, #251), the saved Docker arguments (#253, #255) and the regenerated lock; the owner tests the saved arguments and the approvals prompt on it |
 | rc2 | `e5b5a8b` | tagged 2026-10-22 after PR #249; gate `mainline`; backend run 39803285881 passed; published, downloaded and verified; carries the network node (#240, #242) and C10 (#244, #246); the two C10 records closed 2026-10-23 on the owner's verification; the network node's record verifies on it |
 | rc1 | `7016cdd` | tagged 2026-10-19 after PR #233; gate `mainline`; backend run 39265210147 passed; published, downloaded and verified; carries the console-link fix and the local-base guide; the owner verifies the fix on both bases |
 | rc0 | `53ebc17` | tagged 2026-10-18; gate `mainline`; backend run 39175482525 passed; published, downloaded and verified; the owner's downloaded copy launched the second checkout the first time; the local Docker proofs follow the owner's session |
