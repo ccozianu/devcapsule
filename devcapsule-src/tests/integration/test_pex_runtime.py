@@ -324,12 +324,14 @@ def test_built_pex_authors_shared_policy_and_keeps_personal_selection_local(
     def invoke(*arguments: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run([str(built_pex), "project", "--path", str(project), *arguments],
                               cwd=project, env=environment, text=True, capture_output=True, check=False)
-    created = invoke("init", "--required", "python",
-                     "--optional", "browser-automation", "--creator", "mailto:fixture@example.test")
+    created = invoke("init", "--require", "python",
+                     "--offer", "browser-automation", "--creator", "mailto:fixture@example.test")
     assert created.returncode == 0, created.stderr
     directory = project / ".devcapsule"
     shared = {path.name: path.read_bytes() for path in directory.iterdir()}
-    chosen = invoke("config", "capabilities", "--local", "python-ide", "codex-agent", "--without", "browser-automation")
+    assert invoke("config", "ide", "python-ide").returncode == 0
+    assert invoke("config", "omit", "browser-automation").returncode == 0
+    chosen = invoke("config", "add", "codex-agent")
     assert chosen.returncode == 0, chosen.stderr
     assert {path.name: path.read_bytes() for path in directory.iterdir()} == shared
     # The base channel is a workstation decision since 0.3.0 rc4: until it is
@@ -344,6 +346,6 @@ def test_built_pex_authors_shared_policy_and_keeps_personal_selection_local(
     assert checked.returncode == 0 and "contract valid" in checked.stdout, checked.stderr
     # The retired TOOL=MAJOR syntax is no longer a capability name. Reject it
     # without changing the shared policy.
-    refused = invoke("config", "require", "tool", "python=4")
-    assert refused.returncode == 2 and "Unknown tool 'python=4'" in refused.stderr
+    refused = invoke("config", "require", "python=4")
+    assert refused.returncode == 2 and "Unsupported requirement form 'python=4'; use NAME or NAME>=VERSION" in refused.stderr
     assert {path.name: path.read_bytes() for path in directory.iterdir()} == shared

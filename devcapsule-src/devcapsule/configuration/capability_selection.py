@@ -323,16 +323,28 @@ def usable_lock(policy: CapabilityPolicy, source: Mapping[str, Any],
     return lock, tuple(notices)
 
 
-def selection_catalog(matrix: ResolutionMatrix | None = None) -> tuple[dict[str, str], dict[str, str]]:
-    """The IDE and agent capabilities this launcher knows, each with the component it selects."""
-    matrix = matrix or MATRICES[Platform.current()]
-    # Retired command and listing vocabulary only. Never use this adapter
-    # to decide which capabilities a developer can add or a project can require.
-    surfaces = {name: matrix.resolve_provider(name) or name for name in matrix.ide_capabilities()}
-    agents: dict[str, str] = {name: matrix.resolve_provider(name) or name
-                              for name in ("codex-agent", "claude-code-agent", "antigravity-agent")
-                              if name in matrix.capabilities()}
-    return surfaces, agents
+def inspection_agents(matrix: ResolutionMatrix, resolved: Mapping[str, tuple[str, str]] | None = None) -> dict[str, str]:
+    """Listing labels from providers that declare persistent credential state.
+
+    This is presentation only; it never restricts a capability selection.
+    """
+    from devcapsule.components.catalog import COMPONENTS
+    choices = {name: matrix.providers(name) for name in matrix.capabilities() if not matrix.is_ide(name)}
+    for name, (provider, _source) in (resolved or {}).items():
+        try:
+            if not matrix.is_ide(name):
+                choices[name] = (provider,)
+        except ProjectConfigurationError:
+            continue
+    result = {}
+    for name, providers in choices.items():
+        for provider in providers:
+            component = COMPONENTS.get(provider)
+            if component is not None and any(slot.sensitivity == "credentials"
+                    for slot in component.runtime_template().persistence.state_slots):
+                result[name] = provider
+                break
+    return result
 
 
 def inspection_capabilities(manifest: Mapping[str, Any], lock: Mapping[str, Any],

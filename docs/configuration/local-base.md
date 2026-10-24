@@ -77,9 +77,9 @@ What the selection is, and is not:
 - It is a qualification, not validation: a run on a local base proves that
   run, not the base, and a lock proposal from such a checkout says so.
 - It cannot satisfy a mandatory guarantee the project declares, such as an
-  SDK major; see [capabilities](capabilities.md).
+  capability minimum; see [capabilities](capabilities.md).
 
-`devcapsule project config list` shows the override among this checkout's
+`devcapsule project config show` shows the override among this checkout's
 answers.
 
 ## Back to the published base

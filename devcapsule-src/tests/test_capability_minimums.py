@@ -272,7 +272,7 @@ def test_old_table_is_ignored_and_never_written(value: dict) -> None:
 
 
 @pytest.mark.parametrize("arguments", [
-    ("require", "tool", "node"), ("offer", "tool", "codex-agent"), ("drop", "tool", "java"),
+    ("require", "node"), ("offer", "codex-agent"), ("drop", "java"),
     ("require", "env", "DB"), ("offer", "env", "DB"), ("drop", "env", "DB"),
     ("recommend", "ide", "python-ide"), ("recommend", "network", "host", "--because", "ports"),
 ])
@@ -292,7 +292,7 @@ def test_offered_agent_still_needs_consent_and_can_be_omitted(project: Path, tmp
     assert cli.main(["project", "--path", str(project), "run", "--print-command", "--no-update-check"]) == 3
     assert "claude-code" in capsys.readouterr().err
     assert snapshot(tmp_path) == before
-    assert cli.main(["project", "--path", str(project), "config", "tool", "omit", "claude-code-agent"]) == 0
+    assert cli.main(["project", "--path", str(project), "config", "omit", "claude-code-agent"]) == 0
     prepared = prepare_launch(project, RunFlags(), interactive=False, print_only=True)
     assert "claude-code" not in prepared.selected.lock["components"]
 

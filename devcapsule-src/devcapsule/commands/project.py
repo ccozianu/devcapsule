@@ -24,7 +24,7 @@ import subprocess
 import sys
 import termios
 import shlex
-from typing import Any, Callable, ClassVar, Mapping
+from typing import Any, Callable, ClassVar, Mapping, Sequence
 
 from devcapsule.launch.command_output import preparation_diagnostics
 from devcapsule.commands.framework import (
@@ -241,25 +241,22 @@ class ProjectInitCommand(Command):
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.CREATES_HERE
     help = (
         "Initialize the project: the manifest with what it requires and offers, the platform "
-        "lock, your own checkout record with your IDE and agents, and, once an IDE is chosen, "
+        "lock, your own checkout record with your IDE, and, once an IDE is chosen, "
         "a fresh resolution. New manifests use schema 2; rc3 and older launchers cannot read them."
     )
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
         parser.add_argument(
-            "--require", action="append", default=[], metavar="TOOL",
-            help="A tool every checkout must have, such as python or node. Repeatable.",
+            "--require", action="append", default=[], metavar="CAPABILITY",
+            help="A capability every checkout must have. Use config require to set a minimum. Repeatable.",
         )
         parser.add_argument(
-            "--offer", action="append", default=[], metavar="TOOL",
-            help="A tool the project offers and a developer may leave out, such as browser-automation. Repeatable.",
+            "--offer", action="append", default=[], metavar="CAPABILITY",
+            help="A capability the project offers and a developer may leave out, such as browser-automation. Repeatable.",
         )
         parser.add_argument("--ide", metavar="IDE", help="Your IDE for this checkout: python-ide, frontend-ide, java-ide, eclipse-ide or dotnet-ide; component names such as pycharm also work.")
-        parser.add_argument(
-            "--agent", action="append", default=[], metavar="AGENT",
-            help="A coding agent for this checkout: codex-agent, claude-code-agent or antigravity-agent. Repeatable.",
-        )
+        _retired_option(parser, "--agent", "devcapsule project config add CAPABILITY")
         parser.add_argument("--name", dest="project_name", help="Project display name.")
         parser.add_argument("--slug", help="Project identity slug.")
         parser.add_argument("--creator", help="Project creator URL or email address.")
@@ -268,11 +265,6 @@ class ProjectInitCommand(Command):
             "--regenerate",
             action="store_true",
             help="Rewrite the derived platform lock from the current embedded matrix; keep the authored manifest.",
-        )
-        parser.add_argument(
-            "--less-pedantic",
-            action="store_true",
-            help=argparse.SUPPRESS,
         )
         parser.add_argument(
             "--unverified",
@@ -284,12 +276,13 @@ class ProjectInitCommand(Command):
                 "unverified combination."
             ),
         )
-        # The spellings of 0.3.0 rc3 and earlier, accepted for one release and
-        # mapped onto the ones above: --need and --local mixed the project's
-        # tools with the developer's IDE and agents (deficiency 9 of the CLI UX
-        # work order); --required and --optional are --require and --offer.
-        for legacy in ("--need", "--required", "--optional", "--local"):
-            parser.add_argument(legacy, nargs="*", action="append", default=[], help=argparse.SUPPRESS)
+        for flag, replacement in (("--need", "init --require CAPABILITY; config ide IDE or config add CAPABILITY"),
+                                  ("--required", "init --require CAPABILITY"),
+                                  ("--optional", "init --offer CAPABILITY"),
+                                  ("--local", "config ide IDE or config add CAPABILITY"),
+                                  ("--less-pedantic", "config authorize base-image IMAGE"),
+                                  ("--sdk-major", "config require 'NAME>=VERSION'")):
+            _retired_option(parser, flag, "devcapsule project " + replacement)
         add_carrier_options(parser)
 
     @classmethod
@@ -317,7 +310,6 @@ class ProjectInitCommand(Command):
                 project_mount=arguments.project_mount,
                 answers=answers,
                 regenerate=arguments.regenerate,
-                less_pedantic=arguments.less_pedantic,
                 allow_unverified=arguments.allow_unverified,
             )
         )
@@ -326,56 +318,12 @@ class ProjectInitCommand(Command):
 
 
 def _init_selection(arguments: argparse.Namespace) -> tuple[tuple[str, ...], tuple[str, ...], str | None, tuple[str, ...]]:
-    """The project's requirements and offers, and the owner's IDE and agents, legacy spellings mapped.
-
-    ``--need`` and ``--local`` named IDEs and agents beside tools; here each
-    name goes where it belongs, and the mapping is announced once on stderr.
-    """
+    """Keep shared declarations separate from the checkout's selections."""
     from devcapsule.platforms import Platform
     from devcapsule.resolution_matrix import MATRICES
-    from devcapsule.configuration.capability_commands import canonical_tool_name
-    from devcapsule.configuration.capability_selection import selection_catalog
     matrix = MATRICES[Platform.current()]
-    surface_map, agent_map = selection_catalog(matrix)
-    surfaces, agent_names = set(surface_map), set(agent_map)
-    require = list(arguments.require)
-    offer = list(arguments.offer)
-    ide_aliases = {matrix.resolve_provider(name): name for name in surfaces}
-    ide = ide_aliases.get(arguments.ide.strip(), arguments.ide.strip()) if arguments.ide is not None else None
-    agents = list(arguments.agent)
-    legacy_used: list[str] = []
-
-    def flatten(flag: str) -> list[str]:
-        values = [item for group in getattr(arguments, flag.lstrip("-").replace("-", "_")) for item in group]
-        if getattr(arguments, flag.lstrip("-").replace("-", "_")):
-            legacy_used.append(flag)
-        return values
-
-    legacy_need, legacy_local = flatten("--need"), flatten("--local")
-    for raw in (*legacy_need, *legacy_local):
-        name = canonical_tool_name(matrix, raw)
-        if name in surfaces:
-            if ide is not None and ide != name:
-                raise ProjectConfigurationError(f"Two IDEs named, {ide} and {name}; a checkout has one IDE.")
-            ide = name
-        elif name in agent_names:
-            agents.append(name)
-        else:
-            if raw in legacy_local:
-                raise ProjectConfigurationError(
-                    f"--local {raw} is a checkout tool, not a project requirement. Initialize first; a tool the "
-                    "project offers is in every checkout unless 'devcapsule project config tool omit' leaves it out."
-                )
-            require.append(name)
-    require.extend(flatten("--required"))
-    offer.extend(flatten("--optional"))
-    if legacy_used:
-        print(
-            "Note: " + ", ".join(legacy_used) + " are the spellings of 0.3.0 rc3; use --require, --offer, "
-            "--ide and --agent. The IDE and the agents are your checkout's, the tools are the project's.",
-            file=sys.stderr,
-        )
-    return tuple(require), tuple(offer), ide, tuple(dict.fromkeys(agents))
+    ide = matrix.canonical_name(arguments.ide) if arguments.ide is not None and arguments.ide.strip().lower() != "none" else None
+    return tuple(arguments.require), tuple(arguments.offer), ide, ()
 
 
 class CheckoutRegisterCommand(Command):
@@ -574,23 +522,30 @@ class CheckoutGroup(Group):
         }
 
 
-class ConfigResolveCommand(Command):
-    """The resolve step of 0.3.0 rc3 and earlier; ``run`` derives the plan itself now."""
+def _retired_command(name: str, replacement: str) -> type[Command]:
+    class RetiredCommand(Command):
+        hidden = True
+        capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.INDEPENDENT
 
-    name = "resolve"
-    hidden = True
-    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    help = "Gone: 'project run' derives the plan every time; kept for one release, it does the same and says so."
+        @classmethod
+        def invoke(cls, prog: str, argv: Sequence[str], context: object | None = None) -> int:
+            raise ProjectConfigurationError(f"{prog} is retired; use 'devcapsule project {replacement}'.")
 
-    @classmethod
-    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        print("Note: 'config resolve' is gone; 'devcapsule project run' derives the plan every time. Deriving it now.",
-              file=sys.stderr)
-        # The alias derives only; display consent is checked by run before launch.
-        selected = prepare_launch(_project_context(context).start_path(), RunFlags(),
-                                  interactive=False, check_display=False).selected
-        print(f"Derived {selected.resolution_path} from {selected.lock_path.name}")
-        return 0
+    RetiredCommand.name = name
+    return RetiredCommand
+
+
+class _RetiredOption(argparse.Action):
+    def __call__(self, parser: argparse.ArgumentParser, namespace: argparse.Namespace,
+                 values: Any, option_string: str | None = None) -> None:
+        raise ProjectConfigurationError(f"{parser.prog} {option_string} is retired; use '{self.const}'.")
+
+
+def _retired_option(parser: argparse.ArgumentParser, flag: str, replacement: str) -> None:
+    parser.add_argument(flag, action=_RetiredOption, nargs=0, const=replacement, help=argparse.SUPPRESS)
+
+
+ConfigResolveCommand = _retired_command("resolve", "run")
 
 
 @dataclass(frozen=True)
@@ -659,7 +614,7 @@ def _load_checkout_documents(context: object | None) -> CheckoutDocuments | runt
     record = find_checkout_record(manifest, root)
     if record is not None and interrupted_activation(record):
         raise ProjectConfigurationError(
-            "A checkout activation needs recovery; run 'devcapsule project config resolve'. Inspection writes nothing."
+            "A checkout activation needs recovery; run 'devcapsule project run'. Inspection writes nothing."
         )
     lock_path, composed, checkout = composition_for(root, manifest)
     _shared_path, shared = recommendation_lock_for(root, manifest)
@@ -699,16 +654,18 @@ def _assess(documents: CheckoutDocuments) -> Listing:
     if selection is not None:
         base_reference = selection.reference
     base = known_base_image(str(base_reference))
-    from devcapsule.configuration.capability_selection import selection_catalog
-    surfaces, agents = selection_catalog(matrix)
+    from devcapsule.configuration.capability_selection import inspection_agents
+    surfaces = {name: matrix.resolve_provider(name) or name for name in matrix.ide_capabilities()}
     from devcapsule.configuration.capability_selection import inspection_capabilities, inspection_providers
     access_lock, versions = inspection_capabilities(documents.manifest, documents.composed_lock, documents.checkout)
+    providers = inspection_providers(documents.manifest, documents.composed_lock, documents.checkout)
+    agents = inspection_agents(matrix, providers)
     listing = assess_checkout(
         documents.manifest, documents.shared_lock, documents.composed_lock, documents.checkout,
         workstation=documents.workstation, saved_environment=documents.saved_environment,
         surfaces=surfaces, agents=agents, project=documents.root, registered=documents.registered,
         access_lock=access_lock, capability_versions=versions,
-        capability_providers=inspection_providers(documents.manifest, documents.composed_lock, documents.checkout),
+        capability_providers=providers,
         base_display=base.contract.display if base is not None else None,
     )
     return Listing(listing.rows + tuple(deferred_rows(documents.input_path, documents.root)), listing.notes)
@@ -785,10 +742,7 @@ def _show_inside_capsule(loaded: runtime_configuration.RuntimeConfiguration, as_
     return 0
 
 
-class ConfigListCommand(ConfigShowCommand):
-    name = "list"
-    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.INSPECTS
-    help = "The same listing as 'show'."
+ConfigListCommand = _retired_command("list", "config show")
 
 
 def _set_value(record: CheckoutRecord, manifest: dict[str, Any], name: str, value: str) -> str:
@@ -1065,30 +1019,12 @@ class ConfigDockerArgsGroup(Group):
         return {"set": ConfigDockerArgsSetCommand, "list": ConfigDockerArgsListCommand, "clear": ConfigDockerArgsClearCommand}
 
 
-def _hidden_alias(replacement: type[Command], name: str, new_spelling: str) -> type[Command]:
-    """The 0.3.0 rc3 spelling of a command, kept hidden for one release; it runs the replacement."""
-
-    class Alias(replacement):  # type: ignore[valid-type,misc]
-        hidden = True
-        capsule_access: ClassVar[CapsuleAccess] = getattr(replacement, "capsule_access")
-        help = f"Replaced by 'config {new_spelling}'; kept for one release."
-
-        @classmethod
-        def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-            print(f"Note: 'config {name}' is now 'config {new_spelling}'.", file=sys.stderr)
-            return replacement.run(arguments, context)
-
-    Alias.name = name
-    Alias.__name__ = f"Legacy{replacement.__name__}"
-    return Alias
-
-
-ConfigSetEnvCommand = _hidden_alias(ConfigEnvSetCommand, "set-env", "env set")
-ConfigUnsetEnvCommand = _hidden_alias(ConfigEnvUnsetCommand, "unset-env", "env unset")
-ConfigListEnvCommand = _hidden_alias(ConfigEnvListCommand, "list-env", "env list")
-ConfigSetExtraDockerArgsCommand = _hidden_alias(ConfigDockerArgsSetCommand, "set-extra-docker-args", "docker-args set")
-ConfigListExtraDockerArgsCommand = _hidden_alias(ConfigDockerArgsListCommand, "list-extra-docker-args", "docker-args list")
-ConfigRemoveExtraDockerArgsCommand = _hidden_alias(ConfigDockerArgsClearCommand, "remove-extra-docker-args", "docker-args clear")
+ConfigSetEnvCommand = _retired_command("set-env", "config env set")
+ConfigUnsetEnvCommand = _retired_command("unset-env", "config env unset")
+ConfigListEnvCommand = _retired_command("list-env", "config env list")
+ConfigSetExtraDockerArgsCommand = _retired_command("set-extra-docker-args", "config docker-args set")
+ConfigListExtraDockerArgsCommand = _retired_command("list-extra-docker-args", "config docker-args list")
+ConfigRemoveExtraDockerArgsCommand = _retired_command("remove-extra-docker-args", "config docker-args clear")
 
 
 def _validate_extra_docker_args(options: list[str]) -> None:
@@ -1259,42 +1195,7 @@ def _lock_for_answers(root: Path, manifest: dict[str, Any]) -> tuple[Path, dict[
         return path, composed
 
 
-class ConfigUnsetCommand(Command):
-    """The 0.3.0 rc3 spelling: 'set NAME default', 'unbind NAME' or 'forget NAME' now."""
-
-    name = "unset"
-    hidden = True
-    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    help = "Replaced by 'set NAME default', 'forget NAME' and 'unbind NAME'; kept for one release."
-
-    @classmethod
-    def configure(cls, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument("node_name", metavar="NAME")
-
-    @classmethod
-    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        name = arguments.node_name
-        root, manifest = manifest_for(_project_context(context).start_path())
-        record = CheckoutRecord(manifest, root)
-        declarations = configuration_value_declarations(manifest)
-        if name in LAUNCHER_VALUE_NAMES or name in declarations:
-            print("Note: 'config unset' is now 'config set NAME default'.", file=sys.stderr)
-            print(_set_value(record, manifest, name, "default"))
-            record.write()
-        elif name in record.directory_bindings or name in record.environment_bindings or name in record.state:
-            print("Note: 'config unset' is now 'config unbind'.", file=sys.stderr)
-            record.directory_bindings.pop(name, None)
-            record.environment_bindings.pop(name, None)
-            record.state.pop(name, None)
-            record.write()
-            print(f"Unbound {name} for this checkout.")
-        else:
-            print("Note: 'config unset' is now 'config forget'.", file=sys.stderr)
-            _forget_authorization(root, manifest, name)
-            print(f"Forgot {name} for this checkout.")
-        print(f"Checkout record: {record.input_path}")
-        print("The next 'devcapsule project run' uses it.")
-        return 0
+ConfigUnsetCommand = _retired_command("unset", "config set NAME default', 'config forget NAME' or 'config unbind NAME")
 
 
 class ConfigTrustListCommand(Command):
@@ -1613,40 +1514,6 @@ class ConfigAuthorizeCommand(Command):
         return 0
 
 
-class _OwnerToolCommand(Command):
-    """One owner verb over the project's tools: ``require``, ``offer`` or ``drop``."""
-
-    name = "tool"
-    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    verb: ClassVar[str] = ""
-    help = ""
-
-    @classmethod
-    def configure(cls, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument("names", nargs="+", metavar="TOOL",
-                            help="A tool such as python, node or browser-automation.")
-        if cls.verb != "drop":
-            parser.add_argument("--because", metavar="REASON", help="The reason a developer reads beside this tool.")
-        parser.add_argument("--preview", action="store_true", help="Validate and show the result; write nothing.")
-        parser.add_argument("--unverified", action="store_true", dest="allow_unverified",
-                            help="Accept a combination the matrix has not validated; the lock records it.")
-
-    @classmethod
-    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        from devcapsule.configuration import owner_commands
-        start = _project_context(context).start_path()
-        if cls.verb == "drop":
-            print(owner_commands.drop_tools(start, arguments.names, preview=arguments.preview,
-                                            allow_unverified=arguments.allow_unverified))
-        elif cls.verb == "require":
-            print(owner_commands.require_tools(start, arguments.names, because=arguments.because,
-                                               preview=arguments.preview, allow_unverified=arguments.allow_unverified))
-        else:
-            print(owner_commands.offer_tools(start, arguments.names, because=arguments.because,
-                                             preview=arguments.preview, allow_unverified=arguments.allow_unverified))
-        return 0
-
-
 class _OwnerEnvironmentCommand(Command):
     """One owner verb over the environment the project asks of each developer."""
 
@@ -1701,12 +1568,7 @@ def _owner_group(verb: str, help_text: str, tool_help: str, env_help: str) -> ty
                 command = type("EnvironmentCommand", (_OwnerEnvironmentCommand,), {"verb": verb})
                 return command.run(arguments, context)
             if names[0] == "tool":
-                if len(names) == 1:
-                    raise ProjectConfigurationError("tool needs at least one capability name.")
-                print(f"Note: config {verb} tool is config {verb} now.", file=sys.stderr)
-                arguments.names = names[1:]
-                command = type("RetiredToolCommand", (_OwnerToolCommand,), {"verb": verb})
-                return command.run(arguments, context)
+                raise ProjectConfigurationError(f"config {verb} tool is retired; use 'devcapsule project config {verb} CAPABILITY'.")
             print(owner_commands.edit_capabilities(_project_context(context).start_path(), verb, names,
                   because=getattr(arguments, "because", None), preview=arguments.preview,
                   allow_unverified=arguments.allow_unverified))
@@ -1737,14 +1599,14 @@ class ConfigRecommendCommand(Command):
     name = "recommend"
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
     help = (
-        "Project owners: recommend an IDE, a memory limit, a CPU count, or a host access "
+        "Project owners: recommend a capability's provider, an IDE, a memory limit, a CPU count, or a host access "
         "(network host, docker-daemon host-socket, development-sudo true, host-browser true) with the reason; "
         "'none' removes the recommendation. Writes schema 2; rc3 and older launchers cannot read it."
     )
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument("recommendation", metavar="NAME", help="ide, memory, cpus, network, docker-daemon, development-sudo or host-browser.")
+        parser.add_argument("recommendation", metavar="NAME", help="A capability for a provider recommendation, or ide, memory, cpus, network, docker-daemon, development-sudo, host-browser.")
         parser.add_argument("value", metavar="VALUE", help="The recommended value, or none.")
         parser.add_argument("--because", metavar="REASON", help="The reason a developer reads; required for a host access.")
         parser.add_argument("--preview", action="store_true", help="Validate and show the result; write nothing.")
@@ -1757,28 +1619,7 @@ class ConfigRecommendCommand(Command):
         return 0
 
 
-class ConfigNeedCommand(Command):
-    """The 0.3.0 rc3 spelling, kept for one release to name its replacement."""
-
-    name = "need"
-    hidden = True
-    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    help = "Replaced by 'config require tool'; kept for one release to say so."
-
-    @classmethod
-    def configure(cls, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument("capabilities", nargs="*", metavar="CAPABILITY")
-        parser.add_argument("--unverified", action="store_true", dest="allow_unverified")
-        add_carrier_options(parser, families=("authorize",))
-
-    @classmethod
-    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        names = " ".join(arguments.capabilities) or "TOOL"
-        raise ProjectConfigurationError(
-            "'config need' is replaced: a project requires tools with "
-            f"'devcapsule project config require tool {names}'; a developer chooses an IDE or an agent "
-            "for their checkout with 'devcapsule project config ide IDE or config agent add AGENT'."
-        )
+ConfigNeedCommand = _retired_command("need", "config require CAPABILITY; config ide IDE or config add CAPABILITY for this checkout")
 
 
 class ConfigCheckCommand(Command):
@@ -1819,17 +1660,16 @@ class ConfigCheckCommand(Command):
         return 0
 
 
-def _local_selection(context: object | None) -> tuple[Path, dict[str, Any], LocalCapabilities, dict[str, str], dict[str, str]]:
-    """The checkout's current selection and the catalog's IDE and agent names, for the selection verbs."""
+def _local_selection(context: object | None) -> tuple[Path, dict[str, Any], LocalCapabilities, dict[str, str]]:
+    """The checkout's current selection and the catalog's IDE names, for the selection verbs."""
     from devcapsule.platforms import Platform
     from devcapsule.resolution_matrix import MATRICES
     root, manifest = manifest_for(_project_context(context).start_path())
     record = find_checkout_record(manifest, root)
     current = LocalCapabilities.read(load_checkout(record, manifest, root)) if record is not None else LocalCapabilities()
     matrix = MATRICES[Platform.current()]
-    from devcapsule.configuration.capability_selection import selection_catalog
-    surfaces, agents = selection_catalog(matrix)
-    return root, manifest, current, surfaces, agents
+    surfaces = {name: matrix.resolve_provider(name) or name for name in matrix.ide_capabilities()}
+    return root, manifest, current, surfaces
 
 
 def _capability_name(value: str, names: Mapping[str, str], kind: str) -> str:
@@ -1860,7 +1700,7 @@ class ConfigIdeCommand(Command):
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        root, manifest, current, surfaces, _agents = _local_selection(context)
+        root, manifest, current, surfaces = _local_selection(context)
         ide = _capability_name(arguments.ide, surfaces, "IDE")
         selected = tuple(sorted({*(name for name in current.selected if name not in surfaces), ide}))
         providers = {name: value for name, value in current.providers.items() if name not in surfaces or name == ide}
@@ -1870,104 +1710,24 @@ class ConfigIdeCommand(Command):
         return 0
 
 
-class _AgentCommand(Command):
-    name = ""
-    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    adding: ClassVar[bool] = True
-
-    @classmethod
-    def configure(cls, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument("agents", nargs="+", metavar="AGENT", help="codex-agent, claude-code-agent or antigravity-agent.")
-        parser.add_argument("--unverified", action="store_true", dest="allow_unverified", help=argparse.SUPPRESS)
-
-    @classmethod
-    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        root, manifest, current, _surfaces, agents = _local_selection(context)
-        names = {_capability_name(value, agents, "agent") for value in arguments.agents}
-        replacement = "add" if cls.adding else "omit"
-        print(f"Note: config agent {cls.name} is config {replacement} now.", file=sys.stderr)
-        selected = set(current.selected) | names if cls.adding else set(current.selected) - names
-        _replace_selection(root, tuple(sorted(selected)), None, arguments.allow_unverified)
-        verb = "Added" if cls.adding else "Removed"
-        print(f"{verb} {', '.join(sorted(names))} for this checkout. Agents: {' '.join(sorted(selected & set(agents))) or 'none'}.")
-        print("The next 'devcapsule project run' uses it.")
-        return 0
-
-
-class ConfigAgentAddCommand(_AgentCommand):
-    name = "add"
-    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    adding = True
-    help = "Add a coding agent to this checkout; its vendor's terms are asked once."
-
-
-class ConfigAgentRemoveCommand(_AgentCommand):
-    name = "remove"
-    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    adding = False
-    help = "Remove a coding agent from this checkout."
-
-
 class ConfigAgentGroup(Group):
     name = "agent"
-    help = "This checkout's coding agents: add, remove."
+    hidden = True
 
     @classmethod
     def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
-        return {"add": ConfigAgentAddCommand, "remove": ConfigAgentRemoveCommand}
-
-
-class _ToolCommand(Command):
-    name = ""
-    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    omitting: ClassVar[bool] = True
-
-    @classmethod
-    def configure(cls, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument("tools", nargs="+", metavar="TOOL", help="A tool the project offers, such as browser-automation.")
-
-    @classmethod
-    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        root, manifest, current, _surfaces, _agents = _local_selection(context)
-        print(f"Note: config tool {cls.name} is config {cls.name} now.", file=sys.stderr)
-        policy = CapabilityPolicy.read(manifest)
-        names = set()
-        for value in arguments.tools:
-            if value not in policy.optional:
-                raise ProjectConfigurationError(
-                    f"{value!r} is not a tool the project offers; offered: {', '.join(policy.optional) or 'none'}. "
-                    "A required tool cannot be omitted."
-                )
-            names.add(value)
-        without = set(current.without) | names if cls.omitting else set(current.without) - names
-        _replace_selection(root, current.selected, tuple(sorted(without)), False)
-        verb = "Omitted" if cls.omitting else "Restored"
-        print(f"{verb} {', '.join(sorted(names))} for this checkout. Omitted tools: {' '.join(sorted(without)) or 'none'}.")
-        print("The next 'devcapsule project run' uses it.")
-        return 0
-
-
-class ConfigToolOmitCommand(_ToolCommand):
-    name = "omit"
-    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    omitting = True
-    help = "Leave an offered tool out of this checkout's capsule."
-
-
-class ConfigToolRestoreCommand(_ToolCommand):
-    name = "restore"
-    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    omitting = False
-    help = "Take an offered tool back into this checkout's capsule."
+        return {"add": _retired_command("add", "config add CAPABILITY"),
+                "remove": _retired_command("remove", "config omit CAPABILITY")}
 
 
 class ConfigToolGroup(Group):
     name = "tool"
-    help = "The project's offered tools in this checkout: omit, restore."
+    hidden = True
 
     @classmethod
     def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
-        return {"omit": ConfigToolOmitCommand, "restore": ConfigToolRestoreCommand}
+        return {"omit": _retired_command("omit", "config omit CAPABILITY"),
+                "restore": _retired_command("restore", "config restore CAPABILITY")}
 
 
 class ConfigAddCommand(Command):
@@ -1988,7 +1748,7 @@ class ConfigAddCommand(Command):
         state = load_state(root, manifest)
         policy = CapabilityPolicy.read(manifest)
         current = LocalCapabilities.read(state.checkout)
-        selection = Selection(current, state.surfaces, state.agents)
+        selection = Selection(current, state.surfaces)
         name = state.matrix.canonical_name(arguments.capability)
         from devcapsule.configuration.capability_selection import known_policy_names
         declared = {canonical: name for name, canonical in known_policy_names(policy, state.matrix).items()}
@@ -2050,7 +1810,7 @@ class ConfigUseCommand(Command):
         from devcapsule.configuration.manifest_document import Recommendations
         root, manifest = manifest_for(_project_context(context).start_path())
         state = load_state(root, manifest)
-        selection = Selection(LocalCapabilities.read(state.checkout), state.surfaces, state.agents)
+        selection = Selection(LocalCapabilities.read(state.checkout), state.surfaces)
         selection.use(state.matrix, CapabilityPolicy.read(manifest), Recommendations.read(manifest),
                       arguments.capability, arguments.component)
         print(configure(root, providers=selection.providers, allow_unverified=arguments.allow_unverified))
@@ -2061,39 +1821,27 @@ class ConfigCapabilitiesCommand(Command):
     name = "capabilities"
     hidden = True
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    help = "Replaced by 'config ide', 'config agent add|remove' and 'config tool omit|restore'; kept for one release."
+    help = "Recover an interrupted manifest/lock transaction."
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
-        for legacy in ("--required", "--optional"):
-            parser.add_argument(legacy, nargs="*", help=argparse.SUPPRESS)
-        parser.add_argument("--local", nargs="*", metavar="CAPABILITY", help="Replace personal IDE/agent/extra-tool choices.")
-        parser.add_argument("--without", nargs="*", metavar="CAPABILITY", help="Replace local omissions of project optional tools.")
-        parser.add_argument("--preview", action="store_true", help="Validate and display the candidate; write nothing.")
-        parser.add_argument("--unverified", action="store_true", help="Explicitly select an unverified combination.")
+        for flag, replacement in (("--local", "config ide IDE or config add CAPABILITY"),
+                                  ("--without", "config omit CAPABILITY or config restore CAPABILITY"),
+                                  ("--required", "config require CAPABILITY"),
+                                  ("--optional", "config offer CAPABILITY"),
+                                  ("--sdk-major", "config require 'NAME>=VERSION'")):
+            _retired_option(parser, flag, "devcapsule project " + replacement)
         parser.add_argument("--recover", action="store_true", help="Finish or undo an interrupted shared configuration edit.")
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        from devcapsule.configuration.capability_commands import configure, recover
+        from devcapsule.configuration.capability_commands import recover
         from devcapsule.configuration.storage import discover_project
-        start = _project_context(context).start_path()
-        if any(getattr(arguments, key) is not None for key in ("required", "optional")):
-            raise ProjectConfigurationError(
-                "The project's tools are edited with 'devcapsule project config require tool TOOL', "
-                "'config offer tool TOOL' and 'config drop tool TOOL'; 'capabilities' keeps the checkout's "
-                "--local and --without choices."
-            )
-        if arguments.recover:
-            if any(getattr(arguments, key) is not None for key in ("required", "optional", "local", "without")) or arguments.preview or arguments.unverified:
-                raise ProjectConfigurationError("--recover is a standalone operation.")
-            root = start.expanduser().resolve()
-            recover(root if (root / ".devcapsule/.capability-transaction.toml").exists() else discover_project(root))
-            print("Configuration transaction recovered (or none pending).")
-        else:
-            print(configure(start, required=arguments.required, optional=arguments.optional,
-                            local=arguments.local, without=arguments.without,
-                            preview=arguments.preview, allow_unverified=arguments.unverified))
+        if not arguments.recover:
+            raise ProjectConfigurationError("Use 'devcapsule project config capabilities --recover' for recovery; use 'config show' to inspect.")
+        root = _project_context(context).start_path().expanduser().resolve()
+        recover(root if (root / ".devcapsule/.capability-transaction.toml").exists() else discover_project(root))
+        print("Configuration transaction recovered (or none pending).")
         return 0
 
 
@@ -2349,7 +2097,7 @@ class ProjectRunCommand(Command):
     help = (
         "Run the project: derive the plan from the project, this workstation and this checkout, "
         "ask for unresolved choices and consent, and launch. Configuration flags apply to this launch only; "
-        "--save records IDE, agent, memory, CPU, environment and host-access answers. Everything after '--' is handed "
+        "--save records IDE, capability, provider, memory, CPU, environment and host-access answers. Everything after '--' is handed "
         "verbatim to 'docker run', except the options the launcher composes (--network, --memory, "
         "--cpus, --shm-size, ...), which are refused with the config command named. Without a "
         "terminal, a pending decision ends the command with status 3, naming each with its flag."
@@ -2362,7 +2110,7 @@ class ProjectRunCommand(Command):
         parser.add_argument("--ide", metavar="IDE", help="The IDE for this launch: python-ide, frontend-ide, java-ide, eclipse-ide, dotnet-ide.")
         parser.add_argument("--with", dest="with_capabilities", action="append", default=[], metavar="CAPABILITY", help="Add a capability for this launch; repeatable.")
         parser.add_argument("--use", action="append", default=[], metavar="CAPABILITY=COMPONENT", help="Choose a provider for this launch; repeatable.")
-        parser.add_argument("--agent", action="append", default=[], metavar="AGENT", help="Retired spelling of --with.")
+        _retired_option(parser, "--agent", "devcapsule project run --with CAPABILITY")
         parser.add_argument("--memory", metavar="SIZE", help="The memory limit for this launch, such as 6GiB or 6g.")
         parser.add_argument("--cpus", metavar="N", help="The CPU count for this launch.")
         parser.add_argument("--env", action="append", default=[], metavar="NAME[=VALUE]",
@@ -2381,9 +2129,8 @@ class ProjectRunCommand(Command):
                             help="Skip the daily interactive distribution refresh; cached critical notices still allow a decision.")
         parser.add_argument("--print-command", action="store_true",
                             help="Prepare and print the Docker command without launching; inline extra environment values are redacted and comments identify transient dependencies.")
-        # --force and --force-config: gone with the resolve step (Part 4 of the
-        # CLI UX work order); accepted and ignored for one release, with a note.
-        parser.add_argument("--force", action="store_true", help=argparse.SUPPRESS)
+        for flag in ("--force", "--force-config"):
+            _retired_option(parser, flag, "devcapsule project run")
         add_carrier_options(parser, families=("set", "authorize"))
 
     @classmethod
@@ -2404,8 +2151,6 @@ class ProjectRunCommand(Command):
     def _run(cls, arguments: argparse.Namespace, context: object | None,
              command_report: Callable[[str], None] | None = None) -> int:
         start = _project_context(context).start_path()
-        if arguments.force:
-            print("Note: --force is gone; 'run' derives the plan from the current inputs every time.", file=sys.stderr)
         # Software approvals first: new versions of vendor software approved
         # before are one question at launch, by the owner's direction of
         # 2026-10-22. Printing the command never asks or writes.
@@ -2525,7 +2270,7 @@ class ProjectRunCommand(Command):
             )
         memory_limit = runtime.get("memory-limit-bytes")
         cpus = runtime.get("cpus")
-        # Bindings convey host access too. --force may retain stale ordinary
+        # Bindings convey host access too. A launch must recheck ordinary
         # runtime choices, but never resurrect a removed mapping or secret.
         state = dict(checkout.get("state", {}).get("adopted", {}))
         state.update(review.bindings)
@@ -2708,8 +2453,6 @@ def _run_flags(arguments: argparse.Namespace, manifest: Mapping[str, Any]) -> Ru
                     "record it with 'devcapsule project config set'. Run-once values: --memory, --cpus."
                 )
             print(f"Note: --set {answer.name} is --{name} now.", file=sys.stderr)
-    if arguments.agent:
-        print("Note: run --agent is run --with now.", file=sys.stderr)
     uses = []
     for value in arguments.use:
         capability, separator, component = value.partition("=")
@@ -2717,7 +2460,7 @@ def _run_flags(arguments: argparse.Namespace, manifest: Mapping[str, Any]) -> Ru
             raise ProjectConfigurationError("--use takes CAPABILITY=COMPONENT (or CAPABILITY=default).")
         uses.append((capability, component))
     flags = RunFlags(
-        ide=arguments.ide, agents=tuple(arguments.agent), capabilities=tuple(arguments.with_capabilities),
+        ide=arguments.ide, capabilities=tuple(arguments.with_capabilities),
         providers=tuple(uses), memory=memory, cpus=cpus,
         environment=tuple(arguments.env), authorize=tuple(authorize), trust=tuple(arguments.trust),
         save=arguments.save, allow_unverified=arguments.allow_unverified,
@@ -2758,6 +2501,20 @@ class ProjectCommand(Group):
         leaf = cls.resolve(tokens)
         if leaf is None or issubclass(leaf, Group):
             return context
+        # Retired flags name their replacement even inside a capsule, before
+        # launcher access checks. Values after the Docker separator stay literal.
+        if leaf in (ProjectInitCommand, ProjectRunCommand, ConfigCapabilitiesCommand):
+            prefix_length = 2 if leaf is ConfigCapabilitiesCommand else 1
+            parser = argparse.ArgumentParser(prog="devcapsule project " + " ".join(tokens[:prefix_length]))
+            leaf.configure(parser)
+            retired = {flag: action for action in parser._actions if isinstance(action, _RetiredOption)
+                       for flag in action.option_strings}
+            for token in parsed_tokens[prefix_length:]:
+                flag = token.partition("=")[0]
+                if flag in retired:
+                    retired[flag](parser, argparse.Namespace(), None, flag)
+        if leaf in (ConfigRequireGroup, ConfigOfferGroup, ConfigDropGroup) and tokens[2:3] == ["tool"]:
+            raise ProjectConfigurationError(f"config {tokens[1]} tool is retired; use 'devcapsule project config {tokens[1]} CAPABILITY'.")
         access = _capsule_access(leaf)
         if access.selects_capsule_project and context.selected_path is None:
             context = replace(context, capsule_root=runtime_configuration.capsule_project_root(Path(".")))
@@ -2856,7 +2613,7 @@ def _authorize_all_recommended(
     record.write()
     print(f"Authorized {len(declarations)} recommendations for this checkout.")
     print(f"Checkout input: {input_path}")
-    print("Run 'devcapsule project config resolve' before materialization or launch.")
+    print("Run 'devcapsule project run' before materialization or launch.")
     return 0
 
 

@@ -286,16 +286,15 @@ def test_required_provider_choice_and_default_preserve_selection_shape(project, 
 
 
 @pytest.mark.parametrize("save", [False, True])
-def test_cli_repeatable_flags_and_retired_agent_note(project, matrix, monkeypatch, capsys, save):
+def test_cli_repeatable_capability_and_provider_flags(project, matrix, monkeypatch, capsys, save):
     from tests.test_upgrade_recovery import install_external_fakes, invoke
     assert config(project, "authorize", "base-image", "default") == 0
     launch = install_external_fakes(monkeypatch, [])
     monkeypatch.setattr("sys.stdin.isatty", lambda: False)
     before = record(project)
     assert invoke(project, "run", "--ide", "frontend-ide", "--with", "postgresql-client", "--with", "codex-agent",
-                  "--agent", "codex", "--agent", "codex", "--use", "frontend-ide=codium", "--use", "frontend-ide=intellij",
+                  "--with", "codex", "--with", "codex", "--use", "frontend-ide=codium", "--use", "frontend-ide=intellij",
                   "--no-update-check", *(["--save"] if save else [])) == 0
-    assert capsys.readouterr().err.count("Note: run --agent is run --with now.") == 1
     options = launch.call_args.args[0]
     assert options.runtime_plan.component.id == "intellij"
     assert {item.id for item in options.runtime_plan.ancillary_components} == {"codex", "postgresql-client"}
@@ -305,18 +304,6 @@ def test_cli_repeatable_flags_and_retired_agent_note(project, matrix, monkeypatc
         assert record(project) == before
 
 
-@pytest.mark.parametrize("arguments", [
-    ("require", "tool", "java"), ("offer", "tool", "browser-automation"), ("drop", "tool", "node"),
-    ("agent", "add", "codex"), ("agent", "remove", "codex"),
-    ("tool", "omit", "browser-automation"), ("tool", "restore", "browser-automation"),
-])
-def test_retired_commands_execute_and_print_one_replacement(project, arguments, capsys):
-    assert config(project, "offer", "browser-automation") == 0
-    capsys.readouterr()
-    assert config(project, *arguments) == 0
-    output = capsys.readouterr()
-    assert output.err.count("Note: config ") == 1
-    assert " now." in output.err
 
 
 def test_part_three_owner_fixture_and_developer_commands(project, matrix, monkeypatch):

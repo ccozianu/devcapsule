@@ -18,7 +18,7 @@ Commands that need host state name the launcher command to run outside.
 
 | Command | Intent |
 |---|---|
-| `init` | Initialize the project: the manifest with what it requires and offers, the platform lock, your checkout record with your IDE and agents. |
+| `init` | Initialize the project: the manifest with what it requires and offers, the platform lock, your checkout record with your IDE and capabilities. |
 | `run` | Derive the plan from the project, this workstation and this checkout, ask what nobody else can answer, and launch. |
 | `config` | This checkout's choices and the project's contract: show what the next launch uses, change one thing, check. |
 | `info` | Show project software, environment and persistent storage without changing state. |
@@ -31,14 +31,15 @@ Commands that need host state name the launcher command to run outside.
 ### `init`
 
 ```text
-devcapsule project init [--require TOOL[=MAJOR]]... [--offer TOOL]... [--ide IDE] [--agent AGENT]...
+devcapsule project init [--require CAPABILITY]... [--offer CAPABILITY]... [--ide IDE]
                         [--name NAME] [--slug SLUG] [--creator CREATOR] [--project-mount PATH]
                         [--regenerate] [--unverified] [--set NAME VALUE]... [--authorize NAME VALUE]... [--bind NAME VALUE]...
 ```
 
-`--require` and `--offer` are the project's; `--ide` and `--agent` are
-yours, recorded in your checkout. New manifests use schema 2; rc3 and older
-launchers cannot read them. With an IDE selected, initialization can still
+`--require` and `--offer` declare project capabilities. Set a minimum afterward
+with `config require`.
+`--ide` records your checkout choice. Use `config add` for personal additions.
+New manifests use schema 2. Candidate 3 and older launchers cannot read them. With an IDE selected, initialization can still
 ask for per-checkout base or vendor consent. For scripts, supply the
 `--authorize NAME VALUE` answers it requests. `--set`, `--bind` and
 `--authorize` also accept one quoted justification after the value.
@@ -46,12 +47,12 @@ ask for per-checkout base or vendor consent. For scripts, supply the
 ### `run`
 
 ```text
-devcapsule project run [--ide IDE] [--agent AGENT]... [--memory SIZE] [--cpus N] [--env NAME[=VALUE]]...
+devcapsule project run [--ide IDE] [--with CAPABILITY]... [--use CAPABILITY=COMPONENT]... [--memory SIZE] [--cpus N] [--env NAME[=VALUE]]...
                        [--trust CHANNEL]... [--authorize NAME VALUE]... [--set NAME VALUE]... [--save]
                        [--name NAME] [--no-update-check] [--no-recursive-e2e] [--print-command] [-- DOCKER-RUN-OPTIONS...]
 ```
 
-IDE, agent, memory, CPU, environment and host-access flags apply to one launch.
+IDE, capability, provider, memory, CPU, environment and host-access flags apply to one launch.
 `--save` records those answers after the required review and plan validation
 succeed. `--trust` accepts a channel for this workstation without needing
 `--save`. A missing required answer prevents that acceptance from being saved.
@@ -83,7 +84,7 @@ Read-only:
 
 | Command | Intent |
 |---|---|
-| `show`, `list` | Every choice of this checkout: the value the next launch uses, its source, what is pending, with the command that settles it. Writes nothing. |
+| `show` | Every choice of this checkout: the value the next launch uses, its source, what is pending, with the command that settles it. Writes nothing. |
 | `check [--manifest FILE --lock FILE]` | Validate without writing or launching. On the host, exit 3 for pending checkout decisions. Candidate-file options check only the candidate contract. |
 | `env list` | This checkout's environment variables by name, never their values. |
 | `docker-args list` | The saved `docker run` options, environment values masked. |
@@ -95,8 +96,10 @@ Your checkout:
 | Command | Intent |
 |---|---|
 | `ide IDE` | Choose this checkout's IDE: `python-ide`, `frontend-ide`, `java-ide`, `eclipse-ide` or `dotnet-ide`. |
-| `agent add\|remove AGENT` | This checkout's coding agents: `codex-agent`, `claude-code-agent`, `antigravity-agent`. |
-| `tool omit\|restore TOOL` | The project's offered tools in this checkout. |
+| `add CAPABILITY` | Add a capability the project did not declare. |
+| `omit CAPABILITY` | Omit an offered capability or remove a personal addition. |
+| `restore CAPABILITY` | Restore an offered capability. |
+| `use CAPABILITY COMPONENT\|default` | Choose a provider, or follow the project or catalog again. |
 | `set NAME VALUE\|default` | `memory` (`6GiB`, `6g`), `cpus` (`4`), or a value the project declares; `default` forgets your answer. |
 | `authorize NAME VALUE [JUSTIFICATION]` | Record host access or per-checkout software consent. `--all-recommended` reviews recommendations interactively. |
 | `deny NAME` | Deny a host access for this checkout, recorded. |
@@ -120,20 +123,22 @@ The project's, for its owners (they write schema 2):
 
 | Command | Intent |
 |---|---|
-| `require tool TOOL[=MAJOR]... [--because REASON]` | What every checkout must have. |
+| `require 'CAPABILITY>=VERSION'... [--because REASON]` | What every checkout must have. |
 | `require env NAME... [--because REASON]` | An input the application needs; asked at the first launch, kept privately. |
-| `offer tool TOOL... [--because REASON]`, `offer env NAME... [--because REASON]` | What a developer may take or leave. |
-| `drop tool\|env NAME...` | Remove a requirement or an offer. |
+| `offer CAPABILITY... [--because REASON]`, `offer env NAME... [--because REASON]` | What a developer may take or leave. |
+| `drop [env] NAME...` | Remove a requirement or an offer. |
+| `recommend CAPABILITY COMPONENT\|none` | Recommend a resolution, or remove it; no reason applies. |
 | `recommend ide\|memory\|cpus VALUE [--because REASON]` | An ordinary recommendation, applied unless the developer chooses otherwise. |
 | `recommend network\|docker-daemon\|development-sudo\|host-browser VALUE --because REASON` | A host-access recommendation: a question each developer answers; `none` removes it. |
 
 Each owner's command takes `--preview` to validate and show the result
-without writing. Tool edits update the manifest and lock together.
-Environment declarations and recommendations update only the manifest.
+without writing. Capability edits and resolution recommendations update the
+manifest and lock together. Environment declarations and other recommendations
+update only the manifest. Required capabilities accept an optional minimum.
 `recommend NAME none` removes any supported recommendation.
-Tool-edit commands also accept `--unverified` for an unverified combination.
+Capability-edit commands also accept `--unverified` for an unverified combination.
 
-`show`, `list`, `check`, `env list`, `docker-args list`, `trust list` and
+`show`, `check`, `env list`, `docker-args list`, `trust list` and
 `console list` accept `--json`.
 For trust scope, see
 [Vendor software and trust](../configuration/software-approvals.md).
@@ -147,7 +152,7 @@ Each command below follows `devcapsule project`.
 | Command | Intent |
 |---|---|
 | `info [--json]` | Inspect the project's environment and persistent storage. |
-| `list [--json]` | List registered checkouts on this workstation. |
+| `list` | List registered checkouts on this workstation. |
 | `checkout register NAME` | Give an unregistered checkout a name; it does not rename a registered checkout. |
 | `checkout notifications list` | List checkout notifications. |
 | `checkout notifications post` | Post a notification to the checkout. |
@@ -174,26 +179,12 @@ Each command below follows `devcapsule project`.
 
 See [Component upgrades](../updates/component-upgrades.md) for version-set examples.
 
-## Retired spellings and compatibility behavior
+## Retired spellings
 
-These forms are absent from the parent command listings. They do not all fail.
-Some still execute and write files. Use the current forms in new scripts.
-
-| Old form | What this launcher does | Current form |
-|---|---|---|
-| `config resolve` | Prints a migration note, derives the plan and can write a resolution. Pending required answers return 3. | `project run`; inspect first with `config check` |
-| `config capabilities --local` | Still replaces the personal selection. Its output still mentions `resolve`. | `config ide`, `config agent add\|remove` |
-| `config capabilities --without` | Still replaces the omission list. | `config tool omit\|restore` |
-| `config capabilities --required`, `--optional`, `--sdk-major` | Refuses with status 2 and names the owner commands. | `config require tool`, `config offer tool`, `config drop tool` |
-| `config capabilities --recover` | Still repairs an interrupted manifest/lock transaction. | Retained for recovery |
-| `config need` | Refuses with status 2 and names the owner and personal commands. | `config require tool`, `config ide`, `config agent add` |
-| `config unset NAME` | Prints a migration note and still clears the answer. | `config set NAME default`, `config forget NAME` or `config unbind NAME` |
-| `config set-env`, `unset-env`, `list-env` | Prints a migration note and executes the corresponding command. | `config env set`, `env unset`, `env list` |
-| `config set-extra-docker-args`, `list-extra-docker-args`, `remove-extra-docker-args` | Prints a migration note and executes the corresponding command. | `config docker-args set`, `docker-args list`, `docker-args clear` |
-| `init --need`, `--required`, `--optional`, `--local`, `--sdk-major` | Prints a migration note, maps the selection and continues initialization. | `init --require TOOL[=MAJOR]`, `--offer`, `--ide`, `--agent` |
-| `init --less-pedantic` | Still accepted without a retirement note. It skips the additional local-base confirmation. | Use explicit base consent without this flag |
-| `run --force` | Prints a note, ignores the flag and continues normal launch preparation. | `project run` |
-| `run --force-config` | Refuses as an unrecognized argument with status 2. It gives no specific migration message. | `project run` |
+Old configuration commands and launch flags refuse with status 2, write
+nothing, and name their replacement in one line. Update scripts to use that
+replacement. `config capabilities --recover` remains available to repair an
+interrupted manifest/lock edit.
 
 ## Workstation and development commands
 

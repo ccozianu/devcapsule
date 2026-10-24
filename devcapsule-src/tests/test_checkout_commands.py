@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from tests.launch_preparation import run_until_prepared
+
 import json
 import os
 import re
@@ -63,8 +65,6 @@ def test_show_json_carries_the_listing(project: Path, capsys) -> None:
     document = json.loads(capsys.readouterr().out)
     assert document["schema-version"] == 2
     assert {row["kind"] for row in document["rows"]} >= {"ide", "tool", "memory", "cpus", "access"}
-    assert run(project, "list", "--json") == 0
-    assert json.loads(capsys.readouterr().out)["rows"] == document["rows"]
     assert run(project, "check", "--json") == 3
     assert "(none)" in json.loads(capsys.readouterr().out)["pending"]
 
@@ -72,20 +72,21 @@ def test_show_json_carries_the_listing(project: Path, capsys) -> None:
 def test_ide_agent_and_tool_verbs_edit_the_selection(project: Path, capsys) -> None:
     assert run(project, "ide", "codium") == 0
     assert "frontend-ide (codium)" in capsys.readouterr().out
-    assert run(project, "agent", "add", "codex", "claude-code-agent") == 0
+    assert run(project, "add", "codex") == 0
+    assert run(project, "add", "claude-code-agent") == 0
     assert record(project)["capabilities"]["selected"] == ["claude-code-agent", "codex-agent", "frontend-ide"]
-    assert run(project, "agent", "remove", "codex-agent") == 0
+    assert run(project, "omit", "codex-agent") == 0
     assert run(project, "ide", "python-ide") == 0
     assert record(project)["capabilities"]["selected"] == ["claude-code-agent", "python-ide"]
-    assert run(project, "tool", "omit", "browser-automation") == 0
+    assert run(project, "omit", "browser-automation") == 0
     assert record(project)["capabilities"]["without"] == ["browser-automation"]
-    assert run(project, "tool", "restore", "browser-automation") == 0
+    assert run(project, "restore", "browser-automation") == 0
     assert record(project)["capabilities"]["without"] == []
-    assert run(project, "tool", "omit", "node") == 2
-    assert "A required tool cannot be omitted" in capsys.readouterr().err
+    assert run(project, "omit", "node") == 2
+    assert "cannot be omitted" in capsys.readouterr().err
     assert run(project, "ide", "emacs") == 2
     assert "Unknown IDE" in capsys.readouterr().err
-    assert run(project, "agent", "add", "python-ide") == 2
+    assert run(project, "add", "python-ide") == 2
 
 
 def test_set_memory_cpus_default_and_declared_values(project: Path, capsys, monkeypatch) -> None:
@@ -131,9 +132,7 @@ def test_env_set_from_host_unset_and_list(project: Path, capsys) -> None:
     capsys.readouterr()
     assert run(project, "env", "list", "--json") == 0
     assert json.loads(capsys.readouterr().out)["from-host"] == ["POSTGRES_PASSWORD"]
-    # The rc3 spellings still work, hidden, and say so.
-    assert run(project, "set-env", "OLD", "v") == 0
-    assert "now 'config env set'" in capsys.readouterr().err
+    assert run(project, "env", "set", "OLD", "v") == 0
     assert run(project, "show") == 0
     out = capsys.readouterr().out
     assert re.search(r"^env\s+OLD\s+set\s+checkout", out, re.M)
@@ -159,8 +158,7 @@ def test_docker_args_set_list_clear(project: Path, capsys) -> None:
     capsys.readouterr()
     assert run(project, "docker-args", "list", "--json") == 0
     assert json.loads(capsys.readouterr().out)["arguments"] == []
-    assert run(project, "set-extra-docker-args", "--", "--gpus", "all") == 0
-    assert "now 'config docker-args set'" in capsys.readouterr().err
+    assert run(project, "docker-args", "set", "--", "--gpus", "all") == 0
 
 
 def test_authorize_deny_forget_and_the_wording(project: Path, capsys) -> None:
@@ -177,8 +175,7 @@ def test_authorize_deny_forget_and_the_wording(project: Path, capsys) -> None:
     assert run(project, "forget", "network") == 2
     assert run(project, "authorize", "base-image", "default") == 0
     assert "exact recorded image" in capsys.readouterr().out
-    assert run(project, "unset", "docker-daemon") == 0
-    assert "now 'config forget'" in capsys.readouterr().err
+    assert run(project, "forget", "docker-daemon") == 0
 
 
 def test_bind_and_unbind_need_an_ide_and_return_to_the_managed_default(project: Path, tmp_path: Path, capsys) -> None:
@@ -196,14 +193,14 @@ def test_every_config_leaf_is_listed_or_hidden_with_its_replacement() -> None:
     from devcapsule.commands.framework import render_command_listing
     from devcapsule.commands.project import ConfigGroup
     listing = render_command_listing(ConfigGroup.subcommands())
-    for visible in ("show", "check", "ide", "agent", "tool", "set", "default", "authorize", "deny", "forget", "bind",
+    for visible in ("show", "check", "ide", "add", "omit", "restore", "use", "set", "default", "authorize", "deny", "forget", "bind",
                     "unbind", "env", "docker-args", "require", "offer", "drop", "recommend"):
         assert f"  {visible} " in listing, visible
-    for hidden in ("set-env", "list-env", "unset-env", "set-extra-docker-args", "capabilities", "need", "unset"):
+    for hidden in ("set-env", "list-env", "unset-env", "set-extra-docker-args", "capabilities", "need", "unset", "agent", "tool", "list"):
         assert f"  {hidden} " not in listing, hidden
 
 
-@pytest.mark.parametrize("verb", ["show", "check", "list"])
+@pytest.mark.parametrize("verb", ["show", "check"])
 def test_inspection_refuses_activation_without_recovery(project, capsys, verb):
     from devcapsule.configuration.file_formats import render_toml
     manifest = load_toml(paths(project)[0])
@@ -213,7 +210,7 @@ def test_inspection_refuses_activation_without_recovery(project, capsys, verb):
                                   "after-checkout": "uncommitted", "before-resolution": "recovered", "after-resolution": "new"}))
     before = {p: p.read_bytes() for p in (input_path, journal)}
     assert run(project, verb) == 2
-    assert "config resolve" in capsys.readouterr().err
+    assert "project run" in capsys.readouterr().err
     assert not resolution.exists()
     assert {p: p.read_bytes() for p in before} == before
 
@@ -302,7 +299,8 @@ def test_deny_required_consent_never_writes(project, name, capsys):
     from devcapsule.configuration.authorization import authorization_declarations
     from devcapsule.configuration.storage import lock_for
     assert run(project, "ide", "codium") == 0
-    assert run(project, "agent", "add", "claude-code", "antigravity-cli") == 0
+    assert run(project, "add", "claude-code") == 0
+    assert run(project, "add", "antigravity-cli") == 0
     manifest = load_toml(paths(project)[0])
     assert authorization_declarations(manifest, lock_for(project, manifest)[1])[name].required
     input_path = checkout_record_paths(load_toml(paths(project)[0]), project)[0]
@@ -324,9 +322,9 @@ def test_legacy_need_allows_agent_and_optional_tool_edits(project):
     manifest_path.write_text(render_toml(document))
     lock_path.write_text(render_toml(generate_lock(CapabilityPolicy.read(document), MATRICES[Platform.current()])))
     before = manifest_path.read_bytes(), lock_path.read_bytes()
-    assert run(project, "agent", "add", "codex") == 0
+    assert run(project, "add", "codex") == 0
     assert record(project)["capabilities"]["selected"] == ["codex-agent"]
-    assert run(project, "tool", "omit", "browser-automation") == 0
+    assert run(project, "omit", "browser-automation") == 0
     assert record(project)["capabilities"]["without"] == ["browser-automation"]
     assert (manifest_path.read_bytes(), lock_path.read_bytes()) == before
 
@@ -353,7 +351,7 @@ def runtime_project(project, tmp_path, monkeypatch):
     return inside
 
 
-@pytest.mark.parametrize("verb", ["show", "list", "check"])
+@pytest.mark.parametrize("verb", ["show", "check"])
 def test_runtime_inspection_uses_recorded_context_and_never_host_assessment(runtime_project, tmp_path, monkeypatch, capsys, verb):
     from devcapsule.commands import project as commands
     def forbidden(*args, **kwargs):
@@ -372,36 +370,6 @@ def test_runtime_inspection_uses_recorded_context_and_never_host_assessment(runt
     assert run(runtime_project, verb) == 0
     text = capsys.readouterr().out
     assert ("recorded choices" if verb != "check" else "Host decisions cannot be assessed") in text
-    assert {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()} == before
-
-
-ALIASES = [
-    ("set-env", ("env", "set"), ("TOKEN", "private")),
-    ("unset-env", ("env", "unset"), ("TOKEN",)),
-    ("list-env", ("env", "list"), ()),
-    ("set-extra-docker-args", ("docker-args", "set"), ("--", "--gpus", "all")),
-    ("list-extra-docker-args", ("docker-args", "list"), ()),
-    ("remove-extra-docker-args", ("docker-args", "clear"), ()),
-]
-
-
-@pytest.mark.parametrize("alias,replacement,arguments", ALIASES)
-def test_hidden_alias_success_and_error_status_match_replacement(project, capsys, alias, replacement, arguments):
-    manifest = load_toml(paths(project)[0])
-    path = arguments_path(checkout_record_paths(manifest, project)[0])
-    assert run(project, *replacement, *arguments) == 0
-    expected = path.read_bytes() if path.exists() else None
-    assert run(project, alias, *arguments) == 0
-    assert (path.read_bytes() if path.exists() else None) == expected
-    assert f"now 'config {' '.join(replacement)}'" in capsys.readouterr().err
-    assert run(project, alias, "--invalid-review-option") == run(project, *replacement, "--invalid-review-option") == 2
-
-
-@pytest.mark.parametrize("alias,replacement,arguments", ALIASES)
-def test_hidden_alias_capsule_refusal_matches_replacement(runtime_project, tmp_path, alias, replacement, arguments, capsys):
-    before = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
-    assert run(runtime_project, alias, *arguments) == run(runtime_project, *replacement, *arguments) == 2
-    assert "Run outside the capsule" in capsys.readouterr().err
     assert {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()} == before
 
 
@@ -424,7 +392,7 @@ def test_inspection_never_writes_in_registered_stale_or_unregistered_states(proj
     import shutil
     assert run(project, "ide", "codium") == 0
     assert run(project, "authorize", "base-image", "default") == 0
-    assert run(project, "resolve") == 0
+    assert run_until_prepared(project) == 0
     assert run(project, "set", "cpus", "2") == 0
     second = tmp_path / "second-checkout"
     shutil.copytree(project, second)

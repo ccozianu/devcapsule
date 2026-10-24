@@ -6,8 +6,9 @@ updated: 2026-10-24
 # Vendor software and trust
 
 Some of the software a capsule contains is downloaded from its vendor under
-that vendor's terms, and DevCapsule never redistributes it: the coding agents
-are the usual case. DevCapsule's own base images come from its published
+that vendor's terms. DevCapsule does not redistribute those downloads.
+Coding agents are capabilities; their components declare their own channels
+and consent requirements. DevCapsule's own base images come from its published
 repository, content-addressed by the digest the lock pins.
 When a launch lacks matching consent, DevCapsule can ask you to trust a
 **channel**. The statement names its vendor, origins, integrity method and
@@ -59,22 +60,24 @@ consent can still permit the software afterward.
 The record is `$XDG_CONFIG_HOME/devcapsule/trust.toml`, normally
 `~/.config/devcapsule/trust.toml`.
 
-The channels come from the checkout's selected lock, so an agent you added
-with `config agent add` is listed and can be accepted. Codex has no separate
-vendor-download consent in this launcher.
+Channels come from the checkout's selected lock. A capability added with
+`config add` brings its component's channel into that list when consent applies.
+Codex has no separate vendor-download consent in this launcher.
 
-## What an acceptance is, and is not
+## Acceptance scope
 
-- It is your trust in the vendor's channel: that vendor, those origins, that
-  integrity method, those terms. A new origin or changed terms in a later
-  lock is a new question; accepting again keeps the origins you accepted
-  before. Every download is still checked against the lock's checksum.
-- It is per OS user account on this computer, for every project and version;
-  anyone sharing the account shares the trust. A checkout can still refuse a
-  vendor download with `config authorize claude-code-download false`.
-  That denial wins over workstation trust for the checkout.
-- It grants no host access, selects no base and chooses no agent; those are
-  separate decisions with their own commands.
+An acceptance covers a vendor, origins, an integrity method and terms.
+A new origin or changed terms requires another decision. Accepting again
+keeps the origins you accepted before. Every download is checked against
+the lock's checksum.
+
+The acceptance belongs to your OS user account on this computer. Anyone
+sharing that account shares its trust. A checkout can refuse a vendor
+download with `config authorize claude-code-download false`. That denial
+wins over workstation trust for the checkout.
+
+Trust grants no host access. It does not select a base or add a capability.
+Those choices have their own commands.
 
 ## Departures still ask, per checkout
 

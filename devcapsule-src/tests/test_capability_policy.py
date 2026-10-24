@@ -5,6 +5,8 @@ outcomes, rather than how the implementation happens to compute them.
 """
 from __future__ import annotations
 
+from tests.launch_preparation import run_until_prepared
+
 from copy import deepcopy
 from pathlib import Path
 import tomllib
@@ -273,20 +275,16 @@ def test_io_failure_before_commit_rolls_back(project: Path, monkeypatch: pytest.
 def test_cli_check_and_capability_mutation(project: Path, capsys: pytest.CaptureFixture[str]) -> None:
     prefix = ["project", "--path", str(project), "config"]
     assert cli.main([*prefix, "check"]) == 3  # the base consent is pending
-    assert cli.main([*prefix, "require", "tool", "python"]) == 0
-    assert cli.main([*prefix, "capabilities", "--required", "python"]) == 2
-    assert "config require tool" in capsys.readouterr().err
-    assert cli.main([*prefix, "capabilities", "--local", "python-ide"]) == 0
+    assert cli.main([*prefix, "require", "python"]) == 0
+    assert cli.main([*prefix, "ide", "python-ide"]) == 0
     assert cli.main([*prefix, "capabilities", "--recover"]) == 0
-    assert cli.main([*prefix, "capabilities", "--recover", "--local"]) != 0
-    assert "standalone" in capsys.readouterr().err
 
 
 def prepare_launch(project: Path) -> None:
     prefix = ["project", "--path", str(project), "config"]
     assert cli.main([*prefix, "authorize", "base-image", "default"]) == 0
     assert cli.main([*prefix, "authorize", "host-x11", "false"]) == 0
-    assert cli.main([*prefix, "resolve"]) == 0
+    assert run_until_prepared(project) == 0
 
 
 def test_optional_only_contribution_does_not_block_next_launch(project: Path) -> None:
@@ -653,7 +651,7 @@ def test_removing_a_local_licensed_agent_retains_inactive_consent(project: Path)
     record = checkout_record_paths(manifest, project)[0]
     consent = deepcopy(load_toml(record)["authorization"])
     commands.configure(project, local=["python-ide"])
-    assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+    assert run_until_prepared(project) == 0
     ExecutionConfiguration.load(project)
     assert load_toml(record)["authorization"] == consent
 
@@ -741,8 +739,9 @@ def test_new_project_may_select_an_agent_before_choosing_an_ide(tmp_path: Path, 
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
     root = tmp_path / "fresh"
     root.mkdir()
-    assert cli.main(["project", "--path", str(root), "init", "--require", "python", "--agent", "codex-agent",
+    assert cli.main(["project", "--path", str(root), "init", "--require", "python",
                      "--creator", "mailto:owner@example.test"]) == 0
+    assert cli.main(["project", "--path", str(root), "config", "add", "codex-agent"]) == 0
     manifest = load_toml(commands.paths(root)[0])
     with pytest.raises(ProjectConfigurationError, match="Choose your IDE"):
         lock_for(root, manifest)

@@ -1990,7 +1990,7 @@ at a time. Inspect this checkout's 'pycharm/config' binding with:
   {inspect}
 
 For concurrent sessions, bind 'pycharm/config' to a separate directory with
-'project config bind', then run 'project config resolve' before launching.
+'project config bind', then run 'project run' before launching.
 If the lock is stale, confirm no IDE is using that directory before removing
 its .lock file and retrying 'devcapsule project run'."""
 

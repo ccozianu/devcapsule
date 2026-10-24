@@ -1,3 +1,5 @@
+
+from tests.launch_preparation import run_until_prepared
 """Cross-boundary configuration invariants, partitioned by contract condition.
 
 The predecessor fixture is released data, not produced by the implementation
@@ -74,7 +76,7 @@ def test_schema_admission_distinguishes_version_from_truthiness(artifact, versio
 
 @pytest.mark.parametrize('artifact', [kind for kind in ConfigurationFileKind if kind is not ConfigurationFileKind.resolution])
 @pytest.mark.parametrize('command', [
-    ('config', 'resolve'), ('config', 'list'), ('run',), ('init', '--regenerate'),
+    ('config', 'show'), ('run',), ('init', '--regenerate'),
 ])
 def test_unsupported_input_refuses_without_side_effects(checkout, monkeypatch, artifact, command):
     # The resolution is not an input since 0.3.0 rc4: run derives it; see
@@ -93,7 +95,7 @@ def test_unsupported_input_refuses_without_side_effects(checkout, monkeypatch, a
     ('config', 'set', 'editor.theme', 'dark'),
     ('config', 'bind', 'home', 'host-directory:.'),
     ('config', 'authorize', 'host-browser', 'false'),
-    ('config', 'unset', 'host-browser'),
+    ("config", "forget", 'host-browser'),
     ('state', 'adopt', 'home', '--from', '.'),
 ])
 def test_every_edit_admits_checkout_before_replacing_it(checkout, command):
@@ -124,7 +126,7 @@ def test_malformed_checkout_table_is_an_actionable_error(checkout, branch):
     project, record, _ = checkout
     replace_document(record, lambda d: d.update({branch: 'not a table'}))
     before = record.read_bytes()
-    assert invoke(project, 'config', 'resolve') == 2
+    assert run_until_prepared(project) == 2
     assert record.read_bytes() == before
 
 
@@ -139,10 +141,10 @@ def test_invalid_unrelated_answers_survive_an_edit_until_repaired(checkout):
     saved = load_toml(record)['authorization']
     assert saved['development-sudo'] == original['development-sudo']
     assert saved['host-x11'] == original['host-x11']
-    assert invoke(project, 'config', 'resolve') == 3  # the invalid answers are pending decisions
+    assert run_until_prepared(project) == 3  # the invalid answers are pending decisions
     assert invoke(project, 'config', 'authorize', 'development-sudo', 'false') == 0
     assert invoke(project, 'config', 'authorize', 'host-x11', 'false') == 0
-    assert invoke(project, 'config', 'resolve') == 0
+    assert run_until_prepared(project) == 0
 
 
 @pytest.mark.parametrize('value', ['text\n"\\', True, False, 0, -3, 1.25, float('inf'),
@@ -192,8 +194,8 @@ def test_removing_a_decision_cannot_reveal_a_legacy_grant(checkout, monkeypatch,
     if action == 'replace-then-unset':
         assert invoke(project, 'config', 'authorize', 'development-sudo', 'false') == 0
         assert 'development-sudo' not in load_toml(record).get('host', {})
-    assert invoke(project, 'config', 'unset', 'development-sudo') == 0
-    assert invoke(project, 'config', 'resolve') == 0
+    assert invoke(project, "config", "forget", 'development-sudo') == 0
+    assert run_until_prepared(project) == 0
     launch = install_external_fakes(monkeypatch, [])
     assert invoke(project, 'run') == 0
     assert launch.call_args.args[0].enable_sudo is False
@@ -201,10 +203,10 @@ def test_removing_a_decision_cannot_reveal_a_legacy_grant(checkout, monkeypatch,
 
 def test_a_removed_binding_never_reaches_the_launch(checkout, monkeypatch):
     project, record, resolution = checkout
-    assert invoke(project, 'config', 'capabilities', '--local', 'python-ide', 'codex-agent') == 0
+    assert invoke(project, 'config', 'add', 'codex-agent') == 0
     assert invoke(project, 'config', 'bind', 'home', f'host-directory:{project}') == 0
     assert invoke(project, 'config', 'bind', 'codex/openai-api-key', 'host-environment:OPENAI_API_KEY') == 0
-    assert invoke(project, 'config', 'resolve') == 0
+    assert run_until_prepared(project) == 0
     assert invoke(project, 'config', 'unbind', 'home') == 0
     assert invoke(project, 'config', 'unbind', 'codex/openai-api-key') == 0
     launch = install_external_fakes(monkeypatch, [])
@@ -273,7 +275,7 @@ def test_a_tampered_stored_plan_does_not_reach_the_launch(checkout, monkeypatch)
 def test_metadata_only_changes_are_fresh_but_runtime_changes_are_stale(checkout, scoped):
     project, record, resolution = checkout
     if scoped:
-        assert invoke(project, 'config', 'resolve') == 0
+        assert run_until_prepared(project) == 0
     manifest = load_toml(project / '.devcapsule/devcapsule.toml')
     lock = load_toml(project / '.devcapsule/devcapsule.linux-amd64.lock')
     original = deepcopy(manifest)
@@ -292,7 +294,7 @@ def test_two_nodes_cannot_control_one_runtime_effect(checkout):
         name: {'type': 'memory-size', 'runtime-effect': 'docker.memory-limit'} for name in ('first', 'second')
     }}}))
     before = resolution.read_bytes()
-    assert invoke(project, 'config', 'resolve') == 2
+    assert run_until_prepared(project) == 2
     assert resolution.read_bytes() == before
 
 
@@ -390,7 +392,7 @@ def test_project_mount_is_validated_before_resolution_or_materialization(checkou
     saved = resolution.read_bytes()
     events = []
     launch = install_external_fakes(monkeypatch, events)
-    assert invoke(project, 'config', 'resolve') == 2
+    assert run_until_prepared(project) == 2
     assert invoke(project, 'run') == 2
     assert resolution.read_bytes() == saved and not events and launch.call_count == 0
 
@@ -443,10 +445,10 @@ def test_the_launch_derives_a_coherent_plan_whatever_the_stored_one_says(checkou
 def test_unused_toml_native_metadata_does_not_enter_runtime_dependencies(checkout, scoped):
     project, _, _ = checkout
     if scoped:
-        assert invoke(project, 'config', 'resolve') == 0
+        assert run_until_prepared(project) == 0
     path = project / '.devcapsule/devcapsule.toml'
     path.write_text('review-date = 2026-09-20\n' + path.read_text())
-    assert invoke(project, 'config', 'list') == 0
+    assert invoke(project, 'config', 'show') == 0
 
 
 @pytest.mark.parametrize('fail', [False, True])

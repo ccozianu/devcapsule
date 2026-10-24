@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from tests.launch_preparation import run_until_prepared
+
 import io
 import json
 from pathlib import Path
@@ -66,7 +68,7 @@ def test_run_once_ide_and_memory_leave_the_record_alone(project: Path, monkeypat
 def test_save_records_the_flags_as_the_checkouts_answers(project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("B", "from-host")
     assert config(project, "authorize", "base-image", "default") == 0
-    prepared = prepare_launch(project, RunFlags(ide="frontend-ide", agents=("codex",), memory="6g",
+    prepared = prepare_launch(project, RunFlags(ide="frontend-ide", capabilities=("codex",), memory="6g",
                                                 environment=("A=1", "B"), authorize=(("network", "host"),), save=True),
                               interactive=False)
     saved = record(project)
@@ -144,16 +146,16 @@ def test_a_closed_terminal_mid_question_stops_without_more_writes(project: Path)
         prepare_launch(project, RunFlags(), interactive=True, input_stream=io.StringIO(""), output_stream=io.StringIO())
 
 
-def test_run_exits_three_and_the_old_resolve_derives(project: Path, capsys) -> None:
+def test_run_exits_three_until_preparation_has_its_answers(project: Path, capsys) -> None:
     assert cli.main(["project", "--path", str(project), "run", "--print-command"]) == 3
     err = capsys.readouterr().err
     assert "needs answers" in err and "--ide IDE" in err
     assert config(project, "ide", "python-ide") == 0
     assert config(project, "authorize", "base-image", "default") == 0
     capsys.readouterr()
-    assert config(project, "resolve") == 0
+    assert run_until_prepared(project) == 0
     captured = capsys.readouterr()
-    assert "is gone" in captured.err and "Derived " in captured.out
+    assert captured.err == ""
     assert checkout_record_paths(load_toml(paths(project)[0]), project)[1].is_file()
     from devcapsule.commands.framework import render_command_listing
     from devcapsule.commands.project import ConfigGroup
@@ -163,7 +165,7 @@ def test_run_exits_three_and_the_old_resolve_derives(project: Path, capsys) -> N
 def test_run_help_has_the_flags_and_no_force(capsys) -> None:
     assert cli.main(["project", "run", "--help"]) == 0
     text = capsys.readouterr().out
-    for flag in ("--ide", "--agent", "--memory", "--cpus", "--env", "--save", "--print-command"):
+    for flag in ("--ide", "--with", "--memory", "--cpus", "--env", "--save", "--print-command"):
         assert flag in text
     assert "--force" not in text
 
@@ -203,7 +205,7 @@ def test_partial_terminal_review_saves_no_answers(project: Path, tmp_path: Path,
 def test_resolve_pending_consent_writes_nothing_in_a_second_checkout(project: Path, tmp_path: Path) -> None:
     second = copy_project(project, tmp_path / 'second')
     before = snapshot(tmp_path)
-    assert config(second, 'resolve') == 3
+    assert run_until_prepared(second) == 3
     assert snapshot(tmp_path) == before
 
 
@@ -238,7 +240,7 @@ def test_run_once_agent_reaches_plan_but_not_next_show(project: Path, capsys, sa
                                    'recommendation-digest': canonical_digest(state.shared_lock)}
         path.write_text(render_toml(document))
     before = path.read_bytes()
-    prepared = prepare_launch(project, RunFlags(agents=('codex',)), interactive=False)
+    prepared = prepare_launch(project, RunFlags(capabilities=('codex',)), interactive=False)
     assert 'codex' in prepared.selected.lock['components']
     assert load_toml(prepared.selected.resolution_path) == prepared.selected.resolution
     assert path.read_bytes() == before
@@ -359,7 +361,7 @@ def test_cli_second_derivation_carries_only_unsaved_flags(project: Path, monkeyp
     calls = Mock(wraps=commands.prepare_launch)
     monkeypatch.setattr(commands, 'prepare_launch', calls)
     before = record(project)
-    assert invoke(project, 'run', '--ide', 'python-ide', '--agent', 'codex', '--memory', '6g', '--cpus', '2',
+    assert invoke(project, 'run', '--ide', 'python-ide', '--with', 'codex', '--memory', '6g', '--cpus', '2',
                   '--env', 'INLINE=value', '--env', 'PASS_THROUGH', '--authorize', 'network', 'host',
                   '--no-update-check', *(['--save'] if save else [])) == 0
     assert calls.call_count == 2
@@ -454,7 +456,7 @@ def test_schema_one_ide_in_need_launches_without_rewriting_manifest(tmp_path: Pa
     before = manifest_path.read_bytes()
     assert load_toml(manifest_path)['devcapsule-schema-version'] == 1
     launch = install_external_fakes(monkeypatch, [])
-    assert invoke(root, 'run', '--agent', 'codex', '--no-update-check') == 0
+    assert invoke(root, 'run', '--with', 'codex', '--no-update-check') == 0
     options = launch.call_args.args[0]
     assert options.runtime_plan.component.id == 'pycharm'
     assert 'codex' in {item.id for item in options.runtime_plan.ancillary_components}
@@ -473,7 +475,7 @@ def test_new_required_tool_blocks_a_saved_set_without_replacing_it(project: Path
                                'recommendation-digest': canonical_digest(state.shared_lock)}
     assert state.input_path is not None
     state.input_path.write_text(render_toml(document))
-    assert config(project, 'require', 'tool', 'browser-automation', '--because', 'browser tests') == 0
+    assert config(project, 'require', 'browser-automation', '--because', 'browser tests') == 0
     before = snapshot(tmp_path)
     with pytest.raises(DecisionPending, match='Saved version set') as failure:
         prepare_launch(project, RunFlags(memory='6g', save=True), interactive=False)
@@ -483,7 +485,7 @@ def test_new_required_tool_blocks_a_saved_set_without_replacing_it(project: Path
 
 
 def test_interactive_ide_does_not_save_a_run_once_agent(project: Path) -> None:
-    prepared = prepare_launch(project, RunFlags(agents=('codex',)), interactive=True,
+    prepared = prepare_launch(project, RunFlags(capabilities=('codex',)), interactive=True,
                               input_stream=io.StringIO('python-ide\ny\n'), output_stream=io.StringIO())
     assert 'codex' in prepared.selected.lock['components']
     assert record(project)['capabilities']['selected'] == ['python-ide']

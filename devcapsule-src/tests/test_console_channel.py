@@ -57,7 +57,7 @@ def result(directory: Path, identifier: str) -> dict:
     (["authorize", "network", "host"], Disposition.DEFER), (["trust", "accept", "x"], Disposition.DEFER),
     (["bind", "x", "y"], Disposition.DEFER), (["docker-args", "set", "--privileged"], Disposition.DEFER),
     (["show"], Disposition.REFUSE), (["env", "list"], Disposition.REFUSE), (["default", "memory", "8G"], Disposition.REFUSE),
-    (["require", "tool", "x"], Disposition.REFUSE), (["run"], Disposition.REFUSE), ([], Disposition.REFUSE),
+    (["require", "x"], Disposition.REFUSE), (["run"], Disposition.REFUSE), ([], Disposition.REFUSE),
 ])
 def test_classification(arguments: list[str], expected: Disposition) -> None:
     disposition, reason = classify(arguments)
@@ -368,7 +368,7 @@ def test_launch_listing_includes_run_once_selection_and_earlier_requests(project
     channel.mkdir()
     request(channel, "000001-authorize", "authorize", "network", "host")
     sweep(channel, project, record_path(project))
-    prepared = prepare_launch(project, RunFlags(ide="frontend-ide", agents=("codex",)), interactive=False)
+    prepared = prepare_launch(project, RunFlags(ide="frontend-ide", capabilities=("codex",)), interactive=False)
     listing = launch_listing_document(prepared.selected)
     assert any(row["kind"] == "ide" and row["name"] == "frontend-ide" for row in listing["rows"])
     assert any(row["kind"] == "console" and row["name"] == "000001-authorize" for row in listing["rows"])

@@ -649,13 +649,11 @@ def _elicit_owner_selection(
 
     The IDE is asked interactively with Enter meaning "decide later": a
     project does not need an IDE to be initialized, a checkout needs one to
-    run. Agents join through ``--agent`` or the default-agent offer. With
+    run. Agents join through ``config add`` or the default-agent offer. With
     ``ask_ide`` false the lock already carries the IDE (a manifest from
     before 0.3.0 rc4) and only an explicit ``--ide`` is taken.
     """
-    from .capability_selection import selection_catalog
     surfaces = list(matrix.ide_capabilities())
-    agent_names = sorted(selection_catalog(matrix)[1])
     answer = elicitor.seek(
         "ide",
         description=f"Your IDE for this checkout ({', '.join(surfaces)}; Enter to decide later)",
@@ -667,7 +665,7 @@ def _elicit_owner_selection(
         validate=_ide_validator(matrix, surfaces),
     )
     ide = None if answer is None or answer.value == "none" else answer.value
-    agents = tuple(sorted({_agent_name(matrix, agent_names, name) for name in request.agents} | set(existing.agents)))
+    agents = tuple(sorted({matrix.canonical_name(name) for name in request.agents} | set(existing.agents)))
     agents = _with_default_agent(elicitor, agents, offer=fresh and not existing.selected, matrix=matrix)
     return _OwnerSelection(ide, agents)
 
@@ -685,15 +683,6 @@ def _ide_validator(matrix: ResolutionMatrix, surfaces: list[str]) -> Any:
         return candidate
 
     return validate
-
-
-def _agent_name(matrix: ResolutionMatrix, agent_names: list[str], value: str) -> str:
-    candidate = value.strip()
-    by_component = {matrix.resolve_provider(name): name for name in agent_names}
-    candidate = by_component.get(candidate, candidate)
-    if candidate not in agent_names:
-        raise ProjectConfigurationError(f"Unknown agent {value!r}; choose from {', '.join(agent_names)}.")
-    return candidate
 
 
 def _preview_effective_lock(
@@ -718,7 +707,7 @@ def _stage_owner_selection(
 ) -> None:
     """Put the owner's IDE and agents, with their pins, into the staged checkout record.
 
-    The same pins ``config ide`` and ``config agent add`` record; nothing is
+    The same pins ``config ide`` and ``config add`` record; nothing is
     written here. An empty selection leaves whatever the record selects.
     """
     if not selection.selected:
@@ -959,7 +948,7 @@ def _with_default_agent(
     CLI is default-selected: "available by default" without living in any
     base. Concretely: an interactive init whose fresh checkout names no agent
     asks once, with Enter meaning yes; a noninteractive init keeps its
-    explicit ``--agent`` list unchanged (the remedy *is* the agent flag), and
+    existing selection unchanged, and
     a re-init over an existing checkout selection never grows it behind the
     owner's back.
     """
@@ -980,7 +969,7 @@ def _with_default_agent(
         description=(
             f"Select the default agent component ({default_capability}) for your checkout? (yes/no)"
         ),
-        remedy=f"--agent {default_capability}",
+        remedy=f"devcapsule project config add {default_capability}",
         empty_answer="yes",
         omitted_answer="no",
         validate=_yes_no_validator("default-agent"),
@@ -1155,7 +1144,7 @@ def _elicit_acquisitions(
             raise ProjectConfigurationError(
                 "Initialization needs the base authorization to reach a fresh resolution; "
                 "declined. Authorize later with 'devcapsule project config authorize "
-                f"base-image {reference}' and run 'devcapsule project config resolve'."
+                f"base-image {reference}' and run 'devcapsule project run'."
             )
         if answer.value != "default":
             _record_base_selection(
@@ -1276,8 +1265,8 @@ def _base_answer_validator(name: str, recommended: str) -> Any:
             "as-is with the reserved keyword 'default' (interactively, Enter), "
             "or a locally built or pulled image (tag or image ID) to run on "
             "this checkout instead — DevCapsule reads its digest and metadata "
-            "and asks you to confirm the selection ('--less-pedantic' skips "
-            f"the confirmation). 'no' declines. {value!r} is neither a value "
+            "and asks you to confirm the selection. "
+            f"'no' declines. {value!r} is neither a value "
             "nor an image reference."
         )
 
@@ -1336,7 +1325,7 @@ def _record_base_selection(
             "base-image",
             facet="confirmation",
             description=presentation,
-            remedy="--less-pedantic (records the reviewed selection without this confirmation)",
+            remedy=f"devcapsule project config authorize base-image {selection}",
             empty_answer="yes",
             validate=_acquisition_validator("base-image (confirmation)", "yes"),
         )

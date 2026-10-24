@@ -85,14 +85,14 @@ class Configuration:
         stale = self.stale_inputs(resolution)
         if stale and not force:
             raise ProjectConfigurationError(
-                f"Local resolution is stale ({', '.join(stale)}); run 'devcapsule project config resolve'."
+                f"Local resolution is stale ({', '.join(stale)}); run 'devcapsule project run'."
             )
         if not self._review.ready:
             raise ProjectConfigurationError("Cannot consume an incomplete configuration review.")
         if resolution.component != self._lock["components"]["interactive-surface"]:
-            raise ProjectConfigurationError("Resolved surface differs from the lock; run 'devcapsule project config resolve'.")
+            raise ProjectConfigurationError("Resolved surface differs from the lock; run 'devcapsule project run'.")
         if not stale and not resolution.same_meaning_as(self.resolve()):
             raise ProjectConfigurationError(
-                "Generated resolution does not match its inputs; run 'devcapsule project config resolve'."
+                "Generated resolution does not match its inputs; run 'devcapsule project run'."
             )
         return stale

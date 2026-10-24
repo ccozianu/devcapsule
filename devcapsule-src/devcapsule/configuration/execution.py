@@ -39,7 +39,7 @@ class ExecutionConfiguration:
         lock_path, lock = lock_for(root, manifest)
         input_path, output_path = checkout_record_paths(manifest, root)
         if not input_path.is_file() or not output_path.is_file():
-            raise ProjectConfigurationError("Local resolution is missing; run 'devcapsule project config resolve'.")
+            raise ProjectConfigurationError("Local resolution is missing; run 'devcapsule project run'.")
         checkout = load_checkout(input_path, manifest, root)
         resolution = load_resolution(output_path)
         configuration = Configuration(manifest, lock, checkout, load_workstation())

@@ -272,9 +272,9 @@ def _capability_rows(
             else:
                 effective = "supplied by the base"
             if name in local.without:
-                rows.append(ListingRow("tool", name, "omitted", "checkout (omitted)"))
+                rows.append(ListingRow("agent" if name in agents else "tool", name, "omitted", "checkout (omitted)"))
             else:
-                rows.append(ListingRow("tool", name, effective, scope))
+                rows.append(ListingRow("agent" if name in agents else "tool", name, effective, scope))
     for name in sorted(set(local.selected) - personal):
         components = providers.get(name)
         effective = ", ".join(_component_version(composed_lock, str(c)) for c in components) if isinstance(components, list) and components else name

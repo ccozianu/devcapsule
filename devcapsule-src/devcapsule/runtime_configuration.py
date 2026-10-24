@@ -141,7 +141,7 @@ class RuntimeConfiguration:
         return {key: value for key, value in checkout.items() if key != "version-set"}
 
     def configuration_document(self) -> dict[str, Any]:
-        """The ``config list --json`` document inside a capsule: schema
+        """The ``config show --json`` document inside a capsule: schema
         version 1, the same facts as ``configuration_report`` prints.
 
         The record's host paths and permissions are the launcher's recorded

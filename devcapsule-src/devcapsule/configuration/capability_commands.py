@@ -238,7 +238,7 @@ def configure_local(root: Path, manifest: dict[str, Any], shared: dict[str, Any]
     policy = CapabilityPolicy.read(manifest)
     input_path, _ = checkout_record_paths(manifest, root)
     if input_path.with_suffix(".activation.toml").exists():
-        raise ProjectConfigurationError("A local version-set activation needs recovery; run 'project config resolve' first.")
+        raise ProjectConfigurationError("A local version-set activation needs recovery; run 'project run' first.")
     if input_path.exists():
         checkout = load_toml(input_path)
     else:

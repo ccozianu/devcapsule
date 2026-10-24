@@ -1,68 +1,59 @@
 ---
-description: See what a checkout will run and what it is running, with project info and the configuration listing, without changing anything.
-weight: 1
-updated: 2026-10-09
+description: Inspect software, storage and the next launch's choices without changing configuration.
+weight: 3
+updated: 2026-10-24
 ---
 # Inspect a checkout
 
-Two read-only commands answer "what do I have here?": one for the software,
-environment and storage, one for the recorded configuration choices. Neither
-initializes, resolves, repairs or writes anything.
+`project info` reports software, environment and storage. `project config
+show` reports configuration choices. Neither command writes configuration,
+downloads components or contacts Docker.
 
-## Software, environment, storage
+## Software and storage
 
-```bash
-~/.local/bin/devcapsule project info
-~/.local/bin/devcapsule project info --json
+```sh
+devcapsule project info
+devcapsule project info --json
 ```
 
-On your computer, run it from the project folder or any folder beneath it;
-it describes the **next launch**. Inside a running capsule, `devcapsule
-project info` works from anywhere, including `/opt`, and describes the
-**running** capsule from the evidence captured at launch, with the next
-launch's selection shown separately when it differs. The report has four
-parts:
+On the host, `info` describes the next launch. Inside a capsule, it describes
+the running software and shows a separate next-launch selection when that
+differs. The report lists component versions, environment variables,
+persistent paths and temporary storage. Secret values are omitted.
 
-- **Components** and their versions: the IDE, the agents, and, inside a
-  capsule, a *next launch* block when the project has moved on.
-- **Environment**: every variable DevCapsule provides, with its value and
-  its purpose, secret values omitted. This is what tells an agent where its
-  configuration lives and what `PATH` contains.
-- **Persistence**: every persistent path in the capsule with the directory
-  on your computer that backs it, whether it is source, durable, state or
-  cache, and whether it belongs to this checkout.
-- **Temporary**: what disappears when the container is removed.
+Project commands find the project from its directory or a descendant.
+Inside a capsule, inspection can find the capsule's project from `/opt` too.
+To select a directory explicitly:
 
-Use `--json` when an agent or a script is the reader. To pick a project
-explicitly, `~/.local/bin/devcapsule project --path /path/to/project info`;
-a project nested inside another keeps its own identity.
-
-## The recorded choices
-
-```bash
-~/.local/bin/devcapsule project config list
-~/.local/bin/devcapsule project config list --json
-~/.local/bin/devcapsule project config show
+```sh
+devcapsule project --path /path/to/project info
 ```
 
-`list` is data: every declared value, binding and authorization with its
-state and its `SOURCE`, the document it comes from. `show` adds the files
-behind the resolution and the review: pending decisions with their remedies,
-your recorded base beside the project's current recommendation, and whether
-resolving is needed. Inside a capsule both are read-only views of the next
-launch, and the output names the launcher command to change anything. They
-find the capsule's project from any directory, `/opt` included; a command
-that would change the configuration answers with that launcher command
-instead. A project nested inside the capsule keeps its own identity.
+## Choices and pending decisions
 
-`list --json` is the same table as a document: `schema-version`, the
-project and checkout identity, and one object per row with the table's
-columns as keys. Inside a capsule the document carries the mounted record
-instead of rows, and names the launcher command. The shape is a contract,
-read by the capsule web console; a reader can rely on `schema-version` 1.
-On a host, either format creates missing checkout records. With `--json`,
-initialization notices go to standard error.
+```sh
+devcapsule project config show
+devcapsule project config show --json
+devcapsule project config check
+```
 
-Running versions, as opposed to the next launch's selection, are also on
-`~/.local/bin/devcapsule project versions show`, with `--json` under the same
-contract; see [Component upgrades](../updates/component-upgrades.md).
+`show` lists effective choices, providers, sources and pending decisions.
+Each pending decision names the command that answers it. An unregistered
+checkout is shown without creating a record.
+
+On the host, `check` validates the contract and returns status 3 for pending
+checkout decisions. Candidate-file options check only the candidate contract.
+Inside a capsule, `check` cannot assess current host decisions.
+
+The capsule's `show` output uses the configuration captured at launch.
+When a console channel is available, it also lists later requests and their
+results. Those requests do not update the captured view or the running capsule.
+The output names the host command for changes.
+
+`show --json` reports the listing's schema version, checkout identity and rows.
+Consumers must check the schema version before interpreting the fields.
+[Project versus personal](project-versus-personal.md#from-the-console) describes
+the console's request permissions.
+
+`devcapsule project versions show` reports the effective component version set.
+It also accepts `--json`; see [Component upgrades](../updates/component-upgrades.md).

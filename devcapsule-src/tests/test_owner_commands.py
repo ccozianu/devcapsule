@@ -54,13 +54,13 @@ def manifest_text(root: Path) -> str:
 
 
 def test_require_tool_adds_regenerates_the_lock_and_writes_schema_two(project: Path, capsys) -> None:
-    assert cli.main(["project", "--path", str(project), "config", "require", "tool", "node", "postgresql-client",
+    assert cli.main(["project", "--path", str(project), "config", "require", "node", "postgresql-client",
                      "--because", "the API and its database"]) == 0
     out = capsys.readouterr().out
-    assert "Required node, postgresql-client" in out and "Required: node postgresql-client python" in out
+    assert "Required node, postgresql-client" in out and "Required: python node postgresql-client" in out
     manifest = load_toml(paths(project)[0])
     assert manifest["devcapsule-schema-version"] == 2
-    assert manifest["capabilities"] == {"required": ["node", "postgresql-client", "python"],
+    assert manifest["capabilities"] == {"required": ["python", "node", "postgresql-client"],
                                         "reasons": {"node": "the API and its database", "postgresql-client": "the API and its database"}}
     lock = load_toml(paths(project)[1])
     assert "postgresql-client" in lock["components"] and "interactive-surface" not in lock["components"]
@@ -210,19 +210,11 @@ def test_an_owner_edit_converts_a_legacy_manifest_and_keeps_its_leading_comment(
 def test_an_unrelated_command_never_rewrites_a_legacy_manifest(legacy_project: Path) -> None:
     before = manifest_text(legacy_project)
     assert cli.main(["project", "--path", str(legacy_project), "config", "check"]) in (0, 3)
-    assert cli.main(["project", "--path", str(legacy_project), "config", "capabilities", "--local", "python-ide"]) == 0
-    assert cli.main(["project", "--path", str(legacy_project), "config", "list"]) == 0
+    assert cli.main(["project", "--path", str(legacy_project), "config", "ide", "python-ide"]) == 0
+    assert cli.main(["project", "--path", str(legacy_project), "config", "show"]) == 0
     assert manifest_text(legacy_project) == before
 
 
-def test_retired_spellings_name_their_replacement(project: Path, capsys) -> None:
-    assert cli.main(["project", "--path", str(project), "config", "need", "node"]) == 2
-    assert "config require tool node" in capsys.readouterr().err
-    assert cli.main(["project", "--path", str(project), "config", "capabilities", "--required", "node"]) == 2
-    assert "config require tool" in capsys.readouterr().err
-    from devcapsule.commands.framework import render_command_listing
-    from devcapsule.commands.project import ConfigGroup
-    assert " need " not in render_command_listing(ConfigGroup.subcommands())
 
 
 def test_drop_offered_tool_removes_only_its_declaration_and_reason(project: Path) -> None:
@@ -294,7 +286,7 @@ def test_owner_edits_preserve_unknown_declaration_metadata(project: Path) -> Non
 @pytest.mark.parametrize("pending_ide", [False, True])
 def test_tool_edit_does_not_change_checkout_answers_when_not_ready(project: Path, pending_ide: bool) -> None:
     if pending_ide:
-        assert cli.main(["project", "--path", str(project), "config", "capabilities", "--local", "python-ide"]) == 0
+        assert cli.main(["project", "--path", str(project), "config", "ide", "python-ide"]) == 0
     record, resolution = checkout_record_paths(load_toml(paths(project)[0]), project)
     before = record.read_bytes()
     report = owner_commands.require_tools(project, ["node"])

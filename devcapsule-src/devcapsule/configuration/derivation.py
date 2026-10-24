@@ -6,7 +6,7 @@ command. It reads the project's manifest and lock, the workstation's
 defaults and the checkout's record, derives the plan, asks only what it
 cannot derive, and launches. Nothing derived is the user's to refresh:
 the generated resolution is written here, every time, as the launch's own
-artifact, and ``config resolve`` is gone.
+artifact.
 
 This module is the adapter between the documents on disk and the
 in-memory :class:`Configuration`: it registers a checkout that has no record
@@ -33,7 +33,7 @@ from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix, known_base_
 from .authorization import authorized_base_selection
 from .capabilities import CapabilityPolicy, LocalCapabilities, resolution_recommendations
 from .capability_commands import pin_selection, release_deselected
-from .capability_selection import compose_lock, effective_lock, local_pins, selection_catalog, inspection_capabilities, inspection_providers, known_policy_names
+from .capability_selection import compose_lock, effective_lock, local_pins, inspection_agents, inspection_capabilities, inspection_providers, known_policy_names
 from .console_requests import deferred_rows
 from .file_formats import ProjectConfigurationError, canonical_digest, render_checkout, render_toml
 from .listing import Listing, assess_checkout
@@ -55,13 +55,13 @@ from .storage import (
 from .file_formats import selected_version_lock
 from .docker_arguments import arguments_path, read_arguments, read_environment
 
-__all__ = ["CheckoutState", "Selection", "derive_plan", "load_state", "register_checkout", "selection_catalog"]
+__all__ = ["CheckoutState", "Selection", "derive_plan", "load_state", "register_checkout"]
 
 
 class Selection:
     """A checkout's capability selections, omissions and provider choices, editable in memory."""
 
-    def __init__(self, local: LocalCapabilities, surfaces: Mapping[str, str], agents: Mapping[str, str]) -> None:
+    def __init__(self, local: LocalCapabilities, surfaces: Mapping[str, str]) -> None:
         self.surfaces = set(surfaces)
         self._ide = next((name for name in local.selected if name in surfaces), None)
         self.extra = {name for name in local.selected if name not in surfaces}
@@ -109,7 +109,7 @@ class CheckoutState:
         self.root = root
         self.manifest = manifest
         self.matrix = MATRICES[Platform.current()]
-        self.surfaces, self.agents = selection_catalog(self.matrix)
+        self.surfaces = {name: self.matrix.resolve_provider(name) or name for name in self.matrix.ide_capabilities()}
         self.lock_path, self.shared_lock = recommendation_lock_for(root, manifest)
         self.workstation = load_workstation()
         record = find_checkout_record(manifest, root)
@@ -156,12 +156,13 @@ class CheckoutState:
             reference = selection.reference
         base = known_base_image(str(reference))
         access_lock, versions = inspection_capabilities(self.manifest, lock, document)
+        providers = inspection_providers(self.manifest, lock, document)
         listing = assess_checkout(
             self.manifest, self.shared_lock, lock, document,
             workstation=self.workstation, saved_environment=self.saved_environment,
-            surfaces=self.surfaces, agents=self.agents, project=self.root, registered=self.registered,
+            surfaces=self.surfaces, agents=inspection_agents(self.matrix, providers), project=self.root, registered=self.registered,
             access_lock=access_lock, capability_versions=versions,
-            capability_providers=inspection_providers(self.manifest, lock, document),
+            capability_providers=providers,
             base_display=base.contract.display if check_display and base is not None else None,
         )
         return Listing(listing.rows + tuple(deferred_rows(self.input_path, self.root)), listing.notes)

@@ -1,3 +1,5 @@
+
+from tests.launch_preparation import run_until_prepared
 """Configuration lifecycle proof obligations, independent of branch coverage.
 
 Cases establish state transitions through the public CLI and assert the
@@ -56,15 +58,15 @@ def test_second_checkout_cannot_inherit_the_first_checkouts_authority(checkout, 
     original = record.read_bytes()
     second = tmp_path / 'second checkout'
     shutil.copytree(project, second)
-    assert invoke(second, 'config', 'list') == 0  # listed from nothing, registered by nobody
+    assert invoke(second, 'config', 'show') == 0  # listed from nothing, registered by nobody
     assert invoke(second, 'checkout', 'register', 'second') == 0
     manifest = load_toml(second / '.devcapsule/devcapsule.toml')
     second_record, _ = checkout_record_paths(manifest, second)
     assert second_record != record
     assert load_toml(second_record).get('authorization', {}) == {}
-    assert invoke(second, 'config', 'resolve') == 3  # No base consent inherited either.
+    assert run_until_prepared(second) == 3  # No base consent inherited either.
     assert invoke(second, 'config', 'authorize', 'base-image', 'default') == 0
-    assert invoke(second, 'config', 'resolve') == 0
+    assert run_until_prepared(second) == 0
     assert 'host-browser' not in load_toml(second_record)['authorization']
     assert record.read_bytes() == original
 
@@ -94,10 +96,10 @@ def test_ordinary_node_transition_table(checkout, initial, action):
     declare_values(project)
     if initial != 'absent':
         assert invoke(project, 'config', 'set', 'editor.theme', 'dark' if initial == 'value' else 'none') == 0
-    assert invoke(project, 'config', 'resolve') == 0
+    assert run_until_prepared(project) == 0
     before_record, before_resolution = record.read_bytes(), resolution.read_bytes()
     old_authorizations = load_toml(record)['authorization']
-    args = ('unset', 'editor.theme') if action == 'unset' else (
+    args = ('set', 'editor.theme', 'default') if action == 'unset' else (
         'set', 'editor.theme', 'light' if action == 'set' else 'none'
     )
     result = invoke(project, 'config', *args)
@@ -112,14 +114,14 @@ def test_ordinary_node_transition_table(checkout, initial, action):
         assert ('editor.theme' in config.get('omitted-values', [])) == (action == 'omit')
     assert load_toml(record)['authorization'] == old_authorizations
     assert resolution.read_bytes() == before_resolution
-    assert invoke(project, 'config', 'resolve') == 0
+    assert run_until_prepared(project) == 0
 
 
 @pytest.mark.parametrize('order', list(permutations(['ordinary', 'binding', 'authorization'])))
 def test_independent_changes_commute_and_require_one_final_resolve(checkout, order):
     project, record, resolution = checkout
     declare_values(project)
-    assert invoke(project, 'config', 'resolve') == 0
+    assert run_until_prepared(project) == 0
     project_files = {p: p.read_bytes() for p in (project / '.devcapsule').iterdir()}
     previous_resolution = resolution.read_bytes()
     commands = {
@@ -131,28 +133,28 @@ def test_independent_changes_commute_and_require_one_final_resolve(checkout, ord
         assert invoke(project, 'config', *commands[kind]) == 0
         assert resolution.read_bytes() == previous_resolution
     assert {p: p.read_bytes() for p in project_files} == project_files
-    assert invoke(project, 'config', 'resolve') == 0
+    assert run_until_prepared(project) == 0
     resolved = load_toml(resolution)
     assert resolved['configuration']['values'] == {'editor.theme': 'dark'}
     assert resolved['state']['bindings'] == {'home': str(project)}
     assert resolved['authorization']['development-sudo'] is False
     # Recovery is idempotent after choices settle; it does not ask again.
     settled = resolution.read_bytes()
-    assert invoke(project, 'config', 'resolve') == 0
+    assert run_until_prepared(project) == 0
     assert resolution.read_bytes() == settled
 
 
 def test_a_failed_second_edit_does_not_undo_the_first_or_publish_it(checkout):
     project, record, resolution = checkout
     declare_values(project)
-    assert invoke(project, 'config', 'resolve') == 0
+    assert run_until_prepared(project) == 0
     previous_resolution = resolution.read_bytes()
     assert invoke(project, 'config', 'set', 'editor.theme', 'dark') == 0
     after_first = record.read_bytes()
     assert invoke(project, 'config', 'authorize', 'host-x11', 'invalid') == 2
     assert record.read_bytes() == after_first
     assert resolution.read_bytes() == previous_resolution
-    assert invoke(project, 'config', 'resolve') == 0
+    assert run_until_prepared(project) == 0
     assert load_toml(resolution)['configuration']['values']['editor.theme'] == 'dark'
 
 
@@ -165,7 +167,7 @@ def test_unknown_project_schema_is_refused_without_mutation(checkout, artifact, 
     path = project / '.devcapsule' / artifact
     path.write_text(path.read_text().replace(f'{field} = 1', f'{field} = 99'))
     before = {p: p.read_bytes() for p in (path, record, resolution)}
-    assert invoke(project, 'config', 'resolve') == 2
+    assert run_until_prepared(project) == 2
     assert {p: p.read_bytes() for p in before} == before
 
 
@@ -227,7 +229,7 @@ type = "string"
     with pytest.raises(ProjectConfigurationError, match='declared twice'):
         build_node_registry(manifest, lock)
     before = resolution.read_bytes()
-    result = invoke(project, 'config', 'resolve')
+    result = run_until_prepared(project)
     assert (result, resolution.read_bytes()) == (2, before)
 
 
@@ -265,7 +267,7 @@ required = true
 def test_legacy_host_values_are_typed_before_authorization(checkout, monkeypatch):
     project, record, _ = checkout
     record.write_text(record.read_text() + '\n[host]\ndevelopment-sudo = "false"\n')
-    result = invoke(project, 'config', 'resolve')
+    result = run_until_prepared(project)
     if result == 0:
         launch = install_external_fakes(monkeypatch, [])
         assert invoke(project, 'run') == 0
@@ -280,7 +282,7 @@ def test_independent_invalid_values_are_reported_together(checkout, capsys):
 type = "integer"
 ''')
     record.write_text(record.read_text() + '\n[configuration.values]\n"editor.theme" = false\n"service.port" = "invalid"\n')
-    assert invoke(project, 'config', 'resolve') == 2
+    assert run_until_prepared(project) == 2
     message = capsys.readouterr().err
     assert 'editor.theme' in message and 'service.port' in message
 
@@ -303,26 +305,26 @@ def test_shipped_cli_recommendation_override_and_omission(checkout, capsys):
     declaration.write_text(declaration.read_text() + '\n[configuration.values."runtime.devcapsule-command"]\n'
         'type = "string"\nruntime-effect = "devcapsule.command-name"\nrecommended = "devcapsule0"\n')
     original = record.read_bytes()
-    assert invoke(project, 'config', 'resolve') == 0
+    assert run_until_prepared(project) == 0
     assert load_toml(resolution)['runtime']['devcapsule-command'] == 'devcapsule0'
     assert record.read_bytes() == original  # Derived recommendation is not a local answer.
-    assert invoke(project, 'config', 'list') == 0
+    assert invoke(project, 'config', 'show') == 0
     assert 'project recommendation' in capsys.readouterr().out
     assert invoke(project, 'config', 'set', 'runtime.devcapsule-command', 'devcapsule') == 0
-    assert invoke(project, 'config', 'resolve') == 0
+    assert run_until_prepared(project) == 0
     assert load_toml(resolution)['runtime']['devcapsule-command'] == 'devcapsule'
     for invalid in ('../devcapsule', '/bin/sh', 'arbitrary-name'):
         before = record.read_bytes()
         assert invoke(project, 'config', 'set', 'runtime.devcapsule-command', invalid) == 2
         assert record.read_bytes() == before
     assert invoke(project, 'config', 'set', 'runtime.devcapsule-command', 'default') == 0
-    assert invoke(project, 'config', 'resolve') == 0
+    assert run_until_prepared(project) == 0
     assert load_toml(resolution)['runtime']['devcapsule-command'] == 'devcapsule0'
     assert invoke(project, 'config', 'set', 'runtime.devcapsule-command', 'none') == 0
-    assert invoke(project, 'config', 'resolve') == 0
+    assert run_until_prepared(project) == 0
     assert 'devcapsule-command' not in load_toml(resolution)['runtime']
-    assert invoke(project, 'config', 'unset', 'runtime.devcapsule-command') == 0
-    assert invoke(project, 'config', 'resolve') == 0
+    assert invoke(project, "config", "set", 'runtime.devcapsule-command', "default") == 0
+    assert run_until_prepared(project) == 0
     assert load_toml(resolution)['runtime']['devcapsule-command'] == 'devcapsule0'
 
 
@@ -334,7 +336,7 @@ def test_reserved_shipped_cli_name_carries_the_effect_without_the_attribute(chec
     declaration = project / '.devcapsule/devcapsule.toml'
     declaration.write_text(declaration.read_text() + '\n[configuration.values."runtime.devcapsule-command"]\n'
         'type = "string"\nrecommended = "devcapsule0"\n')
-    assert invoke(project, 'config', 'resolve') == 0
+    assert run_until_prepared(project) == 0
     assert load_toml(resolution)['runtime']['devcapsule-command'] == 'devcapsule0'
     assert invoke(project, 'config', 'set', 'runtime.devcapsule-command', 'arbitrary-name') == 2
 
@@ -375,9 +377,9 @@ def test_config_list_is_data_only_and_show_carries_the_review(checkout, capsys):
     project, record, resolution = checkout
     # The fixture's base has no contained desktop: host X11 needs consent first.
     assert invoke(project, 'config', 'authorize', 'host-x11', 'true') == 0
-    assert invoke(project, 'config', 'resolve') == 0
+    assert run_until_prepared(project) == 0
     capsys.readouterr()
-    assert invoke(project, 'config', 'list') == 0
+    assert invoke(project, 'config', 'show') == 0
     listing = capsys.readouterr().out
     assert 'KIND' in listing and 'SOURCE' in listing and 'PENDING' in listing
     assert 'Nothing is pending.' in listing
@@ -412,7 +414,7 @@ def test_workstation_defaults_stale_only_the_workstation_input(checkout):
     assert stale_resolution_inputs(manifest, lock, local, previous, load_workstation()) == ()
     assert invoke(project, 'config', 'default', 'cpus', '2') == 0
     assert stale_resolution_inputs(manifest, lock, local, previous, load_workstation()) == ('workstation-config',)
-    assert invoke(project, 'config', 'resolve') == 0
+    assert run_until_prepared(project) == 0
     current = ExecutionConfiguration.load(project).project.resolution
     assert current['runtime']['cpus'] == 2
     assert invoke(project, 'config', 'default', 'cpus', '3') == 0

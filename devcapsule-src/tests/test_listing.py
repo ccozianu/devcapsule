@@ -18,9 +18,10 @@ from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES
 
 MATRIX = MATRICES[Platform.LINUX_AMD64]
-from devcapsule.configuration.derivation import selection_catalog
+from devcapsule.configuration.capability_selection import inspection_agents
 
-SURFACES, AGENTS = selection_catalog(MATRIX)
+SURFACES = {name: MATRIX.resolve_provider(name) or name for name in MATRIX.ide_capabilities()}
+AGENTS = inspection_agents(MATRIX)
 
 
 def manifest(**extra) -> dict:
@@ -251,3 +252,38 @@ def test_legacy_host_answer_is_the_effective_value(recommended):
     host = {"network": {"mode": {"recommended": {"value": "host", "justification": "ports"}}}} if recommended else {}
     row = rows(listing(manifest(host=host), {"host": {"network": "host"}}), "access")["network"]
     assert row.effective == "host" and row.source.startswith("checkout (legacy)") and not row.pending
+
+
+@pytest.mark.parametrize("scope", ["required", "optional", "checkout", "omitted"])
+def test_agent_listing_uses_provider_declarations_without_a_name_suffix(monkeypatch, scope):
+    from devcapsule.resolution_matrix import Capability
+    monkeypatch.setitem(MATRIX._capability_table, "assistant", Capability(("codex",)))
+    document = manifest()
+    checkout = {"devcapsule-checkout-schema-version": 1}
+    if scope == "checkout":
+        checkout["capabilities"] = {"selected": ["assistant"]}
+    else:
+        document["capabilities"]["optional" if scope == "omitted" else scope] = ["assistant"]
+        if scope == "omitted":
+            checkout["capabilities"] = {"without": ["assistant"]}
+    shared = generate_lock(CapabilityPolicy.read(document), MATRIX)
+    if scope == "checkout":
+        from devcapsule.configuration.capability_commands import pin_selection
+        from devcapsule.configuration.capabilities import LocalCapabilities
+        pins = pin_selection(MATRIX, CapabilityPolicy.read(document), LocalCapabilities.read(checkout),
+                             shared, LocalCapabilities(), {}, allow_unverified=True)
+        checkout["capabilities"]["lock"] = render_toml(pins)
+    composed = compose_lock(document, shared, checkout)
+    result = assess_checkout(document, shared, composed, checkout,
+                             surfaces=SURFACES, agents=inspection_agents(MATRIX))
+    assert rows(result, "agent")["assistant"].effective == (
+        "omitted" if scope == "omitted" else f"codex {composed['components']['codex']['version']}")
+    assert "assistant" not in rows(result, "tool")
+
+
+def test_agent_label_follows_the_selected_provider_and_component_alias(monkeypatch):
+    from devcapsule.resolution_matrix import Capability
+    monkeypatch.setitem(MATRIX._capability_table, "assistant", Capability(("codex", "postgresql-client")))
+    assert "assistant" not in inspection_agents(MATRIX, {"assistant": ("postgresql-client", "checkout")})
+    assert inspection_agents(MATRIX, {"assistant": ("codex", "checkout")})["assistant"] == "codex"
+    assert inspection_agents(MATRIX, {"codex": ("codex", "catalog")})["codex"] == "codex"
