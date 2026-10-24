@@ -210,9 +210,16 @@ launch (a grant, a trust, a mount, a Docker option) is deferred to the
 user's confirmation on the host, because anything inside the capsule can
 write the mounted directory. Its brief is
 [brief-pr268-1.md](evidence/2026-10-24-cli-ux/brief-pr268-1.md).
-The Codex pair's PR265.1 is #267; round 1 asked for the second derivation
-to carry a saved required consent (`run --save --authorize base-image
-default` exited 2 on the review branch and on its base).
+Slice 6 is #269, `ws-maintenance/cli-ux-6-docs`, delivered 2026-10-24:
+five user pages rewritten, the command reference written, nine pages
+patched, the changelog's candidate-4 section; the website's content
+contract check against the checkout passed (188 pages); no code changed.
+The retired spellings stay hidden in the code, each answering with its
+replacement, because deleting them would rewrite the tests that use
+`config resolve` as a fixture step; the owner decides whether to delete
+them. Its brief is [brief-pr269-1.md](evidence/2026-10-24-cli-ux/brief-pr269-1.md).
+The stack to `release-0.3.0`, in order: #260, #261, #263, #265, #266,
+#268, #269; the review loops of #266, #268 and #269 run after this entry.
 
 ## Current State
 
