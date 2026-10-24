@@ -112,7 +112,7 @@ def check_documents(manifest: dict[str, Any], lock: dict[str, Any]) -> tuple[str
     validate_file_format(lock, ConfigurationFileKind.lock, "platform lock")
     usable, notices = usable_lock(CapabilityPolicy.read(manifest), lock)
     check_formation(manifest, usable)
-    return (*capability_notes(manifest), *notices)
+    return notices
 
 
 def check_formation(manifest: dict[str, Any], usable: dict[str, Any]) -> None:
@@ -152,7 +152,8 @@ def check(start: Path, *, manifest_path: Path | None = None, lock_path: Path | N
     manifest = load_toml(manifest_path or default_manifest)
     lock = load_toml(lock_path or default_lock)
     notices = check_documents(manifest, lock)
-    return "\n".join(("Configuration contract valid (offline; launch permissions and downloads are not tested).",
+    return "\n".join((*(f"Note: {note}" for note in capability_notes(manifest)),
+                      "Configuration contract valid (offline; launch permissions and downloads are not tested).",
                       *(f"Warning: {notice}" for notice in notices)))
 
 

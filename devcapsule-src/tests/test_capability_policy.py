@@ -180,7 +180,7 @@ def test_omitting_optional_sdk_cannot_remove_mandatory_dependency() -> None:
 
 @pytest.mark.parametrize("minimum", ["3.14", "4"])
 def test_python_minimum_is_a_hard_constraint(minimum: str) -> None:
-    with pytest.raises(ProjectConfigurationError, match=f"Python {minimum} or newer"):
+    with pytest.raises(ProjectConfigurationError, match=f"python {minimum} or newer"):
         generate_lock(CapabilityPolicy(("python",), minimums=(("python", minimum),), layered=True), MATRIX)
 
 

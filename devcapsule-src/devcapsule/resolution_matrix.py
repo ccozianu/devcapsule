@@ -336,13 +336,15 @@ class ResolutionMatrix:
             if len(choices) == 1:
                 providers = choices
         for component in providers:
+            if minimum is None:
+                return component
             versions: tuple[str | None, ...]
             if lock is not None:
                 metadata = lock.get("components", {}).get(component, {})
                 versions = (metadata.get("version"),) if isinstance(metadata, Mapping) else ()
             else:
                 versions = tuple(pin.version for pin in self._components.get(component, ()))
-            if any(version is not None and (minimum is None or meets_minimum(version, minimum)) for version in versions):
+            if any(version is not None and meets_minimum(version, minimum) for version in versions):
                 return component
         if lock is not None:
             raise ResolutionError("missing supported providers: " + ", ".join(providers))
@@ -426,10 +428,9 @@ class ResolutionMatrix:
         if not bases:
             for name in sorted(base_needs & minimums.keys()):
                 versions = ", ".join(dict.fromkeys(base.satisfies.get(name) or "unknown" for base in self._bases))
-                label = "Python" if name == "python" else name
                 families = ", ".join(dict.fromkeys(base.base_family.replace("ubuntu-", "Ubuntu ") for base in self._bases))
                 if not any(meets_minimum(base.satisfies.get(name), minimums[name]) for base in self._bases):
-                    raise ResolutionError(f"no base supplies {label} {minimums[name]} or newer; the {families} bases supply {versions}")
+                    raise ResolutionError(f"no base supplies {name} {minimums[name]} or newer; the {families} bases supply {versions}")
 
         for base in reversed(bases):
             chosen = self._verified_selection(required, base, candidates)

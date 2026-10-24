@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import replace
+import json
 from pathlib import Path
 import tomllib
 
@@ -11,8 +12,8 @@ import pytest
 from devcapsule import cli
 from devcapsule.commands._run_flow import RunFlags, prepare_launch
 from devcapsule.configuration import owner_commands
-from devcapsule.configuration.capabilities import CapabilityPolicy, meets_minimum, version_parts
-from devcapsule.configuration.capability_selection import generate_lock, usable_lock
+from devcapsule.configuration.capabilities import CapabilityPolicy, LocalCapabilities, meets_minimum, version_parts
+from devcapsule.configuration.capability_selection import compose_lock, generate_lock, usable_lock
 from devcapsule.configuration.derivation import load_state
 from devcapsule.configuration.file_formats import ProjectConfigurationError, canonical_digest, render_toml
 from devcapsule.configuration.storage import checkout_record_paths, load_toml, recommendation_lock_for, trust_path
@@ -84,7 +85,7 @@ def test_owners_three_requirements_refuse_python_before_writes(project: Path, tm
     lock_path.write_text(MATRIX.resolve(["python", "java", "playwright"], project_only=True).render_lock())
     before = snapshot(tmp_path)
     assert cli.main(["project", "--path", str(project), "init", "--regenerate"]) == 2
-    assert "no base supplies Python 3.14 or newer; the Ubuntu 24.04 bases supply 3.12" in capsys.readouterr().err
+    assert "no base supplies python 3.14 or newer; the Ubuntu 24.04 bases supply 3.12" in capsys.readouterr().err
     assert snapshot(tmp_path) == before
     assert cli.main(["project", "--path", str(project), "config", "check"]) == 2
     assert "python>=3.14" in capsys.readouterr().err
@@ -101,8 +102,17 @@ def test_owners_java_and_playwright_resolve_show_and_preserve_minimums(project: 
     assert load_toml(manifest_path)["capabilities"]["required"] == ["java>=21", "playwright>=1.21"]
     assert cli.main(["project", "--path", str(project), "config", "show"]) == 0
     shown = capsys.readouterr().out
-    assert "java>=21" in shown and "25.0.4+7" in shown
-    assert "playwright>=1.21" in shown and "1.63.0" in shown
+    java = next(line for line in shown.splitlines() if line.split()[:2] == ["tool", "java"])
+    playwright = next(line for line in shown.splitlines() if line.split()[:2] == ["tool", "playwright"])
+    assert "supplied by the base, 25.0.4+7" in java and "project (required, >=21)" in java
+    assert "playwright 1.63.0" in playwright and "project (required, >=1.21)" in playwright
+    assert playwright.count("1.63.0") == 1
+    assert cli.main(["project", "--path", str(project), "config", "show", "--json"]) == 0
+    rows = {row["name"]: row for row in json.loads(capsys.readouterr().out)["rows"] if row["kind"] == "tool"}
+    assert rows["java"]["source"] == "project (required, >=21)"
+    assert rows["java"]["effective"] == "supplied by the base, 25.0.4+7"
+    assert rows["playwright"]["source"] == "project (required, >=1.21)"
+    assert rows["playwright"]["effective"] == "playwright 1.63.0"
     owner_commands.require_tools(project, ["node"])
     assert load_toml(manifest_path)["capabilities"]["required"] == ["java>=21", "node", "playwright>=1.21"]
 
@@ -146,6 +156,20 @@ def test_newest_base_below_minimum_is_not_selected() -> None:
     )
     lock = tomllib.loads(matrix.resolve(["python>=3.14"], project_only=True).render_lock())
     assert lock["base"]["reference"] == "older@sha256:aa"
+
+
+def test_provider_without_version_composes_without_a_minimum() -> None:
+    manifest = {"capabilities": {"required": ["python"]}}
+    shared = generate_lock(CapabilityPolicy.read(manifest), MATRIX)
+    pins = generate_lock(CapabilityPolicy(("codex-agent",), layered=True), MATRIX)
+    del pins["components"]["codex"]["version"]
+    checkout = {"capabilities": {"selected": ["codex-agent"], "lock": render_toml(pins)}}
+    composed = compose_lock(manifest, shared, checkout)
+    usable, _ = usable_lock(CapabilityPolicy.read(manifest), composed, LocalCapabilities.read(checkout))
+    assert usable["components"]["codex"] == pins["components"]["codex"]
+    assert MATRIX.supplied_version("codex-agent", usable) is None
+    with pytest.raises(ProjectConfigurationError, match="unknown version"):
+        usable_lock(CapabilityPolicy(("codex-agent",), minimums=(("codex-agent", "1"),), layered=True), composed)
 
 
 def test_saved_version_set_below_minimum_stops_run_with_three(project: Path, tmp_path: Path, capsys, monkeypatch) -> None:
@@ -230,7 +254,11 @@ accepted = "2026-10-24T10:00:00+00:00"
     assert len([note for note in prepared.notes if "SDK major" in note]) == 1
     assert snapshot(tmp_path) == before
     assert cli.main(["project", "--path", str(project), "config", "check"]) == 0
-    assert capsys.readouterr().out.count("SDK major") == 1
+    report = capsys.readouterr().out
+    assert report.count("SDK major") == 1
+    assert report.startswith("Note: The SDK major constraint was removed")
+    assert report.index("Note:") < report.index("Configuration contract valid")
+    assert "Warning:" not in report
     assert snapshot(tmp_path) == before
     owner_commands.recommend(project, "memory", "6g")
     assert "sdk-major" not in load_toml(manifest_path)["capabilities"]

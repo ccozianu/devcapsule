@@ -272,10 +272,13 @@ def _capability_rows(
         from dataclasses import replace
         minimums = dict(policy.minimums)
         for index, row in enumerate(rows):
-            if row.name in minimums:
+            if row.name in minimums and row.source == "project (required)":
                 version = capability_versions.get(row.name)
-                rows[index] = replace(row, name=f"{row.name}>={minimums[row.name]}",
-                                      effective=row.effective + (f" ({version})" if version else " (version unknown)"))
+                effective = row.effective
+                if effective == "supplied by the base":
+                    effective += f", {version or 'version unknown'}"
+                rows[index] = replace(row, source=f"project (required, >={minimums[row.name]})",
+                                      effective=effective)
     return rows
 
 
