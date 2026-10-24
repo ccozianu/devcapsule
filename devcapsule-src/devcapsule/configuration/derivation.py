@@ -37,6 +37,7 @@ from .capability_selection import compose_lock, effective_lock, local_pins
 from .file_formats import ProjectConfigurationError, canonical_digest, render_checkout, render_toml
 from .listing import Listing, assess_checkout
 from .model import Configuration
+from .trust import WorkstationTrust
 from .storage import (
     ResolvedProject,
     atomic_write,
@@ -124,6 +125,12 @@ class CheckoutState:
         document = self.checkout if checkout is None else checkout
         lock = self.composed_lock(document)
         reference = document.get("authorization", {}).get("base-image", {}).get("reference") or lock.get("base", {}).get("reference")
+        try:
+            selection = authorized_base_selection(lock, document, required=False, trust=WorkstationTrust.read(self.workstation))
+        except ProjectConfigurationError:
+            selection = None  # The listing reports an invalid or stale selection below.
+        if selection is not None:
+            reference = selection.reference
         base = known_base_image(str(reference))
         return assess_checkout(
             self.manifest, self.shared_lock, lock, document,
@@ -210,7 +217,8 @@ def derive_plan(state: CheckoutState, checkout: Mapping[str, Any] | None = None,
     configuration = Configuration(state.manifest, lock, document, state.workstation)
     configuration.review().require_ready(state.root)
     resolution = configuration.resolve()
-    base_selection = authorized_base_selection(lock, document) if "base" in lock else None
+    trust = WorkstationTrust.read(state.workstation)
+    base_selection = authorized_base_selection(lock, document, trust=trust) if "base" in lock else None
     if base_selection is not None and base_selection.local_image_identity is not None:
         # Looked up through the operations adapter, the one seam the launch
         # and its tests patch for the local daemon.

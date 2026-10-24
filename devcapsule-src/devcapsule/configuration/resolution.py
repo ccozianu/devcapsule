@@ -24,6 +24,7 @@ from .file_formats import (
 )
 from .fingerprints import resolution_source_digests
 from .review import ConfigurationReview, HostAccess, review_configuration
+from .trust import WorkstationTrust
 from .values import checkout_omitted_values
 
 
@@ -103,7 +104,7 @@ def render_resolution(manifest: Mapping[str, Any], lock: Mapping[str, Any],
             for key, value in sorted(runtime_authorizations.items())
         )
     if "base-image" in authorizations:
-        base_selection = authorized_base_selection(lock, checkout)
+        base_selection = authorized_base_selection(lock, checkout, trust=WorkstationTrust.read(workstation or {}))
         if base_selection is None:  # pragma: no cover - authorized_base establishes it.
             raise ProjectConfigurationError("Resolved base-image authorization is missing.")
         lines.extend(

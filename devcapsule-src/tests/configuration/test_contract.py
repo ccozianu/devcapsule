@@ -396,7 +396,7 @@ def test_config_list_is_data_only_and_show_carries_the_review(checkout, capsys):
     replace_answers(project, record, {name: value for name, value in table.items() if name != 'base-image'})
     assert invoke(project, 'config', 'show') == 0
     shown = capsys.readouterr().out
-    assert 'Pending decisions:' in shown and 'config authorize base-image default' in shown
+    assert 'Pending decisions:' in shown and 'config trust accept devcapsule-base' in shown
     assert invoke(project, 'config', 'check') == 3
 
 

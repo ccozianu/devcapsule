@@ -14,7 +14,7 @@ from devcapsule.commands._run_flow import RunFlags, prepare_launch
 from devcapsule.compat import DecisionPending
 from devcapsule.configuration.capability_commands import paths
 from devcapsule.configuration.docker_arguments import arguments_path, read_arguments
-from devcapsule.configuration.storage import checkout_record_paths, load_toml, registered_checkouts
+from devcapsule.configuration.storage import checkout_record_paths, load_toml, registered_checkouts, trust_path
 
 
 @pytest.fixture
@@ -87,10 +87,13 @@ def test_a_second_checkout_is_registered_under_its_directory_name(project: Path,
     (second / ".devcapsule").mkdir()
     for name in ("devcapsule.toml", "devcapsule.linux-amd64.lock"):
         (second / ".devcapsule" / name).write_bytes((project / ".devcapsule" / name).read_bytes())
-    with pytest.raises(DecisionPending):  # its own record: no IDE, no consent inherited
+    with pytest.raises(DecisionPending):  # its own record: no IDE; the base's channel is the workstation's question
         prepare_launch(second, RunFlags(), interactive=False)
+    prompts = io.StringIO()
     prepared = prepare_launch(second, RunFlags(ide="python-ide", authorize=()), interactive=True,
-                              input_stream=io.StringIO("y\n"), output_stream=io.StringIO())
+                              input_stream=io.StringIO("y\n"), output_stream=prompts)
+    assert "Accept for this user account on this computer?" in prompts.getvalue()
+    assert load_toml(trust_path())["channels"]["devcapsule-base"]["vendor"]
     names = {item.checkout_name: item.checkout_path for item in registered_checkouts()}
     assert names == {"default": project.resolve(), "second-copy": second.resolve()}
     assert prepared.selected.checkout_path.name == "second-copy.checkout.toml"
@@ -102,7 +105,7 @@ def test_interactive_questions_record_answers_where_the_config_family_would(proj
     assert config(project, "recommend", "docker-daemon", "host-socket", "--because", "compose") == 0
     capsys.readouterr()
     prompts = io.StringIO()
-    # In listing order: IDE by number; network: once; docker-daemon: deny; base consent: yes; env value.
+    # In listing order: IDE by number; network: once; docker-daemon: deny; the base's channel: yes; env value.
     answers = io.StringIO("3\no\nd\ny\ndb.example.org\n")
     prepared = prepare_launch(project, RunFlags(), interactive=True, input_stream=answers, output_stream=prompts)
     transcript = prompts.getvalue()
@@ -115,7 +118,8 @@ def test_interactive_questions_record_answers_where_the_config_family_would(proj
     assert saved["authorization"]["docker-daemon"]["value"] == "none"
     assert "network" not in saved["authorization"]
     assert prepared.host_overrides == {"network": "host"}
-    assert saved["authorization"]["base-image"]["reference"]
+    assert "base-image" not in saved.get("authorization", {})  # the channel is trusted for the workstation, not consented per checkout
+    assert "devcapsule-base" in load_toml(trust_path())["channels"]
     assert read_arguments(arguments_path(checkout_record_paths(load_toml(paths(project)[0]), project)[0])) == [
         "--env", "POSTGRES_HOST=db.example.org"]
     assert prepared.selected.resolution["runtime"]["component"] == "codium"
@@ -179,7 +183,7 @@ def copy_project(project: Path, target: Path) -> Path:
 def test_save_with_pending_consent_writes_nothing(project: Path, tmp_path: Path, second: bool, print_only: bool) -> None:
     root = copy_project(project, tmp_path / 'second') if second else project
     before = snapshot(tmp_path)
-    with pytest.raises(DecisionPending, match='base-image'):
+    with pytest.raises(DecisionPending, match='trust devcapsule-base'):
         prepare_launch(root, RunFlags(ide='python-ide', memory='6g', environment=('PRIVATE=value',),
                                      authorize=(('network', 'host'),), save=True),
                        interactive=False, print_only=print_only)
@@ -243,29 +247,35 @@ def test_run_once_agent_reaches_plan_but_not_next_show(project: Path, capsys, sa
     assert not [row for row in json.loads(capsys.readouterr().out)['rows'] if row['kind'] == 'agent']
 
 
-@pytest.mark.parametrize('interactive,answer', [(False, ''), (True, 'a\n'), (True, 'd\n')])
-def test_renew_changes_only_the_stale_answer(project: Path, tmp_path: Path, interactive: bool, answer: str) -> None:
+@pytest.mark.parametrize("value", ["host", "bridge"])
+def test_a_changed_recommendation_keeps_the_answer_and_never_asks(project: Path, tmp_path: Path, capsys, monkeypatch, value: str) -> None:
+    """Answer 23 of the work order (slice 4): a recorded host answer is kept; the listing discloses what changed."""
     assert config(project, 'ide', 'python-ide') == 0
     assert config(project, 'authorize', 'base-image', 'default') == 0
     assert config(project, 'recommend', 'network', 'host', '--because', 'old reason') == 0
-    assert config(project, 'authorize', 'network', 'host') == 0
+    assert config(project, 'authorize', 'network', value) == 0
     assert config(project, 'authorize', 'docker-daemon', 'none') == 0
     old = record(project)['authorization']
     assert config(project, 'recommend', 'network', 'host', '--because', 'new reason') == 0
     before = snapshot(tmp_path)
-    if not interactive:
-        with pytest.raises(DecisionPending, match='renew network'):
-            prepare_launch(project, RunFlags(), interactive=False)
-        assert snapshot(tmp_path) == before
-        return
     prompts = io.StringIO()
-    prepared = prepare_launch(project, RunFlags(), interactive=True, input_stream=io.StringIO(answer), output_stream=prompts)
-    new = record(project)['authorization']
-    assert new['network']['value'] == ('host' if answer == 'a\n' else 'bridge')
-    assert new['network']['recommendation-digest'] != old['network']['recommendation-digest']
-    assert {k: v for k, v in new.items() if k != 'network'} == {k: v for k, v in old.items() if k != 'network'}
-    assert prompts.getvalue().count('Your answer for network') == 1
-    assert prepared.selected.resolution_path.is_file()
+    prepared = prepare_launch(project, RunFlags(), interactive=True, input_stream=io.StringIO(''), output_stream=prompts)
+    assert prompts.getvalue() == '' and prepared.selected.resolution['authorization']['network'] == value
+    assert any('new reason' in note and f'network: {value}' in note for note in prepared.notes)
+    assert record(project)['authorization'] == old
+    assert {path: data for path, data in snapshot(tmp_path).items() if 'resolved' not in str(path)} == \
+        {path: data for path, data in before.items() if 'resolved' not in str(path)}
+    capsys.readouterr()
+    assert config(project, 'show') == 0
+    shown = capsys.readouterr().out
+    assert 'kept;' in shown and 'new reason' in shown
+    from tests.test_upgrade_recovery import install_external_fakes, invoke
+    launch = install_external_fakes(monkeypatch, [])
+    monkeypatch.setattr('sys.stdin', io.StringIO(''))
+    monkeypatch.setattr('sys.stdin.isatty', lambda: True)
+    assert invoke(project, 'run', '--no-update-check') == 0
+    assert launch.call_args.args[0].network_mode == value
+    assert 'new reason' in capsys.readouterr().out
 
 
 def test_run_once_override_answers_a_renewal_without_saving_it(project: Path) -> None:
@@ -479,7 +489,8 @@ def test_interactive_ide_does_not_save_a_run_once_agent(project: Path) -> None:
     assert record(project)['capabilities']['selected'] == ['python-ide']
 
 
-def test_print_command_preserves_configuration_and_skips_reminder_writes(project: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("consent", [("--authorize", "base-image", "default"), ("--trust", "devcapsule-base")])
+def test_print_command_preserves_configuration_and_skips_reminder_writes(project: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, consent: tuple[str, ...]) -> None:
     from unittest.mock import Mock
     from devcapsule.commands import project as commands
     from tests.test_upgrade_recovery import install_external_fakes, invoke
@@ -488,7 +499,7 @@ def test_print_command_preserves_configuration_and_skips_reminder_writes(project
     monkeypatch.setattr(commands, 'prepare_launch', calls)
     monkeypatch.setattr('devcapsule.version_sets.reminder', lambda _: pytest.fail('print-only updated reminder state'))
     before = snapshot(tmp_path)
-    assert invoke(project, 'run', '--ide', 'python-ide', '--authorize', 'base-image', 'default',
+    assert invoke(project, 'run', '--ide', 'python-ide', *consent,
                   '--memory', '6g', '--save', '--print-command') == 0
     assert calls.call_count == 1
     assert launch.call_args.args[0].command_report is not None

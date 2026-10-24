@@ -12,11 +12,12 @@ as the checkout's answers before launching.
 
 The decisions come from the listing (:mod:`devcapsule.configuration.listing`),
 so what ``run`` asks is exactly what ``config check`` reports. The IDE, a
-required environment variable, a consent, a recorded host answer whose
-recommendation changed, a required value and a required secret block the
-launch until answered; a host access the project recommends and the
-developer never answered is asked, and "not now" launches with the secure
-default.
+required environment variable, a consent, an invalid host answer,
+a required value and a required secret block the
+launch until answered; so does a vendor's or DevCapsule's channel the
+workstation has not accepted yet (D-0011, once per computer); a host access
+the project recommends and the developer never answered is asked, and "not
+now" launches with the secure default.
 """
 
 from __future__ import annotations
@@ -37,17 +38,18 @@ from devcapsule.configuration.file_formats import ProjectConfigurationError, ren
 from devcapsule.configuration.manifest_document import Recommendations
 from devcapsule.configuration.listing import Decision
 from devcapsule.configuration.operations import CheckoutRecord, apply_configuration_answers, ProvidedAnswer
-from devcapsule.configuration.storage import ResolvedProject, atomic_write, checkout_name_for, manifest_for
+from devcapsule.configuration.storage import ResolvedProject, atomic_write, checkout_name_for, manifest_for, write_trust
+from devcapsule.configuration.trust import Channel, WorkstationTrust, channels_for
 from devcapsule.configuration.values import legacy_memory_names, memory_size_bytes, normalize_launcher_value
 
 __all__ = ["Prepared", "RunFlags", "prepare_launch"]
 
-BLOCKING_KINDS = {"ide", "env", "renew", "consent", "value", "secret"}
+BLOCKING_KINDS = {"ide", "env", "renew", "trust", "consent", "value", "secret"}
 
 
 @dataclass(frozen=True)
 class RunFlags:
-    """The run flags that answer or override a choice; each applies to this launch only unless ``save``."""
+    """Run-once choices unless ``save``; trust is saved after the complete review, even without ``save``."""
 
     ide: str | None = None
     agents: tuple[str, ...] = ()
@@ -55,6 +57,7 @@ class RunFlags:
     cpus: str | None = None
     environment: tuple[str, ...] = ()  # NAME=VALUE saved for this run, or NAME taken from the host
     authorize: tuple[tuple[str, str], ...] = ()  # (node, value)
+    trust: tuple[str, ...] = ()  # channel ids, recorded only after every blocking decision is settled
     save: bool = False
     allow_unverified: bool = False
 
@@ -69,6 +72,7 @@ class Prepared:
     cpus_override: int | None = None
     environment_tokens: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    workstation: dict[str, Any] = field(default_factory=dict)
 
 
 def prepare_launch(
@@ -94,6 +98,9 @@ def prepare_launch(
     record = CheckoutRecord.staged(input_path, state.checkout)
     original = deepcopy(record.document)
     notes: list[str] = []
+    # Channels accepted for this workstation, by flag or at the terminal:
+    # staged on the state's workstation document, written with the record.
+    accepted: list[str] = []
     host_overrides: dict[str, Any] = {}
     environment: dict[str, str | None] = {}
     environment_tokens: list[str] = []
@@ -143,6 +150,9 @@ def prepare_launch(
     reader = input_stream.readline if input_stream is not None else lambda: sys.stdin.readline()
     while True:
         checkout = launch_checkout()
+        for channel_id in flags.trust:
+            if channel_id not in accepted:
+                _stage_trust(state, checkout, channel_id, accepted)
         decisions = list(state.listing(checkout, check_display=check_display).decisions)
         blocking = [d for d in decisions if d.kind in BLOCKING_KINDS]
         if blocking and (print_only or not interactive):
@@ -159,11 +169,14 @@ def prepare_launch(
             break
         decision = pending[0]
         asked.add((decision.kind, decision.name))
-        _settle(state, record, checkout, decision, host_overrides, environment, flags, reader, output)
+        _settle(state, record, checkout, decision, host_overrides, environment, accepted, flags, reader, output)
 
     # Validation can still refuse (for example, an invalid binding). Derive
     # first so neither --save nor a terminal answer escapes on that path.
     selected = derive_plan(state, checkout, write=False)
+    for row in state.listing(checkout, check_display=check_display).rows:
+        if row.kind == "access" and "(kept;" in row.source:
+            notes.append(f"Host access {row.name}: {row.effective}; {row.source}.")
     if not print_only:
         if environment:
             read_environment(arguments_path(input_path))  # Refuse ambiguous saved tokens before any write.
@@ -174,11 +187,14 @@ def prepare_launch(
         for name, saved_value in environment.items():
             update_environment(arguments_path(input_path), name, saved_value, from_host=saved_value is None)
         atomic_write(selected.resolution_path, render_toml(selected.resolution))
+        if accepted:
+            write_trust(WorkstationTrust.read(state.workstation).document())
+            notes.extend(f"Accepted the channel {channel_id} for this workstation." for channel_id in accepted)
         if flags.save:
             notes.insert(0, "Recorded the flags given for this checkout.")
             environment_tokens = []
             memory_override = cpus_override = None
-    return Prepared(selected, host_overrides, memory_override, cpus_override, environment_tokens, notes)
+    return Prepared(selected, host_overrides, memory_override, cpus_override, environment_tokens, notes, state.workstation)
 
 
 def _resource_answers(record: CheckoutRecord, manifest: Mapping[str, Any], flags: RunFlags) -> None:
@@ -202,6 +218,38 @@ def _selected_checkout(state: CheckoutState, document: dict[str, Any], flags: Ru
     return state.with_selection(selection, checkout=document, allow_unverified=flags.allow_unverified)
 
 
+def project_channel(root: Path, manifest: dict[str, Any], channel_id: str) -> Channel:
+    """The channel ``channel_id`` of this project's lock; refused with the project's channels when unknown."""
+    state = load_state(root, manifest)
+    return _channel_for(state.composed_lock(), channel_id)
+
+
+def _channel_for(lock: Mapping[str, Any], channel_id: str) -> Channel:
+    channels = channels_for(lock)
+    channel = channels.get(channel_id)
+    if channel is None:
+        raise ProjectConfigurationError(
+            f"No channel {channel_id!r} on this project; its channels: " + (", ".join(sorted(channels)) or "none") + "."
+        )
+    return channel
+
+
+def accept_channel(root: Path, manifest: dict[str, Any], channel_id: str) -> Path:
+    """Record the user's acceptance of one channel for this workstation now; return the record's path."""
+    from devcapsule.configuration.storage import load_trust
+    channel = project_channel(root, manifest, channel_id)
+    return write_trust(WorkstationTrust.read(load_trust()).with_channel(channel).document())
+
+
+def _stage_trust(state: CheckoutState, checkout: Mapping[str, Any], channel_id: str, accepted: list[str]) -> None:
+    """Stage the acceptance of ``channel_id`` on the state's workstation document; written with the answers."""
+    channel = _channel_for(state.composed_lock(checkout), channel_id)
+    trust = WorkstationTrust.read(state.workstation).with_channel(channel)
+    state.workstation = {**state.workstation, "trust": trust.document()}
+    if channel_id not in accepted:
+        accepted.append(channel_id)
+
+
 def _capability(value: str, names: Mapping[str, str], kind: str) -> str:
     candidate = value.strip()
     by_component = {component: name for name, component in names.items()}
@@ -212,10 +260,12 @@ def _capability(value: str, names: Mapping[str, str], kind: str) -> str:
 
 
 def _render_pending(decisions: list[Decision], root: Path) -> str:
+    """The status-3 text: every answer is still staged, including trust."""
     lines = ["the launch of this checkout needs answers:"]
     for decision in decisions:
         flag = {"ide": "--ide IDE", "env": f"--env {decision.name}=VALUE", "consent": f"--authorize {decision.name} {decision.value}" if decision.name == "host-x11" else "",
-                "access": f"--authorize {decision.name} {decision.value}", "renew": f"--authorize {decision.name} {decision.value}", "value": "", "secret": ""}[decision.kind]
+                "access": f"--authorize {decision.name} {decision.value}", "renew": f"--authorize {decision.name} {decision.value}",
+                "trust": f"--trust {decision.name}", "value": "", "secret": ""}[decision.kind]
         lines.append(f"  {decision.kind} {decision.name}: {decision.description}" + (f"  ({decision.reason})" if decision.reason else ""))
         lines.append("      " + (f"{flag}  |  " if flag else "") + decision.command)
     lines.append("Nothing was written. Answer on the command line or in a terminal.")
@@ -224,7 +274,7 @@ def _render_pending(decisions: list[Decision], root: Path) -> str:
 
 def _settle(
     state: CheckoutState, record: CheckoutRecord, checkout: dict[str, Any], decision: Decision,
-    host_overrides: dict[str, Any], environment: dict[str, str | None], flags: RunFlags,
+    host_overrides: dict[str, Any], environment: dict[str, str | None], accepted: list[str], flags: RunFlags,
     reader: Callable[[], str], output: TextIO,
 ) -> None:
     """Stage one answer. Reassess before the next question; an IDE can add consents."""
@@ -249,6 +299,18 @@ def _settle(
         validate_value(value)
         environment[decision.name] = value
         state.saved_environment[decision.name] = value
+    elif decision.kind == "trust":
+        output.write(f"{decision.description}\n")
+        if decision.reason:
+            output.write(f"  {decision.reason}\n")
+        answer = _ask(output, reader, "Accept for this user account on this computer? [y/N]: ").lower()
+        if answer in {"y", "yes"}:
+            _stage_trust(state, checkout, decision.name, accepted)
+            output.write(f"Accepted for this review. Trust will be saved when all required answers are complete. "
+                         f"Withdraw: devcapsule project --path {root} config trust withdraw {decision.name}\n")
+        else:
+            output.write(f"Not accepted. Accept later: {decision.command}\n")
+            raise DecisionPending(_render_pending([decision], root))
     elif decision.kind in {"access", "renew", "consent"}:
         declaration = authorization_declarations(manifest, state.composed_lock(checkout))[decision.name]
         if decision.kind in {"access", "renew"}:

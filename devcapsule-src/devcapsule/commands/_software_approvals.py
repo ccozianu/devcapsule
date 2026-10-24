@@ -101,7 +101,8 @@ def pending_for(root: Path, manifest: dict[str, Any]) -> tuple[SoftwareApproval,
     if any(decision.kind in {"ide", "env", "value", "secret"}
            for decision in state.listing(check_display=False).decisions):
         return None
-    return pending_software_approvals(manifest, lock, checkout, previous_versions=previous_versions(root))
+    return pending_software_approvals(manifest, lock, checkout, previous_versions=previous_versions(root),
+                                      trust=state.workstation)
 
 
 def approve(root: Path, manifest: dict[str, Any], approvals: tuple[SoftwareApproval, ...]) -> None:

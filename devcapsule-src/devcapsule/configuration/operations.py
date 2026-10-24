@@ -30,6 +30,7 @@ from devcapsule.project import sanitize_name
 from devcapsule.platforms import Platform, UnsupportedPlatformError
 from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix
 
+from .trust import WorkstationTrust
 from .authorization import (
     AuthorizationDeclaration,
     CURATED_HOST_RECOMMENDATIONS,
@@ -217,10 +218,12 @@ def resolve_checkout(start_path: Path) -> ResolveReport:
         atomic_write(input_path, render_checkout(manifest, root, {}, {}))
         registered = input_path
     checkout = load_checkout(input_path, manifest, root)
-    configuration = Configuration(manifest, lock, checkout, load_workstation())
+    workstation = load_workstation()
+    configuration = Configuration(manifest, lock, checkout, workstation)
     configuration.review().require_ready(root)
     resolution = configuration.resolve()
-    base_selection = authorized_base_selection(lock, checkout) if "base" in lock else None
+    base_selection = (authorized_base_selection(lock, checkout, trust=WorkstationTrust.read(workstation))
+                      if "base" in lock else None)
     if base_selection is not None and base_selection.local_image_identity is not None:
         local_base = required_local_image(base_selection.reference)
         validate_base_image(local_base, platform=str(lock["platform"]),

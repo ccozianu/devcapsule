@@ -99,7 +99,9 @@ def test_host_access_rows_show_secure_defaults_and_ask_only_what_the_project_rec
     denied = {"devcapsule-checkout-schema-version": 1, "authorization": {"network": {
         "value": "bridge", "recommendation-digest": "stale"}}}
     result = listing(document, denied)
-    assert rows(result, "access")["network"].pending.startswith("the recommendation changed")
+    # A recorded answer under an earlier recommendation is kept and disclosed, never asked again.
+    row = rows(result, "access")["network"]
+    assert row.effective == "bridge" and not row.pending and "kept" in row.source
 
 
 def test_environment_rows_cover_required_offered_and_saved(monkeypatch) -> None:
@@ -217,7 +219,7 @@ def test_legacy_memory_omission_is_preserved_until_reset():
 
 @pytest.mark.parametrize("answer,stale,effective,pending", [
     ("host", False, "host", False), ("bridge", False, "bridge", False),
-    ("host", True, "bridge", True), ("wrong", False, "bridge", True),
+    ("host", True, "host", False), ("wrong", False, "bridge", True),
 ])
 def test_host_access_effective_and_pending_follow_record_validity(answer, stale, effective, pending):
     from devcapsule.configuration.authorization import authorization_declarations
@@ -227,7 +229,7 @@ def test_host_access_effective_and_pending_follow_record_validity(answer, stale,
     local = {"authorization": {"network": {"value": answer, "recommendation-digest": "old" if stale else digest}}}
     row = rows(listing(document, local), "access")["network"]
     assert row.effective == effective and bool(row.pending) is pending
-    assert "project recommends host" in row.source
+    assert ("kept" in row.source) if stale else ("project recommends host" in row.source)
 
 
 def test_obsolete_authorization_is_pending_with_forget_remedy():
