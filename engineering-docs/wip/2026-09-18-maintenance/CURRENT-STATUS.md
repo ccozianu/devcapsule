@@ -284,6 +284,31 @@ begin the rewrite until project-management assigns it.
 
 ## Current State
 
+**2026-10-25: capabilities and components, slice 2 accepted; slice 3
+running.** Slice 2, the owner's and the developer's commands, the
+resolution recommendation and the provider choice, is
+[PR #277](https://github.com/ccozianu/devcapsule/pull/277) on
+`ws-maintenance/capabilities-2-commands` into slice 1's branch, Codex
+session `01a17009-1972-75e1-a5e1-29bc111a6de4`. Codex stopped first on a
+real blocker: the rc4 reader refuses an unknown key under
+`[recommendations]`, so the order's `[recommendations.resolution]` was
+unreadable by rc4; the reviewer verified with the rc4 executable that an
+unknown table under `[capabilities]` is tolerated silently, moved the
+table to `[capabilities.resolution]` and corrected the order (`168181d`);
+the reviewer also struck the reason on a resolution recommendation, by
+the owner's rule of removal, nothing reading it (`34fa5f1`). One review
+round: `compose_lock` had become a writer, the resolver's steps were not
+legible and the lock's shape depended on inputs, the resolution's reason
+was encoded in a key, two messages named retired words, base rows showed
+a provider; fixed at `be3821c`. Accepted there: full gate from a separate
+worktree, mypy 244 files, 2191 unit tests, packaging integration 17,
+console 320; the commands verified by hand on a scratch project. Slice 3,
+the retired spellings deleted, the documentation on the model, the
+configuration entry page and the candidate-5 changelog, is running on
+`ws-maintenance/capabilities-3-docs`, worktree `maintenance-impl-3`,
+session `01a1702e-7625-7230-adc1-7a9fb6d98e4b`. The owner merges #276 then
+#277; #277's PR targets #276's branch.
+
 **2026-10-24, late: the next work order drafted.** Reviewing rc4's
 vocabulary, the owner found the split of components into IDEs, agents
 and tools unjustified and settled the model with the agent in
