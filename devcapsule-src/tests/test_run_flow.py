@@ -92,7 +92,7 @@ def test_a_second_checkout_is_registered_under_its_directory_name(project: Path,
     prompts = io.StringIO()
     prepared = prepare_launch(second, RunFlags(ide="python-ide", authorize=()), interactive=True,
                               input_stream=io.StringIO("y\n"), output_stream=prompts)
-    assert "Accept, once for this computer?" in prompts.getvalue()
+    assert "Accept for this user account on this computer?" in prompts.getvalue()
     assert load_toml(trust_path())["channels"]["devcapsule-base"]["vendor"]
     names = {item.checkout_name: item.checkout_path for item in registered_checkouts()}
     assert names == {"default": project.resolve(), "second-copy": second.resolve()}
@@ -247,25 +247,35 @@ def test_run_once_agent_reaches_plan_but_not_next_show(project: Path, capsys, sa
     assert not [row for row in json.loads(capsys.readouterr().out)['rows'] if row['kind'] == 'agent']
 
 
-def test_a_changed_recommendation_keeps_the_answer_and_never_asks(project: Path, tmp_path: Path, capsys) -> None:
+@pytest.mark.parametrize("value", ["host", "bridge"])
+def test_a_changed_recommendation_keeps_the_answer_and_never_asks(project: Path, tmp_path: Path, capsys, monkeypatch, value: str) -> None:
     """Answer 23 of the work order (slice 4): a recorded host answer is kept; the listing discloses what changed."""
     assert config(project, 'ide', 'python-ide') == 0
     assert config(project, 'authorize', 'base-image', 'default') == 0
     assert config(project, 'recommend', 'network', 'host', '--because', 'old reason') == 0
-    assert config(project, 'authorize', 'network', 'host') == 0
+    assert config(project, 'authorize', 'network', value) == 0
     assert config(project, 'authorize', 'docker-daemon', 'none') == 0
     old = record(project)['authorization']
     assert config(project, 'recommend', 'network', 'host', '--because', 'new reason') == 0
     before = snapshot(tmp_path)
     prompts = io.StringIO()
     prepared = prepare_launch(project, RunFlags(), interactive=True, input_stream=io.StringIO(''), output_stream=prompts)
-    assert prompts.getvalue() == '' and prepared.selected.resolution['authorization']['network'] == 'host'
+    assert prompts.getvalue() == '' and prepared.selected.resolution['authorization']['network'] == value
+    assert any('new reason' in note and f'network: {value}' in note for note in prepared.notes)
     assert record(project)['authorization'] == old
     assert {path: data for path, data in snapshot(tmp_path).items() if 'resolved' not in str(path)} == \
         {path: data for path, data in before.items() if 'resolved' not in str(path)}
     capsys.readouterr()
     assert config(project, 'show') == 0
-    assert 'kept;' in capsys.readouterr().out
+    shown = capsys.readouterr().out
+    assert 'kept;' in shown and 'new reason' in shown
+    from tests.test_upgrade_recovery import install_external_fakes, invoke
+    launch = install_external_fakes(monkeypatch, [])
+    monkeypatch.setattr('sys.stdin', io.StringIO(''))
+    monkeypatch.setattr('sys.stdin.isatty', lambda: True)
+    assert invoke(project, 'run', '--no-update-check') == 0
+    assert launch.call_args.args[0].network_mode == value
+    assert 'new reason' in capsys.readouterr().out
 
 
 def test_run_once_override_answers_a_renewal_without_saving_it(project: Path) -> None:
@@ -479,7 +489,8 @@ def test_interactive_ide_does_not_save_a_run_once_agent(project: Path) -> None:
     assert record(project)['capabilities']['selected'] == ['python-ide']
 
 
-def test_print_command_preserves_configuration_and_skips_reminder_writes(project: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("consent", [("--authorize", "base-image", "default"), ("--trust", "devcapsule-base")])
+def test_print_command_preserves_configuration_and_skips_reminder_writes(project: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, consent: tuple[str, ...]) -> None:
     from unittest.mock import Mock
     from devcapsule.commands import project as commands
     from tests.test_upgrade_recovery import install_external_fakes, invoke
@@ -488,7 +499,7 @@ def test_print_command_preserves_configuration_and_skips_reminder_writes(project
     monkeypatch.setattr(commands, 'prepare_launch', calls)
     monkeypatch.setattr('devcapsule.version_sets.reminder', lambda _: pytest.fail('print-only updated reminder state'))
     before = snapshot(tmp_path)
-    assert invoke(project, 'run', '--ide', 'python-ide', '--authorize', 'base-image', 'default',
+    assert invoke(project, 'run', '--ide', 'python-ide', *consent,
                   '--memory', '6g', '--save', '--print-command') == 0
     assert calls.call_count == 1
     assert launch.call_args.args[0].command_report is not None

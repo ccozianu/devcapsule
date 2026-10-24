@@ -126,6 +126,12 @@ class CheckoutState:
         document = self.checkout if checkout is None else checkout
         lock = self.composed_lock(document)
         reference = document.get("authorization", {}).get("base-image", {}).get("reference") or lock.get("base", {}).get("reference")
+        try:
+            selection = authorized_base_selection(lock, document, required=False, trust=WorkstationTrust.read(self.workstation))
+        except ProjectConfigurationError:
+            selection = None  # The listing reports an invalid or stale selection below.
+        if selection is not None:
+            reference = selection.reference
         base = known_base_image(str(reference))
         listing = assess_checkout(
             self.manifest, self.shared_lock, lock, document,

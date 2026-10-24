@@ -324,6 +324,8 @@ def _access_rows(
                 if review.superseded:
                     # D-0012, answer 23: the answer stands; the change is disclosed, never asked.
                     source += f" (kept; {review.superseded})"
+                    if declaration.project_recommended:
+                        source += f": {declaration.description}"
             else:
                 effective = rendered_deny
                 source = "secure default"

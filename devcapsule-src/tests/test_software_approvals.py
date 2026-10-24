@@ -39,6 +39,8 @@ def pin(project: Path, component: str, authorization: str, terms: str, version: 
         "delivery-policy": "local-materialization",
         "artifacts": {"linux-amd64": {"url": f"https://example.test/{component}-{version}", "sha256": "e" * 64}},
     }
+    if component == "antigravity-cli":
+        lock["components"][component]["artifacts"]["linux-amd64"]["archive-member"] = "bin/antigravity"
     from devcapsule.configuration.file_formats import render_toml
     path.write_text(render_toml(lock))
 
@@ -70,6 +72,21 @@ def test_a_bumped_approved_download_is_a_software_approval(checkout) -> None:
     assert approval.change == "1.1.0"
     lines = render_software_approvals(approvals)
     assert lines[1] == f"- Claude Code 1.1.0, downloaded from Anthropic under {CLAUDE_TERMS} (claude-code-download)"
+
+
+def test_trusted_vendor_suppresses_the_version_approval_offer(checkout, monkeypatch) -> None:
+    project, record, _ = checkout
+    approved_then_bumped(project, record)
+    assert invoke(project, "config", "trust", "accept", "claude-code") == 0
+    _, manifest = manifest_for(project)
+    assert offer.pending_for(project, manifest) == ()
+    monkeypatch.setattr(offer, "confirmation_key", lambda: pytest.fail("trusted vendor asked again"))
+    launch = install_external_fakes(monkeypatch, [])
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+    assert invoke(project, "run", "--authorize", "host-x11", "true", "--no-update-check") == 0
+    assert launch.call_count == 1
+    assert invoke(project, "config", "authorize", "claude-code-download", "false") == 0
+    assert offer.pending_for(project, manifest) is None
 
 
 def test_nothing_pending_is_an_empty_list(checkout) -> None:
