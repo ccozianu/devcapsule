@@ -48,6 +48,11 @@ Opener = Callable[[str], None]
 UNANSWERED_HOST_X11_DISPLAY_TRANSPORT = CONTAINED_DISPLAY_TRANSPORT
 
 
+def has_contained_display(image_labels: Mapping[str, str]) -> bool:
+    """Whether the base carries the contained desktop (recipe 8 and later), by its label."""
+    return image_labels.get(DISPLAY_LABEL) == CONTAINED_DISPLAY_LABEL_VALUE
+
+
 def select_display_transport(image_labels: Mapping[str, str], *, host_x11_answer: object) -> tuple[str, str]:
     """The transport for a run and the one-line reason, for the launch to print.
 

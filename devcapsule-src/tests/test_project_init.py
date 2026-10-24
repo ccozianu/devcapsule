@@ -368,7 +368,7 @@ def test_a_selected_agent_brings_its_own_acquisition_gate(tmp_path: Path, capsys
         # The agent is the developer's; resolving without its consent names the carrier.
         assert cli.main(["project", "--path", str(project), "config", "capabilities", "--local",
                          "python-ide", "claude-code-agent"]) == 0
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 2
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 3
         assert "claude-code-download" in capsys.readouterr().err
 
         assert cli.main(["project", "--path", str(project), "config", "authorize", "claude-code-download", "true"]) == 0

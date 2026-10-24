@@ -179,6 +179,9 @@ legacy memory answers; missing pass-through variables and corrupt saved
 arguments reported; legacy host answers and the base's display support
 shown; the workstation digest normalized; 60 regression cases; the
 reviewer's gate 1964 unit tests, mypy clean.
+Slice 3 is #265, `ws-maintenance/cli-ux-3-run`, delivered 2026-10-24: 1967
+unit tests, mypy clean, 10 new tests; its brief is
+[brief-pr265-1.md](evidence/2026-10-24-cli-ux/brief-pr265-1.md).
 
 ## Current State
 

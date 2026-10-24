@@ -289,7 +289,6 @@ def test_project_config_list_writes_nothing_and_lists_from_nothing(
         assert re.search(r"^access\s+docker-daemon\s+none\s+secure default; project recommends host-socket", output, re.M)
         assert "the project asks for docker-daemon host-socket; allow or deny" in output
         assert "config authorize base-image default" in output
-        assert "Resolution: missing" in output
         # The listing is read-only: no record and no placeholder exist afterwards.
         assert registered_checkouts() == ()
         assert not list(config_home.rglob("*.toml"))
@@ -330,7 +329,6 @@ def test_project_config_list_json_carries_the_listing(
         assert document["project"] == {"creator": "mailto:dev@example.test", "slug": "project"}
         assert document["checkout"]["name"] == "default"
         assert document["checkout"]["launcher-path"] == str(project.resolve())
-        assert document["resolution"] == "missing"
         rows = {(row["kind"], row["name"]): row for row in document["rows"]}
         assert set(rows[("memory", "memory")]) == {"kind", "name", "effective", "source", "pending", "command"}
         assert rows[("memory", "memory")]["effective"] == "no limit"
@@ -510,7 +508,6 @@ def test_project_config_list_reports_complete_and_stale_readiness(
         assert re.search(r"^binding\s+home\s+" + re.escape(str(bound_home)) + r"\s+checkout", output, re.M)
         assert re.search(r"^access\s+base-image\s+\S+\s+checkout", output, re.M)
         assert re.search(r"^access\s+network\s+host\s+checkout", output, re.M)
-        assert "Resolution: fresh" in output
 
         record = registered_checkouts()[0].record_path
         checkout_text = record.read_text(encoding="utf-8")
@@ -526,7 +523,6 @@ def test_project_config_list_reports_complete_and_stale_readiness(
         output = capsys.readouterr().out
         network_row = next(line for line in output.splitlines() if line.startswith("access   network") or re.match(r"^access\s+network\s", line))
         assert "the recommendation changed" in network_row
-        assert "Resolution: stale: checkout-input" in output
 
 
 def test_project_resolve_accepts_formation_lock_without_completed_image(tmp_path: Path) -> None:
@@ -993,7 +989,7 @@ def test_run_once_authorization_rejects_unknown_and_persistent_nodes(
             == 2
         )
     message = capsys.readouterr().err
-    assert "cannot be answered run-once" in message
+    assert "cannot be answered for one launch" in message
     assert "docker-daemon" in message
     assert "network" in message  # on every project since 2026-10-22, recommended or not
 
@@ -1630,8 +1626,8 @@ def test_project_config_authorize_uses_exact_recommendations_and_drives_run(
             + "\n",
             encoding="utf-8",
         )
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 2
-        assert "network: stale; recorded: host; recommended: host" in capsys.readouterr().err
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 3
+        assert "network" in capsys.readouterr().err
 
 
 def test_project_config_authorize_accepts_inspected_local_base_and_pins_image_id(
@@ -1879,7 +1875,7 @@ def test_project_authorizes_only_exact_locked_base_and_lock_change_stales_it(
         initialize_project(project)
         lock_path = write_formation_lock(project)
         # An unconsented formation is inspectable, but cannot be resolved as ready.
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 2
+        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 3
 
         wrong = f"docker.io/example/devcapsule-base@sha256:{'c' * 64}"
         assert (
@@ -2005,7 +2001,7 @@ def test_manifest_edit_after_lock_never_blocks_commands_and_resolve_reconciles(
         capsys.readouterr()
         assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
         listing = capsys.readouterr().out
-        assert "Resolution: fresh" in listing
+        assert "Nothing is pending." in listing
 
         # The documented remedy reconciles the ordinary change.
         assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
@@ -2126,7 +2122,6 @@ def test_network_is_a_node_on_every_project(
         record = registered_checkouts()[0].record_path
         original_input = record.read_bytes()
         resolution = record.with_name("devcapsule.resolved.toml")
-        original_resolution = resolution.read_bytes()
         realized = SimpleNamespace(
             image=SimpleNamespace(labels={"devcapsule.base.display": "contained"}, reference="devcapsule-local-pycharm:0123456789abcdef0123"),
             created=False,
@@ -2143,7 +2138,8 @@ def test_network_is_a_node_on_every_project(
         err = capsys.readouterr().err
         assert "Run-once authorization: network = host" in err
         assert record.read_bytes() == original_input
-        assert resolution.read_bytes() == original_resolution
+        # The derived plan describes this run; the persistent answer stays unchanged.
+        assert tomllib.loads(resolution.read_text())["authorization"]["network"] == "host"
         # The persistent form writes the checkout's answer; nothing is recorded by the run-once form.
         assert cli.main(["project", "--path", str(project), "config", "authorize", "network", "host"]) == 0
         output = capsys.readouterr().out
@@ -2220,11 +2216,10 @@ def test_network_answer_stales_when_recommendation_appears_and_disappears(
             write_formation_lock(project)
             before = record.read_bytes()
             capsys.readouterr()
-            assert cli.main([*command, "resolve"]) == 2
+            assert cli.main([*command, "resolve"]) == 3
             error = capsys.readouterr().err
-            assert f"network: stale; recorded: {value}; recommended: host" in error
-            assert description in error
-            assert "authorize network bridge" in error
+            assert "network" in error and "the recommendation changed since your answer" in error
+            assert "config deny network" in error
             assert record.read_bytes() == before
             document, _ = _listing_document(project, capsys)
             network = next(row for row in document["rows"] if row["name"] == "network")

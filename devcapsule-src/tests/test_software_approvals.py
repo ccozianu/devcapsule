@@ -145,9 +145,11 @@ def test_run_asks_once_and_launches_on_y(checkout, monkeypatch, capsys) -> None:
 
     monkeypatch.setattr(Path, "replace", replace)
     with patch.object(offer, "confirmation_key", side_effect=accept) as read_key:
-        assert invoke(project, "run", "--no-update-check") == 0
+        # The fixture's base has no contained desktop: host X11 by explicit consent, for this launch.
+        assert invoke(project, "run", "--no-update-check", "--authorize", "host-x11", "true") == 0
     read_key.assert_called_once_with()
-    assert replacements == [record, resolution]  # atomic record replacement precedes resolution
+    # Atomic record replacement precedes the resolution; the launch derives the plan again.
+    assert replacements[:2] == [record, resolution] and set(replacements) == {record, resolution}
     out = capsys.readouterr().out
     assert "Claude Code 1.1.0, downloaded from Anthropic" in out
     assert "Approve all of them? Press y" in out
@@ -202,16 +204,17 @@ def test_run_with_other_pending_decisions_refuses_as_before(checkout, monkeypatc
     approved_then_bumped(project, record)
     pin(project, "antigravity-cli", "antigravity-download", ANTIGRAVITY_TERMS, "2.0.0")  # never answered
     launch = install_external_fakes(monkeypatch, [])
-    monkeypatch.setattr(offer.sys.stdin, "isatty", lambda: True)
-    monkeypatch.setattr(offer, "confirmation_key", lambda: "y")
-    assert invoke(project, "run", "--no-update-check") == 2
+    # Without a terminal: a decision only the developer can take ends the
+    # launch with status 3, naming it; with one, the launch would ask it.
+    monkeypatch.setattr(offer.sys.stdin, "isatty", lambda: False)
+    monkeypatch.setattr(offer, "confirmation_key", lambda: pytest.fail("asked"))
+    assert invoke(project, "run", "--no-update-check") == 3
     captured = capsys.readouterr()
     assert "Approve all of them?" not in captured.out
-    # The refusal is the one a changed lock always had: resolve first, which then lists the decisions.
-    assert "Local resolution is stale (platform-lock)" in captured.err
-    assert invoke(project, "config", "resolve") == 2
+    assert "antigravity-download" in captured.err and "Nothing was written" in captured.err
+    assert invoke(project, "config", "resolve") == 3
     err = capsys.readouterr().err
-    assert "decisions required" in err and "antigravity-download: missing-required" in err
+    assert "antigravity-download" in err
     assert launch.call_count == 0
 
 
@@ -221,8 +224,8 @@ def test_print_command_never_asks_or_writes(checkout, monkeypatch, capsys) -> No
     before = record.read_bytes()
     monkeypatch.setattr(offer.sys.stdin, "isatty", lambda: True)
     monkeypatch.setattr(offer, "confirmation_key", lambda: pytest.fail("asked"))
-    assert invoke(project, "run", "--print-command", "--no-update-check") == 2
-    assert "Local resolution is stale (platform-lock)" in capsys.readouterr().err
+    assert invoke(project, "run", "--print-command", "--no-update-check") == 3
+    assert "claude-code-download" in capsys.readouterr().err
     assert record.read_bytes() == before
 
 
@@ -396,8 +399,8 @@ def test_inspecting_approvals_defers_activation_recovery(checkout, monkeypatch, 
     err = capsys.readouterr().err
     assert "Interrupted activation" in err and "config resolve" in err
     assert {p: p.read_bytes() for p in before} == before
-    assert invoke(project, "config", "resolve") == 2  # recovers, then reports the stale consent
-    assert "claude-code-download: stale" in capsys.readouterr().err
+    assert invoke(project, "config", "resolve") == 3  # recovers, then reports the pending consent
+    assert "claude-code-download" in capsys.readouterr().err
     assert not journal.exists()
     assert invoke(project, "config", "approve", "--all") == 0
 
@@ -453,3 +456,23 @@ def test_broken_newest_history_does_not_hide_a_valid_record(tmp_path, record) ->
     good.write_text(render_toml({"lock": '[components.claude-code]\nversion = "1.0.0"', "last-success": 20}))
     with patch.object(Path, "glob", return_value=iter([bad, good])):
         assert offer.previous_versions(tmp_path) == {"claude-code": "1.0.0"}
+
+
+@pytest.mark.parametrize("interactive", [False, True])
+def test_software_approval_is_not_saved_while_a_required_input_is_pending(checkout, monkeypatch, interactive: bool) -> None:
+    project, record, resolution = checkout
+    approved_then_bumped(project, record)
+    assert invoke(project, 'config', 'require', 'env', 'NEW_INPUT', '--because', 'new service') == 0
+    before = record.read_bytes(), resolution.read_bytes()
+    launch = install_external_fakes(monkeypatch, [])
+    import io
+    from devcapsule.compat import DecisionPending
+    monkeypatch.setattr('sys.stdin', io.StringIO('y\n'))
+    monkeypatch.setattr(offer.sys.stdin, 'isatty', lambda: interactive)
+    monkeypatch.setattr(offer, 'confirmation_key', lambda: 'y' if interactive else pytest.fail('asked without a terminal'))
+    def closed_input(*args) -> str:
+        raise DecisionPending('terminal closed')
+    monkeypatch.setattr('devcapsule.commands._run_flow._hidden', closed_input)
+    assert invoke(project, 'run', '--no-update-check') == 3
+    assert (record.read_bytes(), resolution.read_bytes()) == before
+    launch.assert_not_called()

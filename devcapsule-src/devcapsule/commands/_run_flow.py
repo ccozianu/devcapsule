@@ -1,0 +1,303 @@
+"""What ``project run`` does before it launches: derive, report, ask.
+
+Principle 2 of the CLI UX redesign work order of 2026-10-24: what follows
+from the project and the workstation is derived and shown; what encodes the
+developer's intent is asked, once, in the settled order (the command line,
+an earlier answer, the record, a derivable default, and only then a prompt);
+every question has a flag. Section 3.4: without a terminal nothing is
+asked; a missing answer ends the command with exit status 3, naming each
+decision with its flag or command, and nothing is written. Answer 12: every
+``run`` flag applies to this launch only; ``--save`` records the flags given
+as the checkout's answers before launching.
+
+The decisions come from the listing (:mod:`devcapsule.configuration.listing`),
+so what ``run`` asks is exactly what ``config check`` reports. The IDE, a
+required environment variable, a consent, a recorded host answer whose
+recommendation changed, a required value and a required secret block the
+launch until answered; a host access the project recommends and the
+developer never answered is asked, and "not now" launches with the secure
+default.
+"""
+
+from __future__ import annotations
+
+from copy import deepcopy
+from dataclasses import dataclass, field
+import getpass
+from pathlib import Path
+import sys
+from typing import Any, Callable, Mapping, TextIO
+
+from devcapsule.compat import DecisionPending
+from devcapsule.configuration.authorization import WORKSTATION_CAPABILITY_DEFAULTS, authorization_declarations, normalize_authorization_value
+from devcapsule.configuration.capabilities import CapabilityPolicy, LocalCapabilities
+from devcapsule.configuration.derivation import CheckoutState, Selection, derive_plan, load_state, register_checkout
+from devcapsule.configuration.docker_arguments import arguments_path, read_environment, update_environment, validate_name, validate_value
+from devcapsule.configuration.file_formats import ProjectConfigurationError, render_toml
+from devcapsule.configuration.manifest_document import Recommendations
+from devcapsule.configuration.listing import Decision
+from devcapsule.configuration.operations import CheckoutRecord, apply_configuration_answers, ProvidedAnswer
+from devcapsule.configuration.storage import ResolvedProject, atomic_write, checkout_name_for, manifest_for
+from devcapsule.configuration.values import legacy_memory_names, memory_size_bytes, normalize_launcher_value
+
+__all__ = ["Prepared", "RunFlags", "prepare_launch"]
+
+BLOCKING_KINDS = {"ide", "env", "renew", "consent", "value", "secret"}
+
+
+@dataclass(frozen=True)
+class RunFlags:
+    """The run flags that answer or override a choice; each applies to this launch only unless ``save``."""
+
+    ide: str | None = None
+    agents: tuple[str, ...] = ()
+    memory: str | None = None
+    cpus: str | None = None
+    environment: tuple[str, ...] = ()  # NAME=VALUE saved for this run, or NAME taken from the host
+    authorize: tuple[tuple[str, str], ...] = ()  # (node, value)
+    save: bool = False
+    allow_unverified: bool = False
+
+
+@dataclass
+class Prepared:
+    """What the launch runs with: the derived plan and this run's overrides."""
+
+    selected: ResolvedProject
+    host_overrides: dict[str, Any] = field(default_factory=dict)
+    memory_override: int | None = None
+    cpus_override: int | None = None
+    environment_tokens: list[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
+
+
+def prepare_launch(
+    start: Path,
+    flags: RunFlags,
+    *,
+    interactive: bool | None = None,
+    input_stream: TextIO | None = None,
+    output_stream: TextIO | None = None,
+    print_only: bool = False,
+    check_display: bool = True,
+) -> Prepared:
+    """Review in memory, then save answers and the plan after every blocking decision.
+
+    ``print_only`` never asks or writes. Without a terminal, an unanswered
+    blocking decision raises :class:`DecisionPending` before any write.
+    """
+    interactive = sys.stdin.isatty() if interactive is None else interactive
+    output = output_stream if output_stream is not None else sys.stdout
+    root, manifest = manifest_for(start)
+    state = load_state(root, manifest)
+    input_path = register_checkout(state, write=False)
+    record = CheckoutRecord.staged(input_path, state.checkout)
+    original = deepcopy(record.document)
+    notes: list[str] = []
+    host_overrides: dict[str, Any] = {}
+    environment: dict[str, str | None] = {}
+    environment_tokens: list[str] = []
+    memory_override = None if flags.memory is None else memory_size_bytes(str(normalize_launcher_value("memory", flags.memory)))
+    cpus_override = None if flags.cpus is None else int(normalize_launcher_value("cpus", flags.cpus))
+    for item in flags.environment:
+        name, separator, value = item.partition("=")
+        validate_name(name)
+        if separator:
+            validate_value(value)
+        state.saved_environment[name] = value if separator else None
+        environment_tokens.extend(["--env", item])
+        if flags.save:
+            environment[name] = value if separator else None
+    if flags.save:
+        record.document = _selected_checkout(state, record.export(), flags)
+        record = CheckoutRecord.staged(input_path, record.document)
+        _resource_answers(record, manifest, flags)
+    for node, value in flags.authorize:
+        declaration = authorization_declarations(manifest, state.composed_lock(record.document)).get(node)
+        if declaration is None or (declaration.required and not flags.save):
+            raise ProjectConfigurationError(f"Authorization {node!r} cannot be answered for one run; the host accesses can.")
+        normalized = normalize_authorization_value(declaration, value)
+        if flags.save:
+            record.authorize(declaration, normalized)
+        else:
+            host_overrides[node] = normalized
+            print(f"Run-once authorization: {node} = {value}", file=sys.stderr)
+
+    def launch_checkout() -> dict[str, Any]:
+        saved = record.export()
+        document = _selected_checkout(state, saved, flags) if not flags.save else saved
+        local = Selection(LocalCapabilities.read(document), state.surfaces, state.agents)
+        recommended_ide = Recommendations.read(manifest).ide
+        if local.ide is None and recommended_ide is not None and not (set(CapabilityPolicy.read(manifest).required) & set(state.surfaces)):
+            local.ide = recommended_ide
+            document = state.with_selection(local, checkout=document, allow_unverified=flags.allow_unverified)
+        transient = CheckoutRecord.staged(input_path, document)
+        if not flags.save:
+            _resource_answers(transient, manifest, flags)
+        declarations = authorization_declarations(manifest, state.composed_lock(document))
+        for name, value in host_overrides.items():
+            transient.authorize(declarations[name], value)
+        return transient.export()
+
+    asked: set[tuple[str, str]] = set()
+    reader = input_stream.readline if input_stream is not None else lambda: sys.stdin.readline()
+    while True:
+        checkout = launch_checkout()
+        decisions = list(state.listing(checkout, check_display=check_display).decisions)
+        blocking = [d for d in decisions if d.kind in BLOCKING_KINDS]
+        if blocking and (print_only or not interactive):
+            raise DecisionPending(_render_pending(blocking, root))
+        pending = [d for d in decisions if (d.kind, d.name) not in asked]
+        if not pending or print_only or not interactive:
+            if blocking:
+                raise DecisionPending(_render_pending(blocking, root))
+            for decision in decisions:
+                notes.append(
+                    f"The project asks for {decision.description} ({decision.reason}); not granted this run. "
+                    f"Allow or deny: {decision.command}"
+                )
+            break
+        decision = pending[0]
+        asked.add((decision.kind, decision.name))
+        _settle(state, record, checkout, decision, host_overrides, environment, flags, reader, output)
+
+    # Validation can still refuse (for example, an invalid binding). Derive
+    # first so neither --save nor a terminal answer escapes on that path.
+    selected = derive_plan(state, checkout, write=False)
+    if not print_only:
+        if environment:
+            read_environment(arguments_path(input_path))  # Refuse ambiguous saved tokens before any write.
+        if not state.registered:
+            notes.append(f"Registered this checkout: {checkout_name_for(manifest, input_path)} ({root}).")
+        if not state.registered or record.document != original:
+            record.write()
+        for name, saved_value in environment.items():
+            update_environment(arguments_path(input_path), name, saved_value, from_host=saved_value is None)
+        atomic_write(selected.resolution_path, render_toml(selected.resolution))
+        if flags.save:
+            notes.insert(0, "Recorded the flags given for this checkout.")
+            environment_tokens = []
+            memory_override = cpus_override = None
+    return Prepared(selected, host_overrides, memory_override, cpus_override, environment_tokens, notes)
+
+
+def _resource_answers(record: CheckoutRecord, manifest: Mapping[str, Any], flags: RunFlags) -> None:
+    for name, value in (("memory", flags.memory), ("cpus", flags.cpus)):
+        if value is not None:
+            record.set_value(name, normalize_launcher_value(name, value))
+            if name == "memory":
+                for alias in legacy_memory_names(manifest):
+                    record.values.pop(alias, None)
+                    record.omitted_values.discard(alias)
+
+
+def _selected_checkout(state: CheckoutState, document: dict[str, Any], flags: RunFlags) -> dict[str, Any]:
+    if flags.ide is None and not flags.agents:
+        return document
+    selection = Selection(LocalCapabilities.read(document), state.surfaces, state.agents)
+    if flags.ide is not None:
+        selection.ide = _capability(flags.ide, state.surfaces, "IDE")
+    for agent in flags.agents:
+        selection.agents.add(_capability(agent, state.agents, "agent"))
+    return state.with_selection(selection, checkout=document, allow_unverified=flags.allow_unverified)
+
+
+def _capability(value: str, names: Mapping[str, str], kind: str) -> str:
+    candidate = value.strip()
+    by_component = {component: name for name, component in names.items()}
+    candidate = by_component.get(candidate, candidate)
+    if candidate not in names:
+        raise ProjectConfigurationError(f"Unknown {kind} {value!r}; choose one of {', '.join(sorted(names))}.")
+    return candidate
+
+
+def _render_pending(decisions: list[Decision], root: Path) -> str:
+    lines = ["the launch of this checkout needs answers:"]
+    for decision in decisions:
+        flag = {"ide": "--ide IDE", "env": f"--env {decision.name}=VALUE", "consent": f"--authorize {decision.name} {decision.value}" if decision.name == "host-x11" else "",
+                "access": f"--authorize {decision.name} {decision.value}", "renew": f"--authorize {decision.name} {decision.value}", "value": "", "secret": ""}[decision.kind]
+        lines.append(f"  {decision.kind} {decision.name}: {decision.description}" + (f"  ({decision.reason})" if decision.reason else ""))
+        lines.append("      " + (f"{flag}  |  " if flag else "") + decision.command)
+    lines.append("Nothing was written. Answer on the command line or in a terminal.")
+    return "\n".join(lines)
+
+
+def _settle(
+    state: CheckoutState, record: CheckoutRecord, checkout: dict[str, Any], decision: Decision,
+    host_overrides: dict[str, Any], environment: dict[str, str | None], flags: RunFlags,
+    reader: Callable[[], str], output: TextIO,
+) -> None:
+    """Stage one answer. Reassess before the next question; an IDE can add consents."""
+    root, manifest = state.root, state.manifest
+    if decision.kind == "ide":
+        output.write("The project leaves the IDE to you. Choose one:\n")
+        for index, (name, version) in enumerate(decision.choices, start=1):
+            output.write(f"  {index}. {name:<13} {version}\n")
+        choice = _ask(output, reader, f"IDE [1-{len(decision.choices)}]: ")
+        names = [name for name, _ in decision.choices]
+        picked = names[int(choice) - 1] if choice.isdecimal() and 1 <= int(choice) <= len(names) else _capability(choice, state.surfaces, "IDE")
+        selection = Selection(LocalCapabilities.read(record.document), state.surfaces, state.agents)
+        selection.ide = picked
+        selected = state.with_selection(selection, checkout=record.document, allow_unverified=flags.allow_unverified)
+        record.document["capabilities"] = selected["capabilities"]
+        if "version-set" in selected:
+            record.document["version-set"] = selected["version-set"]
+        output.write("IDE selected. Answers will be recorded when the review is complete.\n")
+    elif decision.kind == "env":
+        output.write(f"The project needs {decision.name}" + (f": {decision.reason}" if decision.reason else "") + "\n")
+        value = _hidden(output, reader, f"{decision.name} [hidden, kept on this computer]: ")
+        validate_value(value)
+        environment[decision.name] = value
+        state.saved_environment[decision.name] = value
+    elif decision.kind in {"access", "renew", "consent"}:
+        declaration = authorization_declarations(manifest, state.composed_lock(checkout))[decision.name]
+        if decision.kind in {"access", "renew"}:
+            output.write(WORKSTATION_CAPABILITY_DEFAULTS[decision.name][1] + "\n")
+        if decision.kind == "access":
+            output.write(f"The project asks for {decision.description}: {decision.reason}\n")
+            answer = _ask(output, reader, "[a]llow for this checkout, allow [o]nce, [d]eny for this checkout, Enter = not now: ").lower()
+        elif decision.kind == "renew":
+            output.write(f"Your answer for {decision.name} predates the project's current recommendation: {decision.reason}\n")
+            answer = _ask(output, reader, f"[a]llow {decision.name} {decision.value} for this checkout, or [d]eny: ").lower()
+        else:
+            output.write(f"{decision.description}\n")
+            answer = _ask(output, reader, "Accept? [y/N]: ").lower()
+        if answer in ({"y", "yes"} if decision.kind == "consent" else {"a", "allow"}):
+            record.authorize(declaration, normalize_authorization_value(declaration, decision.value))
+        elif answer in {"d", "deny"} and decision.kind != "consent":
+            record.authorize(declaration, normalize_authorization_value(declaration, decision.deny))
+        elif answer in {"o", "once"} and decision.kind == "access":
+            host_overrides[decision.name] = normalize_authorization_value(declaration, decision.value)
+        elif decision.kind == "access":
+            output.write(f"Not now; the secure default applies. Allow or deny later: {decision.command}\n")
+        else:
+            raise DecisionPending(_render_pending([decision], root))
+    elif decision.kind == "value":
+        value = _ask(output, reader, f"{decision.name} ({decision.description}): ")
+        apply_configuration_answers((ProvidedAnswer("set", decision.name, value),), manifest, state.composed_lock(checkout), record)
+    elif decision.kind == "secret":
+        output.write(f"{decision.description}\n")
+        answer = _ask(output, reader, f"Bind {decision.name} to the host's variable {decision.variable}? [y/N]: ").lower()
+        if answer in {"y", "yes"}:
+            apply_configuration_answers((ProvidedAnswer("bind", decision.name, f"host-environment:{decision.variable}"),),
+                                        manifest, state.composed_lock(checkout), record)
+        else:
+            raise DecisionPending(_render_pending([decision], root))
+
+
+def _ask(output: TextIO, reader: Callable[[], str], prompt: str) -> str:
+    output.write(prompt)
+    output.flush()
+    line = reader()
+    if line == "":
+        raise DecisionPending("the terminal closed before the answer; nothing was written")
+    return line.rstrip("\n").strip()
+
+
+def _hidden(output: TextIO, reader: Callable[[], str], prompt: str) -> str:
+    if sys.stdin.isatty() and reader is not None and reader.__name__ == "<lambda>":
+        try:
+            return getpass.getpass(prompt)
+        except (EOFError, getpass.GetPassWarning):
+            raise DecisionPending("the terminal closed before the answer; nothing was written") from None
+    return _ask(output, reader, prompt)
