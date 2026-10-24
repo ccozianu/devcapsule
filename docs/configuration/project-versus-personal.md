@@ -144,11 +144,13 @@ Inside the capsule, `devcapsule project config show` reports the same view.
 
 The launcher validates console requests with the corresponding CLI command.
 It can record IDE and agent choices, tool omissions, values, environment
-variables, denials, forgotten answers and removed bindings.
+variables with a literal value, denials and removed bindings.
 It can also withdraw workstation trust or clear saved Docker arguments.
 
-Authorization grants, trust acceptance, bindings and replacement Docker
-arguments need confirmation on the host. Inspect them with:
+Authorization grants, trust acceptance, bindings, replacement Docker
+arguments, forgotten answers and host-variable bindings need confirmation
+on the host: a forgotten denial can restore workstation trust, and a host
+binding exposes a variable. Inspect them with:
 
 ```bash
 devcapsule project config console list

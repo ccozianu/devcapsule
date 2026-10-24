@@ -79,10 +79,15 @@
   function requestForms(pending) {
     const list = el("div", { class: "requests" });
     const note = el("p", { class: "notice",
-      text: "Each request is recorded for the next launch, never for this running capsule. A request that widens "
-        + "what the capsule reaches (an access, a trust, a mount, a Docker option) waits for your confirmation on the host." });
+      text: "Sending a request does not apply it. Read the launcher's outcome below. Changes affect the next launch; "
+        + "this running capsule stays unchanged. Access grants, forgotten denials, host environment bindings, trust, mounts "
+        + "and Docker options need confirmation on the host. Anything inside this capsule can write requests." });
     list.appendChild(note);
     for (const row of pending) {
+      if (row.kind === "console") {
+        list.appendChild(el("p", { text: row.pending + ". Confirm on the host: " + row.command }));
+        continue;
+      }
       list.appendChild(requestForm(row.kind + " " + row.name + ": " + row.pending, row.request || ""));
     }
     list.appendChild(requestForm("Another change", ""));
@@ -121,7 +126,7 @@
     return form;
   }
 
-  async function refreshRequests(container) {
+  async function refreshRequests(container, attempt = 0) {
     const listing = await api("/api/configuration/requests");
     container.replaceChildren();
     if (!listing.requests.length) {
@@ -134,7 +139,14 @@
       { key: (row) => row.result ? row.result.text : "", label: "What the launcher said" },
     ], listing.requests));
     if (listing.requests.some((row) => !row.result)) {
-      setTimeout(() => refreshRequests(container).catch(() => {}), 2000);
+      if (attempt >= 60) {
+        container.appendChild(el("p", { class: "notice", text:
+          "The launcher has not answered. No change is confirmed. Inspect configuration on the host before sending again." }));
+      } else {
+        setTimeout(() => refreshRequests(container, attempt + 1).catch((error) => {
+          container.appendChild(el("p", { class: "failure", text: "Cannot read the launcher outcome: " + error.message }));
+        }), 2000);
+      }
     }
   }
 
@@ -172,15 +184,23 @@
           { key: "kind", label: "Kind" }, { key: "name", label: "Name" }, { key: "effective", label: "Effective" },
           { key: "source", label: "Source" }, { key: "pending", label: "Pending" },
         ], listing.rows));
+        const exposures = listing.rows.filter((row) => row.exposure);
+        if (exposures.length) {
+          section(container, "Host access: what each grant permits", table([
+            { key: "name", label: "Access" }, { key: "exposure", label: "DevCapsule exposure" },
+            { key: (row) => row.reason || "No project recommendation", label: "Project reason" },
+          ], exposures));
+        }
         const pending = listing.rows.filter((row) => row.pending);
         if (listing.channel) {
           section(container, "Pending, next launch", requestForms(pending));
           const requests = el("div", { id: "requests" });
           section(container, "Asked on the console since launch", requests);
           await refreshRequests(requests);
-        } else if (pending.length) {
+        } else {
           section(container, "Pending, next launch", el("p", { class: "notice",
-            text: "Answer on the host, with the command each pending row names; this capsule has no configuration channel." }));
+            text: "This capsule has no usable configuration channel. Inspect or change configuration on the host: "
+              + (listing["launcher-command"] || "devcapsule project config show") }));
         }
         return;
       }

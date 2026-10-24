@@ -229,9 +229,16 @@ def launch_listing_document(selected: ResolvedProject) -> dict[str, Any]:
     """The ``config show --json`` document of the launch's checkout, for the capsule's own inspection."""
     from devcapsule.configuration.storage import checkout_name_for
     listing = load_state(selected.root, selected.manifest).listing(selected.checkout)
+    document = listing.document()
+    declarations = authorization_declarations(selected.manifest, selected.lock)
+    for row in document["rows"]:
+        if row["kind"] == "access" and row["name"] in WORKSTATION_CAPABILITY_DEFAULTS:
+            row["exposure"] = WORKSTATION_CAPABILITY_DEFAULTS[row["name"]][1]
+            declaration = declarations[row["name"]]
+            row["reason"] = declaration.description if declaration.project_recommended else ""
     identity = selected.manifest["project"]
     return {
-        **listing.document(),
+        **document,
         "context": "at launch",
         "project": {"creator": identity["creator"], "slug": identity["slug"]},
         "checkout": {"name": checkout_name_for(selected.manifest, selected.checkout_path),
@@ -327,8 +334,29 @@ def _settle(
         output.write(f"The console asked at {decision.reason}: {decision.description}\n")
         answer = _ask(output, reader, "[a]pply it now, as 'config console apply' would, [d]iscard it, Enter = keep it for later: ").lower()
         if answer in {"a", "apply"}:
-            _status, text = apply_deferred(root, record.input_path, decision.name)
-            output.write((text or "Recorded.") + "\n")
+            before = load_state(root, state.manifest)
+            status, text = apply_deferred(root, record.input_path, decision.name)
+            output.write((text or ("Recorded." if status == 0 else "The command failed; the request remains pending.")) + "\n")
+            if status == 0:
+                after = load_state(root, state.manifest)
+                # Keep answers staged by this run, and overlay only what the
+                # explicitly confirmed command changed on disk.
+                def changed(target: dict[str, Any], old: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]:
+                    result = deepcopy(target)
+                    for key in old.keys() | new.keys():
+                        if key in old and key in new and old[key] == new[key]:
+                            continue
+                        if key not in new:
+                            result.pop(key, None)
+                        elif isinstance(old.get(key, {}), dict) and isinstance(new[key], dict) and isinstance(result.get(key), dict):
+                            result[key] = changed(result[key], old.get(key, {}), new[key])
+                        else:
+                            result[key] = deepcopy(new[key])
+                    return result
+                record._load(record.input_path, changed(record.export(), before.checkout, after.checkout))
+                state.checkout = record.export()
+                state.workstation = changed(state.workstation, before.workstation, after.workstation)
+                state.saved_environment = {**after.saved_environment, **environment}
         elif answer in {"d", "discard"}:
             discard_deferred(record.input_path, decision.name)
             output.write("Discarded.\n")

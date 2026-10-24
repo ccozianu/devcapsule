@@ -226,6 +226,22 @@ launch (a grant, a trust, a mount, a Docker option) is deferred to the
 user's confirmation on the host, because anything inside the capsule can
 write the mounted directory. Its brief is
 [brief-pr268-1.md](evidence/2026-10-24-cli-ux/brief-pr268-1.md).
+Its PR268.1 is #272, accepted at `8807a53` without a round and merged at
+`fd1fdb5`: `forget` and any `env set` that is not a literal value wait
+for the host (a forgotten denial restores workstation trust; a host
+binding exposes a variable), explicit secure authorizations apply; the
+watcher's child gets record locations only, its own session and process
+group, EOF on stdin, the group killed on timeout; only the worker drains
+at stop and saves what it did not run; requests carry a UUID and the
+deferred store is keyed by project identity and canonical checkout path;
+malformed files contained on both sides, a full queue refused, result
+text bounded; a confirmed command's disk changes overlaid on the staged
+answers; the page shows exposures, bounds its polling and says sending
+confirms nothing; 46 launcher cases and the page script run under Node;
+the reviewer's gates 2091 unit tests and 320 console tests, mypy clean.
+For the owner, from the reviewer: a durable inbox for requests written
+after the launcher stops, and direct console approval of wider access,
+which a writable capsule directory cannot establish as the human's.
 Slice 6 is #269, `ws-maintenance/cli-ux-6-docs`, delivered 2026-10-24:
 five user pages rewritten, the command reference written, nine pages
 patched, the changelog's candidate-4 section; the website's content
@@ -251,7 +267,9 @@ setting (answer 6 named only memory and CPUs); `checkout register` cannot
 rename a registered checkout; `pycharm check-runtime --help` runs its
 checks. None of these is in the stack; each is a one-line direction.
 The stack to `release-0.3.0`, in order: #260, #261, #263, #265, #266,
-#268, #269; the review loops of #266, #268 and #269 run after this entry.
+#268, #269, every slice with its review merged and merged forward; the
+tip of #269 carries everything. The owner merges it in that order, or
+merges #269 alone once the lower ones are reviewed as part of it.
 
 ## Current State
 

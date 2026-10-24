@@ -15,10 +15,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import logging
+import os
+import signal
 from pathlib import Path
 import subprocess
 import sys
 import threading
+import uuid
 from typing import Any, Sequence
 
 from devcapsule.configuration.console_channel import (
@@ -30,10 +33,8 @@ from devcapsule.configuration.console_channel import (
     Disposition,
     classify,
     now,
-    parse_deferred,
     parse_request,
     read_document,
-    render_deferred,
     request_id,
     result_document,
     statement,
@@ -54,18 +55,33 @@ def _config_command(root: Path, arguments: Sequence[str]) -> list[str]:
     return [sys.executable, "-m", "devcapsule", "project", "--path", str(root), "config", *arguments]
 
 
-def run_config(root: Path, arguments: Sequence[str]) -> tuple[int, str]:
+def run_config(root: Path, arguments: Sequence[str], *, host_confirmed: bool = False) -> tuple[int, str]:
     """Run ``config ARGUMENTS`` for the project at ``root`` as its own process; the status and the combined output."""
+    # The child needs the host record locations, not credentials, Python
+    # injection settings, or the launcher's controlling terminal.
+    environment = {key: value for key, value in os.environ.items()
+                   if key in {"HOME", "PATH", "LANG", "TMPDIR", "XDG_CONFIG_HOME", "XDG_DATA_HOME",
+                              "XDG_STATE_HOME", "XDG_CACHE_HOME", "XDG_RUNTIME_DIR"} or key.startswith("LC_")}
+    if host_confirmed:
+        # The human's explicit host command keeps their Docker context and
+        # other host configuration, as an ordinary CLI invocation does.
+        environment = dict(os.environ)
     try:
-        completed = subprocess.run(_config_command(root, arguments), capture_output=True, text=True,
-                                   timeout=COMMAND_TIMEOUT_SECONDS, check=False, stdin=subprocess.DEVNULL)
-    except subprocess.TimeoutExpired:
-        return 1, f"the command did not finish within {COMMAND_TIMEOUT_SECONDS:g} seconds"
-    output = (completed.stdout + completed.stderr).strip()
-    return completed.returncode, output
+        with subprocess.Popen(_config_command(root, arguments), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                              text=True, errors="replace", stdin=subprocess.DEVNULL, start_new_session=True,
+                              cwd="/", env=environment) as child:
+            try:
+                output, _ = child.communicate(timeout=COMMAND_TIMEOUT_SECONDS)
+            except subprocess.TimeoutExpired:
+                os.killpg(child.pid, signal.SIGKILL)
+                child.communicate()
+                return 1, f"the command did not finish within {COMMAND_TIMEOUT_SECONDS:g} seconds"
+            return child.returncode, output.strip()
+    except OSError as exc:
+        return 1, f"cannot run the configuration command: {exc}"
 
 
-def handle_request(root: Path, checkout_record: Path, request_path: Path) -> dict[str, Any]:
+def handle_request(root: Path, checkout_record: Path, request_path: Path, *, stopping: bool = False) -> dict[str, Any]:
     """Answer one request file with its result file; the result document."""
     identifier = request_id(request_path)
     try:
@@ -76,23 +92,31 @@ def handle_request(root: Path, checkout_record: Path, request_path: Path) -> dic
         write_complete(request_path.with_name(identifier + RESULT_SUFFIX), result)
         return result
     disposition, reason = classify(arguments)
+    if stopping and disposition is Disposition.APPLY:
+        disposition = Disposition.DEFER
     if disposition is Disposition.APPLY:
         status, output = run_config(root, arguments)
         if status == 0:
-            result = result_document("recorded", output or f"Recorded for the next launch: {statement(arguments)}")
+            result = result_document("recorded", f"Recorded for the next launch. This running capsule is unchanged.\n{output or statement(arguments)}")
         else:
             result = result_document("refused", output or f"{statement(arguments)} exited with status {status}")
     elif disposition is Disposition.DEFER:
         asked = document.get("requested") if isinstance(document, dict) else None
         requested = asked if isinstance(asked, str) and asked else now()
-        kept = [item for item in deferred_requests(checkout_record) if item.id != identifier]
-        kept.append(DeferredRequest(identifier, requested, tuple(arguments)))
+        kept = deferred_requests(checkout_record)
+        # Older consoles reuse their sequence after a launch. Keep both
+        # requests, with a fresh host id, instead of replacing pending input.
+        stored_id = identifier
+        if any(item.id == stored_id for item in kept):
+            stored_id = f"000000-request-{uuid.uuid4().hex}"
+        kept.append(DeferredRequest(stored_id, requested, tuple(arguments)))
         write_deferred(checkout_record, kept)
         result = result_document(
             "deferred",
-            f"Kept as the console's request {identifier}: {statement(arguments)}. It widens what the next launch "
-            "reaches, so the launcher takes it only from you, on the host: the next 'devcapsule project run' asks, "
-            f"or 'devcapsule project config console apply {identifier}'.",
+            f"Saved request {stored_id}: {statement(arguments)}. "
+            + ("The launcher is stopping. " if stopping else "This command can widen access. ")
+            + "Nothing has been applied. Confirm on the host at the next 'devcapsule project run', "
+            f"or use 'devcapsule project config console apply {stored_id}'.",
             requested,
         )
     else:
@@ -101,7 +125,7 @@ def handle_request(root: Path, checkout_record: Path, request_path: Path) -> dic
     return result
 
 
-def sweep(directory: Path, root: Path, checkout_record: Path) -> int:
+def sweep(directory: Path, root: Path, checkout_record: Path, *, stop: threading.Event | None = None) -> int:
     """Answer every complete request in ``directory`` that has no result yet; how many were answered."""
     answered = 0
     try:
@@ -116,7 +140,7 @@ def sweep(directory: Path, root: Path, checkout_record: Path) -> int:
         if request_path.with_name(identifier + RESULT_SUFFIX).exists():
             continue
         try:
-            handle_request(root, checkout_record, request_path)
+            handle_request(root, checkout_record, request_path, stopping=stop is not None and stop.is_set())
         except Exception as exc:  # noqa: BLE001 - one bad request never stops the watcher
             _log.warning("console request %s: %s", request_path.name, exc)
             try:
@@ -145,12 +169,14 @@ class ChannelWatcher:
 
     def stop(self) -> None:
         self._stop.set()
-        self._thread.join(timeout=COMMAND_TIMEOUT_SECONDS + 5)
-        sweep(self.directory, self.root, self.checkout_record)
+        # Only the worker drains. A second sweep here could run the same
+        # command concurrently after a timed-out join.
+        self._thread.join()
 
     def _run(self) -> None:
         while not self._stop.wait(self.interval):
-            sweep(self.directory, self.root, self.checkout_record)
+            sweep(self.directory, self.root, self.checkout_record, stop=self._stop)
+        sweep(self.directory, self.root, self.checkout_record, stop=self._stop)
 
 
 def apply_deferred(root: Path, checkout_record: Path, identifier: str) -> tuple[int, str]:
@@ -159,7 +185,7 @@ def apply_deferred(root: Path, checkout_record: Path, identifier: str) -> tuple[
     match = next((item for item in requests if item.id == identifier), None)
     if match is None:
         raise ProjectConfigurationError(f"No console request {identifier!r} awaits confirmation for this checkout.")
-    status, output = run_config(root, match.arguments)
+    status, output = run_config(root, match.arguments, host_confirmed=True)
     if status == 0:
         write_deferred(checkout_record, [item for item in requests if item.id != identifier])
     return status, output
@@ -181,25 +207,35 @@ class ChannelView:
     requests: tuple[dict[str, Any], ...]
 
 
-def read_channel(directory: Path) -> ChannelView | None:
-    """The channel's view inside a capsule, or ``None`` when the launcher wrote no listing there."""
+def read_channel(directory: Path) -> ChannelView:
+    """Read a mounted channel; a missing or invalid launch listing is an explicit error."""
     from devcapsule.configuration.console_channel import parse_listing
     listing_path = directory / LISTING_FILE
-    if not listing_path.is_file():
-        return None
+    if not listing_path.exists() and not listing_path.is_symlink():
+        raise ProjectConfigurationError("Configuration channel has no launch listing; inspect configuration on the host.")
     at, listing = parse_listing(read_document(listing_path))
     requests: list[dict[str, Any]] = []
     for request_path in sorted(path for path in directory.iterdir() if path.name.endswith(REQUEST_SUFFIX)):
         try:
             identifier = request_id(request_path)
-            arguments = parse_request(read_document(request_path), request_path.name)
+            document = read_document(request_path)
+            arguments = parse_request(document, request_path.name)
         except ProjectConfigurationError as exc:
             requests.append({"id": request_path.name, "arguments": [], "statement": "", "requested": "",
                              "result": {"format": CHANNEL_FORMAT, "status": "refused", "text": str(exc), "at": ""}})
             continue
-        document = read_document(request_path)
         result_path = request_path.with_name(identifier + RESULT_SUFFIX)
-        result = read_document(result_path) if result_path.is_file() else None
+        result = None
+        if result_path.exists() or result_path.is_symlink():
+            try:
+                result = read_document(result_path)
+                if (not isinstance(result, dict) or result.get("format") != CHANNEL_FORMAT
+                        or result.get("status") not in ("recorded", "refused", "deferred")
+                        or not isinstance(result.get("text"), str)):
+                    raise ProjectConfigurationError("Unreadable result; inspect configuration on the host.")
+            except (ProjectConfigurationError, OSError) as exc:
+                result = {"format": CHANNEL_FORMAT, "status": "unknown",
+                          "text": f"Cannot read the launcher result: {exc}. Inspect configuration on the host before retrying.", "at": ""}
         requests.append({"id": identifier, "arguments": arguments, "statement": statement(arguments),
                          "requested": str(document.get("requested", "")), "result": result})
     return ChannelView(at, listing, tuple(requests))
