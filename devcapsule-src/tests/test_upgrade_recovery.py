@@ -120,12 +120,18 @@ def install_external_fakes(monkeypatch, events, *, contained=True):
 def test_read_only_operations_preserve_configuration_files(checkout, monkeypatch, operation):
     """Persistence adapter contract; semantic upgrade laws live in tests.configuration.test_adt."""
     project, record, resolution = checkout
-    paths = [record, resolution, *sorted((project / ".devcapsule").iterdir())]
+    # The resolution is the launch's own derived artifact since 0.3.0 rc4;
+    # every input file is preserved, by inspection and by the launch alike.
+    paths = [record, *sorted((project / ".devcapsule").iterdir())]
     before = {p: p.read_bytes() for p in paths}
     if operation == ("run",):
         install_external_fakes(monkeypatch, [], contained=False)
+        # A base without a contained desktop shows the IDE on the host's X
+        # session only by explicit consent; given for this launch alone.
+        operation = ("run", "--authorize", "host-x11", "true")
     assert invoke(project, *operation) == 0
     assert {p: p.read_bytes() for p in paths} == before
+    assert resolution.is_file()
 
 
 # Show all changed questions; each selected answer makes progress. Unrelated
@@ -146,15 +152,16 @@ def test_upgrade_recovery_commands_converge_to_the_intended_launch(
     capsys.readouterr()
     events = []
     launch = install_external_fakes(monkeypatch, events)
-    assert invoke(project, "run") == 2
+    # A pending decision ends the launch with status 3 and nothing written.
+    assert invoke(project, "run") == 3
     assert events == []
-    assert invoke(project, "config", "resolve") == 2
+    assert invoke(project, "config", "resolve") == 3
     refusal = capsys.readouterr().err
     expected = ({"base-image"} if lock_changed else set()) | ({"host-browser"} if manifest_changed else set())
     pending = {r.name: r for r in review(project, record).authorizations if r.problem}
     assert set(pending) == expected
     for name in expected:
-        assert f"{name}: stale" in refusal
+        assert name in refusal
     assert record.read_bytes() == before_record
     assert resolution.read_bytes() == before_resolution
     # The remedies are advice, and advice lives in `config show` since
@@ -465,7 +472,7 @@ runtime-effect = "docker.memory-limit"
 value = true
 justification = "Changed browser recommendation."
 ''')
-    assert invoke(project, "config", "resolve") == 2
+    assert invoke(project, "config", "resolve") == 3
     for item in review(project, record).authorizations:
         if item.problem:
             assert cli.main(shlex.split(item.choices[0].command(project))[1:]) == 0

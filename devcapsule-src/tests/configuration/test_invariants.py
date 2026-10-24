@@ -72,23 +72,20 @@ def test_schema_admission_distinguishes_version_from_truthiness(artifact, versio
     validate_file_format({artifact.value: 1}, artifact, 'test input')
 
 
-@pytest.mark.parametrize('artifact', list(ConfigurationFileKind))
+@pytest.mark.parametrize('artifact', [kind for kind in ConfigurationFileKind if kind is not ConfigurationFileKind.resolution])
 @pytest.mark.parametrize('command', [
-    ('config', 'resolve'), ('config', 'list'), ('run',), ('run', '--force'), ('init', '--regenerate'),
+    ('config', 'resolve'), ('config', 'list'), ('run',), ('init', '--regenerate'),
 ])
-def test_unsupported_artifact_refuses_without_side_effects(checkout, monkeypatch, artifact, command):
+def test_unsupported_input_refuses_without_side_effects(checkout, monkeypatch, artifact, command):
+    # The resolution is not an input since 0.3.0 rc4: run derives it; see
+    # test_an_unreadable_resolution_is_replaced_by_the_launch in test_contract.
     paths = artifacts(checkout)
     replace_document(paths[artifact], lambda d: d.update({artifact.value: 99}))
     before = {p: p.read_bytes() for p in paths.values()}
     events = []
     launch = install_external_fakes(monkeypatch, events)
-    # Resolve deliberately replaces generated output, so its old schema is
-    # not an input. All readers, including --force and init repair, admit it.
-    if artifact is ConfigurationFileKind.resolution and command == ('config', 'resolve'):
-        assert invoke(checkout[0], *command) == 0
-    else:
-        assert invoke(checkout[0], *command) == 2
-        assert {p: p.read_bytes() for p in before} == before
+    assert invoke(checkout[0], *command) == 2
+    assert {p: p.read_bytes() for p in before} == before
     assert events == [] and launch.call_count == 0
 
 
@@ -142,7 +139,7 @@ def test_invalid_unrelated_answers_survive_an_edit_until_repaired(checkout):
     saved = load_toml(record)['authorization']
     assert saved['development-sudo'] == original['development-sudo']
     assert saved['host-x11'] == original['host-x11']
-    assert invoke(project, 'config', 'resolve') == 2
+    assert invoke(project, 'config', 'resolve') == 3  # the invalid answers are pending decisions
     assert invoke(project, 'config', 'authorize', 'development-sudo', 'false') == 0
     assert invoke(project, 'config', 'authorize', 'host-x11', 'false') == 0
     assert invoke(project, 'config', 'resolve') == 0
@@ -202,20 +199,21 @@ def test_removing_a_decision_cannot_reveal_a_legacy_grant(checkout, monkeypatch,
     assert launch.call_args.args[0].enable_sudo is False
 
 
-def test_force_cannot_resurrect_directory_or_secret_access(checkout, monkeypatch):
+def test_a_removed_binding_never_reaches_the_launch(checkout, monkeypatch):
     project, record, resolution = checkout
     assert invoke(project, 'config', 'capabilities', '--local', 'python-ide', 'codex-agent') == 0
     assert invoke(project, 'config', 'bind', 'home', f'host-directory:{project}') == 0
     assert invoke(project, 'config', 'bind', 'codex/openai-api-key', 'host-environment:OPENAI_API_KEY') == 0
     assert invoke(project, 'config', 'resolve') == 0
-    saved = resolution.read_bytes()
-    assert invoke(project, 'config', 'unset', 'home') == 0
-    assert invoke(project, 'config', 'unset', 'codex/openai-api-key') == 0
+    assert invoke(project, 'config', 'unbind', 'home') == 0
+    assert invoke(project, 'config', 'unbind', 'codex/openai-api-key') == 0
     launch = install_external_fakes(monkeypatch, [])
-    assert invoke(project, 'run', '--force') == 0
+    assert invoke(project, 'run') == 0
     options = launch.call_args.args[0]
     assert options.persistent_home is None and options.secret_environment == ()
-    assert resolution.read_bytes() == saved
+    # The plan the launch derived carries neither either.
+    derived = load_toml(resolution)
+    assert 'bindings' not in derived.get('state', {}) and 'secret' not in derived
 
 
 def test_project_launch_cannot_inherit_unbound_paths_or_credentials(checkout, tmp_path):
@@ -250,23 +248,25 @@ def test_explicit_sudo_decision_overrides_legacy_environment(value, tmp_path):
 
 
 @pytest.mark.parametrize('field,value', [('memory-limit-bytes', '8GiB'), ('memory-limit-bytes', True),
-                                      ('component', []), ('project-mount', 3), ('image', [])])
-def test_invalid_derived_plan_fails_before_materialization(checkout, monkeypatch, field, value):
+                                      ('cpus', 0), ('component', []), ('project-mount', 3), ('image', [])])
+def test_an_invalid_derived_plan_is_refused_as_a_value(checkout, field, value):
+    # Since 0.3.0 rc4 the launch derives its plan and never reads a stored one
+    # as an input; the plan's own validation is what refuses a bad value.
+    from devcapsule.configuration.resolution import Resolution
     project, _, resolution = checkout
-    replace_document(resolution, lambda d: d['runtime'].update({field: value}))
-    events = []
-    launch = install_external_fakes(monkeypatch, events)
-    assert invoke(project, 'run', '--force') == 2
-    assert events == [] and launch.call_count == 0
+    document = load_toml(resolution)
+    document['runtime'][field] = value
+    with pytest.raises(ProjectConfigurationError):
+        Resolution(document)
 
 
-def test_fresh_source_digests_do_not_authorize_tampered_output(checkout, monkeypatch):
+def test_a_tampered_stored_plan_does_not_reach_the_launch(checkout, monkeypatch):
     project, _, resolution = checkout
     replace_document(resolution, lambda d: d.update({'state': {'bindings': {'home': str(project)}}}))
-    events = []
-    launch = install_external_fakes(monkeypatch, events)
-    assert invoke(project, 'run') == 2
-    assert events == [] and launch.call_count == 0
+    launch = install_external_fakes(monkeypatch, [])
+    assert invoke(project, 'run') == 0
+    assert launch.call_args.args[0].persistent_home is None
+    assert 'bindings' not in load_toml(resolution).get('state', {})
 
 
 @pytest.mark.parametrize('scoped', [False, True])
@@ -391,15 +391,18 @@ def test_project_mount_is_validated_before_resolution_or_materialization(checkou
     events = []
     launch = install_external_fakes(monkeypatch, events)
     assert invoke(project, 'config', 'resolve') == 2
-    assert invoke(project, 'run', '--force') == 2
+    assert invoke(project, 'run') == 2
     assert resolution.read_bytes() == saved and not events and launch.call_count == 0
 
 
 @pytest.mark.parametrize('sources', [{'manifest': []}, {'manifest-scope': 'future-scope'}])
-def test_unsupported_fingerprint_representation_is_refused(checkout, sources):
+def test_unsupported_fingerprint_representation_is_refused_as_a_value(checkout, sources):
+    from devcapsule.configuration.resolution import Resolution
     project, _, resolution = checkout
-    replace_document(resolution, lambda d: d.update({'sources': sources}))
-    assert invoke(project, 'run', '--force') == 2
+    document = load_toml(resolution)
+    document['sources'] = sources
+    with pytest.raises(ProjectConfigurationError):
+        Resolution(document)
 
 
 def test_incomplete_assessment_cannot_be_serialized_or_treated_as_compatible(checkout):
@@ -419,7 +422,9 @@ def test_incomplete_assessment_cannot_be_serialized_or_treated_as_compatible(che
 
 
 @pytest.mark.parametrize('mutation', ['missing', 'reserved-mount', 'different-surface'])
-def test_force_still_requires_a_coherent_execution_plan(checkout, monkeypatch, mutation):
+def test_the_launch_derives_a_coherent_plan_whatever_the_stored_one_says(checkout, monkeypatch, mutation):
+    # The stored plan is the launch's own output since 0.3.0 rc4: missing or
+    # tampered, it is derived again from the inputs before anything runs.
     project, _, resolution = checkout
     if mutation == 'missing':
         resolution.unlink()
@@ -428,8 +433,10 @@ def test_force_still_requires_a_coherent_execution_plan(checkout, monkeypatch, m
             {'project-mount': '/etc'} if mutation == 'reserved-mount' else {'component': 'codium'}))
     events = []
     launch = install_external_fakes(monkeypatch, events)
-    assert invoke(project, 'run', '--force') == 2
-    assert not events and launch.call_count == 0
+    assert invoke(project, 'run') == 0
+    assert launch.call_count == 1
+    derived = load_toml(resolution)['runtime']
+    assert derived['component'] == 'pycharm' and derived['project-mount'] != '/etc'
 
 
 @pytest.mark.parametrize('scoped', [False, True])

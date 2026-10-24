@@ -54,11 +54,38 @@ from .values import (
     normalize_configuration_value,
 )
 
-__all__ = ["LISTING_SCHEMA_VERSION", "Listing", "ListingRow", "assess_checkout"]
+__all__ = ["Decision", "LISTING_SCHEMA_VERSION", "Listing", "ListingRow", "assess_checkout"]
 
 LISTING_SCHEMA_VERSION = 2
 
 HOST_ACCESS_NODES = ("network", "docker-daemon", "development-sudo", "host-browser", "host-x11")
+
+
+@dataclass(frozen=True)
+class Decision:
+    """One decision only the developer can take, as ``run`` asks it and ``check`` reports it.
+
+    ``kind`` is ``ide`` (choose among ``choices``, capability names with the
+    component each selects), ``env`` (supply a value for ``name``, with the
+    project's ``reason``), ``access`` (allow or deny the host access ``name``
+    at ``value``, with the project's reason and ``deny`` as the deny value),
+    ``renew`` (a recorded host answer whose recommendation changed, to allow
+    or deny again), ``consent`` (accept the base or a vendor download
+    ``name``), ``value`` (a declared value the project requires) or
+    ``secret`` (a component's required secret input, bound to ``variable``).
+    ``run`` records the answer where the config family would; ``check``
+    prints ``command``.
+    """
+
+    kind: str
+    name: str
+    description: str
+    command: str
+    choices: tuple[tuple[str, str], ...] = ()
+    reason: str = ""
+    value: str = ""
+    deny: str = ""
+    variable: str = ""
 
 
 @dataclass(frozen=True)
@@ -69,6 +96,7 @@ class ListingRow:
     source: str
     pending: str = ""
     command: str = ""
+    decision: Decision | None = None
 
     def document(self) -> dict[str, str]:
         return {"kind": self.kind, "name": self.name, "effective": self.effective, "source": self.source,
@@ -83,6 +111,11 @@ class Listing:
     @property
     def pending(self) -> tuple[ListingRow, ...]:
         return tuple(row for row in self.rows if row.pending)
+
+    @property
+    def decisions(self) -> tuple[Decision, ...]:
+        """The pending rows' decisions, in the order ``run`` asks them: what to choose, then what to allow."""
+        return tuple(row.decision for row in self.rows if row.pending and row.decision is not None)
 
     def render(self) -> str:
         headers = ("KIND", "NAME", "EFFECTIVE", "SOURCE", "PENDING")
@@ -186,7 +219,9 @@ def _capability_rows(
                                "project recommendation" + (f": {reason}" if reason else "") + "; recorded at the first run",
                                "", _command(project, "ide", recommendations.ide)))
     else:
-        rows.append(ListingRow("ide", "(none)", "-", "none", f"choose one: {choices}", _command(project, "ide", "IDE")))
+        options = tuple((name, _component_version(composed_lock, surfaces[name])) for name in sorted(surfaces))
+        rows.append(ListingRow("ide", "(none)", "-", "none", f"choose one: {choices}", _command(project, "ide", "IDE"),
+                               Decision("ide", "ide", "Your IDE for this checkout", _command(project, "ide", "IDE"), options)))
     for name in sorted(set(local.selected) & set(agents)):
         rows.append(ListingRow("agent", name, _component_version(composed_lock, agents[name]), "checkout"))
     for name in sorted(set(policy.required) & set(agents)):
@@ -251,6 +286,7 @@ def _access_rows(
             rendered_deny = render_authorization_value(deny) if deny is not None else "false"
             recommended = render_authorization_value(declaration.recommended_value)
             legacy = table(checkout, "host").get(name)
+            decision: Decision | None = None
             if review.status in {"available", "missing-recommended"} and legacy is not None:
                 try:
                     from .review import HostAccess
@@ -271,34 +307,48 @@ def _access_rows(
                     if base_display == "contained":
                         effective = "contained desktop"
                     elif base_display == "host-x11-only":
-                        effective, source = "host X11", "legacy base default (no contained desktop)"
+                        effective, source = "host X11 (needs your consent)", "no contained desktop on this base"
                     else:
                         effective, source = "determined at launch", "base display support unknown"
-            if name == "host-x11" and base_display == "host-x11-only" and effective == "false":
-                effective = "unavailable"
-                pending = "this base has no contained desktop; select a newer base or authorize host X11"
-                command = _command(project, "authorize", "host-x11", "true")
+            if name == "host-x11" and base_display == "host-x11-only":
+                if effective == "false":
+                    pending = "this base has no contained desktop; select a newer base or authorize host X11"
+                    command = _command(project, "authorize", "host-x11", "true")
+                    effective = "unavailable"
+                elif review.recorded == "unanswered":
+                    pending = "this base has no contained desktop; host X11 shows the IDE only with your consent"
+                    command = _command(project, "authorize", "host-x11", "true")
+                    decision = Decision("consent", "host-x11", declaration.description, command, value="true")
             if declaration.project_recommended:
                 source += f"; project recommends {recommended}: {declaration.description}"
                 if review.recorded == "unanswered" and legacy is None:
                     pending = f"the project asks for {name} {recommended}; allow or deny"
                     command = _command(project, "authorize", name, recommended) + "  |  " + _command(project, "deny", name)
+                    decision = Decision("access", name, f"{name} {recommended}", command, reason=declaration.description,
+                                        value=recommended, deny=rendered_deny)
             if review.status == "stale":
                 pending = "the recommendation changed since your answer; renew or change it"
                 command = _command(project, "authorize", name, recommended) + "  |  " + _command(project, "deny", name)
+                decision = Decision("renew", name, f"{name} {recommended}", command, reason=declaration.description,
+                                    value=recommended, deny=rendered_deny)
             elif review.status == "invalid":
                 pending = str(review.problem or "invalid answer")
                 command = _command(project, "forget", name)
-        else:
-            effective = review.recorded if review.recorded != "unanswered" else "-"
-            source = "checkout" if review.recorded != "unanswered" else "lock (recommended)"
-            if review.problem is not None:
-                pending = review.problem
-                value = "default" if name == "base-image" else "true"
-                command = _command(project, "authorize", name, value)
-            if review.value is not None and name == "base-image":
-                effective = str(review.value)
-        rows.append(ListingRow("access", name, effective, source, pending, command))
+                decision = Decision("renew", name, f"{name} {recommended}", command, reason=str(review.problem or ""),
+                                    value=recommended, deny=rendered_deny)
+            rows.append(ListingRow("access", name, effective, source, pending, command, decision))
+            continue
+        effective = review.recorded if review.recorded != "unanswered" else "-"
+        source = "checkout" if review.recorded != "unanswered" else "lock (recommended)"
+        decision = None
+        if review.problem is not None:
+            pending = review.problem
+            value = "default" if name == "base-image" else "true"
+            command = _command(project, "authorize", name, value)
+            decision = Decision("consent", name, declaration.description, command, value=value)
+        if review.value is not None and name == "base-image":
+            effective = str(review.value)
+        rows.append(ListingRow("access", name, effective, source, pending, command, decision))
     for name in sorted(set(reviews) - set(declarations)):
         review = reviews[name]
         rows.append(ListingRow("access", name, "unused", "checkout", str(review.problem or "unsupported answer"),
@@ -318,8 +368,9 @@ def _environment_rows(
                 effective = "set" if saved[name] is not None else "from the host's variable"
                 rows.append(ListingRow("env", name, effective, "checkout; " + source))
             elif scope.endswith("(required)"):
-                rows.append(ListingRow("env", name, "unset", source, "the project needs a value from you",
-                                       _command(project, "env", "set", name, "VALUE")))
+                command = _command(project, "env", "set", name, "VALUE")
+                rows.append(ListingRow("env", name, "unset", source, "the project needs a value from you", command,
+                                       Decision("env", name, f"{name}: {reason}" if reason else name, command, reason=reason)))
             else:
                 rows.append(ListingRow("env", name, "unset", source))
     for name in sorted(set(saved) - set(environment.names())):
@@ -368,8 +419,9 @@ def _secret_rows(lock: Mapping[str, Any], checkout: Mapping[str, Any], project: 
             available = variable in os.environ
             rows.append(ListingRow("secret", name, f"from {variable}", "checkout" if available else "checkout (variable unset in this shell)"))
         elif declaration.required:
-            rows.append(ListingRow("secret", name, "unbound", "component (required)", "bind the host variable",
-                                   _command(project, "bind", name, f"host-environment:{variable}")))
+            command = _command(project, "bind", name, f"host-environment:{variable}")
+            rows.append(ListingRow("secret", name, "unbound", "component (required)", "bind the host variable", command,
+                                   Decision("secret", name, declaration.description, command, variable=variable)))
         else:
             rows.append(ListingRow("secret", name, "unbound; sign in inside the capsule", "component (optional)"))
     return rows
@@ -398,8 +450,9 @@ def _value_rows(manifest: Mapping[str, Any], checkout: Mapping[str, Any], projec
             rows.append(ListingRow("value", name, render_toml_scalar(normalize_configuration_value(manifest, name, "default")),
                                    "project recommendation"))
         elif declaration.get("required", False):
-            rows.append(ListingRow("value", name, "unset", "project (required)", "the project needs a value from you",
-                                   _command(project, "set", name, "VALUE")))
+            command = _command(project, "set", name, "VALUE")
+            rows.append(ListingRow("value", name, "unset", "project (required)", "the project needs a value from you", command,
+                                   Decision("value", name, str(declaration.get("description") or name), command)))
         else:
             rows.append(ListingRow("value", name, "unset", "project (optional)"))
     for name in sorted(set(raw_values) - set(declarations) - set(LAUNCHER_VALUE_NAMES) - aliases):

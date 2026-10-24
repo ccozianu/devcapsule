@@ -43,7 +43,6 @@ def test_show_and_check_write_nothing_and_check_exits_three_on_pending(project: 
     assert run(project, "show") == 0
     out = capsys.readouterr().out
     assert "KIND" in out and "ide     (none)" in out and "choose one:" in out
-    assert "Resolution: missing" in out
     assert run(project, "check") == 3
     err = capsys.readouterr().err
     assert "Pending decisions:" in err and "config ide IDE" in err
@@ -62,7 +61,7 @@ def test_show_and_check_write_nothing_and_check_exits_three_on_pending(project: 
 def test_show_json_carries_the_listing(project: Path, capsys) -> None:
     assert run(project, "show", "--json") == 0
     document = json.loads(capsys.readouterr().out)
-    assert document["schema-version"] == 2 and document["resolution"] == "missing"
+    assert document["schema-version"] == 2
     assert {row["kind"] for row in document["rows"]} >= {"ide", "tool", "memory", "cpus", "access"}
     assert run(project, "list", "--json") == 0
     assert json.loads(capsys.readouterr().out)["rows"] == document["rows"]
@@ -433,11 +432,7 @@ def test_inspection_never_writes_in_registered_stale_or_unregistered_states(proj
     for root, expected in ((project, 0), (second, 3)):
         capsys.readouterr()
         assert run(root, "show", "--json") == 0
-        document = json.loads(capsys.readouterr().out)
-        if root == project:
-            assert document["resolution"].startswith("stale"), document["resolution"]
-        else:
-            assert document["resolution"] == "missing", document["resolution"]
+        json.loads(capsys.readouterr().out)
         assert run(root, "check", "--json") == expected
         checked = json.loads(capsys.readouterr().out)
         assert bool(checked["pending"]) == (expected == 3)

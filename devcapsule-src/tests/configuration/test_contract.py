@@ -62,7 +62,7 @@ def test_second_checkout_cannot_inherit_the_first_checkouts_authority(checkout, 
     second_record, _ = checkout_record_paths(manifest, second)
     assert second_record != record
     assert load_toml(second_record).get('authorization', {}) == {}
-    assert invoke(second, 'config', 'resolve') == 2  # No base consent inherited either.
+    assert invoke(second, 'config', 'resolve') == 3  # No base consent inherited either.
     assert invoke(second, 'config', 'authorize', 'base-image', 'default') == 0
     assert invoke(second, 'config', 'resolve') == 0
     assert 'host-browser' not in load_toml(second_record)['authorization']
@@ -178,14 +178,18 @@ def test_unknown_checkout_schema_cannot_be_rewritten(checkout):
     assert (result, record.read_bytes(), resolution.read_bytes()) == (2, *before)
 
 
-def test_unknown_resolution_schema_cannot_be_executed(checkout, monkeypatch):
+def test_an_unreadable_resolution_is_replaced_by_the_launch(checkout, monkeypatch):
+    # The resolution is the launch's own derived artifact since 0.3.0 rc4: run
+    # derives it again from the inputs, so a file of an unknown schema is
+    # overwritten, never an obstacle.
     project, _, resolution = checkout
     resolution.write_text(resolution.read_text().replace('devcapsule-resolved-schema-version = 1',
                                                        'devcapsule-resolved-schema-version = 99'))
     events = []
     launch = install_external_fakes(monkeypatch, events)
-    result = invoke(project, 'run')
-    assert (result, events, launch.call_count) == (2, [], 0)
+    assert invoke(project, 'run') == 0
+    assert launch.call_count == 1
+    assert load_toml(resolution)['devcapsule-resolved-schema-version'] == 1
 
 
 def test_init_cannot_treat_repository_recommendations_as_developer_answers(checkout):
@@ -369,25 +373,25 @@ def test_config_list_is_data_only_and_show_carries_the_review(checkout, capsys):
     # listing shows the effective value, its source and what is pending, and
     # writes nothing; `list` is the same listing as `show`.
     project, record, resolution = checkout
+    # The fixture's base has no contained desktop: host X11 needs consent first.
+    assert invoke(project, 'config', 'authorize', 'host-x11', 'true') == 0
     assert invoke(project, 'config', 'resolve') == 0
     capsys.readouterr()
     assert invoke(project, 'config', 'list') == 0
     listing = capsys.readouterr().out
     assert 'KIND' in listing and 'SOURCE' in listing and 'PENDING' in listing
-    assert 'Resolution: fresh' in listing and 'Nothing is pending.' in listing
+    assert 'Nothing is pending.' in listing
     assert 'Configuration review' not in listing and 'resolve explicitly' not in listing
     assert invoke(project, 'config', 'show') == 0
     shown = capsys.readouterr().out
     assert shown == listing
     assert str(record) in shown
-    # A record edited behind the resolution's back stales the resolution,
-    # which the listing reports as a state, not a refusal.
+    # A record edited behind the plan's back is simply the next launch's input.
     table = dict(load_toml(record)['authorization'])
     table['host-browser'] = {**table['host-browser'], 'value': False}
     replace_answers(project, record, table)
     assert invoke(project, 'config', 'show') == 0
-    shown = capsys.readouterr().out
-    assert 'Resolution: stale: checkout-input' in shown
+    assert 'Nothing is pending.' in capsys.readouterr().out
     # A missing required decision is a pending row with its command.
     replace_answers(project, record, {name: value for name, value in table.items() if name != 'base-image'})
     assert invoke(project, 'config', 'show') == 0
@@ -424,9 +428,11 @@ def test_old_base_listing_reports_host_x11_without_changing_consent(checkout, ca
     assert invoke(project, 'config', 'show', '--json') == 0
     rows = json.loads(capsys.readouterr().out)['rows']
     x11 = next(row for row in rows if row['name'] == 'host-x11')
-    assert x11['effective'] == 'host X11'
-    assert x11['source'] == 'legacy base default (no contained desktop)'
-    assert not x11['pending']
+    # Answer 4 of the CLI UX work order: host X11 only by explicit consent,
+    # on a base without a contained desktop too; the row asks for it.
+    assert x11['effective'] == 'host X11 (needs your consent)'
+    assert x11['source'] == 'no contained desktop on this base'
+    assert 'with your consent' in x11['pending'] and 'config authorize host-x11 true' in x11['command']
     assert (record.read_bytes(), resolution.read_bytes()) == before
 
 
