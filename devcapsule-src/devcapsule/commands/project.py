@@ -2087,10 +2087,12 @@ class ProjectRunCommand(Command):
             return 1
         # An upgrade may have changed the selection: derive again from the record.
         if command_report is None:
-            # Preserve terminal "once" answers while checking the new selection.
-            again = replace(flags, save=False, authorize=tuple(
+            # Saved flags are now record inputs. Reapply only launch overrides,
+            # including terminal "once" answers, when checking the new selection.
+            again = RunFlags(allow_unverified=flags.allow_unverified) if flags.save else flags
+            again = replace(again, save=False, authorize=tuple(
                 (name, render_authorization_value(value)) for name, value in prepared.host_overrides.items()
-            ) or flags.authorize)
+            ))
             prepared.selected = prepare_launch(start, again, interactive=False).selected
         selected = prepared.selected
         review = review_configuration(selected.manifest, selected.lock, selected.checkout, load_workstation())
@@ -2331,7 +2333,7 @@ def _run_flags(arguments: argparse.Namespace, manifest: Mapping[str, Any]) -> Ru
                 "it does not apply to a launch."
             )
         if answer.family == "authorize":
-            if answer.name not in _RUN_ONCE_AUTHORIZATIONS:
+            if not arguments.save and answer.name not in _RUN_ONCE_AUTHORIZATIONS:
                 raise ProjectConfigurationError(
                     f"Authorization {answer.name!r} cannot be answered for one launch; "
                     "the host accesses can: " + ", ".join(_RUN_ONCE_AUTHORIZATIONS) + "."

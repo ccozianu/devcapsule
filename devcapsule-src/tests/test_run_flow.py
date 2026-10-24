@@ -328,6 +328,53 @@ def test_first_cli_run_reaches_the_ide_prompt(project: Path, monkeypatch: pytest
     assert record(project)['capabilities']['selected'] == ['python-ide']
 
 
+def test_save_with_required_consent_survives_the_second_derivation(project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from tests.test_upgrade_recovery import install_external_fakes, invoke
+    launch = install_external_fakes(monkeypatch, [])
+    monkeypatch.setattr('sys.stdin.isatty', lambda: False)
+    assert invoke(project, 'run', '--ide', 'python-ide', '--authorize', 'base-image', 'default', '--save', '--no-update-check') == 0
+    assert launch.call_count == 1
+    assert record(project)['authorization']['base-image']['reference']
+
+
+@pytest.mark.parametrize('save', [False, True])
+def test_cli_second_derivation_carries_only_unsaved_flags(project: Path, monkeypatch: pytest.MonkeyPatch, save: bool) -> None:
+    from unittest.mock import Mock
+    from devcapsule.commands import project as commands
+    from tests.test_upgrade_recovery import install_external_fakes, invoke
+    assert config(project, 'authorize', 'base-image', 'default') == 0
+    monkeypatch.setenv('PASS_THROUGH', 'from-host')
+    monkeypatch.setattr('sys.stdin.isatty', lambda: False)
+    launch = install_external_fakes(monkeypatch, [])
+    calls = Mock(wraps=commands.prepare_launch)
+    monkeypatch.setattr(commands, 'prepare_launch', calls)
+    before = record(project)
+    assert invoke(project, 'run', '--ide', 'python-ide', '--agent', 'codex', '--memory', '6g', '--cpus', '2',
+                  '--env', 'INLINE=value', '--env', 'PASS_THROUGH', '--authorize', 'network', 'host',
+                  '--no-update-check', *(['--save'] if save else [])) == 0
+    assert calls.call_count == 2
+    first_flags, second_flags = (call.args[1] for call in calls.call_args_list)
+    assert second_flags == (RunFlags() if save else first_flags)
+    assert launch.call_count == 1
+    options = launch.call_args.args[0]
+    assert options.runtime_plan.component.id == 'pycharm'
+    assert 'codex' in {item.id for item in options.runtime_plan.ancillary_components}
+    assert options.memory_limit_bytes == 6 * 1024**3 and options.cpus == 2
+    assert options.network_mode == 'host'
+    tokens = options.extra_docker_args
+    assert tokens.count('--env') == 2
+    assert tokens[tokens.index('INLINE=value') - 1] == '--env'
+    assert tokens[tokens.index('PASS_THROUGH') - 1] == '--env'
+    path = checkout_record_paths(load_toml(paths(project)[0]), project)[0]
+    if save:
+        assert record(project)['capabilities']['selected'] == ['codex-agent', 'python-ide']
+        assert record(project)['authorization']['network']['value'] == 'host'
+        assert read_arguments(arguments_path(path)) == ['--env', 'PASS_THROUGH', '--env', 'INLINE=value']
+    else:
+        assert record(project) == before
+        assert read_arguments(arguments_path(path)) == []
+
+
 @pytest.mark.parametrize('new_decision', [False, True])
 def test_second_derivation_keeps_once_answers_and_never_prompts(project: Path, monkeypatch: pytest.MonkeyPatch, new_decision: bool) -> None:
     from unittest.mock import Mock
@@ -349,13 +396,14 @@ def test_second_derivation_keeps_once_answers_and_never_prompts(project: Path, m
             assert config(root, 'require', 'env', 'NEW_INPUT', '--because', 'new requirement') == 0
         else:
             assert config(root, 'set', 'cpus', '3') == 0
+            assert config(root, 'set', 'memory', '8g') == 0
         return True
     monkeypatch.setattr(commands, 'offer_upgrades', upgrade)
     assert invoke(project, 'run', '--memory', '6g', '--save') == (3 if new_decision else 0)
     assert calls.call_count == 2 and approvals.call_count == 1
     first_flags, second_flags = (call.args[1] for call in calls.call_args_list)
     assert first_flags.save and not second_flags.save
-    assert first_flags.memory == second_flags.memory == '6g'
+    assert first_flags.memory == '6g' and second_flags.memory is None
     assert second_flags.authorize == (('network', 'host'),)
     assert calls.call_args_list[1].kwargs['interactive'] is False
     assert 'network' not in record(project)['authorization']
@@ -364,7 +412,7 @@ def test_second_derivation_keeps_once_answers_and_never_prompts(project: Path, m
     else:
         assert launch.call_args.args[0].network_mode == 'host'
         assert launch.call_args.args[0].cpus == 3
-        assert launch.call_args.args[0].memory_limit_bytes == 6 * 1024**3
+        assert launch.call_args.args[0].memory_limit_bytes == 8 * 1024**3
 
 
 @pytest.mark.parametrize('print_only', [False, True])
@@ -432,13 +480,17 @@ def test_interactive_ide_does_not_save_a_run_once_agent(project: Path) -> None:
 
 
 def test_print_command_preserves_configuration_and_skips_reminder_writes(project: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from unittest.mock import Mock
+    from devcapsule.commands import project as commands
     from tests.test_upgrade_recovery import install_external_fakes, invoke
-    assert config(project, 'ide', 'python-ide') == 0
-    assert config(project, 'authorize', 'base-image', 'default') == 0
     launch = install_external_fakes(monkeypatch, [])
+    calls = Mock(wraps=commands.prepare_launch)
+    monkeypatch.setattr(commands, 'prepare_launch', calls)
     monkeypatch.setattr('devcapsule.version_sets.reminder', lambda _: pytest.fail('print-only updated reminder state'))
     before = snapshot(tmp_path)
-    assert invoke(project, 'run', '--memory', '6g', '--save', '--print-command') == 0
+    assert invoke(project, 'run', '--ide', 'python-ide', '--authorize', 'base-image', 'default',
+                  '--memory', '6g', '--save', '--print-command') == 0
+    assert calls.call_count == 1
     assert launch.call_args.args[0].command_report is not None
     assert snapshot(tmp_path) == before
 
