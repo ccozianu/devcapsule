@@ -15,8 +15,8 @@ from typing import Any, Mapping, Sequence
 
 from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix
-from .capabilities import CapabilityPolicy, LocalCapabilities, capability_notes
-from .capability_selection import compose_lock, effective_lock, generate_lock, local_pins, usable_lock
+from .capabilities import CapabilityPolicy, LocalCapabilities, capability_notes, resolution_recommendations
+from .capability_selection import compose_lock, effective_lock, generate_lock, local_pins, usable_lock, matrix_for, pin_selection
 from .file_formats import ConfigurationFileKind, ProjectConfigurationError, table, validate_file_format, render_checkout, render_toml, selected_version_lock
 from .manifest import validate_manifest
 from .manifest_document import CURRENT_MANIFEST_SCHEMA_VERSION, capability_reasons, capability_table, manifest_preamble, render_manifest
@@ -100,7 +100,7 @@ def promote(root: Path, manifest: dict[str, Any], lock: dict[str, Any] | None = 
     journal.unlink()
 
 
-def check_documents(manifest: dict[str, Any], lock: dict[str, Any]) -> tuple[str, ...]:
+def check_documents(manifest: dict[str, Any], lock: dict[str, Any], *, check_resolutions: bool = True) -> tuple[str, ...]:
     """Validate shared documents offline and return optional-omission warnings.
 
     Check schemas, required capabilities, minimum versions and usable artifact
@@ -110,7 +110,12 @@ def check_documents(manifest: dict[str, Any], lock: dict[str, Any]) -> tuple[str
     """
     validate_manifest(manifest, Path("manifest"))
     validate_file_format(lock, ConfigurationFileKind.lock, "platform lock")
-    usable, notices = usable_lock(CapabilityPolicy.read(manifest), lock)
+    policy = CapabilityPolicy.read(manifest)
+    matrix = matrix_for(lock)
+    minimums = {matrix.canonical_name(name): version for name, version in policy.minimums}
+    for name, component in (resolution_recommendations(manifest) if check_resolutions else {}).items():
+        matrix.resolve_provider(name, minimums.get(matrix.canonical_name(name)), recommended=component)
+    usable, notices = usable_lock(policy, lock)
     check_formation(manifest, usable)
     return notices
 
@@ -160,7 +165,8 @@ def check(start: Path, *, manifest_path: Path | None = None, lock_path: Path | N
 def configure(start: Path, *, required: Sequence[str] | None = None,
               optional: Sequence[str] | None = None,
               local: Sequence[str] | None = None, without: Sequence[str] | None = None,
-              preview: bool = False, allow_unverified: bool = False) -> str:
+              preview: bool = False, allow_unverified: bool = False,
+              providers: Mapping[str, str] | None = None) -> str:
     """Replace project capability declarations or this checkout's local choices.
 
     ``start`` locates the project. Supply one group: shared ``required``,
@@ -181,14 +187,14 @@ def configure(start: Path, *, required: Sequence[str] | None = None,
     manifest, lock = load_toml(manifest_path), load_toml(lock_path)
     check_documents(manifest, lock)
     project_edit = any(value is not None for value in (required, optional))
-    local_edit = local is not None or without is not None
+    local_edit = local is not None or without is not None or providers is not None
     if project_edit == local_edit:
         raise ProjectConfigurationError("Choose either project flags (--required/--optional) or local flags (--local/--without).")
     matrix = MATRICES[Platform.current()]
     if project_edit:
         return configure_project(root, manifest, lock, matrix, required=required, optional=optional,
                                  preview=preview, allow_unverified=allow_unverified)
-    return configure_local(root, manifest, lock, matrix, local=local, without=without,
+    return configure_local(root, manifest, lock, matrix, local=local, without=without, providers=providers,
                            preview=preview, allow_unverified=allow_unverified)
 
 
@@ -210,7 +216,8 @@ def configure_project(root: Path, manifest: dict[str, Any], lock: dict[str, Any]
     candidate_manifest["capabilities"] = declarations
     candidate = CapabilityPolicy.read(candidate_manifest)
     candidate_manifest["capabilities"] = capability_table(candidate, capability_reasons(manifest), previous=manifest["capabilities"])
-    generated = generate_lock(candidate, matrix, previous=lock, allow_unverified=allow_unverified)
+    generated = generate_lock(candidate, matrix, previous=lock, allow_unverified=allow_unverified,
+                              recommendations=resolution_recommendations(candidate_manifest))
     check_documents(candidate_manifest, generated)
     if not preview:
         promote(root, candidate_manifest, generated)
@@ -219,7 +226,7 @@ def configure_project(root: Path, manifest: dict[str, Any], lock: dict[str, Any]
 
 def configure_local(root: Path, manifest: dict[str, Any], shared: dict[str, Any], matrix: ResolutionMatrix, *,
                     local: Sequence[str] | None, without: Sequence[str] | None,
-                    preview: bool, allow_unverified: bool) -> str:
+                    preview: bool, allow_unverified: bool, providers: Mapping[str, str] | None = None) -> str:
     """Replace this checkout's selections and omissions; see ``configure``.
 
     Only the checkout record changes. Its persistent selection (an explicit
@@ -240,7 +247,8 @@ def configure_local(root: Path, manifest: dict[str, Any], shared: dict[str, Any]
     previous = LocalCapabilities.read(checkout)
     selection = LocalCapabilities.read({"capabilities": {
         "selected": list(previous.selected if local is None else local),
-        "without": list(previous.without if without is None else without)}})
+        "without": list(previous.without if without is None else without),
+        "providers": dict(previous.providers if providers is None else providers)}})
     selection.validate(policy)
     matrix.normalize(list(selection.selected))
     previous_pins = local_pins(checkout)
@@ -248,10 +256,12 @@ def configure_local(root: Path, manifest: dict[str, Any], shared: dict[str, Any]
     version_record = checkout.pop("version-set", None)
     source = deepcopy(version_lock if version_lock is not None else shared)
     if version_lock is not None:
-        release_deselected(source, matrix, policy, previous, selection)
-    pins = pin_selection(matrix, policy, selection, source, previous, previous_pins, allow_unverified=allow_unverified)
-    checkout["capabilities"] = {"selected": list(selection.selected), "without": list(selection.without), "lock": render_toml(pins)}
-    composed = compose_lock(manifest, source, checkout)
+        release_deselected(source, matrix, policy, previous, selection, recommendations=resolution_recommendations(manifest))
+    pins = pin_selection(matrix, policy, selection, source, previous, previous_pins, allow_unverified=allow_unverified,
+                         recommendations=resolution_recommendations(manifest))
+    checkout["capabilities"] = {"selected": list(selection.selected), "without": list(selection.without), "lock": render_toml(pins),
+                                **({"providers": selection.providers} if selection.providers else {})}
+    composed = compose_lock(manifest, source, checkout, reset_providers=tuple(set(previous.providers) - set(selection.providers)))
     if version_record is not None:
         version_record["lock"] = render_toml(composed)
         checkout["version-set"] = version_record
@@ -262,40 +272,9 @@ def configure_local(root: Path, manifest: dict[str, Any], shared: dict[str, Any]
             "Updated local capability selection; shared files unchanged. Run 'project config resolve' to review permissions and prepare launch.")
 
 
-def pin_selection(matrix: ResolutionMatrix, policy: CapabilityPolicy, selection: LocalCapabilities,
-                  source: Mapping[str, Any], previous: LocalCapabilities, previous_pins: Mapping[str, Any], *,
-                  allow_unverified: bool) -> dict[str, Any]:
-    """Return the pins document for ``selection``: a lock holding exactly its providers.
-
-    Each provider's metadata comes from the first document that has it: the
-    ``source`` selection the pins will be laid over, then ``previous_pins``
-    for a capability that ``previous`` already selected, then a fresh catalog
-    resolution of the project's required and the selected capabilities. The IDE
-    selector and materialization follow the IDE component's document. Catalog
-    resolution failures raise ProjectConfigurationError. Inputs are unchanged.
-    """
-    active = sorted(set(policy.requirements()) | (set(selection.selected) - set(policy.required)))
-    fresh = tomllib.loads(matrix.resolve(active, project_only=True, allow_unverified=allow_unverified).render_lock())
-    pins = {key: deepcopy(value) for key, value in fresh.items() if key != "components"}
-    pins["components"] = {}
-    pins["materialization"] = {}
-    surface = fresh["components"].get("interactive-surface")
-    retained = set(previous.selected) & set(selection.selected)
-    for capability in selection.selected:
-        for component in matrix.component_closure(capability, lock=fresh):
-            documents = (source, *((previous_pins,) if capability in retained else ()), fresh)
-            document = next((item for item in documents if table(item, "components").get(component) is not None), None)
-            if document is None:
-                raise ProjectConfigurationError(f"The catalog resolved {capability!r} without pinning its provider {component!r}.")
-            pins["components"][component] = deepcopy(table(document, "components")[component])
-            if component == surface:
-                pins["components"]["interactive-surface"] = surface
-                pins["materialization"] = deepcopy(table(document, "materialization"))
-    return pins
-
-
 def release_deselected(source: dict[str, Any], matrix: ResolutionMatrix, policy: CapabilityPolicy,
-                       previous: LocalCapabilities, selection: LocalCapabilities) -> None:
+                       previous: LocalCapabilities, selection: LocalCapabilities, *,
+                       recommendations: Mapping[str, str] | None = None) -> None:
     """Remove providers of deselected capabilities from ``source`` in place.
 
     A provider stays when a required, known optional or still-selected
@@ -309,7 +288,9 @@ def release_deselected(source: dict[str, Any], matrix: ResolutionMatrix, policy:
             matrix.canonical_name(capability)
         except ProjectConfigurationError:
             continue
-        needed.update(matrix.component_closure(capability, minimums.get(capability)))
+        name = matrix.canonical_name(capability)
+        needed.update(matrix.component_closure(capability, minimums.get(capability),
+                      choice=selection.providers.get(name), recommended=(recommendations or {}).get(name)))
     table(source, "components")
     components: dict[str, Any] = source.setdefault("components", {})
     for capability in set(previous.selected) - set(selection.selected):

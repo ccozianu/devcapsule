@@ -6,7 +6,7 @@ only a consumer decides which of them it can supply.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Mapping
 
 from .file_formats import ProjectConfigurationError, table
@@ -25,6 +25,19 @@ def names(value: object, label: str) -> tuple[str, ...]:
     ):
         raise ProjectConfigurationError(f"{label} must be an array of non-empty capability names.")
     return tuple(sorted(set(value)))
+
+
+def provider_choices(value: Mapping[str, Any], label: str) -> dict[str, str]:
+    """Read a capability-to-component table without consulting the catalog."""
+    if any(not isinstance(key, str) or not key or key.strip() != key or "\x00" in key
+           or not isinstance(item, str) or not item or item.strip() != item or "\x00" in item
+           for key, item in value.items()):
+        raise ProjectConfigurationError(f"{label} must map capability names to component names.")
+    return dict(value)
+
+
+def resolution_recommendations(manifest: Mapping[str, Any]) -> dict[str, str]:
+    return provider_choices(table(manifest, "capabilities", "resolution"), "capabilities.resolution")
 
 
 def version_parts(value: str) -> tuple[int, ...]:
@@ -130,6 +143,10 @@ class LocalCapabilities:
     to skip, such as ``("browser-automation",)``; it cannot waive a required
     capability or a dependency needed by another selected capability.
 
+    ``providers`` stores explicit component choices by capability. Missing
+    entries follow the project resolution or the catalog; the table selects
+    no capability and grants no acquisition permission.
+
     Both tuples are sorted and unique, with no name in both. Use
     ``read(checkout)`` then ``validate(policy)`` for external data; direct
     construction assumes these invariants. Version pins remain in the
@@ -137,6 +154,7 @@ class LocalCapabilities:
     """
     selected: tuple[str, ...] = ()
     without: tuple[str, ...] = ()
+    providers: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def read(cls, checkout: Mapping[str, Any]) -> LocalCapabilities:
@@ -148,7 +166,7 @@ class LocalCapabilities:
         checking catalog support belong to lock selection, not this method.
         """
         value = table(checkout, "capabilities")
-        if set(value) - {"selected", "without", "lock"}:
+        if set(value) - {"selected", "without", "lock", "providers"}:
             raise ProjectConfigurationError("Unsupported local capability fields; left intact.")
         selected = names(value.get("selected", []), "local capabilities.selected")
         without = names(value.get("without", []), "local capabilities.without")
@@ -156,7 +174,7 @@ class LocalCapabilities:
             raise ProjectConfigurationError("A local capability cannot be both selected and omitted.")
         if "lock" in value and not isinstance(value["lock"], str):
             raise ProjectConfigurationError("Local capabilities.lock must contain a TOML lock.")
-        return cls(selected, without)
+        return cls(selected, without, provider_choices(table(value, "providers"), "local capabilities.providers"))
 
     def validate(self, policy: CapabilityPolicy) -> None:
         """Raise ProjectConfigurationError if an omission is not project-optional.

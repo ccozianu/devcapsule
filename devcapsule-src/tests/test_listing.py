@@ -149,7 +149,7 @@ def test_declared_values_rows_and_undeclared_answers() -> None:
 def test_render_and_document_carry_every_column() -> None:
     result = listing(manifest())
     text = result.render()
-    assert text.splitlines()[0].split() == ["KIND", "NAME", "EFFECTIVE", "SOURCE", "PENDING"]
+    assert text.splitlines()[0].split() == ["KIND", "NAME", "EFFECTIVE", "SOURCE", "PROVIDER", "PENDING"]
     document = result.document()
     assert document["schema-version"] == 2 and "(none)" in document["pending"]
     assert set(document["rows"][0]) == {"kind", "name", "effective", "source", "pending", "command"}

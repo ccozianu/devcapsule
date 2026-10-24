@@ -8,8 +8,8 @@ of :mod:`capability_commands`. The rc4 IDE recommendation command stays; agents 
 capabilities. Component acquisition still requires the developer's consent.
 
 The verbs are the ones the CLI UX redesign work order of 2026-10-24 settled:
-``require``, ``offer`` and ``drop`` for tools and environment variables,
-``recommend`` for the IDE, the memory limit, the CPU count and the curated host
+``require``, ``offer`` and ``drop`` for capabilities and environment variables,
+``recommend`` for a capability provider, the IDE, resources and curated host
 accesses, each with the owner's reason (``--because``).
 """
 
@@ -23,8 +23,8 @@ from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix
 
 from .authorization import CURATED_HOST_RECOMMENDATIONS, render_authorization_value
-from .capabilities import CapabilityPolicy
-from .capability_commands import canonical_tool_name, check_documents, parse_tool_names, paths, promote
+from .capabilities import CapabilityPolicy, requirement, resolution_recommendations
+from .capability_commands import canonical_tool_name, check_documents, paths, promote
 from .capability_selection import generate_lock
 from .file_formats import ProjectConfigurationError
 from .manifest_document import (
@@ -40,6 +40,7 @@ from .storage import discover_project, load_toml, require_settled
 from .values import normalize_memory_size
 
 __all__ = [
+    "edit_capabilities",
     "drop_environment",
     "drop_tools",
     "offer_environment",
@@ -50,18 +51,18 @@ __all__ = [
 ]
 
 
-def _project(start: Path) -> tuple[Path, dict[str, Any], dict[str, Any], ResolutionMatrix]:
+def _project(start: Path, *, check_resolutions: bool = True) -> tuple[Path, dict[str, Any], dict[str, Any], ResolutionMatrix]:
     root = discover_project(start)
     require_settled(root)
     manifest_path, lock_path, _ = paths(root)
     manifest, lock = load_toml(manifest_path), load_toml(lock_path)
-    check_documents(manifest, lock)
+    check_documents(manifest, lock, check_resolutions=check_resolutions)
     return root, manifest, lock, MATRICES[Platform.current()]
 
 
 def _policy_edit(
     start: Path, *, change: str, names: Sequence[str], because: str | None,
-    preview: bool, allow_unverified: bool,
+    preview: bool, allow_unverified: bool, native: bool = False,
 ) -> str:
     root, manifest, lock, matrix = _project(start)
     policy = CapabilityPolicy.read(manifest)
@@ -76,8 +77,10 @@ def _policy_edit(
         except ProjectConfigurationError:
             continue  # Unknown optional declarations remain opaque.
     def declared_name(name: str) -> str:
+        if native and name in required | optional:
+            return name
         canonical = canonical_tool_name(matrix, name)
-        return declared.get(canonical, canonical)
+        return name if native else declared.get(canonical, canonical)
     if change == "drop":
         canonical = tuple(declared_name(name) for name in names)
         unknown = sorted(set(canonical) - required - optional)
@@ -91,7 +94,17 @@ def _policy_edit(
             minimums.pop(name, None)
             reasons.pop(name, None)
     else:
-        canonical = tuple(declared_name(name) for name in parse_tool_names(matrix, names))
+        parsed = [requirement(name) for name in names] if native else [(name, None) for name in names]
+        if change == "offer" and any(minimum is not None for _, minimum in parsed):
+            raise ProjectConfigurationError("A minimum belongs on a required capability, not an optional one.")
+        canonical = tuple(dict.fromkeys(declared_name(name) for name, _ in parsed))
+        if change == "require":
+            for name, minimum in parsed:
+                key = declared_name(name)
+                if minimum is not None:
+                    minimums[key] = minimum
+                else:
+                    minimums.pop(key, None)
         if any(matrix.is_ide(name) for name in canonical):
             raise ProjectConfigurationError(
                 "IDE choices are each developer's; recommend one with 'config recommend ide NAME'."
@@ -105,11 +118,16 @@ def _policy_edit(
         if change == "offer":
             for name in canonical:
                 minimums.pop(name, None)
-    candidate = CapabilityPolicy(tuple(sorted(required)), tuple(sorted(optional)), tuple(sorted(minimums.items())), layered=True)
+    required_order = [requirement(item)[0] for item in manifest["capabilities"].get("required", manifest["capabilities"].get("need", []))]
+    optional_order = list(manifest["capabilities"].get("optional", []))
+    def ordered(values: set[str], previous: list[str]) -> tuple[str, ...]:
+        return tuple(name for name in dict.fromkeys((*previous, *canonical)) if name in values) if native else tuple(sorted(values))
+    candidate = CapabilityPolicy(ordered(required, required_order), ordered(optional, optional_order), tuple(sorted(minimums.items())), layered=True)
     candidate_manifest = deepcopy(manifest)
     candidate_manifest["devcapsule-schema-version"] = CURRENT_MANIFEST_SCHEMA_VERSION
     candidate_manifest["capabilities"] = capability_table(candidate, reasons, previous=manifest["capabilities"])
-    generated = generate_lock(candidate, matrix, previous=lock, allow_unverified=allow_unverified)
+    generated = generate_lock(candidate, matrix, previous=lock, allow_unverified=allow_unverified,
+                              recommendations=resolution_recommendations(candidate_manifest))
     check_documents(candidate_manifest, generated)
     if not preview:
         promote(root, candidate_manifest, generated)
@@ -122,6 +140,13 @@ def _policy_edit(
     if not preview:
         lines.extend(_refresh_own_checkout(root, candidate_manifest))
     return "\n".join(lines)
+
+
+def edit_capabilities(start: Path, change: str, names: Sequence[str], *, because: str | None = None,
+                      preview: bool = False, allow_unverified: bool = False) -> str:
+    """Edit capability declarations in the owner's input order, retaining aliases and minimums."""
+    return _policy_edit(start, change=change, names=names, because=because, preview=preview,
+                        allow_unverified=allow_unverified, native=True)
 
 
 def _refresh_own_checkout(root: Path, manifest: Mapping[str, Any]) -> list[str]:
@@ -226,10 +251,11 @@ def recommend(start: Path, name: str, value: str, *, because: str | None = None,
     recommendation. A host recommendation requires ``because``: the reason is
     what the developer reads when asked.
     """
-    root, manifest, _lock, matrix = _project(start)
+    root, manifest, lock, matrix = _project(start, check_resolutions=False)
     candidate_manifest = deepcopy(manifest)
     candidate_manifest["devcapsule-schema-version"] = CURRENT_MANIFEST_SCHEMA_VERSION
     removing = value.strip().lower() == "none"
+    generated = None
     if name in RECOMMENDATION_NAMES:
         current = Recommendations.read(manifest)
         reasons = dict(current.reasons)
@@ -284,16 +310,46 @@ def recommend(start: Path, name: str, value: str, *, because: str | None = None,
             del candidate_manifest["host"]
         effect = "every developer is asked, with your reason; a recommendation grants nothing"
     else:
-        raise ProjectConfigurationError(
-            f"Unknown recommendation {name!r}; the project may recommend "
-            + ", ".join((*RECOMMENDATION_NAMES, *HOST_RECOMMENDATION_NODES)) + "."
-        )
+        resolutions = resolution_recommendations(manifest)
+        try:
+            capability = name if removing and name in resolutions else matrix.canonical_name(name)
+        except ProjectConfigurationError:
+            raise ProjectConfigurationError(f"Unknown recommendation {name!r}; name a capability, IDE, resource or host access.") from None
+        reasons = capability_reasons(manifest)
+        reason_key = f"resolution.{capability}"
+        if removing:
+            if capability not in resolutions:
+                raise ProjectConfigurationError(f"The project recommends no resolution for {capability}; nothing changed.")
+            del resolutions[capability]
+            reasons.pop(reason_key, None)
+            rendered = "none"
+        else:
+            minimums = {matrix.canonical_name(key): minimum for key, minimum in CapabilityPolicy.read(manifest).minimums}
+            matrix.resolve_provider(capability, minimums.get(capability), recommended=value)
+            resolutions[capability] = value
+            if because is not None:
+                reasons[reason_key] = because
+            rendered = value
+        capabilities = candidate_manifest["capabilities"]
+        capabilities.pop("resolution", None)
+        capabilities.pop("reasons", None)
+        if resolutions:
+            capabilities["resolution"] = resolutions
+        if reasons:
+            capabilities["reasons"] = reasons
+        generated = generate_lock(CapabilityPolicy.read(candidate_manifest), matrix, previous=lock,
+                                  recommendations=resolutions)
+        effect = "the provider default; acquisition still needs the developer's trust or consent"
     _validate(candidate_manifest)
+    check_documents(candidate_manifest, generated if generated is not None else lock)
     if not preview:
-        promote(root, candidate_manifest)
+        promote(root, candidate_manifest, generated)
     head = "Preview; nothing written." if preview else (
         f"Recommendation removed: {name}." if removing else f"Recommended {name} = {rendered}: {effect}."
     )
+    if preview:
+        from .manifest_document import render_manifest
+        head += "\n" + render_manifest(candidate_manifest)
     return head
 
 

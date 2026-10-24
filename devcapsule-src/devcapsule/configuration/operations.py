@@ -467,7 +467,9 @@ def initialize_project(
         shared_lock = load_toml(lock_path)
     else:
         lock_action = "Regenerated" if lock_path.is_file() else "Created"
+        from .capabilities import resolution_recommendations
         shared_lock = generate_lock(identity.policy, matrix, previous=existing_lock,
+                                    recommendations=resolution_recommendations(existing_manifest or {}),
                                     allow_unverified=request.allow_unverified)
         _report_unverified(shared_lock)
     # A manifest written before 0.3.0 rc4 may require the IDE itself; then
@@ -702,7 +704,9 @@ def _preview_effective_lock(
         return dict(shared_lock)
     policy = CapabilityPolicy.read(manifest)
     local = LocalCapabilities(selected=selection.selected)
-    pins = pin_selection(matrix, policy, local, shared_lock, LocalCapabilities(), {}, allow_unverified=True)
+    from .capabilities import resolution_recommendations
+    pins = pin_selection(matrix, policy, local, shared_lock, LocalCapabilities(), {}, allow_unverified=True,
+                         recommendations=resolution_recommendations(manifest))
     checkout = {"devcapsule-checkout-schema-version": 1,
                 "capabilities": {"selected": list(selection.selected), "without": [], "lock": render_toml(pins)}}
     return effective_lock(manifest, compose_lock(manifest, shared_lock, checkout), checkout, warn=False)
@@ -721,13 +725,14 @@ def _stage_owner_selection(
         return
     policy = CapabilityPolicy.read(manifest)
     previous = LocalCapabilities.read(record.document)
-    local = LocalCapabilities(selected=selection.selected, without=previous.without)
+    local = LocalCapabilities(selected=selection.selected, without=previous.without, providers=previous.providers)
     local.validate(policy)
+    from .capabilities import resolution_recommendations
     pins = pin_selection(matrix, policy, local, shared_lock, previous, local_pins(record.document),
-                         allow_unverified=allow_unverified)
+                         allow_unverified=allow_unverified, recommendations=resolution_recommendations(manifest))
     _report_unverified(pins)
     record.document["capabilities"] = {"selected": list(local.selected), "without": list(local.without),
-                                       "lock": render_toml(pins)}
+                                       "lock": render_toml(pins), **({"providers": local.providers} if local.providers else {})}
 
 
 @dataclass(frozen=True)

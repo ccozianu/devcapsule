@@ -53,7 +53,9 @@ class RunFlags:
     """Run-once choices unless ``save``; trust is saved after the complete review, even without ``save``."""
 
     ide: str | None = None
-    agents: tuple[str, ...] = ()
+    agents: tuple[str, ...] = ()  # retired --agent adapter
+    capabilities: tuple[str, ...] = ()
+    providers: tuple[tuple[str, str], ...] = ()
     memory: str | None = None
     cpus: str | None = None
     environment: tuple[str, ...] = ()  # NAME=VALUE saved for this run, or NAME taken from the host
@@ -216,13 +218,21 @@ def _resource_answers(record: CheckoutRecord, manifest: Mapping[str, Any], flags
 
 
 def _selected_checkout(state: CheckoutState, document: dict[str, Any], flags: RunFlags) -> dict[str, Any]:
-    if flags.ide is None and not flags.agents:
+    if flags.ide is None and not flags.agents and not flags.capabilities and not flags.providers:
         return document
     selection = Selection(LocalCapabilities.read(document), state.surfaces, state.agents)
     if flags.ide is not None:
         selection.ide = _capability(flags.ide, state.surfaces, "IDE")
     for agent in flags.agents:
-        selection.agents.add(_capability(agent, state.agents, "agent"))
+        selection.extra.add(_capability(agent, state.agents, "agent"))
+    for capability in flags.capabilities:
+        name = state.matrix.canonical_name(capability)
+        if state.matrix.is_ide(name):
+            raise ProjectConfigurationError(f"Choose an IDE with '--ide {name}'.")
+        selection.without = {item for item in selection.without if state.matrix.canonical_name(item) != name}
+        selection.extra.add(name)
+    for capability, component in flags.providers:
+        selection.use(state.matrix, CapabilityPolicy.read(state.manifest), Recommendations.read(state.manifest), capability, component)
     return state.with_selection(selection, checkout=document, allow_unverified=flags.allow_unverified)
 
 

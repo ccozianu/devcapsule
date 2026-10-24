@@ -100,10 +100,13 @@ class ListingRow:
     pending: str = ""
     command: str = ""
     decision: Decision | None = None
+    provider: str = ""
+    provider_source: str = ""
 
     def document(self) -> dict[str, str]:
         return {"kind": self.kind, "name": self.name, "effective": self.effective, "source": self.source,
-                "pending": self.pending, "command": self.command}
+                "pending": self.pending, "command": self.command,
+                **({"provider": self.provider, "provider-source": self.provider_source} if self.provider else {})}
 
 
 @dataclass(frozen=True)
@@ -121,10 +124,11 @@ class Listing:
         return tuple(row.decision for row in self.rows if row.pending and row.decision is not None)
 
     def render(self) -> str:
-        headers = ("KIND", "NAME", "EFFECTIVE", "SOURCE", "PENDING")
-        values = [(row.kind, row.name, row.effective, row.source, row.pending) for row in self.rows]
+        headers = ("KIND", "NAME", "EFFECTIVE", "SOURCE", "PROVIDER", "PENDING")
+        values = [(row.kind, row.name, row.effective, row.source,
+                   f"{row.provider} ({row.provider_source})" if row.provider else "", row.pending) for row in self.rows]
         widths = [max(len(headers[index]), *(len(row[index]) for row in values)) if values else len(headers[index])
-                  for index in range(5)]
+                  for index in range(len(headers))]
         lines = ["  ".join(header.ljust(widths[index]) for index, header in enumerate(headers)).rstrip()]
         lines.extend("  ".join(value.ljust(widths[index]) for index, value in enumerate(row)).rstrip() for row in values)
         lines.extend(self.notes)
@@ -152,10 +156,11 @@ class Listing:
         fields = ("kind", "name", "effective", "source", "pending", "command")
         result = []
         for row in rows:
-            if not isinstance(row, dict) or any(not isinstance(row.get(field, ""), str) for field in fields):
+            if not isinstance(row, dict) or any(not isinstance(row.get(field, ""), str) for field in (*fields, "provider", "provider-source")):
                 raise ProjectConfigurationError("A listing row has the six text columns.")
             kind, name, effective, source, pending, command = (str(row.get(field, "")) for field in fields)
-            result.append(ListingRow(kind, name, effective, source, pending, command))
+            result.append(ListingRow(kind, name, effective, source, pending, command,
+                                     provider=str(row.get("provider", "")), provider_source=str(row.get("provider-source", ""))))
         notes = document.get("notes", [])
         return cls(tuple(result), tuple(str(note) for note in notes) if isinstance(notes, list) else ())
 
@@ -186,6 +191,7 @@ def assess_checkout(
     base_display: str | None = None,
     access_lock: Mapping[str, Any] | None = None,
     capability_versions: Mapping[str, str | None] | None = None,
+    capability_providers: Mapping[str, tuple[str, str]] | None = None,
 ) -> Listing:
     """The listing of one checkout, from its documents, writing nothing.
 
@@ -204,7 +210,12 @@ def assess_checkout(
     policy = CapabilityPolicy.read(manifest)
     local = LocalCapabilities.read(checkout)
     recommendations = Recommendations.read(manifest)
+    surfaces = {name: (capability_providers or {}).get(name, (component, ""))[0] for name, component in surfaces.items()}
+    agents = {name: (capability_providers or {}).get(name, (component, ""))[0] for name, component in agents.items()}
     rows.extend(_capability_rows(policy, local, recommendations, shared_lock, composed_lock, surfaces, agents, project, capability_versions or {}))
+    from dataclasses import replace
+    rows = [replace(row, provider=capability_providers[row.name][0], provider_source=capability_providers[row.name][1])
+            if capability_providers and row.name in capability_providers else row for row in rows]
     rows.extend(_launcher_value_rows(manifest, checkout, workstation, project))
     rows.extend(_access_rows(manifest, composed_lock if access_lock is None else access_lock,
                              checkout, project, base_display, workstation))

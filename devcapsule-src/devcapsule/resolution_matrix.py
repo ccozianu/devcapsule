@@ -318,34 +318,52 @@ class ResolutionMatrix:
         return self._capability_table[self.canonical_name(capability)].providers
 
     def resolve_provider(self, capability: str, minimum: str | None = None,
-                         lock: Mapping[str, Any] | None = None) -> str | None:
-        """Choose one provider, filtering by a minimum before catalog preference.
+                         lock: Mapping[str, Any] | None = None, *,
+                         choice: str | None = None, recommended: str | None = None) -> str | None:
+        """Resolve one capability; this is the only provider-selection function.
 
-        A supplied lock establishes its existing choice; it never requests a
-        newer pin. Dependencies are expanded separately by component_closure.
+        Filter by the minimum first. An explicit checkout choice wins, then
+        the project's recommendation, then the first eligible catalog provider.
+        A named choice that cannot meet the minimum is an error, not permission
+        to substitute software. A lock establishes an already resolved choice
+        and exact versions; it never requests newer pins or other providers.
+        Base services return None and are version-checked during base selection.
+        Inputs are unchanged. Invalid names or unavailable choices raise ResolutionError.
         """
         providers = self.providers(capability)
+        requested = choice if choice is not None else recommended
+        if requested is not None and requested not in providers:
+            raise ResolutionError(f"{requested!r} does not provide {capability!r}; providers: "
+                                  + (", ".join(providers) or "the base") + ".")
         if not providers:
             return None
-        if minimum is None and lock is None:
-            return self.providers(capability)[0]
         if lock is not None:
             evidence = lock.get("capability-providers", {})
             recorded = evidence.get(capability, evidence.get(self.canonical_name(capability), []))
             choices = tuple(component for component in providers if component in recorded)
-            if len(choices) == 1:
+            if len(choices) > 1:
+                raise ResolutionError(f"Lock names multiple providers for {capability!r}.")
+            if choices:
                 providers = choices
+        eligible = []
         for component in providers:
-            if minimum is None:
-                return component
             versions: tuple[str | None, ...]
             if lock is not None:
                 metadata = lock.get("components", {}).get(component, {})
                 versions = (metadata.get("version"),) if isinstance(metadata, Mapping) else ()
             else:
                 versions = tuple(pin.version for pin in self._components.get(component, ()))
-            if any(version is not None and meets_minimum(version, minimum) for version in versions):
-                return component
+            if minimum is None and (lock is not None or versions) or minimum is not None and any(
+                    version is not None and meets_minimum(version, minimum) for version in versions):
+                eligible.append(component)
+        if requested is not None:
+            if requested in eligible:
+                return requested
+            requirement_text = capability if minimum is None else f"{capability}>={minimum}"
+            raise ResolutionError(f"Provider {requested!r} cannot supply {requirement_text}; "
+                                  "choose a compatible provider.")
+        if eligible:
+            return eligible[0]
         if lock is not None:
             raise ResolutionError("missing supported providers: " + ", ".join(providers))
         available = ", ".join(f"{component} {pin.version}" for component in providers
@@ -353,9 +371,10 @@ class ResolutionMatrix:
         raise ResolutionError(f"No provider supplies {capability} {minimum or ''} or newer; catalog supplies {available or 'none'}.")
 
     def component_closure(self, capability: str, minimum: str | None = None,
-                          lock: Mapping[str, Any] | None = None) -> tuple[str, ...]:
+                          lock: Mapping[str, Any] | None = None, *,
+                          choice: str | None = None, recommended: str | None = None) -> tuple[str, ...]:
         """The chosen provider and its transitive component dependencies."""
-        component = self.resolve_provider(capability, minimum, lock)
+        component = self.resolve_provider(capability, minimum, lock, choice=choice, recommended=recommended)
         result = [component] if component else []
         for name in result:
             definition = COMPONENTS.get(name)
@@ -387,7 +406,8 @@ class ResolutionMatrix:
             names.add(self.canonical_name(item))
         return tuple(sorted(names))
 
-    def resolve(self, need: object, *, allow_unverified: bool = False, project_only: bool = False) -> Formation:
+    def resolve(self, need: object, *, allow_unverified: bool = False, project_only: bool = False,
+                choices: Mapping[str, str] | None = None, recommendations: Mapping[str, str] | None = None) -> Formation:
         """Derive one complete formation from a capability set, offline.
 
         Fully verified resolution is always tried first, so the escape hatch
@@ -404,18 +424,23 @@ class ResolutionMatrix:
         declarations = [requirement(item) for item in need]
         capabilities = self.normalize([name for name, _ in declarations])
         minimums = {self.canonical_name(name): minimum for name, minimum in declarations if minimum is not None}
+        choices = {self.canonical_name(name): value for name, value in (choices or {}).items()}
+        recommendations = {self.canonical_name(name): value for name, value in (recommendations or {}).items()}
+        resolved = {name: self.resolve_provider(name, minimums.get(name),
+                    choice=choices.get(name), recommended=recommendations.get(name)) for name in capabilities}
+        record_providers = bool(choices or recommendations or minimums) or any(len(self.providers(name)) > 1 for name in capabilities)
         ide_names = [name for name in capabilities if self.is_ide(name)]
-        surface_id = (None if project_only and not ide_names else self._selected_surface(capabilities, minimums))
+        surface_id = (None if project_only and not ide_names else self._selected_surface(capabilities, resolved))
         required = [surface_id] if surface_id else []
         for name in capabilities:
-            provider = self.resolve_provider(name, minimums.get(name))
+            provider = resolved[name]
             if provider is not None and provider not in required:
                 required.append(provider)
         for component in required:
             definition = COMPONENTS.get(component)
             if definition is not None:
                 required.extend(item for item in definition.required_components() if item not in required)
-        component_minimums = {self.resolve_provider(name, minimum): minimum
+        component_minimums = {resolved[name]: minimum
                               for name, minimum in minimums.items() if self.providers(name)}
         candidates = {component: tuple(pin for pin in self._components[component]
                                       if component not in component_minimums
@@ -435,7 +460,7 @@ class ResolutionMatrix:
         for base in reversed(bases):
             chosen = self._verified_selection(required, base, candidates)
             if chosen is not None:
-                return self._formation(capabilities, surface_id, base, chosen, minimums=minimums)
+                return self._formation(capabilities, surface_id, base, chosen, minimums=minimums, resolved=resolved if record_providers else None)
 
         # Nothing fully validated. What the user reads from here on is the
         # owner's 2026-09-06 ruling: a missing validation is a fact about
@@ -460,7 +485,7 @@ class ResolutionMatrix:
         base, chosen, unverified = fallback
         if allow_unverified:
             return self._formation(
-                capabilities, surface_id, base, chosen, unverified=unverified, minimums=minimums
+                capabilities, surface_id, base, chosen, unverified=unverified, minimums=minimums, resolved=resolved if record_providers else None
             )
         raise ResolutionError(
             "Not yet validated: "
@@ -469,7 +494,7 @@ class ResolutionMatrix:
             "what is unvalidated for everyone who uses it."
         )
 
-    def _selected_surface(self, capabilities: tuple[str, ...], minimums: Mapping[str, str]) -> str:
+    def _selected_surface(self, capabilities: tuple[str, ...], resolved: Mapping[str, str | None]) -> str:
         interactive = sorted(set(capabilities) & set(self.ide_capabilities()))
         if not interactive:
             choices = ", ".join(self.ide_capabilities())
@@ -482,7 +507,7 @@ class ResolutionMatrix:
                 "A V1 platform lock holds exactly one interactive surface, but "
                 f"capabilities.need selects {', '.join(interactive)}; keep exactly one."
             )
-        provider = self.resolve_provider(interactive[0], minimums.get(interactive[0]))
+        provider = resolved[interactive[0]]
         assert provider is not None
         return provider
 
@@ -572,6 +597,7 @@ class ResolutionMatrix:
         chosen: Mapping[str, _ComponentPin],
         unverified: tuple[str, ...] = (),
         minimums: Mapping[str, str] | None = None,
+        resolved: Mapping[str, str | None] | None = None,
     ) -> Formation:
         components: dict[str, Any] = {}
         if surface_id is not None:
@@ -588,6 +614,8 @@ class ResolutionMatrix:
             # which the filename already carries.
             "capabilities-digest": canonical_digest({"need": [f"{name}>={minimums[name]}" if minimums and name in minimums else name
                                                        for name in capabilities]}),
+            **({"capability-providers": {name: list(self.component_closure(name, choice=provider))
+                                        for name, provider in resolved.items()}} if resolved else {}),
             "base": dict(base.lock_table),
             "components": components,
             "materialization": dict(self._materialization[surface_id]) if surface_id else {},
@@ -1421,12 +1449,13 @@ def _render_table(prefix: str | None, table: Mapping[str, Any], lines: list[str]
             lines.append("")
         lines.append(f"[{prefix}]")
     for key, value in scalars.items():
-        if not isinstance(value, (str, int, bool)):
+        if not isinstance(value, (str, int, bool, list)) or isinstance(value, list) and any(not isinstance(item, str) for item in value):
             raise ProjectConfigurationError(
                 f"Unsupported lock value type for {key!r}: {type(value).__name__}."
             )
         rendered_key = key if _is_bare_key(key) else quote_toml(key)
-        lines.append(f"{rendered_key} = {render_toml_scalar(value)}")
+        rendered_value = "[" + ", ".join(quote_toml(item) for item in value) + "]" if isinstance(value, list) else render_toml_scalar(value)
+        lines.append(f"{rendered_key} = {rendered_value}")
     for key, value in subtables.items():
         component = key if _is_bare_key(key) else quote_toml(key)
         _render_table(component if prefix is None else f"{prefix}.{component}", value, lines)

@@ -318,7 +318,8 @@ def capability_table(
     if policy.optional:
         result["optional"] = list(policy.optional)
     kept = {name: reason for name, reason in sorted((reasons or {}).items())
-            if reason and name in {*policy.required, *policy.optional}}
+            if reason and (name in {*policy.required, *policy.optional}
+                           or name in {f"resolution.{key}" for key in (previous or {}).get("resolution", {})})}
     if kept:
         result["reasons"] = kept
     result.update({key: value for key, value in current_capability_fields(previous or {}).items()
