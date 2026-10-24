@@ -8,24 +8,25 @@ updated: 2026-10-24
 Every recorded choice in a checkout is a node with one name. `project config
 show` prints them with the value the next launch uses and its source; the
 commands below record them. All are yours, per checkout, outside the
-repository. Vendor downloads and DevCapsule's published bases are trusted
-once per computer instead, on [Vendor software and trust](../configuration/software-approvals.md);
-`base-image` below is the per-checkout consent for a base outside that channel.
+repository. Workstation trust can cover published bases and vendor downloads;
+per-checkout consents also remain supported. See
+[Vendor software and trust](../configuration/software-approvals.md).
 
 ## Authorizations, `config authorize NAME VALUE [JUSTIFICATION]`
 
 | Node | Values | Effect |
 |---|---|---|
-| `base-image` | an exact `docker.io/…@sha256:` digest, or `default` for the project's current recommendation | Consent to run that image; binds to the image, so a lock change around an unchanged base keeps it |
+| `base-image` | `default` or the lock's exact digest; a local image tag or ID for a local base | Consent to run that image; binds to the image, so a lock change around an unchanged base keeps it |
 | `network` | `host`, `bridge`; unanswered defaults to `bridge` | `host` shares the host network namespace; `bridge` denies that access; available on every project |
-| `docker-daemon` | `host-socket` | The host Docker control socket is mounted; the capsule can control the host daemon |
+| `docker-daemon` | `host-socket`, `none` | `host-socket` mounts the host Docker control socket; `none` denies that access |
 | `development-sudo` | `true`, `false` | The capsule user may elevate inside the container through a temporary, launcher-owned sudoers policy |
 | `host-browser` | `true`, `false` | `xdg-open` in the capsule may ask the host browser to open a URL |
-| `host-x11` | `true`, `false` | The host display session is bound into the capsule instead of the contained desktop; never recommended by a project, stated at launch |
+| `host-x11` | `true`, `false` | The host display session is bound into the capsule instead of the contained desktop; never recommended by a project; the contained desktop is the default |
 | `claude-code-download`, `antigravity-download` | `true`, `false` | Per-checkout consent to that vendor's agent when its channel is not trusted on this computer; `false` denies it even when it is |
 
 `--all-recommended` previews every recommendation and authorizes all only on
-`y`. A run-once form, `project run --authorize NAME VALUE`, records nothing.
+`y`. For host access, `project run --authorize NAME VALUE` applies to one launch.
+Add `--save` to record it for the checkout.
 `config deny NAME` records a denial and `config forget NAME` removes your
 answer. `config approve [NAME...|--all]` records new versions of vendor
 software you consented to per checkout.

@@ -1,7 +1,7 @@
 ---
 description: Build a DevCapsule base image on your computer and select it for one checkout, when the published base lacks something the capsule needs, such as the web console.
 weight: 6
-updated: 2026-10-19
+updated: 2026-10-24
 ---
 # Build and select a local base
 
@@ -64,8 +64,8 @@ The first command inspects the image, checks that it is a DevCapsule base
 for your platform, and records its image ID in this checkout's own
 configuration. It prints the ID it bound to and says that this
 developer-owned selection overrides the published base recommendation for
-this checkout. The second launches on it; on a recipe-11 base the launcher prints the web console
-link and the console answers.
+this checkout. The second launches on it. On a recipe-11 base, the launcher
+prints the web console link.
 
 What the selection is, and is not:
 

@@ -6,7 +6,9 @@ updated: 2026-10-24
 # Resource limits
 
 The launcher owns two limits of every capsule: its memory and its CPU count.
-They are set in three places, and the most specific one wins:
+For each limit, the launcher uses the first available value in this order:
+the run flag, the checkout answer, the project recommendation, then the
+workstation default. If none supplies a value, DevCapsule sets no limit.
 
 ```bash
 ~/.local/bin/devcapsule project config set memory 8GiB
@@ -25,11 +27,16 @@ They are set in three places, and the most specific one wins:
 - `run --memory` and `run --cpus` apply to one launch; `run --save` records
   them for the checkout.
 
-Memory takes Docker's spellings, `6g`, `6GiB`, `6144m`. `config show` prints
-the value the next launch uses and its source: the checkout, the project's
-recommendation, or the workstation default. Anything else about the
-container goes through the saved Docker arguments on
-[Project versus personal](project-versus-personal.md#saved-docker-arguments).
+Memory accepts sizes such as `6g`, `6GiB` and `6144m`.
+The listing normalizes these to `6GiB` or `6144MiB`.
+CPUs must be a positive integer; fractional values such as `1.5` are refused.
+`config show` prints each value and its source.
+
+Other supported Docker options use the
+[saved Docker arguments](project-versus-personal.md#saved-docker-arguments).
+Some options remain reserved. For example, the IDE's runtime template fixes
+shared-memory size; raw `--shm-size` cannot change it.
+Use `run --name NAME` to change the container name for one launch.
 
 ## Values a project declares
 
@@ -42,10 +49,12 @@ description = "Parallel build jobs; the integration suite needs at least 4."
 ```
 
 Set them the same way, `config set build.workers 4`; `config set` accepts
-only names the project declares and validates the value against its type. A
-declared value never grants host access or a download; those are
-authorizations, on [Granting and withdrawing](../containment/granting-and-withdrawing.md).
-A manifest written before {{version}} that declared a memory limit under its own
-name, such as `runtime.memory-limit`, keeps working: `config set` under that
-name records the launcher's `memory`, and `config show` lists it as
-`memory`.
+the two launcher values and names the project declares. It validates each
+value against its type. Declared values grant no host access or downloads.
+Those need authorizations, on [Granting and withdrawing](../containment/granting-and-withdrawing.md).
+Older manifests can declare a memory value under a name such as
+`runtime.memory-limit`, with `runtime-effect = "docker.memory-limit"`.
+The launcher still reads its recommendation and any saved answer as `memory`.
+To change it, use `config set memory SIZE`.
+`config set runtime.memory-limit SIZE` now refuses and names that replacement.
+`config set memory default` clears the old answer and follows defaults again.

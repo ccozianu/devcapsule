@@ -37,15 +37,16 @@ devcapsule project init --creator mailto:you@example.org \
 ```
 
 `--require` and `--offer` write the project's manifest,
-`.devcapsule/devcapsule.toml`, in the form an owner would write by hand:
+`.devcapsule/devcapsule.toml`. In a folder named `sample`, it contains:
 
 ```toml
 devcapsule-schema-version = 2
 
 [project]
 name = "sample"
-creator = "mailto:you@example.org"
 slug = "sample"
+creator = "mailto:you@example.org"
+mount = "/workspace/sample"
 
 [capabilities]
 required = ["python"]
@@ -58,9 +59,10 @@ python = 3
 DevCapsule generates the platform lock beside it, pinning the base image and
 the project's tools. Commit both files. `--ide` and `--agent` are yours: they
 go to your checkout record on your computer, never to the repository. Omit
-`--ide` to leave the choice to each developer; the first `devcapsule project
-run` asks for it. When the project has nothing left to ask, `init` ends ready
-to run.
+`--ide` to leave the choice to each developer. An interactive `init` can ask
+for it; otherwise the first `devcapsule project run` asks when no IDE is
+selected or recommended. With an IDE selected, `init` can also ask for
+per-checkout base consent. When no required answer remains, it ends ready to run.
 
 Manifests of schema 2 need DevCapsule {{version}} or later. A manifest written
 by an older launcher, with `capabilities.need`, stays readable: its tools stay
@@ -69,8 +71,9 @@ it named stays selected for that checkout.
 
 ## Change the shared contract
 
-Each command names what it does and writes the manifest and the lock
-together:
+Tool edits update the manifest and regenerate the lock together.
+Environment declarations and recommendations update the manifest only.
+Use `--preview` on any owner command to inspect the change without writing:
 
 ```sh
 devcapsule project config require tool postgresql-client --because "inspect the owner's database"
@@ -84,11 +87,12 @@ devcapsule project config recommend network host --because "the dev server's por
 ```
 
 `require tool NAME=MAJOR` pins an SDK major; `python=4` fails when no
-supported base supplies it. A required environment input is asked at the
-first launch that needs it, hidden from the terminal, and kept privately on
-the developer's computer; an optional one is listed, never asked. A
-recommended host access is a question the developer answers, once, and a
-changed recommendation never widens access on its own.
+supported base supplies it. At a terminal, `run` asks for missing required
+environment inputs with a hidden prompt and saves the answers privately.
+Without a terminal, missing required inputs produce status 3.
+Optional inputs are listed but never prompted.
+A recommended host access is a question for the developer.
+A changed recommendation never widens access on its own.
 
 ## Make the checkout yours
 
@@ -108,9 +112,10 @@ version pin for it; restoring brings that version back. The
 [version commands](../updates/component-upgrades.md) manage updates
 separately.
 
-Every flag of `devcapsule project run` is the same choice for one launch:
-`run --ide frontend-ide --agent codex-agent` uses them without recording
-them; `run --save` records them as the commands above would.
+`devcapsule project run --ide frontend-ide --agent codex-agent` selects
+those tools for one launch. Add `--save` to record those choices for the
+checkout. Channel acceptance with `--trust` is a workstation choice and
+persists without `--save`.
 
 ## See and check
 
@@ -121,11 +126,20 @@ devcapsule project config check
 
 `show` lists every choice with the value the next launch uses, where it
 comes from, and what is pending, with the command that settles it. It writes
-nothing. `check` validates the shared contract and the checkout the same way
-and exits with status 3 when a decision is pending, naming each; a script
-reads the status, a person reads the list. Neither downloads a tool,
-contacts Docker or grants anything. `check --manifest FILE --lock FILE`
-validates a candidate pair before you commit it.
+nothing. On the host, `check` validates the shared contract and lists pending
+checkout decisions. It exits 3 when any decision is pending, including an
+unanswered host recommendation. Noninteractive `run` can use the secure
+default for that recommendation instead.
+
+Neither inspection command downloads tools or contacts Docker.
+`check --manifest FILE --lock FILE` validates only the candidate contract;
+it does not assess checkout decisions. Inside a capsule, `check` cannot
+assess current host decisions. Run it with the host launcher for that check.
+
+If a shared edit is interrupted, readers name the recovery command:
+`devcapsule project config capabilities --recover`.
+This retained command repairs the manifest/lock transaction.
+It refuses to overwrite files changed independently.
 
 ## When a contributor has a different launcher
 
@@ -134,8 +148,11 @@ a warning and runs without it. A failed optional download also permits a
 reduced run; a checksum mismatch remains an integrity error. Required tools
 and their dependencies have to be available. When a project adds a
 requirement that a developer's saved version set cannot meet, `run` stops
-with status 3 and names the version commands that follow the project again;
-it never waives the requirement silently.
+with status 3 and names the remedies. Use `devcapsule project versions
+follow-project --apply` to return to the shared lock. Alternatively, create
+a compatible preview with `versions preview COMPONENT VERSION`, then use
+`versions select PREVIEW` with its full preview identity.
+The launcher never waives the requirement silently.
 
 Launchers released before this contract cannot read schema 2. Upgrade them
 before adopting it. When DevCapsule develops itself, validate the transition

@@ -1,26 +1,27 @@
 ---
-description: Add Claude Code, OpenAI Codex or the Antigravity CLI to a project in one command, and let it work at full speed inside the capsule's boundary.
+description: Add Claude Code, OpenAI Codex or the Antigravity CLI to your checkout in one command, and let it work at full speed inside the capsule's boundary.
 role: agents
 weight: 1
-updated: 2026-09-28
+updated: 2026-10-24
 ---
 # Choose an agent
 
-DevCapsule supports three coding agents. Each is an ordinary component of
-the project: selected once, acquired on the next launch, signed in once, and
-then present in every session with its state kept.
+DevCapsule supports three coding agents. Choose agents for your checkout.
+DevCapsule acquires them on the next launch and keeps their sign-in state between sessions.
 
-| Agent | Add it to the project | Start it in the IDE terminal |
+| Agent | Add it to your checkout | Start it in the IDE terminal |
 |---|---|---|
 | Claude Code | `~/.local/bin/devcapsule project config agent add claude-code-agent` | `claude` |
 | OpenAI Codex | `~/.local/bin/devcapsule project config agent add codex-agent` | `codex` |
 | Antigravity CLI | `~/.local/bin/devcapsule project config agent add antigravity-agent` | `antigravity` |
 
-Save your work and stop the capsule first. Run the `need` command in your
-computer's terminal, from the project folder. It adds the agent to the
-project's shared tool selection and lock, then asks for the vendor-download
-consent that agent needs; read the terms it shows before accepting. Start the
-capsule again with `project run`; it acquires the agent on that launch.
+Run the `config agent add` command in your computer's terminal, from the
+project folder. It changes your checkout's selection and local version pins.
+It does not change the shared manifest or lock. Save your work, stop the
+capsule, then use `project run` to acquire the agent and start another session.
+Read any vendor terms before accepting them. See
+[Vendor software and trust](../configuration/software-approvals.md) for
+consent commands and the current limit on trusting personally selected agents.
 
 Use your own provider account and plan. DevCapsule does not include an AI
 subscription and never imports a sign-in from your computer. How each agent
@@ -52,6 +53,6 @@ agent durable context with an instructions file at the project root; see
 ## Which agent?
 
 Whichever your subscription covers. All three read a project instructions
-file, run inside the same boundary, and keep their sign-in per checkout. A
-project can select more than one, and you can switch in a later session
+file, run inside the same boundary, and keep their sign-in per checkout. You
+can select more than one, and you can switch in a later session
 without losing anything; see [Review and change agents](review-and-change-agents.md).

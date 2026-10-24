@@ -14,11 +14,10 @@ change applies to the next launch: stop the capsule, change, launch.
 ~/.local/bin/devcapsule project config show
 ```
 
-The listing has one row per host access with the value the next launch
-uses, its source, the project's manifest, the lock, your checkout record,
-or the secure default, and what is pending. Below it, the pending decisions
-are named with the exact command for each choice. A recorded denial is a
-decision, shown as yours.
+The listing shows each access, its effective value and its source.
+The source can be the project, the lock, your checkout answer or the secure default.
+Pending rows give the commands that settle them. A recorded denial is shown
+as your decision.
 
 ## Allow one thing
 
@@ -49,12 +48,14 @@ It prints every value and reason first and writes only when you press `y`.
 ~/.local/bin/devcapsule project run --authorize host-browser true
 ```
 
-Run-once answers use the same grammar and are never recorded. Only an
-access the project declares can be answered at all; `config show` lists
-the declared ones, and the error names them when you ask for another.
+Without `--save`, these flags apply only to this launch.
+Add `--save` to record the answers for the checkout.
+The launcher provides `network`, `docker-daemon`, `development-sudo`,
+`host-browser` and `host-x11` on every project. They need no project
+recommendation. `config show` lists the available authorizations.
 Everything after `--` goes verbatim to `docker run`; the options the
 launcher composes itself, such as `--network` and `--memory`, are refused
-with the configuration command named.
+with an alternative named when one exists. Shared-memory size has no user setting.
 
 ## Deny and forget
 
@@ -73,14 +74,14 @@ access.
 | Access | Values |
 |---|---|
 | `network` | `host`, `bridge`; `bridge` is the default when unanswered; available on every project |
-| `docker-daemon` | `host-socket`; omitted means no daemon |
+| `docker-daemon` | `host-socket`, `none`; `none` denies host-daemon access |
 | `development-sudo` | `true`, `false` |
 | `host-browser` | `true`, `false` |
 | `host-x11` | `true`, `false`; never recommended by a project; the contained desktop is the default, and a base without one asks for your explicit consent |
-| `base-image` | `default` for the project's current pin, or an exact `@sha256:` digest, for a base outside DevCapsule's trusted channel |
+| `base-image` | `default` or the exact digest currently pinned by the lock; a local image tag or ID selects a local base |
 
-Vendor downloads and DevCapsule's published bases are not per-checkout
-answers any more: you trust their channel once for your computer, on
+Workstation trust can cover vendor downloads and DevCapsule's published bases.
+Per-checkout consents remain supported. See
 [Vendor software and trust](../configuration/software-approvals.md). What
 each access opens is on [The boundary](the-boundary.md); the full node list
 is in [Configuration nodes](../reference/configuration-nodes.md).
