@@ -213,8 +213,8 @@ A minimum is part of the name string, in the manifest and on the command
 line, quoted at a shell because `>` redirects; `drop python` removes the
 requirement whatever its minimum; a second `require 'python>=3.15'`
 replaces the minimum. `require`, `offer` and `drop` take capabilities;
-`tool` and `env` as sub-words go, `env` becoming `require env NAME` only where Part 5 keeps
-the word. `recommend` takes either a recommendation name (`ide`, `memory`,
+the `tool` sub-word goes; `require env NAME` and `offer env NAME` keep
+the `env` word, since an environment input is not a capability. `recommend` takes either a recommendation name (`ide`, `memory`,
 `cpus`, a host access) or a capability followed by a provider; a provider
 the catalog does not list for that capability is refused before anything
 is written. The manifest gains one table and loses none:
@@ -270,7 +270,7 @@ the platform can satisfy as the contract error it is today.
   and offered capabilities, resolved by the project's recommendation
   where it has one, so a fresh clone resolves offline. A developer's
   different provider is pinned in the checkout record, as the IDE is
-  today. Whether the lock also pins the alternatives is Part 5 item 5.
+  today. The lock does not pin the alternatives (Part 5 item 5).
 - Trust and consent are asked per component, exactly as now; a provider
   change to a vendor component asks like any other first acquisition.
 
