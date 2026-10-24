@@ -233,12 +233,12 @@ is written. The manifest gains one table and loses none:
 required = ["cpp-compiler", "python>=3.14", "java>=21", "playwright>=1.21"]
 optional = ["browser-automation", "codex-agent"]
 
-[recommendations]
-ide = "frontend-ide"
-
-[recommendations.resolution]
+[capabilities.resolution]
 frontend-ide = "codium"
 cpp-compiler = "clang"
+
+[recommendations]
+ide = "frontend-ide"
 ```
 
 ### 3.2 For developers
@@ -330,10 +330,18 @@ the rest are implementation.
    are; a project's agent instructions name one. A single `coding-agent`
    with three providers could not express "both Codex and Claude Code"
    without the cardinality the owner struck.
-4. **The resolution lives in `[recommendations.resolution]`,** a table from
-   capability to component beside `[recommendations]`, read by the rc4
-   launcher as an unknown recommendation it warns about and ignores; the
-   schema stays 2 (R-CONFIG-001, tolerant readers). The minimum-DevCapsule
+4. **The resolution lives in `[capabilities.resolution]`,** a table from
+   capability to component beside `[capabilities.reasons]`; the schema
+   stays 2 (R-CONFIG-001, tolerant readers). Corrected 2026-10-24 during
+   slice 2: the rc4 reader refuses an unknown key under
+   `[recommendations]` ("recommendations declares resolution; known
+   recommendations: ide, memory, cpus") and silently tolerates an unknown
+   table under `[capabilities]`, verified with the rc4 executable; the
+   earlier placement would have made every manifest with a resolution
+   unreadable by rc4. rc4 ignores the table and derives the catalog's
+   first provider, which is the only provider of every capability today.
+   A manifest that names a minimum or a component alias is unreadable by
+   rc4 regardless, as any new vocabulary is. The minimum-DevCapsule
    declaration of the 2026-10-22 requirement is not folded in here.
 5. **The lock pins the resolved provider only.** A developer who chooses
    another gets it pinned in the checkout record and the version
