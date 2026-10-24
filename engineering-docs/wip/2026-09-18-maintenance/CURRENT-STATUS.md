@@ -284,6 +284,29 @@ begin the rewrite until project-management assigns it.
 
 ## Current State
 
+**2026-10-24, late: the next work order drafted.** Reviewing rc4's
+vocabulary, the owner found the split of components into IDEs, agents
+and tools unjustified and settled the model with the agent in
+conversation: capabilities (the project's word) provided by components
+(the catalog's), the surface the one special role, cardinality a property
+of the capability, and the project able to require, offer or recommend a
+capability and, optionally, recommend its resolution. The draft
+[work order](../../work-orders/2026-10-24-capabilities-and-components.md)
+refactors the redesign's output: it deletes the `-agent` kind, the
+matrix's refusal of agents in the shared contract and the three command
+families, and adds `[recommendations.resolution]` and a minimum version on any
+requirement; the SDK major is removed entirely by the owner's ruling. Its
+Part 5 asks the owner nothing: the implementation choices are taken by the
+agent within the rulings and the owner reverses any by a word; the two
+that change scope, deleting the rc4 aliases and targeting the final 0.3.0
+tag, are marked. The owner struck cardinality from the model and tabled
+the renaming of the IDE role to the capsule's entry point as D-0014,
+proposed and in scope for V1; the order and the records say the IDE owns
+the container's lifetime and can make use of the display, never that it
+owns the display. The owner's complaint that every work order makes work
+for them is taken: an order is written as decisions taken, not as
+questions. Nothing is implemented.
+
 **2026-10-24, evening: rc4 tagged, published and verified.** The owner
 merged PR #274 at `c04cb4e`; `78a9c66` is an ancestor of `main`;
 `v0.3.0-rc4` on `78a9c66`, the candidate gate `mainline` with no
