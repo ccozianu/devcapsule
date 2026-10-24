@@ -303,6 +303,50 @@ commands and the channel classifier verified by hand. The three slices
 GitHub retargets it as the earlier one merges. The next candidate, rc5,
 follows the merges, with the diagnostics snapshot, image cleanup and C20
 still to come, and the documentation language review before the final tag.
+**2026-10-25: capabilities and components, slice 2 accepted; slice 3
+running.** Slice 2, the owner's and the developer's commands, the
+resolution recommendation and the provider choice, is
+[PR #277](https://github.com/ccozianu/devcapsule/pull/277) on
+`ws-maintenance/capabilities-2-commands` into slice 1's branch, Codex
+session `01a17009-1972-75e1-a5e1-29bc111a6de4`. Codex stopped first on a
+real blocker: the rc4 reader refuses an unknown key under
+`[recommendations]`, so the order's `[recommendations.resolution]` was
+unreadable by rc4; the reviewer verified with the rc4 executable that an
+unknown table under `[capabilities]` is tolerated silently, moved the
+table to `[capabilities.resolution]` and corrected the order (`168181d`);
+the reviewer also struck the reason on a resolution recommendation, by
+the owner's rule of removal, nothing reading it (`34fa5f1`). One review
+round: `compose_lock` had become a writer, the resolver's steps were not
+legible and the lock's shape depended on inputs, the resolution's reason
+was encoded in a key, two messages named retired words, base rows showed
+a provider; fixed at `be3821c`. Accepted there: full gate from a separate
+worktree, mypy 244 files, 2191 unit tests, packaging integration 17,
+console 320; the commands verified by hand on a scratch project. Slice 3,
+the retired spellings deleted, the documentation on the model, the
+configuration entry page and the candidate-5 changelog, is running on
+`ws-maintenance/capabilities-3-docs`, worktree `maintenance-impl-3`,
+session `01a1702e-7625-7230-adc1-7a9fb6d98e4b`. The owner merges #276 then
+#277; #277's PR targets #276's branch.
+**2026-10-24, night: capabilities and components, slice 1 accepted.** The
+owner merged the work order (PR #275) and swapped the roles: Codex with
+gpt-6-astra implements, Claude Fable 5.1 reviews, the owner merges.
+Slice 1, the catalog and derivation on one capability table with the rc4
+commands still working, is [PR #276](https://github.com/ccozianu/devcapsule/pull/276)
+on `ws-maintenance/capabilities-1-model` into `release-0.3.0`, Codex
+session `01a16fe7-2eeb-7b70-8013-0d585196e04b`, brief under
+`evidence/2026-10-24-capabilities/`. One review round: the listing had
+rewritten the capability's name with its minimum, the base refusal
+special-cased "Python", a versionless locked provider failed without a
+minimum, and the retired-table note had two spellings; fixed at `5530843`.
+Accepted there: full gate from a separate worktree, mypy 243 files, 2130
+unit tests, packaging integration 17, console 320; the acceptance greps
+hold; the owner's three-requirement use case and the AI Learning rc2
+files verified by hand (refusal naming 3.12; byte-identical regenerated
+lock; the old table dropped on the next owner write). Slice 2, the
+commands, run flags, resolution recommendation and provider choice, is
+running on `ws-maintenance/capabilities-2-commands`, stacked on slice 1,
+worktree `maintenance-impl-2`, session `01a17009-1972-75e1-a5e1-29bc111a6de4`.
+The owner merges #276 when ready; slice 2's PR targets slice 1's branch.
 
 **2026-10-24, late: the next work order drafted.** Reviewing rc4's
 vocabulary, the owner found the split of components into IDEs, agents
