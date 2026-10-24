@@ -71,6 +71,7 @@ from .storage import (
     load_toml,
     lock_for,
     manifest_for,
+    require_settled,
 )
 from .values import checkout_omitted_values, normalize_configuration_value
 
@@ -379,6 +380,7 @@ def initialize_project(
     root = request.directory.expanduser().resolve()
     if not root.is_dir():
         raise ProjectConfigurationError(f"Project directory does not exist: {root}")
+    require_settled(root)
     manifest_path = root / ".devcapsule" / "devcapsule.toml"
     try:
         platform = Platform.current()
@@ -477,28 +479,31 @@ def initialize_project(
     if elicitor.missing():
         elicitor.finish(require_all_consumed=False)
 
-    manifest_action = _write_manifest(
+    manifest_action, manifest_text = _prepare_manifest(
         manifest_path, existing_manifest, identity, recommendations
     )
-    manifest = load_toml(manifest_path)
+    manifest = tomllib.loads(manifest_text)
     validate_manifest(manifest, manifest_path)
-
-    if lock_action != "Kept":
-        # World-readable like any committed project file; the 0600 default is
-        # for developer-owned records.
-        atomic_write(lock_path, render_toml(shared_lock), mode=0o644)
     check_documents(manifest, shared_lock)
-    # The owner's checkout record is staged in memory and written once, after
-    # every question is answered: a batch failure leaves no record behind.
+    # All artifacts stay in memory until every answer is accepted. A batch
+    # failure must leave shared files and the private record untouched.
     record = CheckoutRecord(manifest, root)
     _stage_owner_selection(record, manifest, shared_lock, matrix, selection, request.allow_unverified)
+
+    def persist() -> None:
+        if manifest_action != "Honored existing":
+            atomic_write(manifest_path, manifest_text, mode=0o644)
+        if lock_action != "Kept":
+            atomic_write(lock_path, render_toml(shared_lock), mode=0o644)
+        record.write()
+
     if not runnable:
         # Nothing to resolve without an IDE: the owner's checkout waits for
         # that one choice, and the report says so. Host answers given on the
         # command line are still recorded.
         _elicit_host_answers(elicitor, manifest, shared_lock, record)
         elicitor.finish()
-        record.write()
+        persist()
         return _initialize_report(
             manifest_path, manifest_action, identity, lock_path, lock_action,
             base_display=_base_display(shared_lock), recommendations=recommendations,
@@ -517,7 +522,7 @@ def initialize_project(
     accepted_recommendations = _elicit_host_answers(elicitor, manifest, lock, record)
     _elicit_extra_answers(elicitor, request.answers, manifest, lock, record)
     elicitor.finish()
-    record.write()
+    persist()
 
     resolve_report = resolve_checkout(root)
     base_declaration = declarations.get("base-image")
@@ -901,7 +906,7 @@ def _elicit_identity(
     else:
         policy = CapabilityPolicy(
             tuple(sorted(set(required_names))),
-            tuple(sorted(set(offered_names) - set(required_names))),
+            tuple(sorted(set(offered_names))),
             tuple(sorted(sdk_majors.items())),
             layered=True,
         )
@@ -1563,13 +1568,13 @@ def _normalize_creator(value: str) -> str:
     return candidate if ":" in candidate else f"mailto:{candidate}"
 
 
-def _write_manifest(
+def _prepare_manifest(
     manifest_path: Path,
     existing_manifest: Mapping[str, Any] | None,
     identity: _ProjectIdentity,
     recommendations: list[tuple[str, str]],
-) -> str:
-    """Author a fresh manifest, or append only what an existing one lacks.
+) -> tuple[str, str]:
+    """Prepare a fresh manifest, or append only what an existing one lacks, without IO writes.
 
     An existing manifest is authored content: it is never rewritten from its
     parsed form, which would destroy comments and fields init does not model.
@@ -1584,9 +1589,7 @@ def _write_manifest(
                 node = node.setdefault(key, {})
             node["value"] = supported
             node["justification"] = justification
-        manifest_path.parent.mkdir(mode=0o755, exist_ok=True)
-        atomic_write(manifest_path, render_manifest(document), mode=0o644)
-        return "Created"
+        return "Created", render_manifest(document)
 
     host = existing_manifest.get("host", {})
     appended = False
@@ -1600,9 +1603,8 @@ def _write_manifest(
         ) + "\n"
         appended = True
     if appended:
-        atomic_write(manifest_path, content, mode=0o644)
-        return "Updated"
-    return "Honored existing"
+        return "Updated", content
+    return "Honored existing", content
 
 
 def _recommendation_block(name: str, justification: str) -> list[str]:

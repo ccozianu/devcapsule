@@ -23,10 +23,11 @@ that know the catalog; file IO belongs to storage and the command adapters.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import date, datetime, time
 import re
 from typing import Any, Mapping
 
-from .file_formats import ProjectConfigurationError, quote_toml, table
+from .file_formats import MANIFEST_SCHEMA_VERSIONS, ProjectConfigurationError, quote_toml, table
 from .values import normalize_memory_size
 
 __all__ = [
@@ -43,14 +44,13 @@ __all__ = [
 ]
 
 
-MANIFEST_SCHEMA_VERSIONS = (1, 2)
 CURRENT_MANIFEST_SCHEMA_VERSION = 2
 
 # Tables in the order an owner reads them: who the project is, what it needs,
 # what it asks of the developer, what it recommends, the host access it asks
 # for with its reasons, the declared values, the workflow choice.  Tables this
-# writer does not know follow in sorted order, so a newer owner's field is
-# never dropped by an older launcher's edit.
+# writer does not know precede workflow in sorted order, so a newer owner's
+# field is never dropped by an older launcher's edit.
 MANIFEST_TABLE_ORDER = ("project", "capabilities", "environment", "recommendations", "host", "configuration", "workflow")
 
 # An environment variable name as POSIX shells and Docker accept it.
@@ -223,12 +223,13 @@ def manifest_preamble(text: str) -> str:
     the writer's contract states.
     """
     kept: list[str] = []
-    for line in text.splitlines():
+    for line in text.split("\n"):
+        line = line.removesuffix("\r")
         stripped = line.strip()
         if stripped and not stripped.startswith("#"):
             break
-        kept.append(line.rstrip())
-    while kept and not kept[-1]:
+        kept.append(line)
+    while kept and not kept[-1].strip():
         kept.pop()
     return "\n".join(kept) + "\n" if kept else ""
 
@@ -243,6 +244,10 @@ def _scalar(value: Any) -> str:
         return str(value).lower()
     if isinstance(value, int):
         return str(value)
+    if isinstance(value, float):
+        return repr(value)
+    if isinstance(value, (datetime, date, time)):
+        return value.isoformat()
     if isinstance(value, str):
         return quote_toml(value)
     if isinstance(value, list):
@@ -255,8 +260,9 @@ def _scalar(value: Any) -> str:
 def render_manifest(document: Mapping[str, Any], *, preamble: str = "") -> str:
     """Render a manifest mapping as the text an owner would have written.
 
-    The schema version comes first, then the tables in :data:`MANIFEST_TABLE_ORDER`,
-    then any other table in sorted order.  Within a table, scalar keys keep the
+    The schema version and other root values come first. Tables follow
+    :data:`MANIFEST_TABLE_ORDER`, with extension tables before workflow.
+    Within a table, scalar keys keep the
     mapping's order, so a writer that builds the table in reading order is
     honored; subtables follow their parent.  Whatever the mapping holds is
     rendered; the builders of each table leave out what says nothing, so an
@@ -269,12 +275,17 @@ def render_manifest(document: Mapping[str, Any], *, preamble: str = "") -> str:
         lines.append("")
     version = document.get("devcapsule-schema-version", CURRENT_MANIFEST_SCHEMA_VERSION)
     lines.append(f"devcapsule-schema-version = {_scalar(version)}")
-    ordered = [name for name in MANIFEST_TABLE_ORDER if name in document]
-    ordered.extend(sorted(name for name in document if name not in MANIFEST_TABLE_ORDER and name != "devcapsule-schema-version"))
+    for name, value in document.items():
+        if name != "devcapsule-schema-version" and not isinstance(value, dict):
+            lines.append(f"{_key(name)} = {_scalar(value)}")
+    ordered = [name for name in MANIFEST_TABLE_ORDER if name != "workflow" and isinstance(document.get(name), dict)]
+    ordered.extend(sorted(name for name, value in document.items() if name not in MANIFEST_TABLE_ORDER and isinstance(value, dict)))
+    if isinstance(document.get("workflow"), dict):
+        ordered.append("workflow")
 
     def emit(value: Mapping[str, Any], path: tuple[str, ...]) -> None:
-        scalars = [(key, item) for key, item in value.items() if not isinstance(item, dict) and not _empty(item)]
-        subtables = [(key, item) for key, item in value.items() if isinstance(item, dict) and not _empty(item)]
+        scalars = [(key, item) for key, item in value.items() if not isinstance(item, dict)]
+        subtables = [(key, item) for key, item in value.items() if isinstance(item, dict)]
         if scalars or not subtables:
             lines.extend(["", "[" + ".".join(_key(part) for part in path) + "]"])
             lines.extend(f"{_key(key)} = {_scalar(item)}" for key, item in scalars)
@@ -283,29 +294,21 @@ def render_manifest(document: Mapping[str, Any], *, preamble: str = "") -> str:
 
     for name in ordered:
         value = document[name]
-        if not isinstance(value, dict):
-            raise ProjectConfigurationError(f"Manifest top-level key {name!r} must be a table.")
+        if name == "workflow":
+            lines.extend(["", "# The project's workflow choice."])
         emit(value, (name,))
     return "\n".join(lines) + "\n"
 
 
-def _empty(value: Any) -> bool:
-    """Whether a value is left out of the rendering: nothing is.
-
-    An empty table is kept: a declaration such as ``[environment.optional.SMTP_HOST]``
-    means something by its presence; an empty array is kept too, because
-    ``required = []`` is what marks the form. Writers that build a table
-    leave out what says nothing, with :func:`capability_table`.
-    """
-    return False
-
-
-def capability_table(policy: Any, reasons: Mapping[str, str] | None = None) -> dict[str, Any]:
+def capability_table(
+    policy: Any, reasons: Mapping[str, str] | None = None, *, previous: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     """The ``[capabilities]`` table in the ``required`` form, saying only what is so.
 
     ``policy`` is a ``CapabilityPolicy``; ``reasons`` maps a capability name to
     the owner's reason. Empty lists and an empty SDK-major table are left out,
     so a project that offers nothing has no ``optional = []`` line.
+    Unknown fields in ``previous`` survive an edit by an older launcher.
     """
     result: dict[str, Any] = {"required": list(policy.required)}
     if policy.optional:
@@ -316,4 +319,6 @@ def capability_table(policy: Any, reasons: Mapping[str, str] | None = None) -> d
             if reason and name in {*policy.required, *policy.optional}}
     if kept:
         result["reasons"] = kept
+    result.update({key: value for key, value in (previous or {}).items()
+                   if key not in {"need", "required", "optional", "sdk-major", "reasons"}})
     return result

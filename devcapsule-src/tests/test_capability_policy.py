@@ -45,6 +45,54 @@ def shared_bytes(project: Path) -> dict[str, bytes]:
     return {path.name: path.read_bytes() for path in (project / ".devcapsule").iterdir() if path.is_file()}
 
 
+@pytest.mark.parametrize("committed", [False, True])
+@pytest.mark.parametrize("lock_bytes", [None, b"", b'# authored lock\r\ndevcapsule-lock-format-version = 1\r\n'])
+def test_manifest_only_promotion_recovers_without_touching_lock(
+    project: Path, monkeypatch: pytest.MonkeyPatch, committed: bool, lock_bytes: bytes | None,
+) -> None:
+    manifest_path, lock_path, journal = commands.paths(project)
+    if lock_bytes is None:
+        lock_path.unlink()
+    else:
+        lock_path.write_bytes(lock_bytes)
+    before = manifest_path.read_bytes()
+    candidate = load_toml(manifest_path)
+    candidate["devcapsule-schema-version"] = 2
+    candidate["recommendations"] = {"cpus": 4}
+    real_write = commands.atomic_write
+
+    def interrupted_write(path: Path, content: str, mode: int = 0o600) -> None:
+        assert path != lock_path, "a manifest-only edit must not replace the lock"
+        if path == manifest_path:
+            if committed:
+                real_write(path, content, mode)
+            raise RuntimeError("simulated interruption")
+        real_write(path, content, mode)
+
+    with monkeypatch.context() as patcher:
+        patcher.setattr(commands, "atomic_write", interrupted_write)
+        with pytest.raises(RuntimeError, match="simulated interruption"):
+            commands.promote(project, candidate)
+    assert journal.exists()
+    commands.recover(project)
+    commands.recover(project)
+    assert not journal.exists()
+    assert (lock_path.read_bytes() if lock_path.exists() else None) == lock_bytes
+    if committed:
+        assert load_toml(manifest_path) == candidate
+    else:
+        assert manifest_path.read_bytes() == before
+
+
+def test_manifest_only_promotion_keeps_crlf_lock_bytes(project: Path) -> None:
+    manifest_path, lock_path, journal = commands.paths(project)
+    original = lock_path.read_bytes().replace(b"\n", b"\r\n")
+    lock_path.write_bytes(original)
+    commands.promote(project, load_toml(manifest_path))
+    assert lock_path.read_bytes() == original
+    assert not journal.exists()
+
+
 @pytest.mark.parametrize("value", [None, "python", 3, [None], [3], [""], [" python"], ["python\x00"], {}])
 def test_invalid_required_names_are_never_admitted(value: object) -> None:
     with pytest.raises(ProjectConfigurationError, match="array"):

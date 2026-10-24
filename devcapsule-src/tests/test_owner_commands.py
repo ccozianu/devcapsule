@@ -11,7 +11,9 @@ from devcapsule import cli
 from devcapsule.configuration import owner_commands
 from devcapsule.configuration.capability_commands import paths
 from devcapsule.configuration.file_formats import ProjectConfigurationError, render_toml
+from devcapsule.configuration.manifest_document import render_manifest
 from devcapsule.configuration.storage import load_toml
+from devcapsule.configuration.storage import checkout_record_paths
 from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES
 
@@ -89,7 +91,7 @@ def test_offer_moves_a_tool_out_of_required_and_drops_its_major(project: Path) -
                                                             "reasons": {"browser-automation": "end-to-end tests"}}
 
 
-@pytest.mark.parametrize("name", ["frontend-ide", "codex-agent", "pycharm", "codex"])
+@pytest.mark.parametrize("name", ["frontend-ide", "codex-agent", "pycharm", "codex", "python-ide=3", "codex=1"])
 def test_ide_and_agent_names_are_refused_as_project_tools(project: Path, name: str) -> None:
     before = manifest_text(project)
     with pytest.raises(ProjectConfigurationError, match="each developer's"):
@@ -119,7 +121,7 @@ def test_environment_require_offer_drop_with_reasons(project: Path, capsys) -> N
     assert cli.main(["project", "--path", str(project), "config", "offer", "env", "SMTP_HOST"]) == 0
     out = capsys.readouterr().out
     assert "Required environment: POSTGRES_HOST (the owner supplies the database), POSTGRES_PASSWORD (the owner supplies the database)" in out
-    assert "config env NAME" in out
+    assert "this command stores declarations only" in out
     manifest = load_toml(paths(project)[0])
     assert manifest["environment"] == {"required": {"POSTGRES_HOST": {"reason": "the owner supplies the database"},
                                                     "POSTGRES_PASSWORD": {"reason": "the owner supplies the database"}},
@@ -192,6 +194,7 @@ def test_an_unrelated_command_never_rewrites_a_legacy_manifest(legacy_project: P
     before = manifest_text(legacy_project)
     assert cli.main(["project", "--path", str(legacy_project), "config", "check"]) == 0
     assert cli.main(["project", "--path", str(legacy_project), "config", "capabilities", "--local", "python-ide"]) == 0
+    assert cli.main(["project", "--path", str(legacy_project), "config", "list"]) == 0
     assert manifest_text(legacy_project) == before
 
 
@@ -200,7 +203,137 @@ def test_retired_spellings_name_their_replacement(project: Path, capsys) -> None
     assert "config require tool node" in capsys.readouterr().err
     assert cli.main(["project", "--path", str(project), "config", "capabilities", "--required", "node"]) == 2
     assert "config require tool" in capsys.readouterr().err
-    assert "need" not in cli.main.__module__ or True  # the hidden alias is not listed
     from devcapsule.commands.framework import render_command_listing
     from devcapsule.commands.project import ConfigGroup
     assert " need " not in render_command_listing(ConfigGroup.subcommands())
+
+
+def test_drop_offered_tool_removes_only_its_declaration_and_reason(project: Path) -> None:
+    owner_commands.require_tools(project, ["python=3"], because="backend")
+    owner_commands.offer_tools(project, ["playwright"], because="browser tests")
+    owner_commands.drop_tools(project, ["playwright"])
+    assert load_toml(paths(project)[0])["capabilities"] == {
+        "required": ["python"], "sdk-major": {"python": 3}, "reasons": {"python": "backend"},
+    }
+    assert "playwright" not in load_toml(paths(project)[1])["components"]
+    owner_commands.drop_tools(project, ["python"])
+    assert load_toml(paths(project)[0])["capabilities"] == {"required": []}
+
+
+@pytest.mark.parametrize("name,value,keys", [
+    ("docker-daemon", "host-socket", ("docker", "mode", "recommended")),
+    ("network", "host", ("network", "mode", "recommended")),
+    ("development-sudo", "true", ("privilege", "development-sudo", "recommended")),
+    ("host-browser", "true", ("browser", "host-open", "recommended")),
+])
+def test_each_host_recommendation_and_removal_preserves_siblings(project: Path, name, value, keys) -> None:
+    owner_commands.recommend(project, "memory", "1g", because="index")
+    before = load_toml(paths(project)[0])
+    before["host"] = {keys[0]: {"extension": {"keep": True}}}
+    paths(project)[0].write_text(render_toml(before))
+    lock_before = paths(project)[1].read_bytes()
+    owner_commands.recommend(project, name, value, because="owner reason")
+    manifest = load_toml(paths(project)[0])
+    node = manifest["host"]
+    for key in keys:
+        node = node[key]
+    assert node == {"value": True if value == "true" else value, "justification": "owner reason"}
+    owner_commands.recommend(project, name, "none")
+    assert load_toml(paths(project)[0]) == before
+    assert paths(project)[1].read_bytes() == lock_before
+
+
+@pytest.mark.parametrize("name", ["ide", "memory", "cpus"])
+def test_remove_one_ordinary_recommendation_keeps_the_other_values_and_reasons(project: Path, name: str) -> None:
+    for key, value in (("ide", "pycharm"), ("memory", "512mb"), ("cpus", "2")):
+        owner_commands.recommend(project, key, value, because=key)
+    expected = load_toml(paths(project)[0])["recommendations"]
+    del expected[name]
+    del expected["reasons"][name]
+    owner_commands.recommend(project, name, "none")
+    assert load_toml(paths(project)[0])["recommendations"] == expected
+
+
+def test_owner_edits_preserve_unknown_declaration_metadata(project: Path) -> None:
+    manifest = load_toml(paths(project)[0])
+    manifest["workflow-type"] = "multiple-streams"
+    manifest["capabilities"]["extension"] = {"keep": 1.5}
+    manifest["environment"] = {"required": {"DB_HOST": {"reason": "db", "extension": {"keep": True}}},
+                               "optional": {"MAIL_HOST": {"extension": "smtp"}}}
+    paths(project)[0].write_text(render_manifest(manifest))
+    owner_commands.require_tools(project, ["node"])
+    assert load_toml(paths(project)[0])["capabilities"]["extension"] == {"keep": 1.5}
+    owner_commands.offer_environment(project, ["DB_HOST"], because="optional db")
+    owner_commands.require_environment(project, ["NEW"])
+    result = load_toml(paths(project)[0])
+    assert result["workflow-type"] == "multiple-streams"
+    assert result["environment"] == {
+        "required": {"NEW": {}},
+        "optional": {"DB_HOST": {"reason": "optional db", "extension": {"keep": True}},
+                     "MAIL_HOST": {"extension": "smtp"}},
+    }
+
+
+@pytest.mark.parametrize("pending_ide", [False, True])
+def test_tool_edit_does_not_change_checkout_answers_when_not_ready(project: Path, pending_ide: bool) -> None:
+    if pending_ide:
+        assert cli.main(["project", "--path", str(project), "config", "capabilities", "--local", "python-ide"]) == 0
+    record, resolution = checkout_record_paths(load_toml(paths(project)[0]), project)
+    before = record.read_bytes()
+    report = owner_commands.require_tools(project, ["node"])
+    assert "Your checkout is not ready to run yet" in report
+    assert record.read_bytes() == before
+    assert not resolution.exists()
+
+
+@pytest.mark.parametrize("verb", ["require", "offer", "drop"])
+def test_owner_tool_help_describes_only_supported_major_syntax(capsys, verb: str) -> None:
+    assert cli.main(["project", "config", verb, "tool", "--help"]) == 0
+    output = capsys.readouterr().out
+    assert ("TOOL[=MAJOR]" in output) == (verb == "require")
+    assert ("python=3" in output) == (verb == "require")
+
+
+@pytest.mark.parametrize("kind", ["tool", "env", "recommendation"])
+def test_invalid_reason_is_refused_without_writing(project: Path, kind: str) -> None:
+    before = {path: path.read_bytes() for path in (project / ".devcapsule").iterdir()}
+    with pytest.raises(ProjectConfigurationError, match="must be a string"):
+        if kind == "tool":
+            owner_commands.require_tools(project, ["node"], because="bad\x00reason")
+        elif kind == "env":
+            owner_commands.require_environment(project, ["DB_HOST"], because="bad\x00reason")
+        else:
+            owner_commands.recommend(project, "memory", "1g", because="bad\x00reason")
+    assert {path: path.read_bytes() for path in (project / ".devcapsule").iterdir()} == before
+
+
+def test_host_recommendation_edit_keeps_its_enables_metadata(project: Path) -> None:
+    owner_commands.recommend(project, "network", "host", because="old reason")
+    manifest = load_toml(paths(project)[0])
+    manifest["host"]["network"]["mode"]["recommended"]["enables"] = ["dev-server"]
+    paths(project)[0].write_text(render_manifest(manifest))
+    owner_commands.recommend(project, "network", "host", because="new reason")
+    assert load_toml(paths(project)[0])["host"]["network"]["mode"]["recommended"] == {
+        "value": "host", "justification": "new reason", "enables": ["dev-server"],
+    }
+
+
+@pytest.mark.parametrize("value", ["python", "codex", "codex-agent", "unknown-ide"])
+def test_recommend_ide_refuses_non_surfaces(project: Path, value: str) -> None:
+    before = paths(project)[0].read_bytes()
+    with pytest.raises(ProjectConfigurationError, match="Unknown IDE"):
+        owner_commands.recommend(project, "ide", value)
+    assert paths(project)[0].read_bytes() == before
+
+
+@pytest.mark.parametrize("value,canonical", [("12b", "12B"), ("512K", "512KiB"), ("6GB", "6GiB"), ("2t", "2TiB")])
+def test_recommend_memory_stores_canonical_units(project: Path, value: str, canonical: str) -> None:
+    owner_commands.recommend(project, "memory", value)
+    assert load_toml(paths(project)[0])["recommendations"]["memory"] == canonical
+
+
+@pytest.mark.parametrize("command", [["init"], ["config", "require"], ["config", "offer"], ["config", "drop"], ["config", "recommend"]])
+def test_owner_help_discloses_schema_two_compatibility(capsys, command) -> None:
+    assert cli.main(["project", *command, "--help"]) == 0
+    help_text = " ".join(capsys.readouterr().out.split())
+    assert "rc3 and older launchers cannot read" in help_text

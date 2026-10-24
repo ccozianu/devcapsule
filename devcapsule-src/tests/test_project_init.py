@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import argparse
 import os
 from pathlib import Path
 import tomllib
@@ -12,6 +13,7 @@ import pytest
 import shutil
 
 from devcapsule import cli
+from devcapsule.commands.project import ProjectInitCommand, _init_selection
 from devcapsule.elicitation import ElicitationIncomplete
 from devcapsule.configuration.operations import (
     InitializeRequest,
@@ -80,7 +82,126 @@ def matrix_base_reference() -> str:
     return str(matrix_reference_lock()["base"]["reference"])
 
 
-def test_noninteractive_init_reaches_the_full_postcondition(tmp_path: Path, capsys) -> None:
+@pytest.mark.parametrize("flags,expected", [
+    (["--need", "python", "--need", "python-ide", "--need", "codex-agent"],
+     (("python",), (), "python-ide", ("codex-agent",))),
+    (["--required", "python", "--optional", "browser-automation", "--sdk-major", "python=3"],
+     (("python", "python=3"), ("browser-automation",), None, ())),
+    (["--local", "codex-agent", "python-ide"], ((), (), "python-ide", ("codex-agent",))),
+    (["--ide", "pycharm", "--local", "python-ide"], ((), (), "python-ide", ())),
+    (["--need", "pycharm", "codex"], ((), (), "python-ide", ("codex-agent",))),
+])
+def test_rc3_init_flags_map_to_their_owners(flags, expected, capsys) -> None:
+    parser = argparse.ArgumentParser()
+    ProjectInitCommand.configure(parser)
+    assert _init_selection(parser.parse_args(flags)) == expected
+    assert capsys.readouterr().err.count("Note:") == 1
+
+
+@pytest.mark.parametrize("flags,message", [
+    (["--offer", "python=3"], "SDK major applies to a required tool"),
+    (["--optional", "python", "--sdk-major", "python=3"], "SDK major applies to a required tool"),
+    (["--require", "python", "--offer", "python"], "both required and optional"),
+    (["--local", "browser-automation"], "checkout tool, not a project requirement"),
+])
+def test_init_refuses_invalid_tool_scope_before_writes(tmp_path: Path, monkeypatch, capsys, flags, message) -> None:
+    for key, value in isolated_env(tmp_path).items():
+        monkeypatch.setenv(key, value)
+    project = tmp_path / "project"
+    project.mkdir()
+    assert cli.main(["project", "--path", str(project), "init", "--creator", "owner@example.test", *flags]) == 2
+    assert message in capsys.readouterr().err
+    assert not (project / ".devcapsule").exists()
+    assert not list((tmp_path / "config").rglob("*.toml"))
+
+
+def test_init_bad_mount_is_refused_before_writes(tmp_path: Path, monkeypatch) -> None:
+    for key, value in isolated_env(tmp_path).items():
+        monkeypatch.setenv(key, value)
+    project = tmp_path / "project"
+    project.mkdir()
+    assert cli.main([*full_init_command(project), "--project-mount", "relative/path"]) == 2
+    assert not (project / ".devcapsule").exists()
+    assert not list((tmp_path / "config").rglob("*.toml"))
+
+
+def test_explicit_no_ide_keeps_its_normalization(tmp_path: Path, monkeypatch) -> None:
+    for key, value in isolated_env(tmp_path).items():
+        monkeypatch.setenv(key, value)
+    project = tmp_path / "project"
+    project.mkdir()
+    assert cli.main(["project", "--path", str(project), "init", "--creator", "owner@example.test",
+                     "--ide", " NONE ", "--require", "none"]) == 0
+    assert read_toml(project / ".devcapsule/devcapsule.toml")["capabilities"] == {"required": []}
+    records = list((tmp_path / "config").rglob("devcapsule.checkout.toml"))
+    assert len(records) == 1
+    assert "capabilities" not in read_toml(records[0])
+    assert not records[0].with_name("devcapsule.resolved.toml").exists()
+
+
+def test_init_refuses_a_pending_capability_transaction_before_writes(tmp_path: Path, monkeypatch) -> None:
+    for key, value in isolated_env(tmp_path).items():
+        monkeypatch.setenv(key, value)
+    project = tmp_path / "project"
+    journal = project / ".devcapsule/.capability-transaction.toml"
+    journal.parent.mkdir(parents=True)
+    journal.write_text("# unfinished edit\n")
+    with pytest.raises(ProjectConfigurationError, match="Interrupted configuration edit"):
+        initialize_project(InitializeRequest(directory=project, creator="owner@example.test", interactive=False))
+    assert list(journal.parent.iterdir()) == [journal]
+    assert journal.read_text() == "# unfinished edit\n"
+    assert not list((tmp_path / "config").rglob("*.toml"))
+
+
+def test_legacy_manifest_ide_prevents_a_second_ide_question(tmp_path: Path, monkeypatch) -> None:
+    for key, value in isolated_env(tmp_path).items():
+        monkeypatch.setenv(key, value)
+    project = tmp_path / "project"
+    manifest_path = project / ".devcapsule/devcapsule.toml"
+    manifest_path.parent.mkdir(parents=True)
+    original = '''# Keep this note.
+devcapsule-schema-version = 1
+[project]
+name = "Project"
+slug = "project"
+creator = "mailto:owner@example.test"
+mount = "/workspace/project"
+[capabilities]
+need = ["python", "python-ide"]
+'''
+    manifest_path.write_text(original)
+    prompts = io.StringIO()
+    report = initialize_project(
+        InitializeRequest(directory=project, interactive=True,
+                          answers=(ProvidedAnswer("authorize", "base-image", "default"),)),
+        input_stream=io.StringIO(""), output_stream=prompts,
+    )
+    assert prompts.getvalue() == ""
+    assert report.resolve is not None
+    assert read_toml(report.resolve.resolution_path)["runtime"]["component"] == "pycharm"
+    assert manifest_path.read_text() == original
+
+
+def test_batch_failure_keeps_an_existing_manifest_and_lock(tmp_path: Path, monkeypatch) -> None:
+    for key, value in isolated_env(tmp_path).items():
+        monkeypatch.setenv(key, value)
+    project = tmp_path / "project"
+    project.mkdir()
+    assert cli.main(["project", "--path", str(project), "init", "--creator", "owner@example.test"]) == 0
+    before = {path: path.read_bytes() for path in tmp_path.rglob("*.toml")}
+    lock = project / ".devcapsule/devcapsule.linux-amd64.lock"
+    lock_before = lock.read_bytes()
+    with pytest.raises(ElicitationIncomplete, match="base-image"):
+        initialize_project(InitializeRequest(
+            directory=project, ide="pycharm", regenerate=True, interactive=False,
+            answers=(ProvidedAnswer("authorize", "network", "host", justification="dev servers"),),
+        ))
+    assert {path: path.read_bytes() for path in tmp_path.rglob("*.toml")} == before
+    assert lock.read_bytes() == lock_before
+
+
+@pytest.mark.parametrize("ide", ["python-ide", "pycharm"])
+def test_noninteractive_init_reaches_the_full_postcondition(tmp_path: Path, capsys, ide: str) -> None:
     project = tmp_path / "fresh-project"
     project.mkdir()
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
@@ -94,7 +215,7 @@ def test_noninteractive_init_reaches_the_full_postcondition(tmp_path: Path, caps
                     "--require",
                     "python",
                     "--ide",
-                    "python-ide",
+                    ide,
                     "--creator",
                     "https://github.com/example",
                     "--authorize",
@@ -307,6 +428,8 @@ def test_missing_base_authorization_batch_fails_with_the_exact_remedy(
     # The silent no-recommendation decision: unflagged intent questions do not
     # appear in the failure and record no recommendation.
     assert "docker-daemon" not in message
+    assert not (project / ".devcapsule").exists()
+    assert not list((tmp_path / "config").rglob("*.toml"))
 
 
 def test_missing_creator_fails_before_writing_any_artifact(tmp_path: Path, capsys) -> None:

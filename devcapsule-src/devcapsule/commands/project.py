@@ -246,7 +246,7 @@ class ProjectInitCommand(Command):
     help = (
         "Initialize the project: the manifest with what it requires and offers, the platform "
         "lock, your own checkout record with your IDE and agents, and, once an IDE is chosen, "
-        "a fresh resolution."
+        "a fresh resolution. New manifests use schema 2; rc3 and older launchers cannot read them."
     )
 
     @classmethod
@@ -259,7 +259,7 @@ class ProjectInitCommand(Command):
             "--offer", action="append", default=[], metavar="TOOL",
             help="A tool the project offers and a developer may leave out, such as browser-automation. Repeatable.",
         )
-        parser.add_argument("--ide", metavar="IDE", help="Your IDE for this checkout: python-ide, frontend-ide, java-ide, eclipse-ide or dotnet-ide.")
+        parser.add_argument("--ide", metavar="IDE", help="Your IDE for this checkout: python-ide, frontend-ide, java-ide, eclipse-ide or dotnet-ide; component names such as pycharm also work.")
         parser.add_argument(
             "--agent", action="append", default=[], metavar="AGENT",
             help="A coding agent for this checkout: codex-agent, claude-code-agent or antigravity-agent. Repeatable.",
@@ -337,12 +337,14 @@ def _init_selection(arguments: argparse.Namespace) -> tuple[tuple[str, ...], tup
     """
     from devcapsule.platforms import Platform
     from devcapsule.resolution_matrix import MATRICES
+    from devcapsule.configuration.capability_commands import canonical_tool_name, parse_majors
     matrix = MATRICES[Platform.current()]
     surfaces = {name for name in matrix.local_capabilities() if not name.endswith("-agent")}
     agent_names = matrix.local_capabilities() - surfaces
     require = list(arguments.require)
     offer = list(arguments.offer)
-    ide = arguments.ide
+    ide_aliases = {matrix.providers(name)[0]: name for name in surfaces}
+    ide = ide_aliases.get(arguments.ide.strip(), arguments.ide.strip()) if arguments.ide is not None else None
     agents = list(arguments.agent)
     legacy_used: list[str] = []
 
@@ -352,7 +354,9 @@ def _init_selection(arguments: argparse.Namespace) -> tuple[tuple[str, ...], tup
             legacy_used.append(flag)
         return values
 
-    for name in (*flatten("--need"), *flatten("--local")):
+    legacy_need, legacy_local = flatten("--need"), flatten("--local")
+    for raw in (*legacy_need, *legacy_local):
+        name = canonical_tool_name(matrix, raw)
         if name in surfaces:
             if ide is not None and ide != name:
                 raise ProjectConfigurationError(f"Two IDEs named, {ide} and {name}; a checkout has one IDE.")
@@ -360,10 +364,23 @@ def _init_selection(arguments: argparse.Namespace) -> tuple[tuple[str, ...], tup
         elif name in agent_names:
             agents.append(name)
         else:
+            if raw in legacy_local:
+                raise ProjectConfigurationError(
+                    f"--local {raw} is a checkout tool, not a project requirement. Initialize first, then "
+                    "select it with 'devcapsule project config capabilities --local' beside your IDE and agents."
+                )
             require.append(name)
     require.extend(flatten("--required"))
     offer.extend(flatten("--optional"))
-    require.extend(flatten("--sdk-major"))
+    legacy_majors = flatten("--sdk-major")
+    required_names = {canonical_tool_name(matrix, item.partition("=")[0]) for item in require} if legacy_majors else set()
+    for name, major in parse_majors(legacy_majors).items():
+        canonical = canonical_tool_name(matrix, name)
+        if canonical not in required_names:
+            raise ProjectConfigurationError(
+                f"An SDK major applies to a required tool; use --require {canonical}={major}, not --offer."
+            )
+        require.append(f"{canonical}={major}")
     if legacy_used:
         print(
             "Note: " + ", ".join(legacy_used) + " are the spellings of 0.3.0 rc3; use --require, --offer, "
@@ -1220,8 +1237,9 @@ class _OwnerToolCommand(Command):
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument("names", nargs="+", metavar="TOOL" if cls.verb == "drop" else "TOOL[=MAJOR]",
-                            help="A tool capability such as python, node or browser-automation; python=3 pins an SDK major.")
+        parser.add_argument("names", nargs="+", metavar="TOOL[=MAJOR]" if cls.verb == "require" else "TOOL",
+                            help="A tool such as python, node or browser-automation."
+                            + (" python=3 pins an SDK major." if cls.verb == "require" else ""))
         if cls.verb != "drop":
             parser.add_argument("--because", metavar="REASON", help="The reason a developer reads beside this tool.")
         parser.add_argument("--preview", action="store_true", help="Validate and show the result; write nothing.")
@@ -1280,7 +1298,7 @@ def _owner_group(verb: str, help_text: str, tool_help: str, env_help: str) -> ty
 
     class OwnerGroup(Group):
         name = verb
-        help = help_text
+        help = help_text + " Owner edits write schema 2; rc3 and older launchers cannot read it."
 
         @classmethod
         def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
@@ -1313,7 +1331,7 @@ class ConfigRecommendCommand(Command):
     help = (
         "Project owners: recommend an IDE, a memory limit, a CPU count, or a host access "
         "(network host, docker-daemon host-socket, development-sudo true, host-browser true) with the reason; "
-        "'none' removes the recommendation."
+        "'none' removes the recommendation. Writes schema 2; rc3 and older launchers cannot read it."
     )
 
     @classmethod
