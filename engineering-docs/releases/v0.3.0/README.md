@@ -1,6 +1,6 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-23. Stage: **candidate 2 published and verified as downloaded; the two C10 records closed on the owner's verification of rc2; the shared lock regenerated on the new agent pins and proven by a recursive launch; the network node's check on rc2 and the rc3 slices next**.
+Updated: 2026-10-24. Stage: **candidate 3 in preparation, by the owner's direction of 2026-10-24: it carries software approvals at launch and the saved Docker arguments, so development scenarios with environment variables and GPUs can be tested on a downloaded candidate; the pre-candidate pull request to `main` awaits the owner's merge, then the tag**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Changelog since 0.2.15](changelog.md) ·
@@ -60,6 +60,15 @@ that is honest about what it skips.
   `workflow-improvements` and this project's own operating instructions in
   `WORKFLOW-LOCAL.md`, the concrete case against which the abstract rule is
   debugged.
+- **Direction of 2026-10-24.** Candidate 3 is tagged now with what the
+  release branch carries, software approvals at launch (PR #250) and the
+  saved Docker arguments (PR #253), because the owner needs the extra
+  Docker arguments to test development scenarios, environment variables
+  and GPUs among them. Forced configuration and the diagnostics snapshot,
+  grouped into rc3 on 2026-10-21, move to rc4 with image cleanup and C20;
+  the manifest's schema-version slice goes with them. The regenerated
+  shared lock rides rc3, so provider acceptance of the new agent pins on
+  a downloaded candidate becomes possible there.
 - **Stopping points where the owner is consulted:** before each candidate
   tag; before the image-cleanup implementation; when a slice proves larger
   than the cycle tolerates; before the final tag. Scope changes go by the
@@ -292,6 +301,26 @@ replacement.
 - Next: the owner's dogfooding of the terminal and of Ctrl+C, and the three
   records' verification: the IDE smoke on a fresh project, the interrupted
   launch, the quiet terminal.
+
+### RC3 — in preparation, 2026-10-24
+
+- Carries, beyond rc2: software approvals at launch, the one y/n for new
+  versions of software approved before and `project config approve`
+  (PR #250, review #251 by the Codex and gpt-6-astra pair); the saved
+  Docker arguments for each checkout, `set-extra-docker-args`,
+  `list-extra-docker-args`, `remove-extra-docker-args` and the `set-env`,
+  `list-env`, `unset-env` conveniences on the same list, with inline
+  environment values masked in every report (PR #253, review #255 by
+  Claude Code); the shared lock regenerated on matrix embedded-27, Codex
+  0.163.0, Claude Code 2.1.302, Antigravity CLI 1.4.2 (`0c1a555`). Each
+  slice was gated in full on its merged branch.
+- Full gate on the release tip before the pre-candidate merge: recorded
+  in the status file with the tag.
+- The pre-candidate merge: `4PR-4-release-0.3.0`, the throwaway copy with
+  the one commit keeping `main`'s version files, as PR #249 did for rc2;
+  the owner merges; the tag goes on the release branch's tip at the merge.
+- Not in rc3: forced configuration, the diagnostics snapshot, the
+  schema-version slice; see the direction of 2026-10-24 above.
 
 ## Release Notes Preparation
 
