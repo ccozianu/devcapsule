@@ -214,7 +214,7 @@ devcapsule project config offer browser-automation --because "npm run test:ui"
 devcapsule project config offer codex-agent --because "the project's agent instructions assume it"
 devcapsule project config recommend ide frontend-ide
 devcapsule project config recommend frontend-ide codium            # the resolution, optional
-devcapsule project config recommend cpp-compiler clang --because "the sanitizer flags in CMakeLists"
+devcapsule project config recommend cpp-compiler clang
 devcapsule project config drop browser-automation
 ```
 
@@ -226,7 +226,10 @@ the `tool` sub-word goes; `require env NAME` and `offer env NAME` keep
 the `env` word, since an environment input is not a capability. `recommend` takes either a recommendation name (`ide`, `memory`,
 `cpus`, a host access) or a capability followed by a provider; a provider
 the catalog does not list for that capability is refused before anything
-is written. The manifest gains one table and loses none:
+is written. A resolution carries no reason of its own: the requirement's
+reason says why the capability is needed, and the resolution is only the
+default provider (reviewer's decision during slice 2, by the owner's rule
+of removal; nothing reads such a reason). The manifest gains one table and loses none:
 
 ```toml
 [capabilities]
