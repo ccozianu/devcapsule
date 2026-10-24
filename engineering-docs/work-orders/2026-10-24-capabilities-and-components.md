@@ -302,61 +302,58 @@ the platform can satisfy as the contract error it is today.
   surface. The work on the documentation's language, booked with
   project-management the same day, is best done once, after this.
 
-## Part 5: Decisions required from the owner
+## Part 5: Decisions taken, each reversible by the owner's word
 
-Items marked *proposal* are the agent's, with the motivation, awaiting the
-owner's word; an answer the owner changes replaces the proposal.
+The owner's rulings of 2026-10-24 are in Part 1 and are not repeated. The
+items below are the agent's judgment within them, recorded as taken so
+that the owner has nothing to answer; a word from the owner on any item
+replaces it. Two change what the release carries and are marked **scope**;
+the rest are implementation.
 
-1. **The developer's command words.** *Proposal:* `add`, `omit`,
-   `restore` for capabilities and `use CAPABILITY COMPONENT|default` for
-   the provider, `config ide` kept for the surface. `select` and
-   `resolve` are avoided: the first reads as the surface, the second was
-   the retired step. Alternatives: `config capability add|omit`, or
-   `config with|without`.
-2. **The run flags.** *Proposal:* `--with CAPABILITY` repeatable in place
-   of `--agent`, `--use CAPABILITY=COMPONENT` repeatable, `--ide` kept.
-3. **One coding-agent capability or three.** *Proposal:* keep three,
-   `codex-agent`, `claude-code-agent`, `antigravity-agent`, each with one
-   provider and no cardinality limit between them, because the three are
-   not substitutes for one another the way `clang` and `g++` are: a
+1. **Developer command words:** `add`, `omit`, `restore` for capabilities;
+   `use CAPABILITY COMPONENT|default` for the provider; `config ide` kept
+   for the surface. `select` and `resolve` avoided: the first reads as
+   the surface, the second was the retired step.
+2. **Run flags:** `--with CAPABILITY` repeatable in place of `--agent`;
+   `--use CAPABILITY=COMPONENT` repeatable; `--ide` kept.
+3. **Three coding-agent capabilities,** `codex-agent`, `claude-code-agent`,
+   `antigravity-agent`, each with one provider and no limit between them.
+   They are not substitutes for one another as `clang` and `g++` are; a
    project's agent instructions name one. A single `coding-agent` with
    three providers would make "both Codex and Claude Code" a cardinality
    exception on day one.
-4. **Where the resolution lives in the manifest.** *Proposal:*
-   `[recommendations.resolution]`, a table from capability to component,
-   beside the existing `[recommendations]`; readable by the rc4 launcher
-   as an unknown recommendation it warns about and ignores, which keeps
-   schema 2 (R-CONFIG-001, tolerant readers). Alternative: schema 3 with
-   the minimum-DevCapsule declaration the 2026-10-22 requirement asks
-   for, if project-management sequences that requirement here.
-5. **What the lock pins for a capability with several providers.**
-   *Proposal:* the resolved provider only; a developer who chooses another
-   gets it pinned in the checkout record and the version commands, as the
-   IDE works today. Pinning every alternative makes the lock grow with the
-   catalog and change when a provider the project never uses is updated.
-6. **The rc4 compatibility aliases.** The redesign kept `config
-   capabilities --local`, `config need` and the rest as hidden aliases
-   because deleting them meant rewriting a hundred tests. This order
-   rewrites those tests anyway. *Proposal:* delete the rc4 aliases and the
-   new ones this order retires in the same slice, leaving one-line
-   refusals that name the replacement, and say so in the changelog.
-7. **Target.** *Proposal:* before the final 0.3.0 tag, as the next
-   candidate's content ahead of the diagnostics snapshot, image cleanup
-   and C20. rc4's vocabulary has been public for an evening; a final
-   release that ships `config agent add` and retires it in 0.3.1 costs
-   every adopter a rename and the documentation two rewrites. The owner
-   rules whether the cycle tolerates it.
-8. **The SDK major is removed, not asked.** The owner ruled it on
-   2026-10-24 (Part 1, item 9). What remains to decide is only the
-   reading of old files, proposed in Part 4: ignore the table with a
-   note, drop it on the next owner write, accept the old digest. The
-   sample-projects item of 2026-10-22 on Node as a first-class SDK is
-   answered by this ruling: a project requires `node`; the base supplies
-   the Node it has; `package.json` says the rest, as it does today.
-9. **Who implements.** *Proposal:* maintenance, stacked slices with the
-   Codex and gpt-6-astra reviewer loop as for the redesign; project-
-   management records the model as a decision superseding the
-   kind-based wording in D-0004's revision and the redesign's Part 3.
+4. **The resolution lives in `[recommendations.resolution]`,** a table from
+   capability to component beside `[recommendations]`, read by the rc4
+   launcher as an unknown recommendation it warns about and ignores; the
+   schema stays 2 (R-CONFIG-001, tolerant readers). The minimum-DevCapsule
+   declaration of the 2026-10-22 requirement is not folded in here.
+5. **The lock pins the resolved provider only.** A developer who chooses
+   another gets it pinned in the checkout record and the version
+   commands, as the IDE works today. Pinning every alternative would make
+   the lock grow with the catalog and change when a provider the project
+   never uses is updated.
+6. **Scope. The rc4 compatibility aliases are deleted** in the same slice
+   that retires this order's spellings, leaving one-line refusals that
+   name the replacement, said so in the changelog. The redesign kept them
+   because deleting meant rewriting a hundred tests; this order rewrites
+   those tests anyway.
+7. **Scope. Target: before the final 0.3.0 tag,** as the next candidate's
+   content, ahead of the diagnostics snapshot, image cleanup and C20.
+   rc4's vocabulary has been public for an evening; a final release that
+   ships `config agent add` and retires it in 0.3.1 costs every adopter a
+   rename and the documentation two rewrites.
+8. **The SDK major is removed,** per Part 1 item 9; old files are read as
+   Part 4 states. The sample-projects item of 2026-10-22 on Node as a
+   first-class SDK is answered by the minimum of Part 1 item 10.
+9. **Maintenance implements,** stacked slices with the Codex and
+   gpt-6-astra reviewer loop as for the redesign; project-management
+   records the model as a decision superseding the kind-based wording in
+   D-0004's revision and the redesign's Part 3.
+10. **A minimum is spelled `NAME>=VERSION`** in the manifest and at the
+   command line, quoted at a shell, because it reads the same everywhere
+   and the same as pip and npm. `NAME=VERSION` read as "or newer" would
+   need no quotes but reads as equality to anyone who has used a package
+   manager.
 
 ## Part 6: The care the owner asked for
 
