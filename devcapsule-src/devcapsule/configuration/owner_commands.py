@@ -310,33 +310,27 @@ def recommend(start: Path, name: str, value: str, *, because: str | None = None,
             del candidate_manifest["host"]
         effect = "every developer is asked, with your reason; a recommendation grants nothing"
     else:
+        if because is not None:
+            raise ProjectConfigurationError("A resolution recommendation takes no --because; give the capability requirement a reason instead.")
         resolutions = resolution_recommendations(manifest)
         try:
             capability = name if removing and name in resolutions else matrix.canonical_name(name)
         except ProjectConfigurationError:
             raise ProjectConfigurationError(f"Unknown recommendation {name!r}; name a capability, IDE, resource or host access.") from None
-        reasons = capability_reasons(manifest)
-        reason_key = f"resolution.{capability}"
         if removing:
             if capability not in resolutions:
                 raise ProjectConfigurationError(f"The project recommends no resolution for {capability}; nothing changed.")
             del resolutions[capability]
-            reasons.pop(reason_key, None)
             rendered = "none"
         else:
             minimums = {matrix.canonical_name(key): minimum for key, minimum in CapabilityPolicy.read(manifest).minimums}
             matrix.resolve_provider(capability, minimums.get(capability), recommended=value)
             resolutions[capability] = value
-            if because is not None:
-                reasons[reason_key] = because
             rendered = value
         capabilities = candidate_manifest["capabilities"]
         capabilities.pop("resolution", None)
-        capabilities.pop("reasons", None)
         if resolutions:
             capabilities["resolution"] = resolutions
-        if reasons:
-            capabilities["reasons"] = reasons
         generated = generate_lock(CapabilityPolicy.read(candidate_manifest), matrix, previous=lock,
                                   recommendations=resolutions)
         effect = "the provider default; acquisition still needs the developer's trust or consent"

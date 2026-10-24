@@ -157,7 +157,7 @@ class Listing:
         result = []
         for row in rows:
             if not isinstance(row, dict) or any(not isinstance(row.get(field, ""), str) for field in (*fields, "provider", "provider-source")):
-                raise ProjectConfigurationError("A listing row has the six text columns.")
+                raise ProjectConfigurationError("A listing row has eight text columns.")
             kind, name, effective, source, pending, command = (str(row.get(field, "")) for field in fields)
             result.append(ListingRow(kind, name, effective, source, pending, command,
                                      provider=str(row.get("provider", "")), provider_source=str(row.get("provider-source", ""))))

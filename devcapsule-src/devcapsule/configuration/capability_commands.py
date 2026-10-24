@@ -269,7 +269,7 @@ def configure_local(root: Path, manifest: dict[str, Any], shared: dict[str, Any]
     if not preview:
         atomic_write(input_path, render_toml(checkout))
     return ("Preview; no files changed." if preview else
-            "Updated local capability selection; shared files unchanged. Run 'project config resolve' to review permissions and prepare launch.")
+            "Updated local capability selection; shared files unchanged. The next 'devcapsule project run' uses it.")
 
 
 def release_deselected(source: dict[str, Any], matrix: ResolutionMatrix, policy: CapabilityPolicy,

@@ -176,6 +176,9 @@ class _Coupling:
 class Formation:
     """One resolved formation, ready to be committed as a lock.
 
+    ``resolved`` maps capabilities to selected providers (None for base services).
+    It is derivation metadata; it does not change the rendered lock format.
+
     ``unverified`` is empty for a fully verified formation; otherwise it
     names the combinations the matrix has no evidence for — resolution
     proceeded past them at the caller's explicit request (owner ruling
@@ -185,6 +188,7 @@ class Formation:
 
     capabilities: tuple[str, ...]
     provenance: str
+    resolved: Mapping[str, str | None] = field(default_factory=dict)
     unverified: tuple[str, ...] = ()
     _document: Mapping[str, Any] = field(repr=False, default_factory=dict)
     _header: str = field(repr=False, default="")
@@ -345,23 +349,29 @@ class ResolutionMatrix:
                 raise ResolutionError(f"Lock names multiple providers for {capability!r}.")
             if choices:
                 providers = choices
-        eligible = []
-        for component in providers:
-            versions: tuple[str | None, ...]
-            if lock is not None:
-                metadata = lock.get("components", {}).get(component, {})
-                versions = (metadata.get("version"),) if isinstance(metadata, Mapping) else ()
-            else:
-                versions = tuple(pin.version for pin in self._components.get(component, ()))
-            if minimum is None and (lock is not None or versions) or minimum is not None and any(
-                    version is not None and meets_minimum(version, minimum) for version in versions):
-                eligible.append(component)
-        if requested is not None:
-            if requested in eligible:
-                return requested
-            requirement_text = capability if minimum is None else f"{capability}>={minimum}"
-            raise ResolutionError(f"Provider {requested!r} cannot supply {requirement_text}; "
-                                  "choose a compatible provider.")
+        eligible = list(providers)
+        if minimum is not None:
+            eligible = []
+            for component in providers:
+                versions: tuple[str | None, ...]
+                if lock is not None:
+                    metadata = lock.get("components", {}).get(component, {})
+                    versions = (metadata.get("version"),) if isinstance(metadata, Mapping) else ()
+                else:
+                    versions = tuple(pin.version for pin in self._components.get(component, ()))
+                if any(version is not None and meets_minimum(version, minimum) for version in versions):
+                    eligible.append(component)
+        requirement_text = capability if minimum is None else f"{capability}>={minimum}"
+        if choice is not None:
+            if choice not in eligible:
+                raise ResolutionError(f"Provider {choice!r} cannot supply {requirement_text}; "
+                                      "choose a compatible provider.")
+            return choice
+        if recommended is not None:
+            if recommended not in eligible:
+                raise ResolutionError(f"Provider {recommended!r} cannot supply {requirement_text}; "
+                                      "choose a compatible provider.")
+            return recommended
         if eligible:
             return eligible[0]
         if lock is not None:
@@ -428,7 +438,6 @@ class ResolutionMatrix:
         recommendations = {self.canonical_name(name): value for name, value in (recommendations or {}).items()}
         resolved = {name: self.resolve_provider(name, minimums.get(name),
                     choice=choices.get(name), recommended=recommendations.get(name)) for name in capabilities}
-        record_providers = bool(choices or recommendations or minimums) or any(len(self.providers(name)) > 1 for name in capabilities)
         ide_names = [name for name in capabilities if self.is_ide(name)]
         surface_id = (None if project_only and not ide_names else self._selected_surface(capabilities, resolved))
         required = [surface_id] if surface_id else []
@@ -460,7 +469,7 @@ class ResolutionMatrix:
         for base in reversed(bases):
             chosen = self._verified_selection(required, base, candidates)
             if chosen is not None:
-                return self._formation(capabilities, surface_id, base, chosen, minimums=minimums, resolved=resolved if record_providers else None)
+                return self._formation(capabilities, surface_id, base, chosen, minimums=minimums, resolved=resolved)
 
         # Nothing fully validated. What the user reads from here on is the
         # owner's 2026-09-06 ruling: a missing validation is a fact about
@@ -485,7 +494,7 @@ class ResolutionMatrix:
         base, chosen, unverified = fallback
         if allow_unverified:
             return self._formation(
-                capabilities, surface_id, base, chosen, unverified=unverified, minimums=minimums, resolved=resolved if record_providers else None
+                capabilities, surface_id, base, chosen, unverified=unverified, minimums=minimums, resolved=resolved
             )
         raise ResolutionError(
             "Not yet validated: "
@@ -614,8 +623,6 @@ class ResolutionMatrix:
             # which the filename already carries.
             "capabilities-digest": canonical_digest({"need": [f"{name}>={minimums[name]}" if minimums and name in minimums else name
                                                        for name in capabilities]}),
-            **({"capability-providers": {name: list(self.component_closure(name, choice=provider))
-                                        for name, provider in resolved.items()}} if resolved else {}),
             "base": dict(base.lock_table),
             "components": components,
             "materialization": dict(self._materialization[surface_id]) if surface_id else {},
@@ -643,6 +650,7 @@ class ResolutionMatrix:
         return Formation(
             capabilities=capabilities,
             provenance=provenance,
+            resolved=dict(resolved or {}),
             unverified=unverified,
             _document=document,
             _header=header,

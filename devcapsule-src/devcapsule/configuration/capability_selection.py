@@ -59,9 +59,11 @@ def generate_lock(policy: CapabilityPolicy, matrix: ResolutionMatrix, *,
     matrix.normalize(list(policy.required))
     accepted = list(known_policy_names(policy, matrix))
     requirements = [*policy.requirements(), *(name for name in accepted if name not in policy.required)]
-    lock = tomllib.loads(matrix.resolve(requirements, project_only=True,
-                                       allow_unverified=allow_unverified, recommendations=recommendations).render_lock())
-    providers = {name: list(matrix.component_closure(name, lock=lock)) for name in accepted}
+    formation = matrix.resolve(requirements, project_only=True,
+                               allow_unverified=allow_unverified, recommendations=recommendations)
+    lock = tomllib.loads(formation.render_lock())
+    providers = {name: list(matrix.component_closure(name, choice=formation.resolved[matrix.canonical_name(name)]))
+                 for name in accepted}
     for capability in set(policy.optional) - set(accepted):
         old_providers = table(previous or {}, "capability-providers")
         if capability not in old_providers:
@@ -125,15 +127,19 @@ def pin_selection(matrix: ResolutionMatrix, policy: CapabilityPolicy, selection:
     reset = (set(previous.providers) - set(selection.providers)) & active_names
     capabilities = tuple(dict.fromkeys((*selection.selected, *selection.providers, *sorted(reset))))
     active = sorted(set(policy.requirements()) | (set(capabilities) - set(policy.required)))
-    fresh = tomllib.loads(matrix.resolve(active, project_only=True, allow_unverified=allow_unverified,
-                                        choices=selection.providers, recommendations=recommendations).render_lock())
+    formation = matrix.resolve(active, project_only=True, allow_unverified=allow_unverified,
+                               choices=selection.providers, recommendations=recommendations)
+    fresh = tomllib.loads(formation.render_lock())
     pins = {key: deepcopy(value) for key, value in fresh.items() if key != "components"}
     pins["components"] = {}
     pins["materialization"] = {}
+    pins["capability-providers"] = {}
     surface = fresh["components"].get("interactive-surface")
     retained = (set(previous.selected) | set(previous.providers)) & set(capabilities)
     for capability in capabilities:
-        for component in matrix.component_closure(capability, lock=fresh):
+        closure = matrix.component_closure(capability, choice=formation.resolved[matrix.canonical_name(capability)])
+        pins["capability-providers"][capability] = list(closure)
+        for component in closure:
             documents = (source, *((previous_pins,) if capability in retained else ()), fresh)
             document = next((item for item in documents if table(item, "components").get(component) is not None), None)
             if document is None:
@@ -156,10 +162,12 @@ def compose_lock(manifest: Mapping[str, Any], shared: Mapping[str, Any],
     over it: exactly the providers of each locally selected capability, and
     the IDE selector with its materialization when a selected capability
     supplies the IDE. A selected IDE that differs from the shared lock's
-    IDE raises ProjectConfigurationError, as do missing or malformed pins and
+    IDE raises ProjectConfigurationError, as do missing or malformed pins,
+    pins that disagree with a recorded provider choice, and
     an omission of something the project does not list as optional.
     ``reset_providers`` names choices explicitly returned to the project or
     catalog while editing a saved version set. They do not add capabilities.
+    This reader never derives new pins or removes superseded components.
     Omissions are not applied here; ``usable_lock`` filters for execution.
     Input documents are unchanged.
     """
@@ -173,26 +181,25 @@ def compose_lock(manifest: Mapping[str, Any], shared: Mapping[str, Any],
     if not local.selected and not local.providers and not reset_providers:
         return lock
     pins = local_pins(checkout)
+    if not pins and local.providers:
+        name, choice = next(iter(local.providers.items()))
+        raise ProjectConfigurationError(f"Local capability pins are missing; choose it again with 'project config use {name} {choice}'.")
     if not pins:
         raise ProjectConfigurationError("Local capability pins are missing; choose it again with 'project config ide IDE'.")
     matrix = matrix_for(lock)
-    recommendations = resolution_recommendations(manifest)
     policy = CapabilityPolicy.read(manifest)
-    minimums = {matrix.canonical_name(name): version for name, version in policy.minimums}
-    active = (*policy.required, *policy.optional, *local.selected)
     canonical = {**known_policy_names(policy, matrix), **{name: matrix.canonical_name(name) for name in local.selected}}
     active_names = set(canonical.values())
     capabilities = tuple(dict.fromkeys((*local.selected, *local.providers, *(name for name in reset_providers if name in active_names))))
-    if any(matrix.resolve_provider(name, minimums.get(matrix.canonical_name(name)), choice=local.providers.get(matrix.canonical_name(name)),
-                                   recommended=recommendations.get(matrix.canonical_name(name))) != matrix.resolve_provider(name, lock=pins)
-           for name in capabilities):
-        pins = pin_selection(matrix, CapabilityPolicy.read(manifest), local, shared, local, pins,
-                             recommendations=recommendations, allow_unverified=False)
+    for name, choice in local.providers.items():
+        if matrix.resolve_provider(name, lock=pins) != choice:
+            raise ProjectConfigurationError(
+                f"Local provider pins for {name!r} do not match {choice!r}; "
+                f"choose it again with 'project config use {name} {choice}'."
+            )
     pinned = table(pins, "components")
     overlaid: set[str] = set()
-    superseded: set[str] = set()
     for capability in capabilities:
-        superseded.update(matrix.component_closure(capability, lock=lock))
         for component in matrix.component_closure(capability, lock=pins):
             metadata = pinned.get(component)
             if metadata is None:
@@ -210,21 +217,16 @@ def compose_lock(manifest: Mapping[str, Any], shared: Mapping[str, Any],
         shared_surface = lock["components"].get("interactive-surface")
         required_ide = next((name for name in policy.required if matrix.is_ide(name)), None)
         selected_ide = next((name for name in local.selected if matrix.is_ide(name)), None)
-        if shared_surface and shared_surface != surface and required_ide and (
-                selected_ide is None or matrix.canonical_name(selected_ide) != matrix.canonical_name(required_ide)) and not any(matrix.is_ide(name) for name in local.providers):
+        changes_surface = bool(shared_surface and shared_surface != surface)
+        selects_required_ide = (selected_ide is not None and required_ide is not None
+                                and matrix.canonical_name(selected_ide) == matrix.canonical_name(required_ide))
+        chooses_ide_provider = any(matrix.is_ide(name) for name in local.providers)
+        if changes_surface and required_ide and not selects_required_ide and not chooses_ide_provider:
             # A legacy required surface is still mandatory until explicitly
             # migrated by its project owner.
             raise ProjectConfigurationError("Local IDE conflicts with the project's required IDE; migrate the project declaration first.")
         lock["components"]["interactive-surface"] = surface
         lock["materialization"] = deepcopy(table(pins, "materialization"))
-    needed = set(overlaid)
-    for name in active:
-        try:
-            needed.update(matrix.component_closure(name, lock=lock))
-        except ProjectConfigurationError:
-            needed.update(lock.get("capability-providers", {}).get(name, []))
-    for component in superseded - needed:
-        lock["components"].pop(component, None)
     return lock
 
 
@@ -372,7 +374,7 @@ def inspection_providers(manifest: Mapping[str, Any], lock: Mapping[str, Any],
             component = matrix.resolve_provider(name, lock=lock) if name in lock.get("capability-providers", {}) else matrix.resolve_provider(
                 name, dict(policy.minimums).get(name), choice=local.providers.get(canonical), recommended=recommendations.get(canonical))
             source = "checkout" if canonical in local.providers else "project recommends" if canonical in recommendations else "catalog"
-            result[name] = (component or "base", source)
+            result[name] = (component, source) if component else ("", "")
         except ProjectConfigurationError:
             result[name] = ("unavailable", "catalog")
     return result

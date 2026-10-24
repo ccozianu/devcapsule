@@ -81,19 +81,19 @@ def test_ide_refusal_points_to_recommend(project, tmp_path, verb, capsys):
     assert snapshot(tmp_path) == before
 
 
-def test_resolution_table_reasons_and_invalid_component(project, matrix, tmp_path, capsys):
-    assert config(project, "recommend", "frontend-ide", "intellij", "--because", "the debugger") == 0
+def test_resolution_table_has_no_reason_and_rejects_invalid_component(project, matrix, tmp_path, capsys):
+    assert config(project, "recommend", "frontend-ide", "intellij") == 0
     document = load_toml(paths(project)[0])
     assert document["devcapsule-schema-version"] == 2
     assert document["capabilities"]["resolution"] == {"frontend-ide": "intellij"}
-    assert document["capabilities"]["reasons"]["resolution.frontend-ide"] == "the debugger"
+    assert "reasons" not in document["capabilities"]
     assert "resolution" not in document.get("recommendations", {})
     before = snapshot(tmp_path)
     assert config(project, "recommend", "frontend-ide", "codex") == 2
     assert "does not provide" in capsys.readouterr().err
     assert snapshot(tmp_path) == before
     assert config(project, "require", "java") == 0
-    assert load_toml(paths(project)[0])["capabilities"]["reasons"]["resolution.frontend-ide"] == "the debugger"
+    assert "reasons" not in load_toml(paths(project)[0])["capabilities"]
     assert config(project, "recommend", "frontend-ide", "none") == 0
     assert "resolution" not in load_toml(paths(project)[0])["capabilities"]
 
@@ -117,6 +117,9 @@ def test_provider_precedence_and_default_checkout_pins(project, matrix, capsys):
     assert config(project, "ide", "frontend-ide") == 0
     assert load_state(project, load_toml(paths(project)[0])).composed_lock()["components"]["interactive-surface"] == "codium"
     assert config(project, "recommend", "frontend-ide", "intellij") == 0
+    # Reading keeps personal pins; an explicit reset adopts the new default.
+    assert load_state(project, load_toml(paths(project)[0])).composed_lock()["components"]["interactive-surface"] == "codium"
+    assert config(project, "use", "frontend-ide", "default") == 0
     assert load_state(project, load_toml(paths(project)[0])).composed_lock()["components"]["interactive-surface"] == "intellij"
     assert config(project, "use", "frontend-ide", "codium") == 0
     assert record(project)["capabilities"]["providers"] == {"frontend-ide": "codium"}
@@ -133,6 +136,7 @@ def test_provider_precedence_and_default_checkout_pins(project, matrix, capsys):
     assert (row["provider"], row["provider-source"]) == ("intellij", "project recommends")
     assert row["effective"].startswith("intellij ")
     assert config(project, "recommend", "frontend-ide", "none") == 0
+    assert config(project, "use", "frontend-ide", "default") == 0
     assert load_state(project, load_toml(paths(project)[0])).composed_lock()["components"]["interactive-surface"] == "codium"
 
 
@@ -180,6 +184,7 @@ def test_resolution_grants_no_consent_and_no_partial_save(project, matrix, tmp_p
     assert config(project, "add", "assistant") == 0
     if origin == "project":
         assert config(project, "recommend", "assistant", "claude-code") == 0
+        assert config(project, "use", "assistant", "default") == 0
     elif origin == "checkout":
         assert config(project, "use", "assistant", "claude-code") == 0
     before = snapshot(tmp_path)
@@ -194,11 +199,15 @@ def test_changed_resolution_keeps_component_consent(project, matrix):
     assert config(project, "authorize", "base-image", "default") == 0
     assert config(project, "add", "assistant") == 0
     assert config(project, "recommend", "assistant", "claude-code") == 0
+    assert config(project, "use", "assistant", "default") == 0
     # Accept through the normal complete review, once. No acquisition occurs here.
-    prepare_launch(project, RunFlags(), interactive=True, input_stream=io.StringIO("y\n"), output_stream=io.StringIO())
+    prepared = prepare_launch(project, RunFlags(), interactive=True, input_stream=io.StringIO("y\n"), output_stream=io.StringIO())
+    assert "claude-code" in prepared.selected.lock["components"]
     before = deepcopy(record(project).get("authorization", {}))
     assert config(project, "recommend", "assistant", "codex") == 0
-    assert config(project, "recommend", "assistant", "claude-code", "--because", "changed reason") == 0
+    assert config(project, "use", "assistant", "default") == 0
+    assert config(project, "recommend", "assistant", "claude-code") == 0
+    assert config(project, "use", "assistant", "default") == 0
     prompts = io.StringIO()
     prepare_launch(project, RunFlags(), interactive=True, input_stream=io.StringIO(""), output_stream=prompts)
     assert prompts.getvalue() == ""
@@ -353,7 +362,7 @@ def test_part_three_owner_fixture_and_developer_commands(project, matrix, monkey
         ("offer", "codex-agent", "--because", "the project's agent instructions assume it"),
         ("recommend", "ide", "frontend-ide"),
         ("recommend", "frontend-ide", "codium"),
-        ("recommend", "cpp-compiler", "clang", "--because", "the sanitizer flags in CMakeLists"),
+        ("recommend", "cpp-compiler", "clang"),
     ]
     for command in commands:
         assert config(project, *command) == 0
@@ -361,7 +370,6 @@ def test_part_three_owner_fixture_and_developer_commands(project, matrix, monkey
     assert manifest["capabilities"]["reasons"] == {
         "cpp-compiler": "the build", "python": "the build targets them", "java": "the build targets them",
         "browser-automation": "npm run test:ui", "codex-agent": "the project's agent instructions assume it",
-        "resolution.cpp-compiler": "the sanitizer flags in CMakeLists",
     }
     # Compare the owner's displayed tables byte for byte, including bare
     # keys and ordering. Identity/schema and reasons are not in that excerpt.
@@ -439,17 +447,21 @@ def test_offer_component_alias_keeps_its_spelling(project):
 
 def test_minimum_alone_records_the_filtered_provider(matrix):
     policy = CapabilityPolicy(("assistant",), minimums=(("assistant", "1"),), layered=True)
+    formation = matrix.resolve(["assistant>=1"], project_only=True)
+    assert formation.resolved == {"assistant": "claude-code"}
+    assert "capability-providers" not in tomllib.loads(formation.render_lock())
     lock = generate_lock(policy, matrix)
     assert lock["capability-providers"]["assistant"] == ["claude-code"]
     assert set(lock["components"]) == {"claude-code"}
     assert matrix.supplied_version("assistant", lock) == lock["components"]["claude-code"]["version"]
 
 
-def test_resolution_cannot_choose_a_catalog_provider_without_pins(matrix, monkeypatch):
+def test_minimum_excludes_a_catalog_provider_without_pins(matrix, monkeypatch):
     monkeypatch.setattr(matrix, "_components", {name: pins for name, pins in matrix._components.items() if name != "claude-code"})
     with pytest.raises(ProjectConfigurationError, match="cannot supply assistant"):
-        matrix.resolve_provider("assistant", recommended="claude-code")
+        matrix.resolve_provider("assistant", minimum="1", recommended="claude-code")
     assert matrix.resolve_provider("assistant") == "codex"
+    assert matrix.resolve_provider("assistant", recommended="claude-code") == "claude-code"
 
 
 def test_deselection_keeps_a_dependency_of_the_chosen_provider(project, matrix):
@@ -478,3 +490,91 @@ def test_owner_can_remove_an_unknown_resolution(project):
     assert config(project, "check") == 2
     assert config(project, "recommend", "future-capability", "none") == 0
     assert not resolution_recommendations(load_toml(paths(project)[0]))
+
+
+@pytest.mark.parametrize("component", ["intellij", "none"])
+def test_resolution_refuses_because_before_writing(project, matrix, tmp_path, capsys, component):
+    assert config(project, "recommend", "frontend-ide", "codium") == 0
+    before = snapshot(tmp_path)
+    assert config(project, "recommend", "frontend-ide", component, "--because", "debugger") == 2
+    assert "takes no --because" in capsys.readouterr().err
+    assert snapshot(tmp_path) == before
+
+
+@pytest.mark.parametrize("damage", ["missing", "different"])
+def test_composition_refuses_stale_choice_without_resolving_or_writing(project, matrix, monkeypatch, tmp_path, damage, capsys):
+    assert config(project, "ide", "frontend-ide") == 0
+    document = record(project)
+    document["capabilities"]["providers"] = {"frontend-ide": "intellij"}
+    if damage == "missing":
+        del document["capabilities"]["lock"]
+    path = checkout_record_paths(load_toml(paths(project)[0]), project)[0]
+    path.write_text(render_toml(document))
+    before = snapshot(tmp_path)
+    def refuse_resolution(*args, **kwargs):
+        pytest.fail("A reader must not derive new catalog pins")
+    monkeypatch.setattr(matrix, "resolve", refuse_resolution)
+    assert config(project, "show") == 2
+    assert "config use frontend-ide intellij" in capsys.readouterr().err
+    assert snapshot(tmp_path) == before
+
+
+def test_composition_retains_shared_components_and_stored_personal_pins(project, matrix, monkeypatch):
+    assert config(project, "require", "assistant") == 0
+    assert config(project, "use", "assistant", "claude-code") == 0
+    def refuse_resolution(*args, **kwargs):
+        pytest.fail("A reader must not derive new catalog pins")
+    monkeypatch.setattr(matrix, "resolve", refuse_resolution)
+    state = load_state(project, load_toml(paths(project)[0]))
+    composed = state.composed_lock()
+    assert {"codex", "claude-code"} <= set(composed["components"])
+    assert composed["capability-providers"]["assistant"] == ["claude-code"]
+
+
+@pytest.mark.parametrize("arguments,provider", [
+    ({}, "codex"), ({"choices": {"assistant": "claude-code"}}, "claude-code"),
+    ({"recommendations": {"assistant": "claude-code"}}, "claude-code"),
+])
+def test_formation_exposes_resolved_providers_without_changing_lock_shape(matrix, arguments, provider):
+    formation = matrix.resolve(["assistant"], project_only=True, **arguments)
+    assert formation.resolved == {"assistant": provider}
+    lock = tomllib.loads(formation.render_lock())
+    assert "capability-providers" not in lock
+    assert set(lock["components"]) == {provider}
+
+
+def test_base_service_has_no_provider_cell_or_json_fields(project, capsys):
+    from devcapsule.configuration.listing import Listing
+    assert config(project, "require", "python") == 0
+    assert config(project, "show", "--json") == 0
+    output = capsys.readouterr().out
+    document = json.loads(output[output.index('{\n'):])
+    row = next(row for row in document["rows"] if row["name"] == "python")
+    assert "provider" not in row and "provider-source" not in row
+    listing = Listing.from_document(document)
+    item = next(row for row in listing.rows if row.name == "python")
+    assert item.provider == item.provider_source == ""
+    rendered = listing.render().splitlines()
+    provider_start = rendered[0].index("PROVIDER")
+    pending_start = rendered[0].index("PENDING")
+    row_text = next(line for line in rendered[1:] if "python" in line)
+    assert not row_text[provider_start:pending_start].strip()
+
+
+@pytest.mark.parametrize("arguments", [("add", "postgresql-client"), ("omit", "browser-automation"),
+                                      ("restore", "browser-automation"), ("use", "frontend-ide", "intellij")])
+def test_developer_edit_message_names_run(project, matrix, arguments, capsys):
+    assert config(project, "offer", "browser-automation") == 0
+    assert config(project, "ide", "frontend-ide") == 0
+    capsys.readouterr()
+    assert config(project, *arguments) == 0
+    output = capsys.readouterr().out
+    assert "The next 'devcapsule project run' uses it." in output
+    assert "config resolve" not in output
+
+
+@pytest.mark.parametrize("field", ["provider", "provider-source"])
+def test_listing_rejects_nontext_provider_fields(field):
+    from devcapsule.configuration.listing import Listing, LISTING_SCHEMA_VERSION
+    with pytest.raises(ProjectConfigurationError, match="eight text columns"):
+        Listing.from_document({"schema-version": LISTING_SCHEMA_VERSION, "rows": [{field: 1}]})
