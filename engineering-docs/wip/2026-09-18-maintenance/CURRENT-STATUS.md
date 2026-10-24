@@ -215,6 +215,33 @@ D-0011 kept Antigravity's bare Cloud Run origin on per-version consent;
 the slice lets the user trust that deployment explicitly, with the note
 that the URL alone does not prove Google's ownership; confirm or restore
 the exception.
+Slice 5 is #268, `ws-maintenance/cli-ux-5-console`, delivered 2026-10-24:
+1993 unit tests, mypy clean, the console session 299 tests, mypy clean;
+21 new launcher tests and 6 console tests; the channel contract
+`devcapsule-webconsole/CONFIGURATION-CHANNEL.md`, the launcher's watcher
+and deferred requests, `config console list|apply|discard`, the in-capsule
+listing "At launch, <time>". One design choice the work order did not
+state, for the owner: a request from the capsule that widens the next
+launch (a grant, a trust, a mount, a Docker option) is deferred to the
+user's confirmation on the host, because anything inside the capsule can
+write the mounted directory. Its brief is
+[brief-pr268-1.md](evidence/2026-10-24-cli-ux/brief-pr268-1.md).
+Its PR268.1 is #272, accepted at `8807a53` without a round and merged at
+`fd1fdb5`: `forget` and any `env set` that is not a literal value wait
+for the host (a forgotten denial restores workstation trust; a host
+binding exposes a variable), explicit secure authorizations apply; the
+watcher's child gets record locations only, its own session and process
+group, EOF on stdin, the group killed on timeout; only the worker drains
+at stop and saves what it did not run; requests carry a UUID and the
+deferred store is keyed by project identity and canonical checkout path;
+malformed files contained on both sides, a full queue refused, result
+text bounded; a confirmed command's disk changes overlaid on the staged
+answers; the page shows exposures, bounds its polling and says sending
+confirms nothing; 46 launcher cases and the page script run under Node;
+the reviewer's gates 2091 unit tests and 320 console tests, mypy clean.
+For the owner, from the reviewer: a durable inbox for requests written
+after the launcher stops, and direct console approval of wider access,
+which a writable capsule directory cannot establish as the human's.
 
 ## Current State
 

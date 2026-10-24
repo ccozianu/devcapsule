@@ -25,7 +25,7 @@ def test_each_page_is_html_that_loads_the_console_script(client, route, title):
 
 
 @pytest.mark.parametrize("route, expected, command", [
-    ("/api/configuration", CONFIGURATION, ["config", "list"]),
+    ("/api/configuration", {**CONFIGURATION, "channel": False}, ["config", "list"]),
     ("/api/versions", VERSIONS, ["versions", "show"]),
     ("/api/project", INFORMATION, ["info"]),
 ])
@@ -139,4 +139,4 @@ def test_an_unavailable_running_set_never_uses_the_next_launch():
 def test_the_reader_preserves_unicode_and_finite_numbers(client, monkeypatch):
     document = {"text": "caf\u00e9", "numbers": [1.25, -2.5e10, 0]}
     monkeypatch.setenv("FAKE_CLI_DOCUMENTS", json.dumps({"config list": document}, ensure_ascii=False))
-    assert with_token(client).get("/api/configuration").json() == document
+    assert with_token(client).get("/api/configuration").json() == {**document, "channel": False}

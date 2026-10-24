@@ -17,7 +17,8 @@ a required value and a required secret block the
 launch until answered; so does a vendor's or DevCapsule's channel the
 workstation has not accepted yet (D-0011, once per computer); a host access
 the project recommends and the developer never answered is asked, and "not
-now" launches with the secure default.
+now" launches with the secure default; so is a widening the console asked
+for during an earlier run, kept until applied or discarded here.
 """
 
 from __future__ import annotations
@@ -162,10 +163,16 @@ def prepare_launch(
             if blocking:
                 raise DecisionPending(_render_pending(blocking, root))
             for decision in decisions:
-                notes.append(
-                    f"The project asks for {decision.description} ({decision.reason}); not granted this run. "
-                    f"Allow or deny: {decision.command}"
-                )
+                if decision.kind == "console":
+                    notes.append(
+                        f"The console's request {decision.name} of {decision.reason} awaits your confirmation: "
+                        f"{decision.description}. Apply or discard: {decision.command}"
+                    )
+                else:
+                    notes.append(
+                        f"The project asks for {decision.description} ({decision.reason}); not granted this run. "
+                        f"Allow or deny: {decision.command}"
+                    )
             break
         decision = pending[0]
         asked.add((decision.kind, decision.name))
@@ -218,6 +225,27 @@ def _selected_checkout(state: CheckoutState, document: dict[str, Any], flags: Ru
     return state.with_selection(selection, checkout=document, allow_unverified=flags.allow_unverified)
 
 
+def launch_listing_document(selected: ResolvedProject) -> dict[str, Any]:
+    """The ``config show --json`` document of the launch's checkout, for the capsule's own inspection."""
+    from devcapsule.configuration.storage import checkout_name_for
+    listing = load_state(selected.root, selected.manifest).listing(selected.checkout)
+    document = listing.document()
+    declarations = authorization_declarations(selected.manifest, selected.lock)
+    for row in document["rows"]:
+        if row["kind"] == "access" and row["name"] in WORKSTATION_CAPABILITY_DEFAULTS:
+            row["exposure"] = WORKSTATION_CAPABILITY_DEFAULTS[row["name"]][1]
+            declaration = declarations[row["name"]]
+            row["reason"] = declaration.description if declaration.project_recommended else ""
+    identity = selected.manifest["project"]
+    return {
+        **document,
+        "context": "at launch",
+        "project": {"creator": identity["creator"], "slug": identity["slug"]},
+        "checkout": {"name": checkout_name_for(selected.manifest, selected.checkout_path),
+                     "launcher-path": str(selected.root), "input": str(selected.checkout_path)},
+    }
+
+
 def project_channel(root: Path, manifest: dict[str, Any], channel_id: str) -> Channel:
     """The channel ``channel_id`` of this project's lock; refused with the project's channels when unknown."""
     state = load_state(root, manifest)
@@ -265,7 +293,7 @@ def _render_pending(decisions: list[Decision], root: Path) -> str:
     for decision in decisions:
         flag = {"ide": "--ide IDE", "env": f"--env {decision.name}=VALUE", "consent": f"--authorize {decision.name} {decision.value}" if decision.name == "host-x11" else "",
                 "access": f"--authorize {decision.name} {decision.value}", "renew": f"--authorize {decision.name} {decision.value}",
-                "trust": f"--trust {decision.name}", "value": "", "secret": ""}[decision.kind]
+                "trust": f"--trust {decision.name}", "value": "", "secret": "", "console": ""}[decision.kind]
         lines.append(f"  {decision.kind} {decision.name}: {decision.description}" + (f"  ({decision.reason})" if decision.reason else ""))
         lines.append("      " + (f"{flag}  |  " if flag else "") + decision.command)
     lines.append("Nothing was written. Answer on the command line or in a terminal.")
@@ -299,6 +327,41 @@ def _settle(
         validate_value(value)
         environment[decision.name] = value
         state.saved_environment[decision.name] = value
+    elif decision.kind == "console":
+        # A widening the console asked for in an earlier run: the user's "apply"
+        # is the command 'config console apply ID', run now, as that command would.
+        from devcapsule.commands._console_channel import apply_deferred, discard_deferred
+        output.write(f"The console asked at {decision.reason}: {decision.description}\n")
+        answer = _ask(output, reader, "[a]pply it now, as 'config console apply' would, [d]iscard it, Enter = keep it for later: ").lower()
+        if answer in {"a", "apply"}:
+            before = load_state(root, state.manifest)
+            status, text = apply_deferred(root, record.input_path, decision.name)
+            output.write((text or ("Recorded." if status == 0 else "The command failed; the request remains pending.")) + "\n")
+            if status == 0:
+                after = load_state(root, state.manifest)
+                # Keep answers staged by this run, and overlay only what the
+                # explicitly confirmed command changed on disk.
+                def changed(target: dict[str, Any], old: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]:
+                    result = deepcopy(target)
+                    for key in old.keys() | new.keys():
+                        if key in old and key in new and old[key] == new[key]:
+                            continue
+                        if key not in new:
+                            result.pop(key, None)
+                        elif isinstance(old.get(key, {}), dict) and isinstance(new[key], dict) and isinstance(result.get(key), dict):
+                            result[key] = changed(result[key], old.get(key, {}), new[key])
+                        else:
+                            result[key] = deepcopy(new[key])
+                    return result
+                record._load(record.input_path, changed(record.export(), before.checkout, after.checkout))
+                state.checkout = record.export()
+                state.workstation = changed(state.workstation, before.workstation, after.workstation)
+                state.saved_environment = {**after.saved_environment, **environment}
+        elif answer in {"d", "discard"}:
+            discard_deferred(record.input_path, decision.name)
+            output.write("Discarded.\n")
+        else:
+            output.write(f"Kept. Apply or discard later: {decision.command}\n")
     elif decision.kind == "trust":
         output.write(f"{decision.description}\n")
         if decision.reason:

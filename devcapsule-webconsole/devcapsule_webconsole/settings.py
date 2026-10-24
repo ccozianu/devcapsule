@@ -15,6 +15,7 @@ from importlib import resources
 from pathlib import Path
 from typing import Mapping, Sequence
 
+from .configuration import CHANNEL_ENV, DEFAULT_CHANNEL, default_channel
 from .decisions import DECISIONS_ENV, TOKEN_FILE_ENV, default_directory
 
 PROJECT_ENV = "PROJECT_PATH"
@@ -42,6 +43,8 @@ class Settings:
     """The run token every request must carry."""
     decisions: Path = Path("/nonexistent")
     """The decisions directory: an agent's questions, the console's answers; capsule state, not records."""
+    configuration: Path = Path("/nonexistent")
+    """The configuration channel the launcher mounted: its listing at launch, the console's requests for the next launch."""
     listen: str = DEFAULT_LISTEN
     port: int = DEFAULT_PORT
 
@@ -88,6 +91,8 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--token-file", type=Path, help=f"File holding the run token; default ${TOKEN_FILE_ENV}.")
     result.add_argument("--decisions", type=Path,
                         help=f"Decisions directory; default ${DECISIONS_ENV}, then $XDG_STATE_HOME/devcapsule/decisions.")
+    result.add_argument("--configuration", type=Path,
+                        help=f"Configuration channel directory; default ${CHANNEL_ENV}, then {DEFAULT_CHANNEL}.")
     result.add_argument("--listen", default=DEFAULT_LISTEN, help=f"Address to bind; default {DEFAULT_LISTEN}.")
     result.add_argument("--port", type=int, default=DEFAULT_PORT, help=f"Port to bind; default {DEFAULT_PORT}.")
     return result
@@ -113,6 +118,7 @@ def settings_from_arguments(argv: Sequence[str], environ: Mapping[str, str]) -> 
         cli=(cli,),
         token=read_token(token_file),
         decisions=(arguments.decisions or default_directory(environ)).expanduser(),
+        configuration=(arguments.configuration or default_channel(environ)).expanduser(),
         listen=arguments.listen,
         port=arguments.port,
     )

@@ -34,6 +34,7 @@ from .authorization import authorized_base_selection
 from .capabilities import CapabilityPolicy, LocalCapabilities
 from .capability_commands import pin_selection, release_deselected
 from .capability_selection import compose_lock, effective_lock, local_pins
+from .console_requests import deferred_rows
 from .file_formats import ProjectConfigurationError, canonical_digest, render_checkout, render_toml
 from .listing import Listing, assess_checkout
 from .model import Configuration
@@ -132,12 +133,13 @@ class CheckoutState:
         if selection is not None:
             reference = selection.reference
         base = known_base_image(str(reference))
-        return assess_checkout(
+        listing = assess_checkout(
             self.manifest, self.shared_lock, lock, document,
             workstation=self.workstation, saved_environment=self.saved_environment,
             surfaces=self.surfaces, agents=self.agents, project=self.root, registered=self.registered,
             base_display=base.contract.display if check_display and base is not None else None,
         )
+        return Listing(listing.rows + tuple(deferred_rows(self.input_path, self.root)), listing.notes)
 
     def with_selection(self, selection: Selection, *, allow_unverified: bool = False,
                        checkout: Mapping[str, Any] | None = None) -> dict[str, Any]:

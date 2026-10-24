@@ -17,10 +17,12 @@ imports none of the runtime's internals. Its API is the runtime CLI's
   it, by `..`, by an absolute path or by a symbolic link, is refused.
 - The console writes only into the capsule's state: the answer to a
   decision page, one file in the capsule's decisions directory (see
-  [DECISIONS.md](DECISIONS.md)), and a notification marked read or
-  dismissed, which goes through `devcapsule project checkout notifications`.
-  Every other route is `GET`, and every write accepts a same-origin request
-  only. The processes page reads psutil and the cgroup; it never signals a
+  [DECISIONS.md](DECISIONS.md)); a notification marked read or
+  dismissed, which goes through `devcapsule project checkout notifications`;
+  and a configuration request for the next launch, one file in the channel
+  the launcher mounts and answers (see
+  [CONFIGURATION-CHANNEL.md](CONFIGURATION-CHANNEL.md)). Every other route
+  is `GET`, and every write accepts a same-origin request only. The processes page reads psutil and the cgroup; it never signals a
   process.
 - Notifications are the runtime CLI's listing, `project checkout
   notifications list --json`, with the pending decisions merged in by the

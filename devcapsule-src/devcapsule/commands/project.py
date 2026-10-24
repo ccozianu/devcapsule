@@ -37,7 +37,7 @@ from devcapsule.commands.framework import (
 from devcapsule.components.catalog import COMPONENTS
 from devcapsule.commands._versions import VersionsGroup
 from devcapsule.commands._upgrade_prompt import offer_upgrades
-from devcapsule.commands._run_flow import RunFlags, prepare_launch
+from devcapsule.commands._run_flow import RunFlags, launch_listing_document, prepare_launch
 from devcapsule.display_client import has_contained_display
 from devcapsule.commands._software_approvals import (
     SOFTWARE_APPROVALS_GUIDE_URL,
@@ -55,6 +55,7 @@ from devcapsule.runtime_configuration import CapsuleAccess
 from devcapsule.compat import CliError, DecisionPending
 import difflib
 from devcapsule.configuration.capabilities import CapabilityPolicy, LocalCapabilities
+from devcapsule.configuration.console_requests import deferred_rows
 from devcapsule.configuration.listing import Listing, assess_checkout
 from devcapsule.configuration.values import LAUNCHER_VALUE_NAMES, legacy_memory_names, normalize_launcher_value
 from devcapsule.configuration.docker_arguments import (
@@ -709,12 +710,13 @@ def _assess(documents: CheckoutDocuments) -> Listing:
     personal = matrix.local_capabilities()
     surfaces = {name: matrix.providers(name)[0] for name in personal if not name.endswith("-agent")}
     agents = {name: matrix.providers(name)[0] for name in personal if name.endswith("-agent")}
-    return assess_checkout(
+    listing = assess_checkout(
         documents.manifest, documents.shared_lock, documents.composed_lock, documents.checkout,
         workstation=documents.workstation, saved_environment=documents.saved_environment,
         surfaces=surfaces, agents=agents, project=documents.root, registered=documents.registered,
         base_display=base.contract.display if base is not None else None,
     )
+    return Listing(listing.rows + tuple(deferred_rows(documents.input_path, documents.root)), listing.notes)
 
 
 class ConfigShowCommand(Command):
@@ -730,9 +732,7 @@ class ConfigShowCommand(Command):
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
         loaded = _load_checkout_documents(context)
         if isinstance(loaded, runtime_configuration.RuntimeConfiguration):
-            print(json.dumps(loaded.configuration_document(), indent=2, sort_keys=True) if arguments.as_json
-                  else loaded.configuration_report())
-            return 0
+            return _show_inside_capsule(loaded, arguments.as_json)
         listing = _assess(loaded)
         if arguments.as_json:
             identity = loaded.manifest["project"]
@@ -751,6 +751,43 @@ class ConfigShowCommand(Command):
         print("")
         print(listing.render_pending())
         return 0
+
+
+def _show_inside_capsule(loaded: runtime_configuration.RuntimeConfiguration, as_json: bool) -> int:
+    """Inside a capsule: the launcher's listing at launch and the console's requests since (answer 16)."""
+    from devcapsule.commands._console_channel import read_channel
+    view = read_channel(runtime_configuration.CHANNEL_PATH) if runtime_configuration.CHANNEL_PATH.is_dir() else None
+    if view is None:
+        print(json.dumps(loaded.configuration_document(), indent=2, sort_keys=True) if as_json
+              else loaded.configuration_report())
+        return 0
+    checkout = view.listing.get("checkout")
+    identity = loaded.document["project"]
+    if (not isinstance(checkout, dict) or checkout.get("launcher-path") != loaded.document["launcher-root"]
+            or checkout.get("name") != loaded.checkout_name
+            or view.listing.get("project") != {key: identity[key] for key in ("creator", "slug")}):
+        raise ProjectConfigurationError("The channel listing belongs to another checkout; inspect configuration on the host.")
+    command = loaded.launcher_command(["config", "show"])
+    if as_json:
+        print(json.dumps({**view.listing, "context": "running capsule: the launcher's listing at launch", "at": view.at,
+                          "console-requests": list(view.requests), "launcher-command": command},
+                         indent=2, sort_keys=True))
+        return 0
+    checkout = view.listing.get("checkout", {})
+    print(f"Checkout: {checkout.get('launcher-path', loaded.document['launcher-root'])} ({checkout.get('name', loaded.checkout_name)})")
+    print(f"At launch, {view.at}:")
+    print(Listing.from_document(view.listing).render())
+    print("")
+    if view.requests:
+        print("Pending, next launch (asked on the console since launch):")
+        for item in view.requests:
+            result = item.get("result")
+            outcome = f"{result['status']}: {result['text']}" if isinstance(result, dict) else "waiting for the launcher"
+            print(f"  {item['id']}: {item['statement'] or '(unreadable request)'}\n      {outcome}")
+    else:
+        print("Nothing asked on the console since launch.")
+    print(f"To change the next launch: the console's configuration page, or on the host: {command}")
+    return 0
 
 
 class ConfigListCommand(ConfigShowCommand):
@@ -1355,6 +1392,88 @@ class ConfigTrustWithdrawCommand(Command):
         return 0
 
 
+class ConfigConsoleListCommand(Command):
+    name = "list"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.INSPECTS
+    help = "The widenings asked on the console during a run, awaiting your confirmation on the host."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("--json", dest="as_json", action="store_true", help=STABLE_JSON_HELP)
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        from devcapsule.configuration.console_requests import console_requests_path, deferred_requests
+        root, manifest = manifest_for(_project_context(context).start_path())
+        record = find_checkout_record(manifest, root)
+        requests = deferred_requests(record) if record is not None else []
+        if arguments.as_json:
+            print(json.dumps({"schema-version": 1, "path": str(console_requests_path(record)) if record else None,
+                              "requests": [item.document() for item in requests]}, indent=2, sort_keys=True))
+            return 0
+        if not requests:
+            print("No console request awaits confirmation for this checkout.")
+            return 0
+        for item in requests:
+            print(f"{item.id}  asked {item.requested}: {item.statement}")
+        print("Apply one: devcapsule project config console apply ID; discard one: ... console discard ID")
+        return 0
+
+
+class ConfigConsoleApplyCommand(Command):
+    name = "apply"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    help = "Run a console request as its command and forget it."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("request", metavar="ID", help="As 'console list' names it.")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        from devcapsule.commands._console_channel import apply_deferred
+        root, manifest = manifest_for(_project_context(context).start_path())
+        record = find_checkout_record(manifest, root)
+        if record is None:
+            raise ProjectConfigurationError("This checkout has no record, so no console request awaits it.")
+        status, output = apply_deferred(root, record, arguments.request)
+        if output:
+            print(output)
+        if status == 0:
+            print(f"Applied and forgot the console request {arguments.request}.")
+        return status
+
+
+class ConfigConsoleDiscardCommand(Command):
+    name = "discard"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
+    help = "Forget a console request without applying it."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("request", metavar="ID", help="As 'console list' names it.")
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        from devcapsule.commands._console_channel import discard_deferred
+        root, manifest = manifest_for(_project_context(context).start_path())
+        record = find_checkout_record(manifest, root)
+        if record is None:
+            raise ProjectConfigurationError("This checkout has no record, so no console request awaits it.")
+        discard_deferred(record, arguments.request)
+        print(f"Discarded the console request {arguments.request}.")
+        return 0
+
+
+class ConfigConsoleGroup(Group):
+    name = "console"
+    help = "The console's requests that widen the next launch, kept for your confirmation: list, apply, discard."
+
+    @classmethod
+    def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
+        return {"list": ConfigConsoleListCommand, "apply": ConfigConsoleApplyCommand, "discard": ConfigConsoleDiscardCommand}
+
+
 class ConfigTrustGroup(Group):
     name = "trust"
     help = "What this workstation trusts, once per vendor and channel (D-0011): list, accept, withdraw."
@@ -1891,6 +2010,7 @@ class ConfigGroup(Group):
             ConfigBindCommand.name: ConfigBindCommand,
             ConfigUnbindCommand.name: ConfigUnbindCommand,
             ConfigTrustGroup.name: ConfigTrustGroup,
+            ConfigConsoleGroup.name: ConfigConsoleGroup,
             ConfigEnvGroup.name: ConfigEnvGroup,
             ConfigDockerArgsGroup.name: ConfigDockerArgsGroup,
             ConfigApproveCommand.name: ConfigApproveCommand,
@@ -2386,7 +2506,8 @@ class ProjectRunCommand(Command):
                 memory_limit_bytes=memory_limit,
                 cpus=cpus if isinstance(cpus, int) else None,
                 runtime_plan=checkout_runtime_plan,
-                launch_configuration=runtime_configuration.LaunchConfiguration.capture(selected, version_sets.effective_set_id(lock, checkout)),
+                launch_configuration=runtime_configuration.LaunchConfiguration.capture(
+                    selected, version_sets.effective_set_id(lock, checkout), launch_listing_document(selected)),
                 use_image_process=use_image_process,
                 additional_state_mounts=_component_state_mounts(
                     root,
