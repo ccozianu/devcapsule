@@ -44,7 +44,7 @@ def test_show_and_check_write_nothing_and_check_exits_three_on_pending(project: 
     before = input_path.read_bytes()
     assert run(project, "show") == 0
     out = capsys.readouterr().out
-    assert "KIND" in out and "ide     (none)" in out and "choose one:" in out
+    assert "KIND" in out and any(line.split()[:2] == ["ide", "(none)"] for line in out.splitlines()) and "choose one:" in out
     assert run(project, "check") == 3
     err = capsys.readouterr().err
     assert "Pending decisions:" in err and "config ide IDE" in err
@@ -64,7 +64,7 @@ def test_show_json_carries_the_listing(project: Path, capsys) -> None:
     assert run(project, "show", "--json") == 0
     document = json.loads(capsys.readouterr().out)
     assert document["schema-version"] == 2
-    assert {row["kind"] for row in document["rows"]} >= {"ide", "tool", "memory", "cpus", "access"}
+    assert {row["kind"] for row in document["rows"]} >= {"ide", "capability", "memory", "cpus", "access"}
     assert run(project, "check", "--json") == 3
     assert "(none)" in json.loads(capsys.readouterr().out)["pending"]
 

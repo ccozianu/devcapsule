@@ -323,30 +323,6 @@ def usable_lock(policy: CapabilityPolicy, source: Mapping[str, Any],
     return lock, tuple(notices)
 
 
-def inspection_agents(matrix: ResolutionMatrix, resolved: Mapping[str, tuple[str, str]] | None = None) -> dict[str, str]:
-    """Listing labels from providers that declare persistent credential state.
-
-    This is presentation only; it never restricts a capability selection.
-    """
-    from devcapsule.components.catalog import COMPONENTS
-    choices = {name: matrix.providers(name) for name in matrix.capabilities() if not matrix.is_ide(name)}
-    for name, (provider, _source) in (resolved or {}).items():
-        try:
-            if not matrix.is_ide(name):
-                choices[name] = (provider,)
-        except ProjectConfigurationError:
-            continue
-    result = {}
-    for name, providers in choices.items():
-        for provider in providers:
-            component = COMPONENTS.get(provider)
-            if component is not None and any(slot.sensitivity == "credentials"
-                    for slot in component.runtime_template().persistence.state_slots):
-                result[name] = provider
-                break
-    return result
-
-
 def inspection_capabilities(manifest: Mapping[str, Any], lock: Mapping[str, Any],
                             checkout: Mapping[str, Any]) -> tuple[Mapping[str, Any], dict[str, str | None]]:
     """Catalog facts for a listing, retaining inspectability of an invalid contract.

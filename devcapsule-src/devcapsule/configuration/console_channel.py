@@ -22,8 +22,7 @@ exclusive hard link (console).
 
 What the launcher does with a request depends on its verb. A verb that
 keeps the checkout's own choices, or narrows what the next launch reaches,
-is applied at once with the command's own validation: ``ide``, ``agent``,
-``tool``, ``set``, ``deny``, literal ``env set``, ``env unset``, ``unbind``,
+is applied at once with the command's own validation: ``ide``, ``add``, ``omit``, ``restore``, ``use``, ``set``, ``deny``, literal ``env set``, ``env unset``, ``unbind``,
 ``trust withdraw``, ``docker-args clear``. A verb that widens what the
 next launch may reach is deferred: ``authorize``, ``trust accept``,
 ``bind``, ``forget``, ``env set --from-host``, ``docker-args set``. Forgetting
@@ -68,7 +67,7 @@ MAXIMUM_DOCUMENT_BYTES = 256 * 1024
 MAXIMUM_TOKENS = 64
 MAXIMUM_TOKEN_LENGTH = 4096
 
-APPLIED_VERBS = {"ide", "agent", "tool", "set", "deny", "unbind"}
+APPLIED_VERBS = {"ide", "add", "omit", "restore", "use", "set", "deny", "unbind"}
 APPLIED_SUBVERBS = {("env", "set"), ("env", "unset"), ("trust", "withdraw"), ("docker-args", "clear")}
 DEFERRED_VERBS = {"authorize", "bind", "forget"}
 DEFERRED_SUBVERBS = {("trust", "accept"), ("docker-args", "set")}

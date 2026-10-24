@@ -43,7 +43,7 @@ MAXIMUM_DOCUMENT_BYTES = 256 * 1024
 MAXIMUM_COMMAND_BYTES = 16 * 1024
 MAXIMUM_TOKENS = 64
 # The launcher's config vocabulary a request may name; anything else is a typo or not the console's to ask.
-VERBS = ("ide", "agent", "tool", "set", "deny", "forget", "unbind", "env", "trust", "docker-args", "authorize", "bind")
+VERBS = ("ide", "add", "omit", "restore", "use", "set", "deny", "forget", "unbind", "env", "trust", "docker-args", "authorize", "bind")
 SECURE_AUTHORIZATIONS = {
     "network": {"bridge", "none"}, "docker-daemon": {"none"},
     "development-sudo": {"false", "none"}, "host-browser": {"false", "none"}, "host-x11": {"false", "none"},

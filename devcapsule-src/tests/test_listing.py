@@ -18,10 +18,8 @@ from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES
 
 MATRIX = MATRICES[Platform.LINUX_AMD64]
-from devcapsule.configuration.capability_selection import inspection_agents
 
 SURFACES = {name: MATRIX.resolve_provider(name) or name for name in MATRIX.ide_capabilities()}
-AGENTS = inspection_agents(MATRIX)
 
 
 def manifest(**extra) -> dict:
@@ -35,7 +33,7 @@ def listing(document: dict, checkout: dict | None = None, *, workstation: dict |
     checkout = checkout or {"devcapsule-checkout-schema-version": 1}
     composed = compose_lock(document, shared, checkout)
     return assess_checkout(document, shared, composed, checkout, workstation=workstation, saved_environment=saved,
-                           surfaces=SURFACES, agents=AGENTS, project=Path("/p"), base_display="contained")
+                           surfaces=SURFACES, project=Path("/p"), base_display="contained")
 
 
 def rows(result, kind):
@@ -57,9 +55,9 @@ def test_a_recommended_ide_is_disclosed_with_its_reason_and_not_pending() -> Non
     assert ide.command.endswith("config ide frontend-ide")
 
 
-def test_tools_show_their_scope_and_omission() -> None:
+def test_capabilities_show_their_scope_and_omission() -> None:
     result = listing(manifest(), {"devcapsule-checkout-schema-version": 1, "capabilities": {"without": ["browser-automation"]}})
-    tools = rows(result, "tool")
+    tools = rows(result, "capability")
     assert tools["node"].source == "project (required)" and tools["node"].effective == "supplied by the base"
     assert tools["browser-automation"].effective == "omitted" and tools["browser-automation"].source == "checkout (omitted)"
 
@@ -129,9 +127,9 @@ def test_bindings_and_secrets_appear_once_an_ide_is_chosen(tmp_path: Path) -> No
     checkout = {"devcapsule-checkout-schema-version": 1,
                 "capabilities": {"selected": list(local.selected), "without": [], "lock": render_toml(pins)}}
     composed = compose_lock(document, shared, checkout)
-    result = assess_checkout(document, shared, composed, checkout, surfaces=SURFACES, agents=AGENTS, project=Path("/p"), base_display="contained")
+    result = assess_checkout(document, shared, composed, checkout, surfaces=SURFACES, project=Path("/p"), base_display="contained")
     assert rows(result, "ide")["frontend-ide"].effective.startswith("codium ")
-    assert rows(result, "agent")["codex-agent"].effective.startswith("codex ")
+    assert rows(result, "capability")["codex-agent"].effective.startswith("codex ")
     assert rows(result, "binding")["home"].effective == "managed directory"
     assert rows(result, "secret")["codex/openai-api-key"].source == "component (optional)"
     assert not result.notes
@@ -255,9 +253,10 @@ def test_legacy_host_answer_is_the_effective_value(recommended):
 
 
 @pytest.mark.parametrize("scope", ["required", "optional", "checkout", "omitted"])
-def test_agent_listing_uses_provider_declarations_without_a_name_suffix(monkeypatch, scope):
+@pytest.mark.parametrize("provider", ["codex", "postgresql-client"])
+def test_capability_kind_is_independent_of_provider_and_name_suffix(monkeypatch, scope, provider):
     from devcapsule.resolution_matrix import Capability
-    monkeypatch.setitem(MATRIX._capability_table, "assistant", Capability(("codex",)))
+    monkeypatch.setitem(MATRIX._capability_table, "assistant", Capability((provider,)))
     document = manifest()
     checkout = {"devcapsule-checkout-schema-version": 1}
     if scope == "checkout":
@@ -275,15 +274,7 @@ def test_agent_listing_uses_provider_declarations_without_a_name_suffix(monkeypa
         checkout["capabilities"]["lock"] = render_toml(pins)
     composed = compose_lock(document, shared, checkout)
     result = assess_checkout(document, shared, composed, checkout,
-                             surfaces=SURFACES, agents=inspection_agents(MATRIX))
-    assert rows(result, "agent")["assistant"].effective == (
-        "omitted" if scope == "omitted" else f"codex {composed['components']['codex']['version']}")
-    assert "assistant" not in rows(result, "tool")
-
-
-def test_agent_label_follows_the_selected_provider_and_component_alias(monkeypatch):
-    from devcapsule.resolution_matrix import Capability
-    monkeypatch.setitem(MATRIX._capability_table, "assistant", Capability(("codex", "postgresql-client")))
-    assert "assistant" not in inspection_agents(MATRIX, {"assistant": ("postgresql-client", "checkout")})
-    assert inspection_agents(MATRIX, {"assistant": ("codex", "checkout")})["assistant"] == "codex"
-    assert inspection_agents(MATRIX, {"codex": ("codex", "catalog")})["codex"] == "codex"
+                             surfaces=SURFACES)
+    assert rows(result, "capability")["assistant"].effective == (
+        "omitted" if scope == "omitted" else f"{provider} {composed['components'][provider]['version']}")
+    assert not rows(result, "agent") and not rows(result, "tool")

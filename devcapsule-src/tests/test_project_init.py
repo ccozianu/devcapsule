@@ -86,7 +86,7 @@ def matrix_base_reference() -> str:
 
 
 @pytest.mark.parametrize("flags,message", [
-    (["--offer", "python=3"], "Unknown tool"),
+    (["--offer", "python=3"], "Unsupported requirement form"),
     (["--require", "python", "--offer", "python"], "both required and optional"),
 ])
 def test_init_refuses_invalid_tool_scope_before_writes(tmp_path: Path, monkeypatch, capsys, flags, message) -> None:
@@ -660,7 +660,7 @@ def test_interactive_init_prompts_in_the_settled_order(tmp_path: Path) -> None:
         )
     transcript = prompts.getvalue()
     assert "Project creator" in transcript
-    assert "Tools the project requires" in transcript
+    assert "Capabilities the project requires" in transcript
     assert "Your IDE for this checkout" in transcript
     assert "default agent component (antigravity-agent)" in transcript
     assert "[none]" in transcript
@@ -1358,3 +1358,56 @@ def test_curated_host_authorization_is_admitted_before_the_recommendation_exists
         assert manifest["host"]["network"]["mode"]["recommended"]["value"] == "host"
         record = read_toml(next((tmp_path / "config").rglob("devcapsule.checkout.toml")))
         assert record["authorization"]["network"]["value"] == "host"
+
+
+@pytest.mark.parametrize("requirement", ["java>=21", "playwright>=1.21"])
+def test_init_and_owner_command_share_requirement_grammar(tmp_path, monkeypatch, requirement):
+    for key, value in isolated_env(tmp_path).items():
+        monkeypatch.setenv(key, value)
+    direct, edited = tmp_path / "direct", tmp_path / "edited"
+    direct.mkdir()
+    edited.mkdir()
+    for root, flags in [(direct, ["--require", requirement]), (edited, [])]:
+        assert cli.main(["project", "--path", str(root), "init", "--creator", "mailto:owner@example.test", *flags]) == 0
+    assert cli.main(["project", "--path", str(edited), "config", "require", requirement]) == 0
+    direct_manifest = read_toml(direct / ".devcapsule/devcapsule.toml")
+    edited_manifest = read_toml(edited / ".devcapsule/devcapsule.toml")
+    assert direct_manifest["capabilities"] == edited_manifest["capabilities"]
+    assert direct_manifest["capabilities"]["required"] == [requirement]
+    assert cli.main(["project", "--path", str(direct), "init"]) == 0
+    assert read_toml(direct / ".devcapsule/devcapsule.toml")["capabilities"] == direct_manifest["capabilities"]
+
+
+@pytest.mark.parametrize("flags", [
+    ["--require", "python>=3.14"], ["--require", "java<25"],
+    ["--require", "java>=21,<25"], ["--require", "java>=21,"],
+    ["--require", "java python"], ["--offer", "java>=21"],
+    ["--with", "no-such-capability"], ["--with", "frontend-ide"],
+])
+def test_init_refuses_invalid_capability_arguments_without_writes(tmp_path, monkeypatch, flags):
+    for key, value in isolated_env(tmp_path).items():
+        monkeypatch.setenv(key, value)
+    root = tmp_path / "project"
+    root.mkdir()
+    assert cli.main(["project", "--path", str(root), "init", "--creator", "mailto:owner@example.test", *flags]) == 2
+    assert not (root / ".devcapsule").exists()
+    assert not list((tmp_path / "config").rglob("*.toml"))
+
+
+@pytest.mark.parametrize("ide", [None, "java-ide"])
+def test_init_with_repeats_and_keeps_additions_private(tmp_path, monkeypatch, ide):
+    from devcapsule.configuration.capabilities import LocalCapabilities
+    from devcapsule.configuration.storage import checkout_record_paths
+    for key, value in isolated_env(tmp_path).items():
+        monkeypatch.setenv(key, value)
+    root = tmp_path / "project"
+    root.mkdir()
+    assert cli.main(["project", "--path", str(root), "init", "--creator", "mailto:owner@example.test",
+                     "--require", "java>=21", "--with", "codex-agent", "--with", "browser-automation",
+                     *(["--ide", ide, "--authorize", "base-image", "default"] if ide else [])]) == 0
+    manifest = read_toml(root / ".devcapsule/devcapsule.toml")
+    assert manifest["capabilities"] == {"required": ["java>=21"]}
+    record, _ = checkout_record_paths(manifest, root)
+    assert set(LocalCapabilities.read(read_toml(record)).selected) == ({"codex-agent", "browser-automation"} | ({ide} if ide else set()))
+    lock = read_toml(root / f".devcapsule/devcapsule.{Platform.current()}.lock")
+    assert "codex" not in lock["components"] and "playwright" not in lock["components"]

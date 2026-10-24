@@ -40,8 +40,8 @@ from .authorization import (
     normalize_authorization_value,
     render_authorization_value,
 )
-from .capabilities import CapabilityPolicy, LocalCapabilities
-from .capability_commands import check_documents, parse_tool_names, pin_selection
+from .capabilities import CapabilityPolicy, LocalCapabilities, requirement
+from .capability_commands import check_documents, pin_selection
 from .capability_selection import compose_lock, effective_lock, generate_lock, local_pins
 from .file_formats import (
     AuthorizationScalar,
@@ -328,7 +328,7 @@ class InitializeReport:
             lines.append(f"{line} ({justification})." if justification else f"{line}.")
         selection = [self.ide] if self.ide else []
         selection.extend(self.agents)
-        lines.append("Your checkout: " + (" ".join(selection) if selection else "no IDE and no agent selected yet"))
+        lines.append("Your checkout: " + (" ".join(selection) if selection else "no IDE or personal capability selected yet"))
         lines.extend(_authorization_lines(self.answered, self.carried, self.recommended))
         lines.append(f"Checkout record: {self.checkout_record}")
         if self.resolve is not None:
@@ -649,7 +649,8 @@ def _elicit_owner_selection(
 
     The IDE is asked interactively with Enter meaning "decide later": a
     project does not need an IDE to be initialized, a checkout needs one to
-    run. Agents join through ``config add`` or the default-agent offer. With
+    run. Personal capabilities join through ``--with``, ``config add`` or
+    the default-agent offer. With
     ``ask_ide`` false the lock already carries the IDE (a manifest from
     before 0.3.0 rc4) and only an explicit ``--ide`` is taken.
     """
@@ -665,7 +666,10 @@ def _elicit_owner_selection(
         validate=_ide_validator(matrix, surfaces),
     )
     ide = None if answer is None or answer.value == "none" else answer.value
-    agents = tuple(sorted({matrix.canonical_name(name) for name in request.agents} | set(existing.agents)))
+    additions = {matrix.canonical_name(name) for name in request.agents}
+    if any(matrix.is_ide(name) for name in additions):
+        raise ProjectConfigurationError("Use init --ide for an IDE choice; --with adds other capabilities.")
+    agents = tuple(sorted(additions | set(existing.agents)))
     agents = _with_default_agent(elicitor, agents, offer=fresh and not existing.selected, matrix=matrix)
     return _OwnerSelection(ide, agents)
 
@@ -742,6 +746,9 @@ def _init_command_line(request: InitializeRequest) -> dict[AnswerKey, str]:
     """
 
     command_line: dict[AnswerKey, str] = {}
+    for entry in (*request.require, *request.offer):
+        if entry.strip().lower() != "none":
+            requirement(entry)
     if request.require:
         command_line[("require", "value")] = " ".join(request.require)
     if request.offer:
@@ -881,35 +888,35 @@ def _elicit_identity(
         default=f"/workspace/{slug.value}",
     )
     tools = list(matrix.capabilities())
-    existing_require = " ".join(existing_policy.required) if existing_policy is not None else None
+    existing_require = " ".join(existing_policy.requirements()) if existing_policy is not None else None
     require = elicitor.seek(
         "require",
         description=(
-            "Tools the project requires, space-separated "
+            "Capabilities the project requires, optionally NAME>=VERSION, space-separated "
             f"({', '.join(tools)}; Enter for none)"
         ),
-        remedy="--require TOOL [--require TOOL ...]",
+        remedy="--require CAPABILITY [--require CAPABILITY ...]",
         existing=existing_require if existing_require is not None else None,
         empty_answer="none",
         omitted_answer="none",
-        validate=_require_validator(matrix),
+        validate=_require_validator(matrix, required=True),
     )
     offer = elicitor.seek(
         "offer",
-        description="Tools the project offers",
-        remedy="--offer TOOL [--offer TOOL ...]",
+        description="Capabilities the project offers",
+        remedy="--offer CAPABILITY [--offer CAPABILITY ...]",
         mandatory=False,
         existing=" ".join(existing_policy.optional) if existing_policy is not None and existing_policy.optional else None,
-        validate=_require_validator(matrix),
+        validate=_require_validator(matrix, required=False),
     )
-    required_names = _split_tools(matrix, require.value if require else "none")
-    offered_names = _split_tools(matrix, offer.value if offer else "none")
+    required_names = _split_capabilities(matrix, require.value if require else "none", required=True)
+    offered_names = _split_capabilities(matrix, offer.value if offer else "none", required=False)
     if existing_policy is not None and require is not None and require.source == SOURCE_EXISTING_RECORD:
         if offer is not None and offer.source == SOURCE_EXISTING_RECORD:
             offered_names = existing_policy.optional
         policy = CapabilityPolicy(existing_policy.required, offered_names, existing_policy.minimums, existing_policy.layered)
     else:
-        policy = CapabilityPolicy(required_names, offered_names, layered=True)
+        policy = CapabilityPolicy.read({"capabilities": {"required": list(required_names), "optional": list(offered_names)}})
     return _ProjectIdentity(
         name=name.value if name else "",
         slug=slug.value,
@@ -919,20 +926,26 @@ def _elicit_identity(
     )
 
 
-def _require_validator(matrix: ResolutionMatrix) -> Any:
+def _require_validator(matrix: ResolutionMatrix, *, required: bool) -> Any:
     def validate(value: str) -> str:
         if value.strip().lower() == "none":
             return "none"
-        return " ".join(_split_tools(matrix, value))
+        return " ".join(_split_capabilities(matrix, value, required=required))
 
     return validate
 
 
-def _split_tools(matrix: ResolutionMatrix, value: str) -> tuple[str, ...]:
-    """Canonical capability names from a space- or comma-separated answer."""
+def _split_capabilities(matrix: ResolutionMatrix, value: str, *, required: bool) -> tuple[str, ...]:
+    """Use the shared requirement grammar for initialization answers."""
     if value.strip().lower() == "none":
         return ()
-    return parse_tool_names(matrix, value.replace(",", " ").split())
+    entries = value.split()
+    policy = CapabilityPolicy.read({"capabilities": {
+        "required": entries if required else [], "optional": [] if required else entries,
+    }})
+    for name in (*policy.required, *policy.optional):
+        matrix.canonical_name(name)
+    return policy.requirements() if required else policy.optional
 
 
 def _with_default_agent(

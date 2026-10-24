@@ -241,7 +241,7 @@ class ProjectInitCommand(Command):
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.CREATES_HERE
     help = (
         "Initialize the project: the manifest with what it requires and offers, the platform "
-        "lock, your own checkout record with your IDE, and, once an IDE is chosen, "
+        "lock, your own checkout record with your IDE and capabilities, and, once an IDE is chosen, "
         "a fresh resolution. New manifests use schema 2; rc3 and older launchers cannot read them."
     )
 
@@ -249,14 +249,16 @@ class ProjectInitCommand(Command):
     def configure(cls, parser: argparse.ArgumentParser) -> None:
         parser.add_argument(
             "--require", action="append", default=[], metavar="CAPABILITY",
-            help="A capability every checkout must have. Use config require to set a minimum. Repeatable.",
+            help="A capability every checkout must have, optionally NAME>=VERSION. Repeatable.",
         )
         parser.add_argument(
             "--offer", action="append", default=[], metavar="CAPABILITY",
             help="A capability the project offers and a developer may leave out, such as browser-automation. Repeatable.",
         )
         parser.add_argument("--ide", metavar="IDE", help="Your IDE for this checkout: python-ide, frontend-ide, java-ide, eclipse-ide or dotnet-ide; component names such as pycharm also work.")
-        _retired_option(parser, "--agent", "devcapsule project config add CAPABILITY")
+        parser.add_argument("--with", dest="capabilities", action="append", default=[], metavar="CAPABILITY",
+                            help="Add a capability for your checkout. Repeatable.")
+        _retired_option(parser, "--agent", "devcapsule project init --with CAPABILITY")
         parser.add_argument("--name", dest="project_name", help="Project display name.")
         parser.add_argument("--slug", help="Project identity slug.")
         parser.add_argument("--creator", help="Project creator URL or email address.")
@@ -323,7 +325,7 @@ def _init_selection(arguments: argparse.Namespace) -> tuple[tuple[str, ...], tup
     from devcapsule.resolution_matrix import MATRICES
     matrix = MATRICES[Platform.current()]
     ide = matrix.canonical_name(arguments.ide) if arguments.ide is not None and arguments.ide.strip().lower() != "none" else None
-    return tuple(arguments.require), tuple(arguments.offer), ide, ()
+    return tuple(arguments.require), tuple(arguments.offer), ide, tuple(arguments.capabilities)
 
 
 class CheckoutRegisterCommand(Command):
@@ -654,16 +656,14 @@ def _assess(documents: CheckoutDocuments) -> Listing:
     if selection is not None:
         base_reference = selection.reference
     base = known_base_image(str(base_reference))
-    from devcapsule.configuration.capability_selection import inspection_agents
     surfaces = {name: matrix.resolve_provider(name) or name for name in matrix.ide_capabilities()}
     from devcapsule.configuration.capability_selection import inspection_capabilities, inspection_providers
     access_lock, versions = inspection_capabilities(documents.manifest, documents.composed_lock, documents.checkout)
     providers = inspection_providers(documents.manifest, documents.composed_lock, documents.checkout)
-    agents = inspection_agents(matrix, providers)
     listing = assess_checkout(
         documents.manifest, documents.shared_lock, documents.composed_lock, documents.checkout,
         workstation=documents.workstation, saved_environment=documents.saved_environment,
-        surfaces=surfaces, agents=agents, project=documents.root, registered=documents.registered,
+        surfaces=surfaces, project=documents.root, registered=documents.registered,
         access_lock=access_lock, capability_versions=versions,
         capability_providers=providers,
         base_display=base.contract.display if base is not None else None,

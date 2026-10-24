@@ -102,13 +102,13 @@ def test_owners_java_and_playwright_resolve_show_and_preserve_minimums(project: 
     assert load_toml(manifest_path)["capabilities"]["required"] == ["java>=21", "playwright>=1.21"]
     assert cli.main(["project", "--path", str(project), "config", "show"]) == 0
     shown = capsys.readouterr().out
-    java = next(line for line in shown.splitlines() if line.split()[:2] == ["tool", "java"])
-    playwright = next(line for line in shown.splitlines() if line.split()[:2] == ["tool", "playwright"])
+    java = next(line for line in shown.splitlines() if line.split()[:2] == ["capability", "java"])
+    playwright = next(line for line in shown.splitlines() if line.split()[:2] == ["capability", "playwright"])
     assert "supplied by the base, 25.0.4+7" in java and "project (required, >=21)" in java
     assert "playwright 1.63.0" in playwright and "project (required, >=1.21)" in playwright
     assert playwright.count("1.63.0") == 1
     assert cli.main(["project", "--path", str(project), "config", "show", "--json"]) == 0
-    rows = {row["name"]: row for row in json.loads(capsys.readouterr().out)["rows"] if row["kind"] == "tool"}
+    rows = {row["name"]: row for row in json.loads(capsys.readouterr().out)["rows"] if row["kind"] == "capability"}
     assert rows["java"]["source"] == "project (required, >=21)"
     assert rows["java"]["effective"] == "supplied by the base, 25.0.4+7"
     assert rows["playwright"]["source"] == "project (required, >=1.21)"

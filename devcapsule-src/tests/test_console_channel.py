@@ -10,7 +10,7 @@ from unittest.mock import patch
 import pytest
 
 from devcapsule import cli
-from devcapsule.commands._console_channel import ChannelWatcher, handle_request, read_channel, sweep
+from devcapsule.commands._console_channel import ChannelWatcher, handle_request, read_channel, run_config, sweep
 from devcapsule.commands._run_flow import RunFlags, launch_listing_document, prepare_launch
 from devcapsule.configuration.capability_commands import paths
 from devcapsule.configuration.console_channel import (
@@ -376,7 +376,7 @@ def test_launch_listing_includes_run_once_selection_and_earlier_requests(project
     assert "broad control of the host" in exposure["exposure"]
     assert exposure["reason"] == "Project build containers"
     assert "codex" in prepared.selected.lock["components"]
-    assert any(row["kind"] == "agent" and "codex" in row["name"] for row in listing["rows"])
+    assert any(row["kind"] == "capability" and "codex" in row["name"] for row in listing["rows"])
     assert load_toml(record_path(project))["capabilities"]["selected"] == ["python-ide"]
 
 
@@ -525,3 +525,44 @@ def test_console_set_during_run_preserves_other_staged_values(project, tmp_path)
                               input_stream=io.StringIO("a\n"), output_stream=io.StringIO())
     assert prepared.selected.checkout["configuration"]["values"] == {"memory": "6GiB", "cpus": 2}
     assert load_toml(record_path(project))["configuration"]["values"] == {"memory": "6GiB", "cpus": 2}
+
+
+@pytest.mark.parametrize("arguments", [
+    ["add", "claude-code-agent"], ["omit", "browser-automation"],
+    ["restore", "browser-automation"], ["use", "frontend-ide", "codium"],
+])
+def test_capability_requests_apply_without_host_confirmation(arguments):
+    assert classify(arguments) == (Disposition.APPLY, "")
+
+
+@pytest.mark.parametrize("arguments", [["agent", "add", "codex"], ["tool", "omit", "browser-automation"]])
+def test_deleted_channel_verbs_are_refused(arguments):
+    assert classify(arguments)[0] is Disposition.REFUSE
+
+
+def test_channel_records_capability_choices_and_preserves_vendor_consent(project, tmp_path, capsys):
+    from devcapsule.configuration.capabilities import LocalCapabilities
+    assert config(project, "offer", "browser-automation") == 0
+    channel = tmp_path / "channel"
+    channel.mkdir()
+    def send(identifier, *arguments):
+        request(channel, identifier, *arguments)
+        assert sweep(channel, project, record_path(project)) == 1
+        return result(channel, identifier)
+    assert send("000001-add", "add", "claude-code-agent")["status"] == "recorded"
+    assert "claude-code-agent" in LocalCapabilities.read(load_toml(record_path(project))).selected
+    assert send("000002-omit", "omit", "browser-automation")["status"] == "recorded"
+    assert "browser-automation" in LocalCapabilities.read(load_toml(record_path(project))).without
+    assert send("000003-restore", "restore", "browser-automation")["status"] == "recorded"
+    assert "browser-automation" not in LocalCapabilities.read(load_toml(record_path(project))).without
+    # The current catalog has no alternatives. This refusal comes from the command.
+    expected_status, expected_text = run_config(
+        project, ["use", "frontend-ide", "codium"])
+    assert expected_status == 2 and "choice" in expected_text
+    refused = send("000004-use", "use", "frontend-ide", "codium")
+    assert refused["status"] == "refused" and expected_text.strip() in refused["text"]
+    capsys.readouterr()
+    assert config(project, "show", "--json") == 0
+    listing = json.loads(capsys.readouterr().out)
+    assert any(row["name"] == "claude-code-download" and row["pending"] for row in listing["rows"])
+    assert deferred_requests(record_path(project)) == []

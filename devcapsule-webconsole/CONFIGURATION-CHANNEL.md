@@ -39,7 +39,7 @@ names the project.
 
 - **Recorded at once**, with the command's own validation and output, when
   the verb keeps the checkout's own choices or narrows what the next launch
-  reaches: `ide`, `agent`, `tool`, `set`, `deny`, literal `env set NAME VALUE`,
+  reaches: `ide`, `add`, `omit`, `restore`, `use`, `set`, `deny`, literal `env set NAME VALUE`,
   `env unset`, `unbind`, `trust withdraw`, `docker-args clear`. Explicit
   secure authorizations also apply: `network bridge|none`, `docker-daemon
   none`, and `development-sudo|host-browser|host-x11 false|none`.
@@ -58,6 +58,10 @@ names the project.
 - **Refused**, with the reason, for anything else: a read-only verb, a
   workstation default, an owner's command, an unknown verb, a malformed
   document.
+
+Adding a capability records a selection. Vendor consent still applies at the
+next launch. Capability rows use the kind `capability`; only the IDE row uses
+`ide`.
 
 The console checks the verb before writing, so a typo is refused on the
 page; the launcher validates the whole command again. The result's `text`
@@ -84,7 +88,7 @@ the command ran; inspect configuration on the host before retrying.
 
 ## Routes
 
-- `GET /api/configuration`: the runtime CLI's `config list --json`, which
+- `GET /api/configuration`: the runtime CLI's `config show --json`, which
   inside a capsule with the channel is the launcher's listing at launch
   with `at`, `console-requests` and `launcher-command`; each pending row
   gains `request`, the config tokens its host command implies; `channel`

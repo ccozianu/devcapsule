@@ -20,7 +20,7 @@ SPELLINGS = [
     (("init", "--local", "python-ide"), "config ide"),
     (("init", "--less-pedantic"), "config authorize base-image"),
     (("init", "--sdk-major", "python=3"), "NAME>=VERSION"),
-    (("init", "--agent", "codex-agent"), "config add"),
+    (("init", "--agent", "codex-agent"), "init --with"),
     (("config", "set-env", "TOKEN", "value"), "config env set"),
     (("config", "unset-env", "TOKEN"), "config env unset"),
     (("config", "list-env"), "config env list"),

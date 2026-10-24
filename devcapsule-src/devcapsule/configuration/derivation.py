@@ -33,7 +33,7 @@ from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix, known_base_
 from .authorization import authorized_base_selection
 from .capabilities import CapabilityPolicy, LocalCapabilities, resolution_recommendations
 from .capability_commands import pin_selection, release_deselected
-from .capability_selection import compose_lock, effective_lock, local_pins, inspection_agents, inspection_capabilities, inspection_providers, known_policy_names
+from .capability_selection import compose_lock, effective_lock, local_pins, inspection_capabilities, inspection_providers, known_policy_names
 from .console_requests import deferred_rows
 from .file_formats import ProjectConfigurationError, canonical_digest, render_checkout, render_toml
 from .listing import Listing, assess_checkout
@@ -160,7 +160,7 @@ class CheckoutState:
         listing = assess_checkout(
             self.manifest, self.shared_lock, lock, document,
             workstation=self.workstation, saved_environment=self.saved_environment,
-            surfaces=self.surfaces, agents=inspection_agents(self.matrix, providers), project=self.root, registered=self.registered,
+            surfaces=self.surfaces, project=self.root, registered=self.registered,
             access_lock=access_lock, capability_versions=versions,
             capability_providers=providers,
             base_display=base.contract.display if check_display and base is not None else None,

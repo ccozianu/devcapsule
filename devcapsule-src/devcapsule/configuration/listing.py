@@ -185,7 +185,6 @@ def assess_checkout(
     workstation: Mapping[str, Any] | None = None,
     saved_environment: Mapping[str, str | None] | None = None,
     surfaces: Mapping[str, str],
-    agents: Mapping[str, str],
     project: Path | None = None,
     registered: bool = True,
     base_display: str | None = None,
@@ -196,8 +195,8 @@ def assess_checkout(
     """The listing of one checkout, from its documents, writing nothing.
 
     ``composed_lock`` is the shared lock with the checkout's pins laid over
-    it (``capability_selection.compose_lock``); ``surfaces`` and ``agents``
-    map IDE and agent capability names to the component each selects, as
+    it (``capability_selection.compose_lock``); ``surfaces`` maps IDE
+    capability names to the component each selects, as
     the launcher's catalog knows them. ``saved_environment`` maps a saved
     variable name to its value, or ``None`` when it is bound to the host's
     variable; values are never shown. ``registered`` says whether the
@@ -211,8 +210,7 @@ def assess_checkout(
     local = LocalCapabilities.read(checkout)
     recommendations = Recommendations.read(manifest)
     surfaces = {name: (capability_providers or {}).get(name, (component, ""))[0] for name, component in surfaces.items()}
-    agents = {name: (capability_providers or {}).get(name, (component, ""))[0] for name, component in agents.items()}
-    rows.extend(_capability_rows(policy, local, recommendations, shared_lock, composed_lock, surfaces, agents, project, capability_versions or {}))
+    rows.extend(_capability_rows(policy, local, recommendations, shared_lock, composed_lock, surfaces, project, capability_versions or {}))
     from dataclasses import replace
     rows = [replace(row, provider=capability_providers[row.name][0], provider_source=capability_providers[row.name][1])
             if capability_providers and row.name in capability_providers else row for row in rows]
@@ -235,7 +233,7 @@ def assess_checkout(
 def _capability_rows(
     policy: CapabilityPolicy, local: LocalCapabilities, recommendations: Recommendations,
     shared_lock: Mapping[str, Any], composed_lock: Mapping[str, Any],
-    surfaces: Mapping[str, str], agents: Mapping[str, str], project: Path | None,
+    surfaces: Mapping[str, str], project: Path | None,
     capability_versions: Mapping[str, str | None],
 ) -> list[ListingRow]:
     rows: list[ListingRow] = []
@@ -256,15 +254,11 @@ def _capability_rows(
         options = tuple((name, _component_version(composed_lock, surfaces[name])) for name in sorted(surfaces))
         rows.append(ListingRow("ide", "(none)", "-", "none", f"choose one: {choices}", _command(project, "ide", "IDE"),
                                Decision("ide", "ide", "Your IDE for this checkout", _command(project, "ide", "IDE"), options)))
-    for name in sorted(set(local.selected) & set(agents)):
-        rows.append(ListingRow("agent", name, _component_version(composed_lock, agents[name]), "checkout"))
-    for name in sorted(set(policy.required) & set(agents)):
-        rows.append(ListingRow("agent", name, _component_version(shared_lock, agents[name]), "project (required)"))
     providers = table(composed_lock, "capability-providers")
-    personal = set(surfaces) | set(agents)
+    personal = set(surfaces) | set(policy.required) | set(policy.optional)
     for scope, names in (("project (required)", policy.required), ("project (offered)", policy.optional)):
         for name in names:
-            if name in surfaces or name in agents and scope == "project (required)":
+            if name in surfaces:
                 continue
             components = providers.get(name)
             if isinstance(components, list) and components:
@@ -272,13 +266,13 @@ def _capability_rows(
             else:
                 effective = "supplied by the base"
             if name in local.without:
-                rows.append(ListingRow("agent" if name in agents else "tool", name, "omitted", "checkout (omitted)"))
+                rows.append(ListingRow("capability", name, "omitted", "checkout (omitted)"))
             else:
-                rows.append(ListingRow("agent" if name in agents else "tool", name, effective, scope))
+                rows.append(ListingRow("capability", name, effective, scope))
     for name in sorted(set(local.selected) - personal):
         components = providers.get(name)
         effective = ", ".join(_component_version(composed_lock, str(c)) for c in components) if isinstance(components, list) and components else name
-        rows.append(ListingRow("tool", name, effective, "checkout"))
+        rows.append(ListingRow("capability", name, effective, "checkout"))
     if policy.minimums:
         from dataclasses import replace
         minimums = dict(policy.minimums)
