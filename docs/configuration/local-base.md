@@ -57,7 +57,6 @@ Run these from the project checkout, on your computer:
 
 ```bash
 ~/.local/bin/devcapsule project config authorize base-image devcapsule-base-local:recipe-11
-~/.local/bin/devcapsule project config resolve
 ~/.local/bin/devcapsule project run
 ```
 
@@ -65,8 +64,7 @@ The first command inspects the image, checks that it is a DevCapsule base
 for your platform, and records its image ID in this checkout's own
 configuration. It prints the ID it bound to and says that this
 developer-owned selection overrides the published base recommendation for
-this checkout. The second writes the checkout's resolution against it. The
-third launches on it; on a recipe-11 base the launcher prints the web console
+this checkout. The second launches on it; on a recipe-11 base the launcher prints the web console
 link and the console answers.
 
 What the selection is, and is not:
@@ -88,7 +86,6 @@ answers.
 
 ```bash
 ~/.local/bin/devcapsule project config authorize base-image default
-~/.local/bin/devcapsule project config resolve
 ```
 
 `default` accepts the lock's current pin and nothing more. The local image

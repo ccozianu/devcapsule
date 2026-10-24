@@ -21,7 +21,7 @@ In your computer's terminal:
 ```bash
 mkdir -p ~/hello-devcapsule
 cd ~/hello-devcapsule
-~/.local/bin/devcapsule project init --need frontend-ide --need node
+~/.local/bin/devcapsule project init --require node --ide frontend-ide
 ```
 
 This selects VSCodium, a VS Code-family IDE, and Node.js. Initialization asks

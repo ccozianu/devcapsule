@@ -6,7 +6,7 @@ new and what is fixed since 0.2.15. Records, workflow rules and the
 project's own housekeeping are left out on purpose. The adopter notes for
 the final release, `notes.md`, are written from this file.
 
-Candidate 3, tagged 2026-10-24 at `a22a215`; candidate 2 was tagged
+Candidate 4 is in preparation; candidate 3 was tagged 2026-10-24 at `a22a215`; candidate 2 was tagged
 2026-10-22 at `e5b5a8b`, candidate 1 on 2026-10-19 at `7016cdd` and
 candidate 0 on 2026-10-18 at `53ebc17`.
 
@@ -158,6 +158,79 @@ integration and end-to-end suites.
   approves from the command line and inside scripts. The page
   [Software approvals](https://devcapsule.mycodespace.ai/docs/current/configuration/software-approvals/)
   says what an approval by name leaves alone (2026-10-22).
+
+## New in candidate 4
+
+The command line redesigned around who decides what, from the
+[CLI UX redesign work order](../../work-orders/2026-10-24-cli-ux-redesign.md)
+the owner answered on 2026-10-24 (2026-10-24):
+
+- **The project's manifest in the owner's words, schema 2.** `project init
+  --require node --offer browser-automation --ide frontend-ide --agent
+  codex-agent`: `--require` and `--offer` write the shared manifest and
+  lock; `--ide` and `--agent` are yours and go to your checkout. Owners edit
+  with `config require|offer|drop tool|env` and `config recommend
+  ide|memory|cpus|network|...`, each with `--because`; the manifest is
+  written in the form an owner would write by hand, bare keys, no empty
+  tables. Manifests of schema 2 need this launcher; `capabilities.need`
+  manifests stay readable. [Capabilities](https://devcapsule.mycodespace.ai/docs/current/configuration/capabilities/).
+- **One truthful listing.** `config show` prints every choice of the
+  checkout with the value the next launch uses, its source and what is
+  pending, with the command that settles it, and writes nothing. `config
+  check` exits 3 when a decision is pending, naming each, for scripts.
+- **The checkout's verbs.** `config ide IDE`, `agent add|remove`, `tool
+  omit|restore`, `set memory|cpus|NAME VALUE|default`, `authorize`, `deny`,
+  `forget`, `env set|unset|list` with `--from-host`, `docker-args
+  set|list|clear`, `bind|unbind`. Memory and CPUs are the launcher's own
+  values; `config default memory|cpus` sets your workstation's, used by
+  every project here unless the project recommends or the checkout sets
+  another. [Resource limits](https://devcapsule.mycodespace.ai/docs/current/configuration/resource-limits/).
+- **`run` derives, reports and asks.** The resolve step is gone: `project
+  run` derives the plan every time and asks only what nobody else can
+  answer, at the terminal; without one it stops with status 3, names each
+  decision with its flag and its command, and writes nothing. Every flag,
+  `--ide --agent --memory --cpus --env --authorize --trust`, applies to one
+  launch; `--save` records them as the config commands would, after every
+  required answer. A second checkout of a project registers itself under
+  its directory's name. A new mandatory need against a saved version set
+  stops with the version commands, never a silent waiver. The host-x11
+  paragraph at every launch is gone: the contained desktop is the default,
+  and a base without one asks for your explicit consent.
+- **Trust once per computer.** A vendor's channel, its origins, integrity
+  and terms, and DevCapsule's published bases, are accepted once for the
+  workstation, every version and every project: `config trust
+  list|accept|withdraw`, `run --trust CHANNEL`, the question at the first
+  launch that needs it. Per-checkout consents remain for departures, a
+  local or foreign base, and stay honored from older launchers. A host
+  answer recorded under an earlier recommendation is kept and never
+  re-asked; the listing says what changed.
+  [Vendor software and trust](https://devcapsule.mycodespace.ai/docs/current/configuration/software-approvals/).
+- **The console writes through the launcher.** A running capsule's console
+  shows the listing the launcher derived at launch, with its time, and
+  takes your answers for the next launch through a directory the launcher
+  mounts and answers, each file complete before it is visible. An answer
+  that widens what the next launch reaches, an access, a trust, a mount, a
+  Docker option, waits for your confirmation on your computer: the next
+  `run` asks, `config console list|apply|discard` settle it. Inside the
+  capsule, `config show` prints the listing "At launch, <time>" and the
+  console's requests since.
+- **Retired spellings.** `config resolve`, `config capabilities`, `config
+  need`, `config unset`, the `set-env`, `unset-env`, `list-env`,
+  `set-extra-docker-args`, `list-extra-docker-args`,
+  `remove-extra-docker-args` commands, `init --need|--required|--optional|
+  --local`, `run --force|--force-config` are gone from the help and the
+  documentation; each still answers with the command that replaced it.
+  The [command reference](https://devcapsule.mycodespace.ai/docs/current/reference/cli/)
+  lists the tree.
+
+## Not in candidate 4
+
+Planned for later candidates of this cycle: forced configuration (the
+resolve step it forced is gone; what remains is a decision for the owner),
+the diagnostics snapshot and export command, cleanup of obsolete images and
+cached files, release-notes automation. Out of 0.3.0: installed-IDE reuse
+with an empty launcher cache, browser evidence for diagnostics, the
+console's materialized views, ecosystem-aware bootstrap.
 
 ## Not in candidate 3
 

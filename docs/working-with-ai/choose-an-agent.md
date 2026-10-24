@@ -12,9 +12,9 @@ then present in every session with its state kept.
 
 | Agent | Add it to the project | Start it in the IDE terminal |
 |---|---|---|
-| Claude Code | `~/.local/bin/devcapsule project config need claude-code-agent` | `claude` |
-| OpenAI Codex | `~/.local/bin/devcapsule project config need codex-agent` | `codex` |
-| Antigravity CLI | `~/.local/bin/devcapsule project config need antigravity-agent` | `antigravity` |
+| Claude Code | `~/.local/bin/devcapsule project config agent add claude-code-agent` | `claude` |
+| OpenAI Codex | `~/.local/bin/devcapsule project config agent add codex-agent` | `codex` |
+| Antigravity CLI | `~/.local/bin/devcapsule project config agent add antigravity-agent` | `antigravity` |
 
 Save your work and stop the capsule first. Run the `need` command in your
 computer's terminal, from the project folder. It adds the agent to the

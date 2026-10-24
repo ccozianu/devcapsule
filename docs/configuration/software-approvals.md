@@ -1,86 +1,79 @@
 ---
-description: When a project's lock brings a new version of vendor software you approved before, the launcher asks once for the whole list; how to answer, and how to approve from the command line.
+description: Vendor software is downloaded under the vendor's terms; you accept a vendor's channel once for your computer, every version and every project, and DevCapsule's base images the same way.
 weight: 7
-updated: 2026-10-22
+updated: 2026-10-24
 ---
-# Software approvals
+# Vendor software and trust
 
 Some of the software a capsule contains is downloaded from its vendor under
 that vendor's terms, and DevCapsule never redistributes it: the coding agents
-are the usual case. Before the first download of such a component, DevCapsule
-asks you to approve it, by name and version, and records your answer in your
-checkout's own configuration. The project's lock pins the version.
+are the usual case. DevCapsule's own base images come from its published
+repository, content-addressed by the digest the lock pins. Before the first
+launch that needs either, DevCapsule asks you to trust the **channel**: the
+vendor, the origins the lock names, the integrity method, and the vendor's
+terms. You accept once, for this computer, and the acceptance covers every
+version of that product in every project here.
 
-When the project's lock changes, usually because you synchronized your
-checkout with the project's remote and the project moved to newer agents,
-the pinned versions change with it. Your earlier approval named the earlier
-version, so the new version is a new question, one per component.
-
-## At launch, one question for the whole list
-
-When the only decisions pending for your checkout are of that kind, new
-versions of software you approved before, from the same vendors under the
-same terms, `project run` shows the list and asks once:
+## At launch
 
 ```text
-The project's lock brings new versions of software you approved before; the vendors and their terms are unchanged:
-- Claude Code <previous> to <new>, downloaded from Anthropic under https://www.anthropic.com/legal/commercial-terms (claude-code-download)
-Approve all of them? Press y; any other key cancels:
+Trust Anthropic to supply Claude Code from downloads.claude.ai, verified by the SHA-256 the launcher pins, under https://www.anthropic.com/legal/commercial-terms, every version, for every project on this computer.
+Accept, once for this computer? [y/N]:
 ```
 
-The version you last launched is shown when a record of a successful launch
-exists; the version the lock pins now is always shown.
+**y** records the channel in your computer's trust record, with your other
+answers, and the launch continues. **N** stops the launch; nothing is
+written, and the command that accepts later is printed. Without a terminal,
+in a script or an agent's session, the launcher prints the statement and the
+command and stops with status 3; it never accepts on your behalf.
 
-- **y** records every approval in your checkout and regenerates the resolution.
-  If resolution succeeds, the launch continues. It does not ask for those approvals again.
-- **Any other key, or end of input** stops the launch, writes nothing, and
-  prints the command that approves later, below.
-
-Without a terminal, in a script or an agent's session, the launcher prints
-the list and the command and stops; it never approves on your behalf.
-
-Anything else pending in the list takes you out of this path: a component
-you never approved, one you denied, a changed host-access recommendation,
-a base to select. Those are decided one by one, as
-[granting and withdrawing](../containment/granting-and-withdrawing.md)
-describes, and `project config resolve` lists them with their commands.
+The Antigravity CLI's origin is a bare Cloud Run host rather than a
+Google-owned domain; the statement says so, because trusting that channel
+is trusting that deployment.
 
 ## From the command line
 
 ```bash
-~/.local/bin/devcapsule project config approve
-~/.local/bin/devcapsule project config approve --all
-~/.local/bin/devcapsule project config approve claude-code-download
+~/.local/bin/devcapsule project config trust list
+~/.local/bin/devcapsule project config trust accept claude-code
+~/.local/bin/devcapsule project config trust withdraw claude-code
+~/.local/bin/devcapsule project run --trust devcapsule-base
 ```
 
-The first lists what is pending and changes nothing. The second approves
-every pending software update; the third approves the named ones only, by
-the authorization name shown in the list. If other software approvals remain,
-the command names them and leaves the resolution unchanged. Approve the
-remaining updates to regenerate it.
+`trust list` names the channels this project's software comes through,
+`devcapsule-base`, `claude-code`, `antigravity-cli`, and whether this computer
+trusts each; `--json` adds the record's path. `accept` and `--trust` record
+one; `withdraw` removes it, and the next launch that needs the channel asks
+again. The record is `trust.toml` under your DevCapsule configuration
+directory, yours and never the project's.
 
-If resolution fails after you approve, your approvals remain saved. The
-error names the problem and the `project config resolve` command to retry.
-Resolve the problem and run that command before you launch again.
+## What an acceptance is, and is not
 
-An interrupted activation must finish recovery before software approvals
-can be inspected. `config approve` names `project config resolve` for recovery.
-At launch, the approval check defers to the launcher's existing recovery path.
+- It is your trust in the vendor's channel: that vendor, those origins, those
+  terms. A new origin or changed terms in a later lock is a new question.
+  Every download is still checked against the lock's checksum.
+- It is per computer, for every project and version. A checkout can still
+  refuse a vendor's download, `config authorize claude-code-download false`, and the
+  denial wins over the trust for that checkout.
+- It grants no host access, selects no base and chooses no agent; those are
+  separate decisions with their own commands.
 
-Run `config approve` with the launcher outside the project's capsule.
-Inside that capsule, the command refuses and prints the launcher command.
+## Departures still ask, per checkout
 
-## What an approval is, and is not
+A base outside DevCapsule's repository, a base you built on your computer
+([Build and select a local base](local-base.md)), or a vendor whose channel
+you have not trusted, is a per-checkout consent as before:
 
-- It is your consent to download that vendor's software, at the pinned
-  version, under the terms the list names, into capsules of this checkout.
-  Every download is checked against the lock's checksum regardless.
-- It is per checkout, like every personal answer in
-  [project versus personal](project-versus-personal.md).
-- It grants no host access and selects no base; those are separate
-  decisions with their own commands.
-- Declining is not a denial. A denial is `config authorize NAME false`,
-  recorded until you change it; declining the launch question leaves the
-  earlier approval in place, for the earlier version, and the launch waits.
+```bash
+~/.local/bin/devcapsule project config authorize base-image default
+~/.local/bin/devcapsule project config authorize claude-code-download true
+~/.local/bin/devcapsule project config approve
+```
+
+`authorize base-image default` consents to the exact image the lock pins,
+by digest, and stays valid while the lock pins it. `approve` lists the new
+versions of software you consented to per checkout and records them by
+name or `--all`; a trusted vendor never reaches it. A checkout last launched
+by an older DevCapsule keeps its per-checkout consents; they remain honored.
 
 What each component brings is on [component upgrades](../updates/component-upgrades.md).

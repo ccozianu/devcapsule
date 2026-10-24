@@ -15,7 +15,7 @@ Select one IDE capability in your project's `.devcapsule/devcapsule.toml`:
 | `frontend-ide` | VSCodium | Node.js from the base |
 | `dotnet-ide` | JetBrains Rider | .NET SDK selected automatically |
 
-For Eclipse, run `devcapsule project init --need eclipse-ide --need java`, then
+For Eclipse, run `devcapsule project init --require java --ide eclipse-ide`, then
 `devcapsule project run`. Open the printed desktop link. In Eclipse, choose
 **File > Open Projects from File System** to import the mounted project folder
 (or **File > Import > Maven > Existing Maven Projects** for a Maven project).
@@ -25,7 +25,7 @@ It persists per checkout, along with Eclipse's user configuration in the
 capsule home. The complete Java Developers package includes JDT, Git, Maven
 and Gradle integration. Existing `java-ide` projects continue to use IntelliJ.
 
-For a new Rider project, run `devcapsule project init --need dotnet-ide`, then
+For a new Rider project, run `devcapsule project init --require dotnet --ide dotnet-ide`, then
 `devcapsule project run`. Open the desktop link printed by the launcher in
 your browser. Rider handles its own JetBrains license or sign-in flow.
 DevCapsule does not activate a trial or supply a license.

@@ -12,12 +12,11 @@ environment declaration is born with the project and travels with it.
 mkdir -p ~/projects/my-app
 cd ~/projects/my-app
 git init
-~/.local/bin/devcapsule project init --need frontend-ide --need node
+~/.local/bin/devcapsule project init --require node --ide frontend-ide
 ~/.local/bin/devcapsule project run
 ```
 
-Replace the two `--need` values for Python and PyCharm with `python-ide` and
-`python`. To start with an agent from the first launch, answer *yes* when
+For Python and PyCharm, `--require python --ide python-ide` instead. To start with an agent from the first launch, answer *yes* when
 `init` offers the default agent, or add one afterwards with one command; see
 [Choose an agent](../working-with-ai/choose-an-agent.md).
 

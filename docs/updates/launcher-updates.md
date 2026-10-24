@@ -14,7 +14,7 @@ nothing else.
 
 An upgraded launcher keeps every project's lock and every checkout's
 recorded choices. It grants no new host access. If a project changed its own
-configuration in the meantime, the next launch asks you to resolve, as
+configuration in the meantime, the next launch asks what is pending, as
 [Project versus personal](../configuration/project-versus-personal.md#when-the-project-changes)
-describes. A checkout last launched by a much older client may be asked once
-for a vendor-download consent that older clients did not record.
+describes. A checkout last launched by a much older client is asked once to trust
+each vendor's channel for this computer, which older clients did not record.
