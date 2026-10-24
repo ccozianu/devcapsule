@@ -15,7 +15,7 @@ from typing import Any, Mapping, Sequence
 
 from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix
-from .capabilities import CapabilityPolicy, LocalCapabilities
+from .capabilities import CapabilityPolicy, LocalCapabilities, capability_notes
 from .capability_selection import compose_lock, effective_lock, generate_lock, local_pins, usable_lock
 from .file_formats import ConfigurationFileKind, ProjectConfigurationError, table, validate_file_format, render_checkout, render_toml, selected_version_lock
 from .manifest import validate_manifest
@@ -103,7 +103,7 @@ def promote(root: Path, manifest: dict[str, Any], lock: dict[str, Any] | None = 
 def check_documents(manifest: dict[str, Any], lock: dict[str, Any]) -> tuple[str, ...]:
     """Validate shared documents offline and return optional-omission warnings.
 
-    Check schemas, required capabilities, SDK majors and usable artifact
+    Check schemas, required capabilities, minimum versions and usable artifact
     metadata. Invalid configuration raises CliError or its configuration
     subclass. This does not change inputs or files, download artifacts, or
     grant host access.
@@ -112,7 +112,7 @@ def check_documents(manifest: dict[str, Any], lock: dict[str, Any]) -> tuple[str
     validate_file_format(lock, ConfigurationFileKind.lock, "platform lock")
     usable, notices = usable_lock(CapabilityPolicy.read(manifest), lock)
     check_formation(manifest, usable)
-    return notices
+    return (*capability_notes(manifest), *notices)
 
 
 def check_formation(manifest: dict[str, Any], usable: dict[str, Any]) -> None:
@@ -157,14 +157,14 @@ def check(start: Path, *, manifest_path: Path | None = None, lock_path: Path | N
 
 
 def configure(start: Path, *, required: Sequence[str] | None = None,
-              optional: Sequence[str] | None = None, majors: Sequence[str] | None = None,
+              optional: Sequence[str] | None = None,
               local: Sequence[str] | None = None, without: Sequence[str] | None = None,
               preview: bool = False, allow_unverified: bool = False) -> str:
     """Replace project capability declarations or this checkout's local choices.
 
     ``start`` locates the project. Supply one group: shared ``required``,
-    ``optional``, ``majors``; or local ``local``, ``without``. Name sequences
-    replace the corresponding lists; ``majors`` uses entries like ``python=3``.
+    ``optional``; or local ``local``, ``without``. Name sequences
+    replace the corresponding lists.
     None retains a field; an empty sequence clears it. IDE/agent additions
     belong in ``local``. Host decisions are retained and never answered here.
 
@@ -179,20 +179,20 @@ def configure(start: Path, *, required: Sequence[str] | None = None,
     manifest_path, lock_path, _ = paths(root)
     manifest, lock = load_toml(manifest_path), load_toml(lock_path)
     check_documents(manifest, lock)
-    project_edit = any(value is not None for value in (required, optional, majors))
+    project_edit = any(value is not None for value in (required, optional))
     local_edit = local is not None or without is not None
     if project_edit == local_edit:
-        raise ProjectConfigurationError("Choose either project flags (--required/--optional/--sdk-major) or local flags (--local/--without).")
+        raise ProjectConfigurationError("Choose either project flags (--required/--optional) or local flags (--local/--without).")
     matrix = MATRICES[Platform.current()]
     if project_edit:
-        return configure_project(root, manifest, lock, matrix, required=required, optional=optional, majors=majors,
+        return configure_project(root, manifest, lock, matrix, required=required, optional=optional,
                                  preview=preview, allow_unverified=allow_unverified)
     return configure_local(root, manifest, lock, matrix, local=local, without=without,
                            preview=preview, allow_unverified=allow_unverified)
 
 
 def configure_project(root: Path, manifest: dict[str, Any], lock: dict[str, Any], matrix: ResolutionMatrix, *,
-                      required: Sequence[str] | None, optional: Sequence[str] | None, majors: Sequence[str] | None,
+                      required: Sequence[str] | None, optional: Sequence[str] | None,
                       preview: bool, allow_unverified: bool) -> str:
     """Replace the shared policy and regenerate the platform lock; see ``configure``.
 
@@ -203,19 +203,12 @@ def configure_project(root: Path, manifest: dict[str, Any], lock: dict[str, Any]
     candidate_manifest = deepcopy(manifest)
     candidate_manifest["devcapsule-schema-version"] = CURRENT_MANIFEST_SCHEMA_VERSION
     declarations: dict[str, Any] = {
-        "required": list(policy.required if required is None else required),
+        "required": list(policy.requirements() if required is None else required),
         "optional": list(policy.optional if optional is None else optional),
-        "sdk-major": dict(policy.sdk_major) if majors is None else parse_majors(majors),
     }
     candidate_manifest["capabilities"] = declarations
     candidate = CapabilityPolicy.read(candidate_manifest)
     candidate_manifest["capabilities"] = capability_table(candidate, capability_reasons(manifest), previous=manifest["capabilities"])
-    personal = (set(candidate.required) | set(candidate.optional)) & matrix.local_capabilities()
-    # Existing shared IDE/agent declarations are grandfathered on unrelated
-    # edits. A project can remove them, but new choices belong to developers.
-    introduced = personal - set(policy.required) - set(policy.optional)
-    if introduced:
-        raise ProjectConfigurationError("IDE/agent choices are local; use --local for " + ", ".join(sorted(introduced)) + ".")
     generated = generate_lock(candidate, matrix, previous=lock, allow_unverified=allow_unverified)
     check_documents(candidate_manifest, generated)
     if not preview:
@@ -280,7 +273,7 @@ def pin_selection(matrix: ResolutionMatrix, policy: CapabilityPolicy, selection:
     selector and materialization follow the IDE component's document. Catalog
     resolution failures raise ProjectConfigurationError. Inputs are unchanged.
     """
-    active = sorted(set(policy.required) | set(selection.selected))
+    active = sorted(set(policy.requirements()) | (set(selection.selected) - set(policy.required)))
     fresh = tomllib.loads(matrix.resolve(active, project_only=True, allow_unverified=allow_unverified).render_lock())
     pins = {key: deepcopy(value) for key, value in fresh.items() if key != "components"}
     pins["components"] = {}
@@ -288,7 +281,7 @@ def pin_selection(matrix: ResolutionMatrix, policy: CapabilityPolicy, selection:
     surface = fresh["components"].get("interactive-surface")
     retained = set(previous.selected) & set(selection.selected)
     for capability in selection.selected:
-        for component in matrix.providers(capability):
+        for component in matrix.component_closure(capability, lock=fresh):
             documents = (source, *((previous_pins,) if capability in retained else ()), fresh)
             document = next((item for item in documents if table(item, "components").get(component) is not None), None)
             if document is None:
@@ -308,15 +301,22 @@ def release_deselected(source: dict[str, Any], matrix: ResolutionMatrix, policy:
     capability needs it. Removing the IDE also clears the IDE selector and
     materialization. Capabilities this launcher does not know are left alone.
     """
-    known = set(matrix.capabilities())
-    needed = {component for capability in (*policy.required, *policy.optional, *selection.selected)
-              if capability in known for component in matrix.providers(capability)}
+    minimums = dict(policy.minimums)
+    needed: set[str] = set()
+    for capability in (*policy.required, *policy.optional, *selection.selected):
+        try:
+            matrix.canonical_name(capability)
+        except ProjectConfigurationError:
+            continue
+        needed.update(matrix.component_closure(capability, minimums.get(capability)))
     table(source, "components")
     components: dict[str, Any] = source.setdefault("components", {})
     for capability in set(previous.selected) - set(selection.selected):
-        if capability not in known:
+        try:
+            matrix.canonical_name(capability)
+        except ProjectConfigurationError:
             continue
-        for component in matrix.providers(capability):
+        for component in matrix.component_closure(capability, lock=source):
             if component in needed:
                 continue
             components.pop(component, None)
@@ -325,63 +325,16 @@ def release_deselected(source: dict[str, Any], matrix: ResolutionMatrix, policy:
                 source["materialization"] = {}
 
 
-def parse_tool_names(matrix: ResolutionMatrix, names: Sequence[str]) -> tuple[tuple[str, ...], dict[str, int]]:
-    """Split ``TOOL`` and ``TOOL=MAJOR`` spellings into canonical names and SDK majors.
-
-    ``python=3`` requires Python and pins its major to 3. A component id that
-    is the sole provider of a capability is accepted for that capability
-    (``playwright`` for ``browser-automation``), so a user who knows the tool's
-    name is not sent to look up the capability's. IDE and agent names are
-    refused: they are each developer's, and the refusal names the commands
-    that record them.
-    """
-    canonical: list[str] = []
-    majors: dict[str, int] = {}
-    for item in names:
-        name, separator, major = item.partition("=")
-        name = canonical_tool_name(matrix, name)
-        if separator:
-            if not major.isdecimal() or int(major) < 1:
-                raise ProjectConfigurationError(f"SDK majors are positive integers: {item!r} is not TOOL=MAJOR.")
-            majors[name] = int(major)
-        canonical.append(name)
-    personal = sorted(set(canonical) & matrix.local_capabilities())
-    if personal:
-        raise ProjectConfigurationError(
-            "IDE and agent choices are each developer's, not the project's: " + ", ".join(personal)
-            + ". Recommend an IDE with 'devcapsule project config recommend ide NAME'; "
-            "a developer adds an agent to their checkout with 'devcapsule project config agent add NAME'."
-        )
-    return tuple(sorted(set(canonical))), majors
+def parse_tool_names(matrix: ResolutionMatrix, names: Sequence[str]) -> tuple[str, ...]:
+    """Read rc4 command arguments as capability names; version syntax is not CLI syntax yet."""
+    return tuple(sorted({canonical_tool_name(matrix, name) for name in names}))
 
 
 def canonical_tool_name(matrix: ResolutionMatrix, name: str) -> str:
-    """The capability name for ``name``, which may be a sole provider's component id."""
-    candidate = name.strip()
-    if candidate in matrix.capabilities():
-        return candidate
-    by_component = {
-        matrix.providers(capability)[0]: capability
-        for capability in matrix.capabilities()
-        if len(matrix.providers(capability)) == 1
-    }
-    if candidate in by_component:
-        return by_component[candidate]
-    raise ProjectConfigurationError(
-        f"Unknown tool {candidate!r}; this launcher knows: " + ", ".join(matrix.capabilities()) + "."
-    )
-
-
-def parse_majors(majors: Sequence[str]) -> dict[str, int]:
-    """Parse CLI entries such as ``python=3`` into capability-to-major pairs.
-
-    Raise ProjectConfigurationError for duplicate names or invalid syntax.
-    CapabilityPolicy.read subsequently checks positivity and required membership.
-    """
-    result: dict[str, int] = {}
-    for item in majors:
-        name, separator, value = item.partition("=")
-        if not separator or not value.isdecimal() or name in result:
-            raise ProjectConfigurationError("SDK majors use unique CAPABILITY=INTEGER entries, for example python=3.")
-        result[name] = int(value)
-    return result
+    """The capability name for a name or its unambiguous sole provider alias."""
+    try:
+        return matrix.canonical_name(name.strip())
+    except ProjectConfigurationError:
+        raise ProjectConfigurationError(
+            f"Unknown tool {name.strip()!r}; this launcher knows: " + ", ".join(matrix.capabilities()) + "."
+        ) from None

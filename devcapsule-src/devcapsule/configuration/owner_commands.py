@@ -4,9 +4,8 @@ Each operation edits the shared manifest through one writer
 (:func:`manifest_document.render_manifest`) and, when the tools change,
 regenerates the platform lock, validating the candidate pair before anything
 is written and promoting both files under the capability transaction journal
-of :mod:`capability_commands`.  IDE and agent choices are refused here: they
-are each developer's (R-CONFIG-001, refinement of 2026-10-06); a project may
-recommend an IDE, which is a recommendation, not a requirement.
+of :mod:`capability_commands`. The rc4 IDE recommendation command stays; agents are ordinary shared
+capabilities. Component acquisition still requires the developer's consent.
 
 The verbs are the ones the CLI UX redesign work order of 2026-10-24 settled:
 ``require``, ``offer`` and ``drop`` for tools and environment variables,
@@ -68,9 +67,19 @@ def _policy_edit(
     policy = CapabilityPolicy.read(manifest)
     reasons = capability_reasons(manifest)
     required, optional = set(policy.required), set(policy.optional)
-    majors = dict(policy.sdk_major)
+    minimums = dict(policy.minimums)
+    # Preserve a hand-written component alias while editing its declaration.
+    declared: dict[str, str] = {}
+    for name in (*policy.required, *policy.optional):
+        try:
+            declared[matrix.canonical_name(name)] = name
+        except ProjectConfigurationError:
+            continue  # Unknown optional declarations remain opaque.
+    def declared_name(name: str) -> str:
+        canonical = canonical_tool_name(matrix, name)
+        return declared.get(canonical, canonical)
     if change == "drop":
-        canonical = tuple(canonical_tool_name(matrix, name) for name in names)
+        canonical = tuple(declared_name(name) for name in names)
         unknown = sorted(set(canonical) - required - optional)
         if unknown:
             raise ProjectConfigurationError(
@@ -79,15 +88,13 @@ def _policy_edit(
         for name in canonical:
             required.discard(name)
             optional.discard(name)
-            majors.pop(name, None)
+            minimums.pop(name, None)
             reasons.pop(name, None)
-        new_majors: dict[str, int] = {}
     else:
-        canonical, new_majors = parse_tool_names(matrix, names)
-        if change == "offer" and new_majors:
+        canonical = tuple(declared_name(name) for name in parse_tool_names(matrix, names))
+        if any(matrix.is_ide(name) for name in canonical):
             raise ProjectConfigurationError(
-                "An SDK major applies to a required tool; an offered tool has none. "
-                "Offer " + ", ".join(sorted(new_majors)) + " without =MAJOR."
+                "IDE choices are each developer's; recommend one with 'config recommend ide NAME'."
             )
         target, other = (required, optional) if change == "require" else (optional, required)
         for name in canonical:
@@ -97,15 +104,8 @@ def _policy_edit(
                 reasons[name] = because
         if change == "offer":
             for name in canonical:
-                majors.pop(name, None)
-    majors.update(new_majors)
-    stray = sorted(set(majors) - required)
-    if stray:
-        raise ProjectConfigurationError(
-            "An SDK major applies to a required tool; " + ", ".join(stray) + " would be offered or dropped. "
-            "Require the tool with TOOL=MAJOR, or drop the constraint too."
-        )
-    candidate = CapabilityPolicy(tuple(sorted(required)), tuple(sorted(optional)), tuple(sorted(majors.items())), layered=True)
+                minimums.pop(name, None)
+    candidate = CapabilityPolicy(tuple(sorted(required)), tuple(sorted(optional)), tuple(sorted(minimums.items())), layered=True)
     candidate_manifest = deepcopy(manifest)
     candidate_manifest["devcapsule-schema-version"] = CURRENT_MANIFEST_SCHEMA_VERSION
     candidate_manifest["capabilities"] = capability_table(candidate, reasons, previous=manifest["capabilities"])
@@ -116,11 +116,9 @@ def _policy_edit(
     verb = {"require": "Required", "offer": "Offered", "drop": "Dropped"}[change]
     lines = [
         ("Preview; nothing written." if preview else f"{verb} {', '.join(canonical)}; the manifest and the lock are updated."),
-        f"Required: {' '.join(candidate.required) or 'none'}",
+        f"Required: {' '.join(candidate.requirements()) or 'none'}",
         f"Offered: {' '.join(candidate.optional) or 'none'}",
     ]
-    if candidate.sdk_major:
-        lines.append("SDK majors: " + ", ".join(f"{name}={major}" for name, major in candidate.sdk_major))
     if not preview:
         lines.extend(_refresh_own_checkout(root, candidate_manifest))
     return "\n".join(lines)
@@ -157,7 +155,7 @@ def offer_tools(start: Path, names: Sequence[str], *, because: str | None = None
 
 
 def drop_tools(start: Path, names: Sequence[str], *, preview: bool = False, allow_unverified: bool = False) -> str:
-    """Remove ``names`` from the project's required and offered tools, with their SDK majors."""
+    """Remove ``names`` from the project's required and offered tools, with their minimum versions."""
     return _policy_edit(start, change="drop", names=names, because=None, preview=preview, allow_unverified=allow_unverified)
 
 
@@ -302,8 +300,8 @@ def recommend(start: Path, name: str, value: str, *, because: str | None = None,
 def _ordinary_recommendation_value(matrix: ResolutionMatrix, name: str, value: str) -> str | int:
     if name == "ide":
         candidate = value.strip()
-        surfaces = sorted(capability for capability in matrix.local_capabilities() if not capability.endswith("-agent"))
-        by_component = {matrix.providers(capability)[0]: capability for capability in surfaces}
+        surfaces = list(matrix.ide_capabilities())
+        by_component = {matrix.resolve_provider(capability): capability for capability in surfaces}
         if candidate in by_component:
             candidate = by_component[candidate]
         if candidate not in surfaces:

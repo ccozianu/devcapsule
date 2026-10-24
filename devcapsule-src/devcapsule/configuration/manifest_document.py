@@ -29,6 +29,7 @@ from typing import Any, Mapping
 
 from .file_formats import MANIFEST_SCHEMA_VERSIONS, ProjectConfigurationError, quote_toml, table
 from .values import normalize_memory_size
+from .capabilities import current_capability_fields
 
 __all__ = [
     "CURRENT_MANIFEST_SCHEMA_VERSION",
@@ -270,6 +271,9 @@ def render_manifest(document: Mapping[str, Any], *, preamble: str = "") -> str:
     (deficiency 19 of the work order).  ``preamble`` is the leading comment
     block to keep; comments elsewhere are not preserved.
     """
+    document = dict(document)
+    if "capabilities" in document:
+        document["capabilities"] = current_capability_fields(document["capabilities"])
     lines: list[str] = [preamble.rstrip("\n")] if preamble.strip() else []
     if lines:
         lines.append("")
@@ -306,19 +310,17 @@ def capability_table(
     """The ``[capabilities]`` table in the ``required`` form, saying only what is so.
 
     ``policy`` is a ``CapabilityPolicy``; ``reasons`` maps a capability name to
-    the owner's reason. Empty lists and an empty SDK-major table are left out,
+    the owner's reason. Empty optional lists are left out,
     so a project that offers nothing has no ``optional = []`` line.
     Unknown fields in ``previous`` survive an edit by an older launcher.
     """
-    result: dict[str, Any] = {"required": list(policy.required)}
+    result: dict[str, Any] = {"required": list(policy.requirements())}
     if policy.optional:
         result["optional"] = list(policy.optional)
-    if policy.sdk_major:
-        result["sdk-major"] = dict(policy.sdk_major)
     kept = {name: reason for name, reason in sorted((reasons or {}).items())
             if reason and name in {*policy.required, *policy.optional}}
     if kept:
         result["reasons"] = kept
-    result.update({key: value for key, value in (previous or {}).items()
-                   if key not in {"need", "required", "optional", "sdk-major", "reasons"}})
+    result.update({key: value for key, value in current_capability_fields(previous or {}).items()
+                   if key not in {"need", "required", "optional", "reasons"}})
     return result

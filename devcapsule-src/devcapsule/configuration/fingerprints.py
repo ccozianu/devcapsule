@@ -31,7 +31,7 @@ def resolution_source_digests(
     from .capabilities import CapabilityPolicy, LocalCapabilities
     policy = CapabilityPolicy.read(manifest)
     if policy.layered:
-        baseline_policy = CapabilityPolicy(policy.required, (), policy.sdk_major, True)
+        baseline_policy = CapabilityPolicy(policy.required, (), policy.minimums, True)
         local = LocalCapabilities.read(checkout)
         providers = table(lock, "capability-providers")
         required = (*policy.required, *local.selected)

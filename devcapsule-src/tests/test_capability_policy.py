@@ -102,10 +102,6 @@ def test_invalid_required_names_are_never_admitted(value: object) -> None:
 @pytest.mark.parametrize("values", [
     {"need": [], "required": []},
     {"required": ["python"], "optional": ["python"]},
-    {"required": [], "sdk-major": {"python": 3}},
-    {"required": ["python"], "sdk-major": {"python": True}},
-    {"required": ["python"], "sdk-major": {"python": 0}},
-    {"required": ["python"], "sdk-major": {"python": "3"}},
 ])
 def test_ambiguous_or_invalid_policy_is_refused(values: dict[str, Any]) -> None:
     with pytest.raises(ProjectConfigurationError):
@@ -114,7 +110,7 @@ def test_ambiguous_or_invalid_policy_is_refused(values: dict[str, Any]) -> None:
 
 def test_normalization_keeps_unknown_optional_intent() -> None:
     policy = CapabilityPolicy.read(declaration(required=["python", "python"], optional=["future-tool"], **{"sdk-major": {"python": 3}}))
-    assert policy.document() == {"required": ["python"], "optional": ["future-tool"], "sdk-major": {"python": 3}}
+    assert policy.document() == {"required": ["python"], "optional": ["future-tool"]}
     assert CapabilityPolicy.read({"capabilities": policy.document()}) == policy
 
 
@@ -128,7 +124,7 @@ def test_invalid_local_selections_are_refused(value: dict[str, Any]) -> None:
 
 
 def test_required_and_optional_are_independent_of_locality() -> None:
-    policy = CapabilityPolicy(("python",), ("browser-automation",), (("python", 3),), True)
+    policy = CapabilityPolicy(("python",), ("browser-automation",), (("python", "3"),), True)
     lock = generate_lock(policy, MATRIX)
     assert "interactive-surface" not in lock["components"]
     assert set(lock["components"]) == {"playwright"}
@@ -182,14 +178,14 @@ def test_omitting_optional_sdk_cannot_remove_mandatory_dependency() -> None:
         usable_lock(policy, lock, LocalCapabilities(without=("dotnet",)))
 
 
-@pytest.mark.parametrize("major", [2, 4])
-def test_python_major_is_a_hard_constraint(major: int) -> None:
-    with pytest.raises(ProjectConfigurationError, match=f"SDK major {major}"):
-        generate_lock(CapabilityPolicy(("python",), sdk_major=(("python", major),), layered=True), MATRIX)
+@pytest.mark.parametrize("minimum", ["3.14", "4"])
+def test_python_minimum_is_a_hard_constraint(minimum: str) -> None:
+    with pytest.raises(ProjectConfigurationError, match=f"Python {minimum} or newer"):
+        generate_lock(CapabilityPolicy(("python",), minimums=(("python", minimum),), layered=True), MATRIX)
 
 
 def test_unknown_base_cannot_claim_a_required_sdk() -> None:
-    policy = CapabilityPolicy(("python",), sdk_major=(("python", 3),), layered=True)
+    policy = CapabilityPolicy(("python",), minimums=(("python", "3"),), layered=True)
     lock = generate_lock(policy, MATRIX)
     lock["base"]["reference"] = "example.invalid/base@sha256:" + "a" * 64
     with pytest.raises(ProjectConfigurationError, match="selected base cannot establish"):
@@ -203,7 +199,7 @@ def test_legacy_lock_is_not_re_resolved() -> None:
 
 
 def test_command_migration_and_personal_choices_preserve_ownership(project: Path) -> None:
-    commands.configure(project, required=["python"], optional=["browser-automation"], majors=["python=3"])
+    commands.configure(project, required=["python"], optional=["browser-automation"])
     shared = shared_bytes(project)
     commands.configure(project, local=["python-ide", "codex-agent"], without=["browser-automation"])
     assert shared_bytes(project) == shared
@@ -217,10 +213,10 @@ def test_command_migration_and_personal_choices_preserve_ownership(project: Path
 
 
 @pytest.mark.parametrize("kwargs", [
-    {"required": ["python"], "majors": ["python=2"]},
-    {"optional": ["unknown"]}, {"optional": ["codex-agent"]},
+    {"required": ["python>=4"]},
+    {"optional": ["unknown"]},
     {"required": ["python"], "local": ["python-ide"]}, {},
-    {"majors": ["python=3", "python=4"]}, {"majors": ["python=x"]},
+    {"required": ["python>=3", "python>=4"]}, {"required": ["python>=x"]},
     {"without": ["python"]}, {"local": ["unknown"]},
 ])
 def test_rejected_edits_leave_all_shared_bytes_intact(project: Path, kwargs: dict[str, Any]) -> None:
@@ -277,7 +273,7 @@ def test_io_failure_before_commit_rolls_back(project: Path, monkeypatch: pytest.
 def test_cli_check_and_capability_mutation(project: Path, capsys: pytest.CaptureFixture[str]) -> None:
     prefix = ["project", "--path", str(project), "config"]
     assert cli.main([*prefix, "check"]) == 3  # the base consent is pending
-    assert cli.main([*prefix, "require", "tool", "python=3"]) == 0
+    assert cli.main([*prefix, "require", "tool", "python"]) == 0
     assert cli.main([*prefix, "capabilities", "--required", "python"]) == 2
     assert "config require tool" in capsys.readouterr().err
     assert cli.main([*prefix, "capabilities", "--local", "python-ide"]) == 0
@@ -295,7 +291,7 @@ def prepare_launch(project: Path) -> None:
 
 def test_optional_only_contribution_does_not_block_next_launch(project: Path) -> None:
     from devcapsule.configuration.execution import ExecutionConfiguration
-    commands.configure(project, required=["python"], majors=["python=3"])
+    commands.configure(project, required=["python"])
     commands.configure(project, local=["python-ide"])
     prepare_launch(project)
     before = ExecutionConfiguration.load(project).project
@@ -313,9 +309,9 @@ def test_optional_only_contribution_does_not_block_next_launch(project: Path) ->
     assert after.resolution["runtime"] == before.resolution["runtime"]
     assert shared_bytes(project) == shared
     # Required changes are not blessed by that optional-only reconciliation.
-    manifest["capabilities"]["sdk-major"]["python"] = 4
+    manifest["capabilities"]["required"] = ["python>=4"]
     manifest_path.write_text(render_toml(manifest))
-    with pytest.raises(ProjectConfigurationError, match="SDK major 4"):
+    with pytest.raises(ProjectConfigurationError, match="python>=4"):
         ExecutionConfiguration.load(project)
 
 
@@ -333,11 +329,11 @@ def test_new_project_creation_has_no_implicit_agent(tmp_path: Path, monkeypatch:
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
     root = tmp_path / "fresh"
     root.mkdir()
-    assert cli.main(["project", "--path", str(root), "init", "--require", "python=3", "--offer", "browser-automation",
+    assert cli.main(["project", "--path", str(root), "init", "--require", "python", "--offer", "browser-automation",
                      "--ide", "eclipse-ide", "--creator", "mailto:owner@example.test",
                      "--authorize", "base-image", "default"]) == 0
     manifest, lock = load_toml(commands.paths(root)[0]), load_toml(commands.paths(root)[1])
-    assert manifest["capabilities"] == {"required": ["python"], "optional": ["browser-automation"], "sdk-major": {"python": 3}}
+    assert manifest["capabilities"] == {"required": ["python"], "optional": ["browser-automation"]}
     assert set(lock["components"]) == {"playwright"}
     assert set(lock_for(root, manifest)[1]["components"]) == {"interactive-surface", "eclipse", "playwright"}
     assert cli.main(["project", "--path", str(root), "init"]) != 0
@@ -431,14 +427,11 @@ def test_wrong_lock_platform_is_refused() -> None:
         usable_lock(CapabilityPolicy(("python",), layered=True), {"platform": "unknown"})
 
 
-def test_sdk_major_knowledge_is_explicit() -> None:
+def test_supplied_versions_are_explicit() -> None:
     lock = tomllib.loads(MATRIX.resolve(["dotnet-ide"]).render_lock())
-    assert MATRIX.sdk_major("dotnet", lock) == 10
-    assert MATRIX.sdk_major("java", lock) is None
-    lock["components"]["dotnet-sdk"]["version"] = "unknown"
-    assert MATRIX.sdk_major("dotnet", lock) is None
-    with pytest.raises(ProjectConfigurationError, match="unknown major"):
-        generate_lock(CapabilityPolicy(("java",), sdk_major=(("java", 25),), layered=True), MATRIX)
+    assert MATRIX.supplied_version("dotnet", lock) == "10.0.401"
+    assert MATRIX.supplied_version("java", lock) == "25.0.4+7"
+    assert MATRIX.supplied_version("docker-cli", lock) is None
 
 
 def test_cannot_preserve_missing_opaque_optional_provider() -> None:
@@ -462,9 +455,9 @@ def test_pending_local_activation_is_not_overwritten(project: Path) -> None:
         commands.configure(project, local=["codex-agent"])
 
 
-def test_local_base_cannot_claim_sdk_guarantee(project: Path) -> None:
+def test_local_base_cannot_claim_minimum_guarantee(project: Path) -> None:
     from devcapsule.configuration.model import Configuration
-    commands.configure(project, required=["python"], majors=["python=3"])
+    commands.configure(project, required=["python>=3"])
     commands.configure(project, local=["python-ide"])
     manifest = load_toml(commands.paths(project)[0])
     checkout = load_toml(checkout_record_paths(manifest, project)[0])
@@ -613,15 +606,15 @@ def test_baseline_evidence_must_cover_required_capabilities() -> None:
         resolution_source_digests(manifest, {"components": {}}, {})
 
 
-def test_base_override_cannot_bypass_sdk_constraint(project: Path) -> None:
+def test_base_override_cannot_bypass_minimum_constraint(project: Path) -> None:
     from devcapsule.configuration.execution import ExecutionConfiguration
     from devcapsule.environment_realization import realize_environment
     from devcapsule.compat import CliError
-    commands.configure(project, required=["python"], majors=["python=3"])
+    commands.configure(project, required=["python>=3"])
     commands.configure(project, local=["python-ide"])
     prepare_launch(project)
     selected = ExecutionConfiguration.load(project).project
-    with pytest.raises(CliError, match="SDK-major guarantee"):
+    with pytest.raises(CliError, match="minimum-version guarantee"):
         realize_environment(selected, base_override="unverified/local:base")
     def stop_at_obtain(reference: str) -> Any:
         raise RuntimeError("reached image lookup")

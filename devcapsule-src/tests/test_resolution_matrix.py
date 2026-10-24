@@ -26,6 +26,7 @@ from devcapsule.resolution_matrix import (
     ResolutionMatrix,
 )
 from devcapsule.resolution_matrix import (
+    Capability,
     _BasePin,
     _ComponentPin,
     _Coupling,
@@ -264,8 +265,8 @@ def _synthetic_matrix(
         matrix_version="test-1",
         bases=bases
         or (
-            _BasePin("v1", "s1", frozenset({"python"}), {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),
-            _BasePin("v2", "s2", frozenset({"python"}), {"reference": "example@sha256:bb", "build-mnemonic": "v2"}),
+            _BasePin("v1", "s1", {"python": "3.12"}, {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),
+            _BasePin("v2", "s2", {"python": "3.12"}, {"reference": "example@sha256:bb", "build-mnemonic": "v2"}),
         ),
         components={
             "ide": (
@@ -276,8 +277,8 @@ def _synthetic_matrix(
         },
         edges=edges,
         couplings=couplings,
-        surface_capabilities={"the-ide": "ide"},
-        ancillary_capabilities={"the-agent": "agent"},
+        capability_table={"the-ide": Capability(("ide",), ide=True), "the-agent": Capability(("agent",)),
+                          "python": Capability(), "java": Capability(), "node": Capability()},
         materialization={"ide": {"recipe": "r", "recipe-version": "1"}},
     )
 
@@ -317,8 +318,8 @@ def test_a_new_base_in_a_validated_family_inherits_its_validations() -> None:
     matrix = _synthetic_matrix(
         edges=(_VerifiedEdge("ide", "1.0", "s1", "smoke"),),
         bases=(
-            _BasePin("v1", "s1", frozenset({"python"}), {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),
-            _BasePin("v2", "s1", frozenset({"python"}), {"reference": "example@sha256:bb", "build-mnemonic": "v2"}),
+            _BasePin("v1", "s1", {"python": "3.12"}, {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),
+            _BasePin("v2", "s1", {"python": "3.12"}, {"reference": "example@sha256:bb", "build-mnemonic": "v2"}),
         ),
     )
     lock = parse(matrix.resolve(["the-ide"]).render_lock())
@@ -413,8 +414,8 @@ def test_allow_unverified_keeps_base_capabilities_a_hard_constraint() -> None:
     matrix = _synthetic_matrix(
         edges=(),
         bases=(
-            _BasePin("v1", "s1", frozenset({"python"}), {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),
-            _BasePin("v2", "s2", frozenset(), {"reference": "example@sha256:bb", "build-mnemonic": "v2"}),
+            _BasePin("v1", "s1", {"python": "3.12"}, {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),
+            _BasePin("v2", "s2", {}, {"reference": "example@sha256:bb", "build-mnemonic": "v2"}),
         ),
     )
 
@@ -536,8 +537,8 @@ def test_exhausted_unverified_refusal_does_not_recommend_the_flag_again() -> Non
     matrix = _synthetic_matrix(
         edges=(_VerifiedEdge("ide", "1.0", "s1", "smoke"),),
         bases=(
-            _BasePin("v1", "s1", frozenset({"python", "java"}), {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),
-            _BasePin("v2", "s2", frozenset({"python", "node"}), {"reference": "example@sha256:bb", "build-mnemonic": "v2"}),
+            _BasePin("v1", "s1", {"python": "3.12", "java": "25"}, {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),
+            _BasePin("v2", "s2", {"python": "3.12", "node": "22"}, {"reference": "example@sha256:bb", "build-mnemonic": "v2"}),
         ),
     )
     with pytest.raises(ResolutionError) as refusal:

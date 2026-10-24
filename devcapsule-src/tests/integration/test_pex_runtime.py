@@ -324,7 +324,7 @@ def test_built_pex_authors_shared_policy_and_keeps_personal_selection_local(
     def invoke(*arguments: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run([str(built_pex), "project", "--path", str(project), *arguments],
                               cwd=project, env=environment, text=True, capture_output=True, check=False)
-    created = invoke("init", "--required", "python", "--sdk-major", "python=3",
+    created = invoke("init", "--required", "python",
                      "--optional", "browser-automation", "--creator", "mailto:fixture@example.test")
     assert created.returncode == 0, created.stderr
     directory = project / ".devcapsule"
@@ -342,8 +342,8 @@ def test_built_pex_authors_shared_policy_and_keeps_personal_selection_local(
     assert trusted.returncode == 0, trusted.stderr
     checked = invoke("config", "check")
     assert checked.returncode == 0 and "contract valid" in checked.stdout, checked.stderr
-    # The shared policy is the owner's: 'config require tool' refuses an SDK
-    # major no supported base provides, and the shared files stay as written.
+    # The retired TOOL=MAJOR syntax is no longer a capability name. Reject it
+    # without changing the shared policy.
     refused = invoke("config", "require", "tool", "python=4")
-    assert refused.returncode != 0 and "SDK major 4" in refused.stderr
+    assert refused.returncode == 2 and "Unknown tool 'python=4'" in refused.stderr
     assert {path.name: path.read_bytes() for path in directory.iterdir()} == shared

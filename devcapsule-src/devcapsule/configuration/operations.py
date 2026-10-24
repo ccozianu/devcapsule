@@ -251,7 +251,7 @@ class InitializeRequest:
     """Everything ``devcapsule project init`` collected from its command line.
 
     ``require`` and ``offer`` are the project's: the tools every checkout
-    must have (``TOOL`` or ``TOOL=MAJOR`` for an SDK major) and the tools a
+    must have (``TOOL``) and the tools a
     developer may leave out. ``ide`` and ``agents`` are the owner's own
     checkout's choices, recorded in the owner's checkout record and never in
     the manifest (R-CONFIG-001, refinement of 2026-10-06).
@@ -291,7 +291,6 @@ class InitializeReport:
     project_mount: str
     required: tuple[str, ...]
     offered: tuple[str, ...]
-    sdk_majors: tuple[tuple[str, int], ...]
     lock_path: Path
     lock_action: str
     base_display: str
@@ -314,8 +313,7 @@ class InitializeReport:
     resolve: ResolveReport | None
 
     def render(self) -> str:
-        majors = {name: major for name, major in self.sdk_majors}
-        required = " ".join(f"{name}={majors[name]}" if name in majors else name for name in self.required) or "none"
+        required = " ".join(self.required) or "none"
         lines = [
             f"{self.manifest_action} {self.manifest_path}",
             f"Project: {self.project_name} — {self.creator}/{self.slug}",
@@ -571,9 +569,8 @@ def _initialize_report(
         creator=identity.creator,
         slug=identity.slug,
         project_mount=identity.mount,
-        required=identity.policy.required,
+        required=identity.policy.requirements(),
         offered=identity.policy.optional,
-        sdk_majors=identity.policy.sdk_major,
         lock_path=lock_path,
         lock_action=lock_action,
         base_display=base_display,
@@ -637,7 +634,7 @@ def _existing_selection(root: Path, manifest: Mapping[str, Any] | None) -> _Owne
         return _OwnerSelection(None, ())
     local = LocalCapabilities.read(load_toml(input_path))
     matrix = _current_matrix()
-    surfaces = {name for name in matrix.local_capabilities() if not name.endswith("-agent")}
+    surfaces = set(matrix.ide_capabilities())
     ide = next((name for name in local.selected if name in surfaces), None)
     return _OwnerSelection(ide, tuple(name for name in local.selected if name not in surfaces))
 
@@ -654,8 +651,9 @@ def _elicit_owner_selection(
     ``ask_ide`` false the lock already carries the IDE (a manifest from
     before 0.3.0 rc4) and only an explicit ``--ide`` is taken.
     """
-    surfaces = sorted(name for name in matrix.local_capabilities() if not name.endswith("-agent"))
-    agent_names = sorted(name for name in matrix.local_capabilities() if name.endswith("-agent"))
+    from .capability_selection import selection_catalog
+    surfaces = list(matrix.ide_capabilities())
+    agent_names = sorted(selection_catalog(matrix)[1])
     answer = elicitor.seek(
         "ide",
         description=f"Your IDE for this checkout ({', '.join(surfaces)}; Enter to decide later)",
@@ -673,7 +671,7 @@ def _elicit_owner_selection(
 
 
 def _ide_validator(matrix: ResolutionMatrix, surfaces: list[str]) -> Any:
-    by_component = {matrix.providers(name)[0]: name for name in surfaces}
+    by_component = {matrix.resolve_provider(name): name for name in surfaces}
 
     def validate(value: str) -> str:
         candidate = value.strip()
@@ -689,7 +687,7 @@ def _ide_validator(matrix: ResolutionMatrix, surfaces: list[str]) -> Any:
 
 def _agent_name(matrix: ResolutionMatrix, agent_names: list[str], value: str) -> str:
     candidate = value.strip()
-    by_component = {matrix.providers(name)[0]: name for name in agent_names}
+    by_component = {matrix.resolve_provider(name): name for name in agent_names}
     candidate = by_component.get(candidate, candidate)
     if candidate not in agent_names:
         raise ProjectConfigurationError(f"Unknown agent {value!r}; choose from {', '.join(agent_names)}.")
@@ -849,6 +847,9 @@ def _reject_answers_needing_an_ide(
 def _elicit_identity(
     elicitor: Elicitor, root: Path, existing_manifest: Mapping[str, Any] | None, matrix: ResolutionMatrix,
 ) -> _ProjectIdentity:
+    from .capabilities import capability_notes
+    for note in capability_notes(existing_manifest or {}):
+        print(f"Note: {note}", file=sys.stderr)
     project = (existing_manifest or {}).get("project", {})
     existing_policy = CapabilityPolicy.read(existing_manifest) if existing_manifest is not None else None
 
@@ -885,27 +886,19 @@ def _elicit_identity(
         existing=existing_field("mount"),
         default=f"/workspace/{slug.value}",
     )
-    tools = sorted(set(matrix.capabilities()) - matrix.local_capabilities())
-    majors = dict(existing_policy.sdk_major) if existing_policy is not None else {}
-    existing_require = (
-        " ".join(f"{item}={majors[item]}" if item in majors else item for item in existing_policy.required)
-        if existing_policy is not None else None
-    )
-    # A manifest written before 0.3.0 rc4 may require an IDE or an agent
-    # (the ``need`` form mixed them with the tools); such a declaration is
-    # grandfathered as it stands, never introduced anew.
-    grandfathered = frozenset(existing_policy.required) & matrix.local_capabilities() if existing_policy else frozenset()
+    tools = list(matrix.capabilities())
+    existing_require = " ".join(existing_policy.required) if existing_policy is not None else None
     require = elicitor.seek(
         "require",
         description=(
-            "Tools the project requires, space-separated, TOOL=MAJOR for an SDK major "
+            "Tools the project requires, space-separated "
             f"({', '.join(tools)}; Enter for none)"
         ),
         remedy="--require TOOL [--require TOOL ...]",
         existing=existing_require if existing_require is not None else None,
         empty_answer="none",
         omitted_answer="none",
-        validate=_require_validator(matrix, grandfathered),
+        validate=_require_validator(matrix),
     )
     offer = elicitor.seek(
         "offer",
@@ -913,22 +906,16 @@ def _elicit_identity(
         remedy="--offer TOOL [--offer TOOL ...]",
         mandatory=False,
         existing=" ".join(existing_policy.optional) if existing_policy is not None and existing_policy.optional else None,
-        validate=_require_validator(matrix, grandfathered),
+        validate=_require_validator(matrix),
     )
-    required_names, sdk_majors = _split_tools(matrix, require.value if require else "none", grandfathered)
-    offered_names, offered_majors = _split_tools(matrix, offer.value if offer else "none", grandfathered)
-    if offered_majors:
-        raise ProjectConfigurationError("An SDK major applies to a required tool, not an offered one.")
-    if existing_policy is not None and not existing_policy.layered and existing_policy.required == required_names:
-        # A legacy ``need`` manifest is honored as it is, IDE and agents included.
-        policy = existing_policy
+    required_names = _split_tools(matrix, require.value if require else "none")
+    offered_names = _split_tools(matrix, offer.value if offer else "none")
+    if existing_policy is not None and require is not None and require.source == SOURCE_EXISTING_RECORD:
+        if offer is not None and offer.source == SOURCE_EXISTING_RECORD:
+            offered_names = existing_policy.optional
+        policy = CapabilityPolicy(existing_policy.required, offered_names, existing_policy.minimums, existing_policy.layered)
     else:
-        policy = CapabilityPolicy(
-            tuple(sorted(set(required_names))),
-            tuple(sorted(set(offered_names))),
-            tuple(sorted(sdk_majors.items())),
-            layered=True,
-        )
+        policy = CapabilityPolicy(required_names, offered_names, layered=True)
     return _ProjectIdentity(
         name=name.value if name else "",
         slug=slug.value,
@@ -938,30 +925,20 @@ def _elicit_identity(
     )
 
 
-def _require_validator(matrix: ResolutionMatrix, grandfathered: frozenset[str] = frozenset()) -> Any:
+def _require_validator(matrix: ResolutionMatrix) -> Any:
     def validate(value: str) -> str:
         if value.strip().lower() == "none":
             return "none"
-        names, majors = _split_tools(matrix, value, grandfathered)
-        return " ".join(f"{name}={majors[name]}" if name in majors else name for name in names)
+        return " ".join(_split_tools(matrix, value))
 
     return validate
 
 
-def _split_tools(
-    matrix: ResolutionMatrix, value: str, grandfathered: frozenset[str] = frozenset(),
-) -> tuple[tuple[str, ...], dict[str, int]]:
-    """Canonical tool names and SDK majors from a space- or comma-separated answer.
-
-    IDE and agent names are refused, as every developer's, except the
-    ``grandfathered`` ones an existing manifest already requires.
-    """
+def _split_tools(matrix: ResolutionMatrix, value: str) -> tuple[str, ...]:
+    """Canonical capability names from a space- or comma-separated answer."""
     if value.strip().lower() == "none":
-        return (), {}
-    items = [item for item in value.replace(",", " ").split() if item]
-    kept = [item for item in items if item in grandfathered]
-    names, majors = parse_tool_names(matrix, [item for item in items if item not in grandfathered])
-    return tuple(sorted({*names, *kept})), majors
+        return ()
+    return parse_tool_names(matrix, value.replace(",", " ").split())
 
 
 def _with_default_agent(

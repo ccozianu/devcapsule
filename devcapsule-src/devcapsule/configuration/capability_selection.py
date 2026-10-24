@@ -17,7 +17,7 @@ from typing import Any, Mapping
 from devcapsule.components.catalog import COMPONENTS
 from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix
-from .capabilities import CapabilityPolicy, LocalCapabilities, names
+from .capabilities import CapabilityPolicy, LocalCapabilities, names, meets_minimum
 from .file_formats import ProjectConfigurationError, table
 
 
@@ -40,7 +40,7 @@ def generate_lock(policy: CapabilityPolicy, matrix: ResolutionMatrix, *,
     Resolve known capabilities using ``matrix``; a project need not choose an
     IDE. Unknown optional names can survive only when ``previous`` supplies
     their provider lists and nonconflicting metadata. Otherwise raise
-    ProjectConfigurationError, as for unsupported requirements or SDK majors.
+    ProjectConfigurationError, as for unsupported requirements or minimum versions.
     ``allow_unverified`` permits catalog combinations without recorded
     compatibility evidence. Inputs are unchanged; the returned lock is new.
     """
@@ -51,9 +51,10 @@ def generate_lock(policy: CapabilityPolicy, matrix: ResolutionMatrix, *,
             # Authored known optional capabilities must be resolvable. A writer
             # does not commit a typo or silently write a reduced recommendation.
             accepted.append(capability)
-    lock = tomllib.loads(matrix.resolve(accepted, project_only=True,
-                                      allow_unverified=allow_unverified).render_lock())
-    providers = {name: list(matrix.providers(name)) for name in accepted}
+    requirements = [*policy.requirements(), *(name for name in accepted if name not in policy.required)]
+    lock = tomllib.loads(matrix.resolve(requirements, project_only=True,
+                                       allow_unverified=allow_unverified).render_lock())
+    providers = {name: list(matrix.component_closure(name, lock=lock)) for name in accepted}
     for capability in set(policy.optional) - set(accepted):
         old_providers = table(previous or {}, "capability-providers")
         if capability not in old_providers:
@@ -66,22 +67,19 @@ def generate_lock(policy: CapabilityPolicy, matrix: ResolutionMatrix, *,
             lock["components"][component] = deepcopy(metadata)
         providers[capability] = list(opaque)
     lock["capability-providers"] = providers
-    check_majors(policy, lock, matrix)
+    check_minimums(policy, lock, matrix)
     return lock
 
 
-def check_majors(policy: CapabilityPolicy, lock: Mapping[str, Any], matrix: ResolutionMatrix) -> None:
-    """Require the lock to establish every SDK major requested by the policy.
-
-    Raise ProjectConfigurationError for a mismatch or unknown major. Evidence
-    comes from ``matrix.sdk_major``; this does not execute an installed SDK.
-    """
-    for capability, expected in policy.sdk_major:
-        actual = matrix.sdk_major(capability, lock)
-        if actual != expected:
+def check_minimums(policy: CapabilityPolicy, lock: Mapping[str, Any], matrix: ResolutionMatrix) -> None:
+    """Require the exact selected pins to establish every minimum before launch."""
+    for capability, minimum in policy.minimums:
+        actual = matrix.supplied_version(capability, lock)
+        if not meets_minimum(actual, minimum):
             raise ProjectConfigurationError(
-                f"Required {capability} SDK major {expected}; selected lock provides {actual if actual is not None else 'an unknown major'}. "
-                "Choose a compatible base/SDK with 'project config capabilities'; the project constraint cannot be overridden locally."
+                f"Required {capability}>={minimum}; selected lock supplies {actual or 'an unknown version'}. "
+                "Select a compatible version set with 'versions follow-project --apply'; "
+                "the project minimum cannot be overridden locally."
             )
 
 
@@ -134,7 +132,7 @@ def compose_lock(manifest: Mapping[str, Any], shared: Mapping[str, Any],
     pinned = table(pins, "components")
     overlaid: set[str] = set()
     for capability in local.selected:
-        for component in matrix.providers(capability):
+        for component in matrix.component_closure(capability, lock=pins):
             metadata = pinned.get(component)
             if metadata is None:
                 raise ProjectConfigurationError(f"Local selection is missing provider {component!r}; select local capabilities again.")
@@ -190,12 +188,12 @@ def usable_lock(policy: CapabilityPolicy, source: Mapping[str, Any],
 
     The returned lock is a filtered copy for execution, not a replacement for
     persisted version pins. Inputs remain unchanged. A legacy policy without
-    optional, SDK or local choices returns an unfiltered copy for compatibility.
+    optional, minimum or local choices returns an unfiltered copy for compatibility.
     This checks provider availability; artifact integrity and host permissions
     are checked by later admission stages.
     """
     lock = deepcopy(dict(source))
-    if not policy.layered and not policy.optional and not policy.sdk_major and not local.selected and not local.without:
+    if not policy.layered and not policy.optional and not policy.minimums and not local.selected and not local.without:
         return lock, ()  # Old locks remain records, not requests to re-resolve.
     local.validate(policy)
     matrix = matrix_for(lock)
@@ -205,10 +203,12 @@ def usable_lock(policy: CapabilityPolicy, source: Mapping[str, Any],
     notices: list[str] = []
 
     def supply(capability: str) -> tuple[str, ...]:
-        if capability not in matrix.capabilities():
-            raise ProjectConfigurationError("this launcher does not support it")
-        providers = matrix.providers(capability)
-        if not providers and (base is None or capability not in base.contract.services):
+        try:
+            name = matrix.canonical_name(capability)
+        except ProjectConfigurationError:
+            raise ProjectConfigurationError("this launcher does not support it") from None
+        providers = matrix.component_closure(name, lock=lock)
+        if not providers and (base is None or name not in base.contract.services):
             raise ProjectConfigurationError("the selected base cannot establish that it supplies this capability")
         missing = [name for name in providers if name not in COMPONENTS or not isinstance(components.get(name), dict)]
         if missing:
@@ -221,7 +221,7 @@ def usable_lock(policy: CapabilityPolicy, source: Mapping[str, Any],
                 keep.update(supply(capability))
             except ProjectConfigurationError as exc:
                 raise ProjectConfigurationError(f"{role} capability {capability!r} is unavailable: {exc}. Upgrade the launcher or select compatible components.") from exc
-    check_majors(policy, lock, matrix)
+    check_minimums(policy, lock, matrix)
     for capability in policy.optional:
         if capability in local.without:
             notices.append(f"Optional {capability!r} omitted by local choice; that enhancement is unavailable.")
@@ -238,6 +238,39 @@ def usable_lock(policy: CapabilityPolicy, source: Mapping[str, Any],
         lock["materialization"] = {}
     # Evidence is reconstructed by this reader, never trusted from a newer
     # writer. The pure configuration core uses it for optional-only freshness.
-    lock["capability-providers"] = {capability: list(matrix.providers(capability))
+    lock["capability-providers"] = {capability: list(matrix.component_closure(capability, lock=lock))
                                     for capability in (*policy.required, *local.selected)}
     return lock, tuple(notices)
+
+
+def selection_catalog(matrix: ResolutionMatrix | None = None) -> tuple[dict[str, str], dict[str, str]]:
+    """The IDE and agent capabilities this launcher knows, each with the component it selects."""
+    matrix = matrix or MATRICES[Platform.current()]
+    # The rc4 command grammar remains for this slice. These spellings are
+    # compatibility aliases only; the catalog has no agent role or kind.
+    surfaces = {name: matrix.resolve_provider(name) or name for name in matrix.ide_capabilities()}
+    agents: dict[str, str] = {name: matrix.resolve_provider(name) or name
+                              for name in ("codex-agent", "claude-code-agent", "antigravity-agent")
+                              if name in matrix.capabilities()}
+    return surfaces, agents
+
+
+def inspection_capabilities(manifest: Mapping[str, Any], lock: Mapping[str, Any],
+                            checkout: Mapping[str, Any]) -> tuple[Mapping[str, Any], dict[str, str | None]]:
+    """Catalog facts for a listing, retaining inspectability of an invalid contract.
+
+    Consent concerns only the execution projection, including local omissions.
+    Check and run remain responsible for reporting a mandatory contract error.
+    """
+    policy = CapabilityPolicy.read(manifest)
+    try:
+        access_lock, _ = usable_lock(policy, lock, LocalCapabilities.read(checkout))
+    except ProjectConfigurationError:
+        access_lock = dict(lock)
+    versions: dict[str, str | None] = {}
+    for name, _ in policy.minimums:
+        try:
+            versions[name] = matrix_for(lock).supplied_version(name, lock)
+        except ProjectConfigurationError:
+            versions[name] = None
+    return access_lock, versions

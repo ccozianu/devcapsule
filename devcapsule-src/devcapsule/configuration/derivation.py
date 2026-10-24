@@ -33,7 +33,7 @@ from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix, known_base_
 from .authorization import authorized_base_selection
 from .capabilities import CapabilityPolicy, LocalCapabilities
 from .capability_commands import pin_selection, release_deselected
-from .capability_selection import compose_lock, effective_lock, local_pins
+from .capability_selection import compose_lock, effective_lock, local_pins, selection_catalog, inspection_capabilities
 from .console_requests import deferred_rows
 from .file_formats import ProjectConfigurationError, canonical_digest, render_checkout, render_toml
 from .listing import Listing, assess_checkout
@@ -55,15 +55,6 @@ from .file_formats import selected_version_lock
 from .docker_arguments import arguments_path, read_arguments, read_environment
 
 __all__ = ["CheckoutState", "Selection", "derive_plan", "load_state", "register_checkout", "selection_catalog"]
-
-
-def selection_catalog(matrix: ResolutionMatrix | None = None) -> tuple[dict[str, str], dict[str, str]]:
-    """The IDE and agent capabilities this launcher knows, each with the component it selects."""
-    matrix = matrix or MATRICES[Platform.current()]
-    personal = matrix.local_capabilities()
-    surfaces = {name: matrix.providers(name)[0] for name in personal if not name.endswith("-agent")}
-    agents = {name: matrix.providers(name)[0] for name in personal if name.endswith("-agent")}
-    return surfaces, agents
 
 
 class Selection:
@@ -133,10 +124,12 @@ class CheckoutState:
         if selection is not None:
             reference = selection.reference
         base = known_base_image(str(reference))
+        access_lock, versions = inspection_capabilities(self.manifest, lock, document)
         listing = assess_checkout(
             self.manifest, self.shared_lock, lock, document,
             workstation=self.workstation, saved_environment=self.saved_environment,
             surfaces=self.surfaces, agents=self.agents, project=self.root, registered=self.registered,
+            access_lock=access_lock, capability_versions=versions,
             base_display=base.contract.display if check_display and base is not None else None,
         )
         return Listing(listing.rows + tuple(deferred_rows(self.input_path, self.root)), listing.notes)

@@ -18,8 +18,9 @@ from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES
 
 MATRIX = MATRICES[Platform.LINUX_AMD64]
-SURFACES = {name: MATRIX.providers(name)[0] for name in MATRIX.local_capabilities() if not name.endswith("-agent")}
-AGENTS = {name: MATRIX.providers(name)[0] for name in MATRIX.local_capabilities() if name.endswith("-agent")}
+from devcapsule.configuration.derivation import selection_catalog
+
+SURFACES, AGENTS = selection_catalog(MATRIX)
 
 
 def manifest(**extra) -> dict:

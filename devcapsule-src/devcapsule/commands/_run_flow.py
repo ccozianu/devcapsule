@@ -98,7 +98,8 @@ def prepare_launch(
     input_path = register_checkout(state, write=False)
     record = CheckoutRecord.staged(input_path, state.checkout)
     original = deepcopy(record.document)
-    notes: list[str] = []
+    from devcapsule.configuration.capabilities import capability_notes
+    notes: list[str] = list(capability_notes(manifest))
     # Channels accepted for this workstation, by flag or at the terminal:
     # staged on the state's workstation document, written with the record.
     accepted: list[str] = []

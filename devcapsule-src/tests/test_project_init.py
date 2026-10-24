@@ -45,8 +45,7 @@ def matrix_without_antigravity_validation() -> ResolutionMatrix:
             edge for edge in real._verified.values() if edge.component_id != "antigravity-cli"
         ),
         couplings=real._couplings,
-        surface_capabilities=real._surface_capabilities,
-        ancillary_capabilities=real._ancillary_capabilities,
+        capability_table=real._capability_table,
         materialization=real._materialization,
     )
 
@@ -85,8 +84,8 @@ def matrix_base_reference() -> str:
 @pytest.mark.parametrize("flags,expected", [
     (["--need", "python", "--need", "python-ide", "--need", "codex-agent"],
      (("python",), (), "python-ide", ("codex-agent",))),
-    (["--required", "python", "--optional", "browser-automation", "--sdk-major", "python=3"],
-     (("python", "python=3"), ("browser-automation",), None, ())),
+    (["--required", "python", "--optional", "browser-automation"],
+     (("python",), ("browser-automation",), None, ())),
     (["--local", "codex-agent", "python-ide"], ((), (), "python-ide", ("codex-agent",))),
     (["--ide", "pycharm", "--local", "python-ide"], ((), (), "python-ide", ())),
     (["--need", "pycharm", "codex"], ((), (), "python-ide", ("codex-agent",))),
@@ -99,8 +98,8 @@ def test_rc3_init_flags_map_to_their_owners(flags, expected, capsys) -> None:
 
 
 @pytest.mark.parametrize("flags,message", [
-    (["--offer", "python=3"], "SDK major applies to a required tool"),
-    (["--optional", "python", "--sdk-major", "python=3"], "SDK major applies to a required tool"),
+    (["--offer", "python=3"], "Unknown tool"),
+    (["--optional", "python", "--sdk-major", "python=3"], "unrecognized arguments"),
     (["--require", "python", "--offer", "python"], "both required and optional"),
     (["--local", "browser-automation"], "checkout tool, not a project requirement"),
 ])

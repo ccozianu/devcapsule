@@ -248,8 +248,8 @@ class ProjectInitCommand(Command):
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
         parser.add_argument(
-            "--require", action="append", default=[], metavar="TOOL[=MAJOR]",
-            help="A tool every checkout must have, such as python or node; python=3 pins the SDK major. Repeatable.",
+            "--require", action="append", default=[], metavar="TOOL",
+            help="A tool every checkout must have, such as python or node. Repeatable.",
         )
         parser.add_argument(
             "--offer", action="append", default=[], metavar="TOOL",
@@ -287,8 +287,8 @@ class ProjectInitCommand(Command):
         # The spellings of 0.3.0 rc3 and earlier, accepted for one release and
         # mapped onto the ones above: --need and --local mixed the project's
         # tools with the developer's IDE and agents (deficiency 9 of the CLI UX
-        # work order); --required, --optional and --sdk-major are --require and --offer.
-        for legacy in ("--need", "--required", "--optional", "--local", "--sdk-major"):
+        # work order); --required and --optional are --require and --offer.
+        for legacy in ("--need", "--required", "--optional", "--local"):
             parser.add_argument(legacy, nargs="*", action="append", default=[], help=argparse.SUPPRESS)
         add_carrier_options(parser)
 
@@ -333,13 +333,14 @@ def _init_selection(arguments: argparse.Namespace) -> tuple[tuple[str, ...], tup
     """
     from devcapsule.platforms import Platform
     from devcapsule.resolution_matrix import MATRICES
-    from devcapsule.configuration.capability_commands import canonical_tool_name, parse_majors
+    from devcapsule.configuration.capability_commands import canonical_tool_name
+    from devcapsule.configuration.capability_selection import selection_catalog
     matrix = MATRICES[Platform.current()]
-    surfaces = {name for name in matrix.local_capabilities() if not name.endswith("-agent")}
-    agent_names = matrix.local_capabilities() - surfaces
+    surface_map, agent_map = selection_catalog(matrix)
+    surfaces, agent_names = set(surface_map), set(agent_map)
     require = list(arguments.require)
     offer = list(arguments.offer)
-    ide_aliases = {matrix.providers(name)[0]: name for name in surfaces}
+    ide_aliases = {matrix.resolve_provider(name): name for name in surfaces}
     ide = ide_aliases.get(arguments.ide.strip(), arguments.ide.strip()) if arguments.ide is not None else None
     agents = list(arguments.agent)
     legacy_used: list[str] = []
@@ -368,15 +369,6 @@ def _init_selection(arguments: argparse.Namespace) -> tuple[tuple[str, ...], tup
             require.append(name)
     require.extend(flatten("--required"))
     offer.extend(flatten("--optional"))
-    legacy_majors = flatten("--sdk-major")
-    required_names = {canonical_tool_name(matrix, item.partition("=")[0]) for item in require} if legacy_majors else set()
-    for name, major in parse_majors(legacy_majors).items():
-        canonical = canonical_tool_name(matrix, name)
-        if canonical not in required_names:
-            raise ProjectConfigurationError(
-                f"An SDK major applies to a required tool; use --require {canonical}={major}, not --offer."
-            )
-        require.append(f"{canonical}={major}")
     if legacy_used:
         print(
             "Note: " + ", ".join(legacy_used) + " are the spellings of 0.3.0 rc3; use --require, --offer, "
@@ -707,13 +699,15 @@ def _assess(documents: CheckoutDocuments) -> Listing:
     if selection is not None:
         base_reference = selection.reference
     base = known_base_image(str(base_reference))
-    personal = matrix.local_capabilities()
-    surfaces = {name: matrix.providers(name)[0] for name in personal if not name.endswith("-agent")}
-    agents = {name: matrix.providers(name)[0] for name in personal if name.endswith("-agent")}
+    from devcapsule.configuration.capability_selection import selection_catalog
+    surfaces, agents = selection_catalog(matrix)
+    from devcapsule.configuration.capability_selection import inspection_capabilities
+    access_lock, versions = inspection_capabilities(documents.manifest, documents.composed_lock, documents.checkout)
     listing = assess_checkout(
         documents.manifest, documents.shared_lock, documents.composed_lock, documents.checkout,
         workstation=documents.workstation, saved_environment=documents.saved_environment,
         surfaces=surfaces, agents=agents, project=documents.root, registered=documents.registered,
+        access_lock=access_lock, capability_versions=versions,
         base_display=base.contract.display if base is not None else None,
     )
     return Listing(listing.rows + tuple(deferred_rows(documents.input_path, documents.root)), listing.notes)
@@ -1628,9 +1622,8 @@ class _OwnerToolCommand(Command):
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument("names", nargs="+", metavar="TOOL[=MAJOR]" if cls.verb == "require" else "TOOL",
-                            help="A tool such as python, node or browser-automation."
-                            + (" python=3 pins an SDK major." if cls.verb == "require" else ""))
+        parser.add_argument("names", nargs="+", metavar="TOOL",
+                            help="A tool such as python, node or browser-automation.")
         if cls.verb != "drop":
             parser.add_argument("--because", metavar="REASON", help="The reason a developer reads beside this tool.")
         parser.add_argument("--preview", action="store_true", help="Validate and show the result; write nothing.")
@@ -1701,7 +1694,7 @@ def _owner_group(verb: str, help_text: str, tool_help: str, env_help: str) -> ty
 
 ConfigRequireGroup = _owner_group(
     "require", "Project owners: what every checkout must have.",
-    "Require tools, regenerating the lock; TOOL=MAJOR pins an SDK major. IDE and agent choices stay each developer's.",
+    "Require tools, regenerating the lock; each name declares a capability.",
     "Require environment variables every developer supplies, privately, before the first launch.",
 )
 ConfigOfferGroup = _owner_group(
@@ -1711,7 +1704,7 @@ ConfigOfferGroup = _owner_group(
 )
 ConfigDropGroup = _owner_group(
     "drop", "Project owners: remove a requirement or an offer.",
-    "Drop tools from the project's requirements and offers, with their SDK majors.",
+    "Drop tools from the project's requirements and offers, with their minimum versions.",
     "Drop environment declarations from the project.",
 )
 
@@ -1810,9 +1803,8 @@ def _local_selection(context: object | None) -> tuple[Path, dict[str, Any], Loca
     record = find_checkout_record(manifest, root)
     current = LocalCapabilities.read(load_checkout(record, manifest, root)) if record is not None else LocalCapabilities()
     matrix = MATRICES[Platform.current()]
-    personal = matrix.local_capabilities()
-    surfaces = {name: matrix.providers(name)[0] for name in personal if not name.endswith("-agent")}
-    agents = {name: matrix.providers(name)[0] for name in personal if name.endswith("-agent")}
+    from devcapsule.configuration.capability_selection import selection_catalog
+    surfaces, agents = selection_catalog(matrix)
     return root, manifest, current, surfaces, agents
 
 
@@ -1957,7 +1949,7 @@ class ConfigCapabilitiesCommand(Command):
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
-        for legacy in ("--required", "--optional", "--sdk-major"):
+        for legacy in ("--required", "--optional"):
             parser.add_argument(legacy, nargs="*", help=argparse.SUPPRESS)
         parser.add_argument("--local", nargs="*", metavar="CAPABILITY", help="Replace personal IDE/agent/extra-tool choices.")
         parser.add_argument("--without", nargs="*", metavar="CAPABILITY", help="Replace local omissions of project optional tools.")
@@ -1970,21 +1962,21 @@ class ConfigCapabilitiesCommand(Command):
         from devcapsule.configuration.capability_commands import configure, recover
         from devcapsule.configuration.storage import discover_project
         start = _project_context(context).start_path()
-        if any(getattr(arguments, key) is not None for key in ("required", "optional", "sdk_major")):
+        if any(getattr(arguments, key) is not None for key in ("required", "optional")):
             raise ProjectConfigurationError(
-                "The project's tools are edited with 'devcapsule project config require tool TOOL[=MAJOR]', "
+                "The project's tools are edited with 'devcapsule project config require tool TOOL', "
                 "'config offer tool TOOL' and 'config drop tool TOOL'; 'capabilities' keeps the checkout's "
                 "--local and --without choices."
             )
         if arguments.recover:
-            if any(getattr(arguments, key) is not None for key in ("required", "optional", "sdk_major", "local", "without")) or arguments.preview or arguments.unverified:
+            if any(getattr(arguments, key) is not None for key in ("required", "optional", "local", "without")) or arguments.preview or arguments.unverified:
                 raise ProjectConfigurationError("--recover is a standalone operation.")
             root = start.expanduser().resolve()
             recover(root if (root / ".devcapsule/.capability-transaction.toml").exists() else discover_project(root))
             print("Configuration transaction recovered (or none pending).")
         else:
             print(configure(start, required=arguments.required, optional=arguments.optional,
-                            majors=arguments.sdk_major, local=arguments.local, without=arguments.without,
+                            local=arguments.local, without=arguments.without,
                             preview=arguments.preview, allow_unverified=arguments.unverified))
         return 0
 

@@ -43,7 +43,7 @@ from .authorization import (
     review_authorizations,
 )
 from .bindings import component_secret_inputs, configuration_binding_declarations
-from .capabilities import CapabilityPolicy, LocalCapabilities
+from .capabilities import CapabilityPolicy, LocalCapabilities, capability_notes
 from .file_formats import ProjectConfigurationError, render_toml_scalar, table
 from .launcher_values import launcher_value_source
 from .manifest_document import EnvironmentPolicy, Recommendations
@@ -184,6 +184,8 @@ def assess_checkout(
     project: Path | None = None,
     registered: bool = True,
     base_display: str | None = None,
+    access_lock: Mapping[str, Any] | None = None,
+    capability_versions: Mapping[str, str | None] | None = None,
 ) -> Listing:
     """The listing of one checkout, from its documents, writing nothing.
 
@@ -198,13 +200,14 @@ def assess_checkout(
     the selected base, or None when the host must inspect it at launch.
     """
     rows: list[ListingRow] = []
-    notes: list[str] = []
+    notes: list[str] = list(capability_notes(manifest))
     policy = CapabilityPolicy.read(manifest)
     local = LocalCapabilities.read(checkout)
     recommendations = Recommendations.read(manifest)
-    rows.extend(_capability_rows(policy, local, recommendations, shared_lock, composed_lock, surfaces, agents, project))
+    rows.extend(_capability_rows(policy, local, recommendations, shared_lock, composed_lock, surfaces, agents, project, capability_versions or {}))
     rows.extend(_launcher_value_rows(manifest, checkout, workstation, project))
-    rows.extend(_access_rows(manifest, composed_lock, checkout, project, base_display, workstation))
+    rows.extend(_access_rows(manifest, composed_lock if access_lock is None else access_lock,
+                             checkout, project, base_display, workstation))
     rows.extend(_environment_rows(manifest, saved_environment or {}, project))
     has_surface = bool(table(composed_lock, "components").get("interactive-surface"))
     if has_surface:
@@ -222,6 +225,7 @@ def _capability_rows(
     policy: CapabilityPolicy, local: LocalCapabilities, recommendations: Recommendations,
     shared_lock: Mapping[str, Any], composed_lock: Mapping[str, Any],
     surfaces: Mapping[str, str], agents: Mapping[str, str], project: Path | None,
+    capability_versions: Mapping[str, str | None],
 ) -> list[ListingRow]:
     rows: list[ListingRow] = []
     selected_ide = next((name for name in local.selected if name in surfaces), None)
@@ -249,7 +253,7 @@ def _capability_rows(
     personal = set(surfaces) | set(agents)
     for scope, names in (("project (required)", policy.required), ("project (offered)", policy.optional)):
         for name in names:
-            if name in personal:
+            if name in surfaces or name in agents and scope == "project (required)":
                 continue
             components = providers.get(name)
             if isinstance(components, list) and components:
@@ -264,6 +268,14 @@ def _capability_rows(
         components = providers.get(name)
         effective = ", ".join(_component_version(composed_lock, str(c)) for c in components) if isinstance(components, list) and components else name
         rows.append(ListingRow("tool", name, effective, "checkout"))
+    if policy.minimums:
+        from dataclasses import replace
+        minimums = dict(policy.minimums)
+        for index, row in enumerate(rows):
+            if row.name in minimums:
+                version = capability_versions.get(row.name)
+                rows[index] = replace(row, name=f"{row.name}>={minimums[row.name]}",
+                                      effective=row.effective + (f" ({version})" if version else " (version unknown)"))
     return rows
 
 

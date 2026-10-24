@@ -50,8 +50,8 @@ class Configuration:
         from .capabilities import CapabilityPolicy, LocalCapabilities
         policy = CapabilityPolicy.read(self._manifest)
         LocalCapabilities.read(self._checkout).validate(policy)
-        if policy.sdk_major and table(self._checkout, "authorization", "base-image").get("image-id"):
-            raise ProjectConfigurationError("A local base override cannot establish the project's SDK-major guarantee; select the pinned project base.")
+        if policy.minimums and table(self._checkout, "authorization", "base-image").get("image-id"):
+            raise ProjectConfigurationError("A local base override cannot establish the project's minimum-version guarantee; select the pinned project base.")
         self._review = review_configuration(self._manifest, self._lock, self._checkout, self._workstation)
 
     def review(self) -> ConfigurationReview:
