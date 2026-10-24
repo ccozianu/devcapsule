@@ -21,18 +21,20 @@ from __future__ import annotations
 from copy import deepcopy
 from pathlib import Path
 import tomllib
+import shlex
 from typing import Any, Mapping
 
+from devcapsule.compat import DecisionPending
 from devcapsule.materialization import validate_base_image
 from devcapsule.platforms import Platform
 from devcapsule.project import sanitize_name
-from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix
+from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix, known_base_image
 
 from .authorization import authorized_base_selection
 from .capabilities import CapabilityPolicy, LocalCapabilities
-from .capability_commands import pin_selection
+from .capability_commands import pin_selection, release_deselected
 from .capability_selection import compose_lock, effective_lock, local_pins
-from .file_formats import ProjectConfigurationError, render_checkout, render_toml
+from .file_formats import ProjectConfigurationError, canonical_digest, render_checkout, render_toml
 from .listing import Listing, assess_checkout
 from .model import Configuration
 from .storage import (
@@ -48,7 +50,7 @@ from .storage import (
     resolved_record_path,
 )
 from .file_formats import selected_version_lock
-from .docker_arguments import arguments_path, read_environment
+from .docker_arguments import arguments_path, read_arguments, read_environment
 
 __all__ = ["CheckoutState", "Selection", "derive_plan", "load_state", "register_checkout", "selection_catalog"]
 
@@ -98,9 +100,12 @@ class CheckoutState:
                 self.input_path = None  # the default record belongs to another checkout of this project
         self.saved_environment: dict[str, str | None] = {}
         if record is not None:
+            read_arguments(arguments_path(record))  # Malformed storage is a refusal.
             try:
                 self.saved_environment = read_environment(arguments_path(record))
             except ProjectConfigurationError:
+                # Ambiguous Docker tokens remain literal passthrough. They
+                # cannot establish answers to declared environment inputs.
                 self.saved_environment = {}
 
     @property
@@ -115,26 +120,37 @@ class CheckoutState:
             raise ProjectConfigurationError("Local version set is for another platform; follow the project explicitly.")
         return compose_lock(self.manifest, selected if selected is not None else self.shared_lock, document)
 
-    def listing(self, checkout: Mapping[str, Any] | None = None) -> Listing:
+    def listing(self, checkout: Mapping[str, Any] | None = None, *, check_display: bool = True) -> Listing:
         document = self.checkout if checkout is None else checkout
+        lock = self.composed_lock(document)
+        reference = document.get("authorization", {}).get("base-image", {}).get("reference") or lock.get("base", {}).get("reference")
+        base = known_base_image(str(reference))
         return assess_checkout(
-            self.manifest, self.shared_lock, self.composed_lock(document), document,
+            self.manifest, self.shared_lock, lock, document,
             workstation=self.workstation, saved_environment=self.saved_environment,
             surfaces=self.surfaces, agents=self.agents, project=self.root, registered=self.registered,
+            base_display=base.contract.display if check_display and base is not None else None,
         )
 
-    def with_selection(self, selection: Selection, *, allow_unverified: bool = False) -> dict[str, Any]:
+    def with_selection(self, selection: Selection, *, allow_unverified: bool = False,
+                       checkout: Mapping[str, Any] | None = None) -> dict[str, Any]:
         """A copy of the checkout document with ``selection`` pinned, for a run-once IDE or agent."""
-        document = deepcopy(self.checkout)
+        document = deepcopy(dict(self.checkout if checkout is None else checkout))
         local = selection.local()
         local.validate(CapabilityPolicy.read(self.manifest))
-        previous = LocalCapabilities.read(self.checkout)
-        selected = selected_version_lock(self.checkout)
-        source = selected if selected is not None else self.shared_lock
+        previous = LocalCapabilities.read(document)
+        selected = selected_version_lock(document)
+        version_record = document.pop("version-set", None)
+        source = deepcopy(selected if selected is not None else self.shared_lock)
+        if selected is not None:
+            release_deselected(source, self.matrix, CapabilityPolicy.read(self.manifest), previous, local)
         pins = pin_selection(self.matrix, CapabilityPolicy.read(self.manifest), local, source, previous,
-                             local_pins(self.checkout), allow_unverified=allow_unverified)
+                             local_pins(document), allow_unverified=allow_unverified)
         document["capabilities"] = {"selected": list(local.selected), "without": list(local.without),
                                     "lock": render_toml(pins)}
+        if version_record is not None:
+            version_record["lock"] = render_toml(compose_lock(self.manifest, source, document))
+            document["version-set"] = version_record
         return document
 
 
@@ -142,7 +158,7 @@ def load_state(root: Path, manifest: dict[str, Any]) -> CheckoutState:
     return CheckoutState(root, manifest)
 
 
-def register_checkout(state: CheckoutState) -> Path:
+def register_checkout(state: CheckoutState, *, write: bool = True) -> Path:
     """Give an unregistered checkout its record: the project's default one, or one named after its directory.
 
     Answer 14 of the work order: ``run`` registers a second checkout of the
@@ -153,20 +169,21 @@ def register_checkout(state: CheckoutState) -> Path:
         assert state.input_path is not None
         return state.input_path
     if state.input_path is None:
-        base = sanitize_name(state.root.name).lower() or "checkout"
+        base = sanitize_name(state.root.name).lower().lstrip("._-") or "checkout"
         for suffix in ("", *(f"-{index}" for index in range(2, 100))):
             candidate, _ = named_checkout_record_paths(state.manifest, f"{base}{suffix}")
-            if not candidate.exists():
+            if f"{base}{suffix}" != "default" and not candidate.exists():
                 state.input_path = candidate
                 break
         else:
             raise ProjectConfigurationError(f"No free checkout name derived from {state.root.name!r}; register one with 'checkout register NAME'.")
     assert state.input_path is not None
-    atomic_write(state.input_path, render_toml(state.checkout))
+    if write:
+        atomic_write(state.input_path, render_toml(state.checkout))
     return state.input_path
 
 
-def derive_plan(state: CheckoutState, checkout: Mapping[str, Any] | None = None) -> ResolvedProject:
+def derive_plan(state: CheckoutState, checkout: Mapping[str, Any] | None = None, *, write: bool = True) -> ResolvedProject:
     """Derive the launch plan from the state's documents and write it as the checkout's resolution.
 
     ``checkout`` is the record to derive from when it differs from the one
@@ -177,7 +194,17 @@ def derive_plan(state: CheckoutState, checkout: Mapping[str, Any] | None = None)
     """
     document = dict(state.checkout if checkout is None else checkout)
     composed = state.composed_lock(document)
-    lock = effective_lock(state.manifest, composed, document, warn=False)
+    try:
+        lock = effective_lock(state.manifest, composed, document, warn=False)
+    except ProjectConfigurationError as exc:
+        if selected_version_lock(document) is None:
+            raise
+        command = shlex.join(["devcapsule", "project", "--path", str(state.root), "versions"])
+        raise DecisionPending(
+            f"Saved version set {canonical_digest(composed)[:12]} cannot run this project: {exc}\n"
+            f"Follow the project with {command} follow-project --apply, or select a compatible set with "
+            f"{command} select SET. Nothing was written."
+        ) from exc
     if not lock.get("components", {}).get("interactive-surface"):
         raise ProjectConfigurationError("Choose your IDE for this checkout: devcapsule project config ide IDE.")
     configuration = Configuration(state.manifest, lock, document, state.workstation)
@@ -192,6 +219,7 @@ def derive_plan(state: CheckoutState, checkout: Mapping[str, Any] | None = None)
         validate_base_image(local_base, platform=str(lock["platform"]), expected_identity=base_selection.local_image_identity)
     assert state.input_path is not None
     resolution_path = resolved_record_path(state.input_path)
-    atomic_write(resolution_path, render_toml(resolution.document()))
+    if write:
+        atomic_write(resolution_path, render_toml(resolution.document()))
     return ResolvedProject(state.root, state.manifest, state.lock_path, lock, state.input_path, document,
                            resolution_path, resolution.document())

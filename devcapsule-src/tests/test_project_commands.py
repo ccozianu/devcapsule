@@ -2122,7 +2122,6 @@ def test_network_is_a_node_on_every_project(
         record = registered_checkouts()[0].record_path
         original_input = record.read_bytes()
         resolution = record.with_name("devcapsule.resolved.toml")
-        original_resolution = resolution.read_bytes()
         realized = SimpleNamespace(
             image=SimpleNamespace(labels={"devcapsule.base.display": "contained"}, reference="devcapsule-local-pycharm:0123456789abcdef0123"),
             created=False,
@@ -2139,7 +2138,8 @@ def test_network_is_a_node_on_every_project(
         err = capsys.readouterr().err
         assert "Run-once authorization: network = host" in err
         assert record.read_bytes() == original_input
-        assert resolution.read_bytes() == original_resolution
+        # The derived plan describes this run; the persistent answer stays unchanged.
+        assert tomllib.loads(resolution.read_text())["authorization"]["network"] == "host"
         # The persistent form writes the checkout's answer; nothing is recorded by the run-once form.
         assert cli.main(["project", "--path", str(project), "config", "authorize", "network", "host"]) == 0
         output = capsys.readouterr().out

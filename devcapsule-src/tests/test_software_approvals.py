@@ -456,3 +456,23 @@ def test_broken_newest_history_does_not_hide_a_valid_record(tmp_path, record) ->
     good.write_text(render_toml({"lock": '[components.claude-code]\nversion = "1.0.0"', "last-success": 20}))
     with patch.object(Path, "glob", return_value=iter([bad, good])):
         assert offer.previous_versions(tmp_path) == {"claude-code": "1.0.0"}
+
+
+@pytest.mark.parametrize("interactive", [False, True])
+def test_software_approval_is_not_saved_while_a_required_input_is_pending(checkout, monkeypatch, interactive: bool) -> None:
+    project, record, resolution = checkout
+    approved_then_bumped(project, record)
+    assert invoke(project, 'config', 'require', 'env', 'NEW_INPUT', '--because', 'new service') == 0
+    before = record.read_bytes(), resolution.read_bytes()
+    launch = install_external_fakes(monkeypatch, [])
+    import io
+    from devcapsule.compat import DecisionPending
+    monkeypatch.setattr('sys.stdin', io.StringIO('y\n'))
+    monkeypatch.setattr(offer.sys.stdin, 'isatty', lambda: interactive)
+    monkeypatch.setattr(offer, 'confirmation_key', lambda: 'y' if interactive else pytest.fail('asked without a terminal'))
+    def closed_input(*args) -> str:
+        raise DecisionPending('terminal closed')
+    monkeypatch.setattr('devcapsule.commands._run_flow._hidden', closed_input)
+    assert invoke(project, 'run', '--no-update-check') == 3
+    assert (record.read_bytes(), resolution.read_bytes()) == before
+    launch.assert_not_called()
