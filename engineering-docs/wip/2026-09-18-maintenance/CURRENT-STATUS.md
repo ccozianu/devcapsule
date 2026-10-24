@@ -181,7 +181,18 @@ shown; the workstation digest normalized; 60 regression cases; the
 reviewer's gate 1964 unit tests, mypy clean.
 Slice 3 is #265, `ws-maintenance/cli-ux-3-run`, delivered 2026-10-24: 1967
 unit tests, mypy clean, 10 new tests; its brief is
-[brief-pr265-1.md](evidence/2026-10-24-cli-ux/brief-pr265-1.md).
+[brief-pr265-1.md](evidence/2026-10-24-cli-ux/brief-pr265-1.md). Its
+PR265.1 is #267, one round: the review staged every answer so nothing is
+written before the last blocking decision, fixed the registration names,
+the run-once selections, the print-only path, the carriers and the saved
+set's refusal (36 cases); round 1 asked for the second derivation to carry
+a saved required consent (`run --save --authorize base-image default`
+exited 2 on both branches), fixed at `189e54f` with the flag matrix;
+accepted there, merged at `1a22a17`; the reviewer's gate 2006 unit tests,
+mypy clean. Merged forward into slice 4, where the trust acceptance moved
+onto the staged model (written with the answers, never before) and the
+base selection takes the workstation trust at every reader: the
+realization, the version-set history, the legacy resolve.
 Slice 4 is #266, `ws-maintenance/cli-ux-4-trust`, delivered 2026-10-24:
 1972 unit tests, mypy clean, 6 new tests in `tests/test_trust.py`; the
 trust record `trust.toml` under the launcher's config root, schema 1; the

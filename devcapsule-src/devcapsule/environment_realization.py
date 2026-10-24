@@ -71,8 +71,8 @@ def realize_environment(
     locked = parse_locked_environment(selected.lock)
     from devcapsule.configuration.storage import load_workstation
     from devcapsule.configuration.trust import WorkstationTrust
-    reviews = review_authorizations(selected.manifest, selected.lock, selected.checkout,
-                                    WorkstationTrust.read(load_workstation()))
+    trust = WorkstationTrust.read(load_workstation())
+    reviews = review_authorizations(selected.manifest, selected.lock, selected.checkout, trust)
     problems = [
         item for item in reviews if item.problem is not None
         and not (item.name == "base-image" and base_override is not None)
@@ -95,7 +95,7 @@ def realize_environment(
         base_reference = base_override
         expected_base_identity = None
     else:
-        selection = authorized_base_selection(selected.lock, selected.checkout)
+        selection = authorized_base_selection(selected.lock, selected.checkout, trust=trust)
         if selection is None:  # pragma: no cover - required selection raises instead.
             raise CliError("The checkout has no base-image authorization.")
         local_authorization = selection.is_local

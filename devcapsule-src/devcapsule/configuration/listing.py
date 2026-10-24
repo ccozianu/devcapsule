@@ -353,7 +353,7 @@ def _access_rows(
             if review.status == "stale":
                 pending = "the recommendation changed since your answer; renew or change it"
                 command = _command(project, "authorize", name, recommended) + "  |  " + _command(project, "deny", name)
-                decision = Decision("renew", name, f"{name} {recommended}", command, reason=declaration.description,
+                decision = Decision("renew", name, f"the recommendation changed since your answer: {name} {recommended}", command, reason=declaration.description,
                                     value=recommended, deny=rendered_deny)
             elif review.status == "invalid":
                 pending = str(review.problem or "invalid answer")
@@ -414,7 +414,9 @@ def _environment_rows(
         if row.name in saved and saved[row.name] is None and row.name not in os.environ:
             rows[index] = ListingRow("env", row.name, "unset", row.source,
                                      "the bound host variable is missing in this shell",
-                                     _command(project, "env", "set", row.name, "VALUE"))
+                                     _command(project, "env", "set", row.name, "VALUE"),
+                                     Decision("env", row.name, "The bound host variable is missing in this shell",
+                                              _command(project, "env", "set", row.name, "VALUE")))
     return rows
 
 

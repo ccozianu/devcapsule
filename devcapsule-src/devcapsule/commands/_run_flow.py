@@ -23,6 +23,7 @@ for during an earlier run, kept until applied or discarded here.
 
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass, field
 import getpass
 from pathlib import Path
@@ -30,16 +31,17 @@ import sys
 from typing import Any, Callable, Mapping, Sequence, TextIO
 
 from devcapsule.compat import DecisionPending
-from devcapsule.configuration.authorization import authorization_declarations, normalize_authorization_value
-from devcapsule.configuration.capabilities import LocalCapabilities
-from devcapsule.configuration.capability_commands import configure as configure_capabilities
+from devcapsule.configuration.authorization import WORKSTATION_CAPABILITY_DEFAULTS, authorization_declarations, normalize_authorization_value
+from devcapsule.configuration.capabilities import CapabilityPolicy, LocalCapabilities
 from devcapsule.configuration.derivation import CheckoutState, Selection, derive_plan, load_state, register_checkout
-from devcapsule.configuration.docker_arguments import arguments_path, update_environment, validate_name, validate_value
-from devcapsule.configuration.file_formats import ProjectConfigurationError
-from devcapsule.configuration.listing import Decision, Listing
+from devcapsule.configuration.docker_arguments import arguments_path, read_environment, update_environment, validate_name, validate_value
+from devcapsule.configuration.file_formats import ProjectConfigurationError, render_toml
+from devcapsule.configuration.manifest_document import Recommendations
+from devcapsule.configuration.listing import Decision
 from devcapsule.configuration.operations import CheckoutRecord, apply_configuration_answers, ProvidedAnswer
-from devcapsule.configuration.storage import ResolvedProject, manifest_for
-from devcapsule.configuration.values import LAUNCHER_VALUE_NAMES, memory_size_bytes, normalize_launcher_value
+from devcapsule.configuration.storage import ResolvedProject, atomic_write, checkout_name_for, manifest_for, write_trust
+from devcapsule.configuration.trust import Channel, WorkstationTrust, channels_for
+from devcapsule.configuration.values import legacy_memory_names, memory_size_bytes, normalize_launcher_value
 
 __all__ = ["Prepared", "RunFlags", "prepare_launch"]
 
@@ -81,117 +83,141 @@ def prepare_launch(
     input_stream: TextIO | None = None,
     output_stream: TextIO | None = None,
     print_only: bool = False,
+    check_display: bool = True,
 ) -> Prepared:
-    """Derive the checkout's plan, asking what is pending, and write its resolution.
+    """Review in memory, then save answers and the plan after every blocking decision.
 
-    With ``print_only`` nothing is asked and nothing is written but the
-    resolution of an already complete checkout. Without a terminal, a
+    ``print_only`` never asks or writes. Without a terminal, an unanswered
     blocking decision raises :class:`DecisionPending` before any write.
     """
     interactive = sys.stdin.isatty() if interactive is None else interactive
     output = output_stream if output_stream is not None else sys.stdout
     root, manifest = manifest_for(start)
     state = load_state(root, manifest)
-    prepared_notes: list[str] = []
-
-    if flags.trust and not print_only:
-        # A trust statement is the workstation's, not this launch's: recorded
-        # now, as ``--save`` records its flags, whatever the launch then asks.
-        for channel_id in flags.trust:
-            accept_channel(root, manifest, channel_id)
-            prepared_notes.append(f"Accepted the channel {channel_id} for this workstation.")
-        state = load_state(root, manifest)
-    selection = Selection(LocalCapabilities.read(state.checkout), state.surfaces, state.agents)
-    selection_changed = False
-    if flags.ide is not None:
-        selection.ide = _capability(flags.ide, state.surfaces, "IDE")
-        selection_changed = True
-    for agent in flags.agents:
-        selection.agents.add(_capability(agent, state.agents, "agent"))
-        selection_changed = True
+    input_path = register_checkout(state, write=False)
+    record = CheckoutRecord.staged(input_path, state.checkout)
+    original = deepcopy(record.document)
+    notes: list[str] = []
+    # Channels accepted for this workstation, by flag or at the terminal:
+    # staged on the state's workstation document, written with the record.
+    accepted: list[str] = []
+    for channel_id in flags.trust:
+        _stage_trust(state, channel_id, accepted)
     host_overrides: dict[str, Any] = {}
-    memory_override: int | None = None
-    cpus_override: int | None = None
-    if flags.memory is not None:
-        memory_override = memory_size_bytes(str(normalize_launcher_value("memory", flags.memory)))
-    if flags.cpus is not None:
-        cpus_override = int(normalize_launcher_value("cpus", flags.cpus))
+    environment: dict[str, str | None] = {}
     environment_tokens: list[str] = []
-    answered_environment: set[str] = set()
+    memory_override = None if flags.memory is None else memory_size_bytes(str(normalize_launcher_value("memory", flags.memory)))
+    cpus_override = None if flags.cpus is None else int(normalize_launcher_value("cpus", flags.cpus))
     for item in flags.environment:
         name, separator, value = item.partition("=")
         validate_name(name)
         if separator:
             validate_value(value)
+        state.saved_environment[name] = value if separator else None
         environment_tokens.extend(["--env", item])
-        answered_environment.add(name)
-
-    if flags.save and not print_only:
-        # Recorded exactly as the config family records them, before anything else.
-        register_checkout(state)
-        if selection_changed:
-            configure_capabilities(root, local=list(selection.local().selected), allow_unverified=flags.allow_unverified)
-        record = CheckoutRecord(manifest, root)
-        if flags.memory is not None:
-            record.values["memory"] = normalize_launcher_value("memory", flags.memory)
-        if flags.cpus is not None:
-            record.values["cpus"] = normalize_launcher_value("cpus", flags.cpus)
-        for node, value in flags.authorize:
-            declaration = authorization_declarations(manifest, state.composed_lock()).get(node)
-            if declaration is None:
-                raise ProjectConfigurationError(f"Authorization {node!r} is not declared by this project.")
-            record.authorize(declaration, normalize_authorization_value(declaration, value))
-        record.write()
-        for item in flags.environment:
-            name, separator, value = item.partition("=")
-            update_environment(arguments_path(record.input_path), name, value if separator else None, from_host=not separator)
-        environment_tokens = []
-        memory_override = cpus_override = None
-        state = load_state(root, manifest)
-        selection_changed = False
-        prepared_notes.append("Recorded the flags given for this checkout.")
-    else:
-        for node, value in flags.authorize:
-            declaration = authorization_declarations(manifest, state.composed_lock()).get(node)
-            if declaration is None or declaration.required:
-                raise ProjectConfigurationError(f"Authorization {node!r} cannot be answered for one run; the host accesses can.")
-            host_overrides[node] = normalize_authorization_value(declaration, value)
+        if flags.save:
+            environment[name] = value if separator else None
+    if flags.save:
+        record.document = _selected_checkout(state, record.export(), flags)
+        record = CheckoutRecord.staged(input_path, record.document)
+        _resource_answers(record, manifest, flags)
+    for node, value in flags.authorize:
+        declaration = authorization_declarations(manifest, state.composed_lock(record.document)).get(node)
+        if declaration is None or (declaration.required and not flags.save):
+            raise ProjectConfigurationError(f"Authorization {node!r} cannot be answered for one run; the host accesses can.")
+        normalized = normalize_authorization_value(declaration, value)
+        if flags.save:
+            record.authorize(declaration, normalized)
+        else:
+            host_overrides[node] = normalized
             print(f"Run-once authorization: {node} = {value}", file=sys.stderr)
 
-    checkout = state.with_selection(selection, allow_unverified=flags.allow_unverified) if selection_changed else state.checkout
-    listing = state.listing(checkout)
-    decisions = [
-        decision for decision in listing.decisions
-        if not (decision.kind == "access" and decision.name in host_overrides)
-        and not (decision.kind == "env" and decision.name in answered_environment)
-    ]
-    blocking = [decision for decision in decisions if decision.kind in BLOCKING_KINDS]
-    soft = [decision for decision in decisions if decision.kind not in BLOCKING_KINDS]
-    if blocking and (print_only or not interactive):
-        raise DecisionPending(_render_pending(blocking, root, prepared_notes))
-    if decisions and not print_only and interactive:
-        register_checkout(state)
-        state, checkout, host_overrides = _settle(state, checkout, decisions, host_overrides, selection,
-                                                 selection_changed, flags, input_stream, output)
-        listing = state.listing(checkout)
-        still = [d for d in listing.decisions if d.kind in BLOCKING_KINDS]
-        if still:
-            raise DecisionPending(_render_pending(still, root, prepared_notes, answered=True))
-    elif soft:
-        for decision in soft:
-            if decision.kind == "console":
-                prepared_notes.append(
-                    f"The console's request {decision.name} of {decision.reason} awaits your confirmation: "
-                    f"{decision.description}. Apply or discard: {decision.command}"
-                )
-            else:
-                prepared_notes.append(
-                    f"The project asks for {decision.description} ({decision.reason}); not granted this run. "
-                    f"Allow or deny: {decision.command}"
-                )
-    register_checkout(state)
-    selected = derive_plan(state, checkout)
-    return Prepared(selected, host_overrides, memory_override, cpus_override, environment_tokens, prepared_notes)
+    def launch_checkout() -> dict[str, Any]:
+        saved = record.export()
+        document = _selected_checkout(state, saved, flags) if not flags.save else saved
+        local = Selection(LocalCapabilities.read(document), state.surfaces, state.agents)
+        recommended_ide = Recommendations.read(manifest).ide
+        if local.ide is None and recommended_ide is not None and not (set(CapabilityPolicy.read(manifest).required) & set(state.surfaces)):
+            local.ide = recommended_ide
+            document = state.with_selection(local, checkout=document, allow_unverified=flags.allow_unverified)
+        transient = CheckoutRecord.staged(input_path, document)
+        if not flags.save:
+            _resource_answers(transient, manifest, flags)
+        declarations = authorization_declarations(manifest, state.composed_lock(document))
+        for name, value in host_overrides.items():
+            transient.authorize(declarations[name], value)
+        return transient.export()
+
+    asked: set[tuple[str, str]] = set()
+    reader = input_stream.readline if input_stream is not None else lambda: sys.stdin.readline()
+    while True:
+        checkout = launch_checkout()
+        decisions = list(state.listing(checkout, check_display=check_display).decisions)
+        blocking = [d for d in decisions if d.kind in BLOCKING_KINDS]
+        if blocking and (print_only or not interactive):
+            raise DecisionPending(_render_pending(blocking, root))
+        pending = [d for d in decisions if (d.kind, d.name) not in asked]
+        if not pending or print_only or not interactive:
+            if blocking:
+                raise DecisionPending(_render_pending(blocking, root))
+            for decision in decisions:
+                if decision.kind == "console":
+                    notes.append(
+                        f"The console's request {decision.name} of {decision.reason} awaits your confirmation: "
+                        f"{decision.description}. Apply or discard: {decision.command}"
+                    )
+                else:
+                    notes.append(
+                        f"The project asks for {decision.description} ({decision.reason}); not granted this run. "
+                        f"Allow or deny: {decision.command}"
+                    )
+            break
+        decision = pending[0]
+        asked.add((decision.kind, decision.name))
+        _settle(state, record, checkout, decision, host_overrides, environment, accepted, flags, reader, output)
+
+    # Validation can still refuse (for example, an invalid binding). Derive
+    # first so neither --save nor a terminal answer escapes on that path.
+    selected = derive_plan(state, checkout, write=False)
+    if not print_only:
+        if environment:
+            read_environment(arguments_path(input_path))  # Refuse ambiguous saved tokens before any write.
+        if not state.registered:
+            notes.append(f"Registered this checkout: {checkout_name_for(manifest, input_path)} ({root}).")
+        if not state.registered or record.document != original:
+            record.write()
+        for name, saved_value in environment.items():
+            update_environment(arguments_path(input_path), name, saved_value, from_host=saved_value is None)
+        atomic_write(selected.resolution_path, render_toml(selected.resolution))
+        if accepted:
+            write_trust(WorkstationTrust.read(state.workstation).document())
+            notes.extend(f"Accepted the channel {channel_id} for this workstation." for channel_id in accepted)
+        if flags.save:
+            notes.insert(0, "Recorded the flags given for this checkout.")
+            environment_tokens = []
+            memory_override = cpus_override = None
+    return Prepared(selected, host_overrides, memory_override, cpus_override, environment_tokens, notes)
+
+
+def _resource_answers(record: CheckoutRecord, manifest: Mapping[str, Any], flags: RunFlags) -> None:
+    for name, value in (("memory", flags.memory), ("cpus", flags.cpus)):
+        if value is not None:
+            record.set_value(name, normalize_launcher_value(name, value))
+            if name == "memory":
+                for alias in legacy_memory_names(manifest):
+                    record.values.pop(alias, None)
+                    record.omitted_values.discard(alias)
+
+
+def _selected_checkout(state: CheckoutState, document: dict[str, Any], flags: RunFlags) -> dict[str, Any]:
+    if flags.ide is None and not flags.agents:
+        return document
+    selection = Selection(LocalCapabilities.read(document), state.surfaces, state.agents)
+    if flags.ide is not None:
+        selection.ide = _capability(flags.ide, state.surfaces, "IDE")
+    for agent in flags.agents:
+        selection.agents.add(_capability(agent, state.agents, "agent"))
+    return state.with_selection(selection, checkout=document, allow_unverified=flags.allow_unverified)
 
 
 def launch_listing_document(selected: ResolvedProject) -> dict[str, Any]:
@@ -208,10 +234,9 @@ def launch_listing_document(selected: ResolvedProject) -> dict[str, Any]:
     }
 
 
-def accept_channel(root: Path, manifest: dict[str, Any], channel_id: str) -> Path:
-    """Record the user's acceptance of one channel for this workstation; return the record's path."""
-    from devcapsule.configuration.storage import load_trust, recommendation_lock_for, write_trust
-    from devcapsule.configuration.trust import WorkstationTrust, channels_for
+def project_channel(root: Path, manifest: dict[str, Any], channel_id: str) -> Channel:
+    """The channel ``channel_id`` of this project's lock; refused with the project's channels when unknown."""
+    from devcapsule.configuration.storage import recommendation_lock_for
     _path, lock = recommendation_lock_for(root, manifest)
     channels = channels_for(lock)
     channel = channels.get(channel_id)
@@ -219,8 +244,23 @@ def accept_channel(root: Path, manifest: dict[str, Any], channel_id: str) -> Pat
         raise ProjectConfigurationError(
             f"No channel {channel_id!r} on this project; its channels: " + (", ".join(sorted(channels)) or "none") + "."
         )
-    trust = WorkstationTrust.read(load_trust()).with_channel(channel)
-    return write_trust(trust.document())
+    return channel
+
+
+def accept_channel(root: Path, manifest: dict[str, Any], channel_id: str) -> Path:
+    """Record the user's acceptance of one channel for this workstation now; return the record's path."""
+    from devcapsule.configuration.storage import load_trust
+    channel = project_channel(root, manifest, channel_id)
+    return write_trust(WorkstationTrust.read(load_trust()).with_channel(channel).document())
+
+
+def _stage_trust(state: CheckoutState, channel_id: str, accepted: list[str]) -> None:
+    """Stage the acceptance of ``channel_id`` on the state's workstation document; written with the answers."""
+    channel = project_channel(state.root, state.manifest, channel_id)
+    trust = WorkstationTrust.read(state.workstation).with_channel(channel)
+    state.workstation = {**state.workstation, "trust": trust.document()}
+    if channel_id not in accepted:
+        accepted.append(channel_id)
 
 
 def _capability(value: str, names: Mapping[str, str], kind: str) -> str:
@@ -236,9 +276,9 @@ def _render_pending(decisions: list[Decision], root: Path, recorded: Sequence[st
     """The status-3 text: each decision with its flag and command, then what was and was not written."""
     lines = ["the launch of this checkout needs answers:"]
     for decision in decisions:
-        flag = {"ide": "--ide IDE", "env": f"--env {decision.name}=VALUE", "consent": f"--authorize {decision.name} {decision.value}",
-                "access": f"--authorize {decision.name} {decision.value}", "trust": f"--trust {decision.name}",
-                "renew": "", "value": "", "secret": "", "console": ""}[decision.kind]
+        flag = {"ide": "--ide IDE", "env": f"--env {decision.name}=VALUE", "consent": f"--authorize {decision.name} {decision.value}" if decision.name == "host-x11" else "",
+                "access": f"--authorize {decision.name} {decision.value}", "renew": f"--authorize {decision.name} {decision.value}",
+                "trust": f"--trust {decision.name}", "value": "", "secret": "", "console": ""}[decision.kind]
         lines.append(f"  {decision.kind} {decision.name}: {decision.description}" + (f"  ({decision.reason})" if decision.reason else ""))
         lines.append("      " + (f"{flag}  |  " if flag else "") + decision.command)
     lines.extend(recorded)
@@ -252,108 +292,91 @@ def _render_pending(decisions: list[Decision], root: Path, recorded: Sequence[st
 
 
 def _settle(
-    state: CheckoutState, checkout: dict[str, Any], decisions: list[Decision], host_overrides: dict[str, Any],
-    selection: Selection, selection_changed: bool, flags: RunFlags, input_stream: TextIO | None, output: TextIO,
-) -> tuple[CheckoutState, dict[str, Any], dict[str, Any]]:
-    """Ask each decision at the terminal and record the answer where the config family would."""
-    reader = (input_stream.readline if input_stream is not None else lambda: sys.stdin.readline())
+    state: CheckoutState, record: CheckoutRecord, checkout: dict[str, Any], decision: Decision,
+    host_overrides: dict[str, Any], environment: dict[str, str | None], accepted: list[str], flags: RunFlags,
+    reader: Callable[[], str], output: TextIO,
+) -> None:
+    """Stage one answer. Reassess before the next question; an IDE can add consents."""
     root, manifest = state.root, state.manifest
-    assert state.input_path is not None
-    for decision in decisions:
-        if decision.kind == "ide":
-            output.write("The project leaves the IDE to you. Choose one:\n")
-            for index, (name, version) in enumerate(decision.choices, start=1):
-                output.write(f"  {index}. {name:<13} {version}\n")
-            choice = _ask(output, reader, f"IDE [1-{len(decision.choices)}]: ")
-            names = [name for name, _ in decision.choices]
-            picked = names[int(choice) - 1] if choice.isdecimal() and 1 <= int(choice) <= len(names) else _capability(choice, state.surfaces, "IDE")
-            selection.ide = picked
-            configure_capabilities(root, local=list(selection.local().selected), allow_unverified=flags.allow_unverified)
-            output.write(f"Recorded for this checkout. Change: devcapsule project --path {root} config ide IDE\n")
-            selection_changed = False
-        elif decision.kind == "env":
-            output.write(f"The project needs {decision.name}" + (f": {decision.reason}" if decision.reason else "") + "\n")
-            value = _hidden(output, reader, f"{decision.name} [hidden, kept on this computer]: ")
-            update_environment(arguments_path(state.input_path), decision.name, value)
-            output.write(f"Recorded for this checkout. Change: devcapsule project --path {root} config env set {decision.name}\n")
-        elif decision.kind == "access":
+    if decision.kind == "ide":
+        output.write("The project leaves the IDE to you. Choose one:\n")
+        for index, (name, version) in enumerate(decision.choices, start=1):
+            output.write(f"  {index}. {name:<13} {version}\n")
+        choice = _ask(output, reader, f"IDE [1-{len(decision.choices)}]: ")
+        names = [name for name, _ in decision.choices]
+        picked = names[int(choice) - 1] if choice.isdecimal() and 1 <= int(choice) <= len(names) else _capability(choice, state.surfaces, "IDE")
+        selection = Selection(LocalCapabilities.read(record.document), state.surfaces, state.agents)
+        selection.ide = picked
+        selected = state.with_selection(selection, checkout=record.document, allow_unverified=flags.allow_unverified)
+        record.document["capabilities"] = selected["capabilities"]
+        if "version-set" in selected:
+            record.document["version-set"] = selected["version-set"]
+        output.write("IDE selected. Answers will be recorded when the review is complete.\n")
+    elif decision.kind == "env":
+        output.write(f"The project needs {decision.name}" + (f": {decision.reason}" if decision.reason else "") + "\n")
+        value = _hidden(output, reader, f"{decision.name} [hidden, kept on this computer]: ")
+        validate_value(value)
+        environment[decision.name] = value
+        state.saved_environment[decision.name] = value
+    elif decision.kind == "console":
+        # A widening the console asked for in an earlier run: the user's "apply"
+        # is the command 'config console apply ID', run now, as that command would.
+        from devcapsule.commands._console_channel import apply_deferred, discard_deferred
+        output.write(f"The console asked at {decision.reason}: {decision.description}\n")
+        answer = _ask(output, reader, "[a]pply it now, as 'config console apply' would, [d]iscard it, Enter = keep it for later: ").lower()
+        if answer in {"a", "apply"}:
+            _status, text = apply_deferred(root, record.input_path, decision.name)
+            output.write((text or "Recorded.") + "\n")
+        elif answer in {"d", "discard"}:
+            discard_deferred(record.input_path, decision.name)
+            output.write("Discarded.\n")
+        else:
+            output.write(f"Kept. Apply or discard later: {decision.command}\n")
+    elif decision.kind == "trust":
+        output.write(f"{decision.description}\n")
+        if decision.reason:
+            output.write(f"  {decision.reason}\n")
+        answer = _ask(output, reader, "Accept, once for this computer? [y/N]: ").lower()
+        if answer in {"y", "yes"}:
+            _stage_trust(state, decision.name, accepted)
+            output.write(f"Accepted; recorded with the answers. Withdraw: devcapsule project --path {root} config trust withdraw {decision.name}\n")
+        else:
+            output.write(f"Not accepted. Accept later: {decision.command}\n")
+            raise DecisionPending(_render_pending([decision], root))
+    elif decision.kind in {"access", "renew", "consent"}:
+        declaration = authorization_declarations(manifest, state.composed_lock(checkout))[decision.name]
+        if decision.kind in {"access", "renew"}:
+            output.write(WORKSTATION_CAPABILITY_DEFAULTS[decision.name][1] + "\n")
+        if decision.kind == "access":
             output.write(f"The project asks for {decision.description}: {decision.reason}\n")
             answer = _ask(output, reader, "[a]llow for this checkout, allow [o]nce, [d]eny for this checkout, Enter = not now: ").lower()
-            record = CheckoutRecord(manifest, root)
-            declaration = authorization_declarations(manifest, state.composed_lock(checkout))[decision.name]
-            if answer in {"a", "allow"}:
-                record.authorize(declaration, normalize_authorization_value(declaration, decision.value))
-                record.write()
-            elif answer in {"d", "deny"}:
-                record.authorize(declaration, normalize_authorization_value(declaration, "none"))
-                record.write()
-            elif answer in {"o", "once"}:
-                host_overrides[decision.name] = normalize_authorization_value(declaration, decision.value)
-            else:
-                output.write(f"Not now; the secure default applies. Allow or deny later: {decision.command}\n")
         elif decision.kind == "renew":
             output.write(f"Your answer for {decision.name} predates the project's current recommendation: {decision.reason}\n")
             answer = _ask(output, reader, f"[a]llow {decision.name} {decision.value} for this checkout, or [d]eny: ").lower()
-            record = CheckoutRecord(manifest, root)
-            declaration = authorization_declarations(manifest, state.composed_lock(checkout))[decision.name]
-            if answer in {"a", "allow"}:
-                record.authorize(declaration, normalize_authorization_value(declaration, decision.value))
-                record.write()
-            elif answer in {"d", "deny"}:
-                record.authorize(declaration, normalize_authorization_value(declaration, "none"))
-                record.write()
-            else:
-                output.write(f"Not answered; renew it later: {decision.command}\n")
-        elif decision.kind == "console":
-            from devcapsule.commands._console_channel import apply_deferred, discard_deferred
-            assert state.input_path is not None
-            output.write(f"The console asked at {decision.reason}: {decision.description}\n")
-            answer = _ask(output, reader, "[a]pply it now, [d]iscard it, Enter = keep it for later: ").lower()
-            if answer in {"a", "apply"}:
-                status, text = apply_deferred(root, state.input_path, decision.name)
-                output.write((text or "Recorded.") + "\n")
-            elif answer in {"d", "discard"}:
-                discard_deferred(state.input_path, decision.name)
-                output.write("Discarded.\n")
-            else:
-                output.write(f"Kept. Apply or discard later: {decision.command}\n")
-        elif decision.kind == "trust":
-            output.write(f"{decision.description}\n")
-            if decision.reason:
-                output.write(f"  {decision.reason}\n")
-            answer = _ask(output, reader, "Accept, once for this computer? [y/N]: ").lower()
-            if answer in {"y", "yes"}:
-                accept_channel(root, manifest, decision.name)
-                output.write(f"Recorded for this workstation. Withdraw: devcapsule project --path {root} config trust withdraw {decision.name}\n")
-            else:
-                output.write(f"Not accepted. Accept later: {decision.command}\n")
-        elif decision.kind == "consent":
+        else:
             output.write(f"{decision.description}\n")
             answer = _ask(output, reader, "Accept? [y/N]: ").lower()
-            if answer in {"y", "yes"}:
-                record = CheckoutRecord(manifest, root)
-                declaration = authorization_declarations(manifest, state.composed_lock(checkout))[decision.name]
-                record.authorize(declaration, declaration.recommended_value)
-                record.write()
-            else:
-                output.write(f"Not accepted. Accept later: {decision.command}\n")
-        elif decision.kind == "value":
-            value = _ask(output, reader, f"{decision.name} ({decision.description}): ")
-            record = CheckoutRecord(manifest, root)
-            apply_configuration_answers((ProvidedAnswer("set", decision.name, value),), manifest, state.composed_lock(checkout), record)
-            record.write()
-        elif decision.kind == "secret":
-            output.write(f"{decision.description}\n")
-            answer = _ask(output, reader, f"Bind {decision.name} to the host's variable {decision.variable}? [y/N]: ").lower()
-            if answer in {"y", "yes"}:
-                record = CheckoutRecord(manifest, root)
-                apply_configuration_answers((ProvidedAnswer("bind", decision.name, f"host-environment:{decision.variable}"),),
-                                            manifest, state.composed_lock(checkout), record)
-                record.write()
-        state = load_state(root, manifest)
-        state.saved_environment = state.saved_environment  # re-read by load_state
-        checkout = state.with_selection(selection, allow_unverified=flags.allow_unverified) if selection_changed else state.checkout
-    return state, checkout, host_overrides
+        if answer in ({"y", "yes"} if decision.kind == "consent" else {"a", "allow"}):
+            record.authorize(declaration, normalize_authorization_value(declaration, decision.value))
+        elif answer in {"d", "deny"} and decision.kind != "consent":
+            record.authorize(declaration, normalize_authorization_value(declaration, decision.deny))
+        elif answer in {"o", "once"} and decision.kind == "access":
+            host_overrides[decision.name] = normalize_authorization_value(declaration, decision.value)
+        elif decision.kind == "access":
+            output.write(f"Not now; the secure default applies. Allow or deny later: {decision.command}\n")
+        else:
+            raise DecisionPending(_render_pending([decision], root))
+    elif decision.kind == "value":
+        value = _ask(output, reader, f"{decision.name} ({decision.description}): ")
+        apply_configuration_answers((ProvidedAnswer("set", decision.name, value),), manifest, state.composed_lock(checkout), record)
+    elif decision.kind == "secret":
+        output.write(f"{decision.description}\n")
+        answer = _ask(output, reader, f"Bind {decision.name} to the host's variable {decision.variable}? [y/N]: ").lower()
+        if answer in {"y", "yes"}:
+            apply_configuration_answers((ProvidedAnswer("bind", decision.name, f"host-environment:{decision.variable}"),),
+                                        manifest, state.composed_lock(checkout), record)
+        else:
+            raise DecisionPending(_render_pending([decision], root))
 
 
 def _ask(output: TextIO, reader: Callable[[], str], prompt: str) -> str:
@@ -361,7 +384,7 @@ def _ask(output: TextIO, reader: Callable[[], str], prompt: str) -> str:
     output.flush()
     line = reader()
     if line == "":
-        raise DecisionPending("the terminal closed before the answer; nothing more was written")
+        raise DecisionPending("the terminal closed before the answer; nothing was written")
     return line.rstrip("\n").strip()
 
 
@@ -370,5 +393,5 @@ def _hidden(output: TextIO, reader: Callable[[], str], prompt: str) -> str:
         try:
             return getpass.getpass(prompt)
         except (EOFError, getpass.GetPassWarning):
-            raise DecisionPending("the terminal closed before the answer; nothing more was written") from None
+            raise DecisionPending("the terminal closed before the answer; nothing was written") from None
     return _ask(output, reader, prompt)

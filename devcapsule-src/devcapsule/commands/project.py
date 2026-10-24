@@ -594,16 +594,9 @@ class ConfigResolveCommand(Command):
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
         print("Note: 'config resolve' is gone; 'devcapsule project run' derives the plan every time. Deriving it now.",
               file=sys.stderr)
-        from devcapsule.configuration.derivation import derive_plan, load_state, register_checkout
-        root, manifest = manifest_for(_project_context(context).start_path())
-        state = load_state(root, manifest)
-        listing = state.listing()
-        from devcapsule.commands._run_flow import BLOCKING_KINDS
-        blocking = [decision for decision in listing.decisions if decision.kind in BLOCKING_KINDS]
-        if blocking:
-            raise DecisionPending(listing.render_pending())
-        register_checkout(state)
-        selected = derive_plan(state)
+        # The alias derives only; display consent is checked by run before launch.
+        selected = prepare_launch(_project_context(context).start_path(), RunFlags(),
+                                  interactive=False, check_display=False).selected
         print(f"Derived {selected.resolution_path} from {selected.lock_path.name}")
         return 0
 
@@ -2222,8 +2215,8 @@ class ProjectRunCommand(Command):
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
     help = (
         "Run the project: derive the plan from the project, this workstation and this checkout, "
-        "ask only what nobody else can answer, and launch. Every flag applies to this launch only; "
-        "--save records the flags given as this checkout's answers. Everything after '--' is handed "
+        "ask for unresolved choices and consent, and launch. Configuration flags apply to this launch only; "
+        "--save records IDE, agent, memory, CPU, environment and host-access answers. Everything after '--' is handed "
         "verbatim to 'docker run', except the options the launcher composes (--network, --memory, "
         "--cpus, --shm-size, ...), which are refused with the config command named. Without a "
         "terminal, a pending decision ends the command with status 3, naming each with its flag."
@@ -2241,7 +2234,7 @@ class ProjectRunCommand(Command):
                             help="An environment variable for this launch: NAME=VALUE, or NAME taken from the host.")
         parser.add_argument("--trust", action="append", default=[], metavar="CHANNEL",
                             help="Accept a vendor's or DevCapsule's channel once for this workstation: devcapsule-base, claude-code, antigravity-cli; repeatable.")
-        parser.add_argument("--save", action="store_true", help="Record the flags given as this checkout's answers before launching.")
+        parser.add_argument("--save", action="store_true", help="Save configuration flags after all required answers are complete, before launching.")
         parser.add_argument("--unverified", action="store_true", dest="allow_unverified", help=argparse.SUPPRESS)
         parser.add_argument(
             "--no-recursive-e2e",
@@ -2284,7 +2277,7 @@ class ProjectRunCommand(Command):
         if command_report is None and not offer_software_approvals(start):
             print("Launch cancelled; no session was started.")
             return 1
-        flags, carrier_overrides, carrier_memory, carrier_cpus = _run_flags(arguments)
+        flags = _run_flags(arguments, manifest_for(start)[1])
         # The saved Docker arguments and the raw options are validated before
         # anything is asked, so a bad file refuses the launch before a question.
         docker_options = list(arguments.docker_options)
@@ -2293,12 +2286,11 @@ class ProjectRunCommand(Command):
                 reject_launcher_owned_docker_options(docker_options)
             except PycharmRunError as exc:
                 raise ProjectConfigurationError(str(exc)) from exc
+        root, manifest = manifest_for(start)
+        existing_record = find_checkout_record(manifest, root)
+        if existing_record is not None:
+            _validate_extra_docker_args(read_arguments(arguments_path(existing_record)))
         prepared = prepare_launch(start, flags, print_only=command_report is not None)
-        prepared.host_overrides.update(carrier_overrides)
-        if carrier_memory is not None:
-            prepared.memory_override = carrier_memory
-        if carrier_cpus is not None:
-            prepared.cpus_override = carrier_cpus
         for note in prepared.notes:
             print(note)
         saved_docker_args = read_arguments(arguments_path(prepared.selected.checkout_path))
@@ -2307,7 +2299,14 @@ class ProjectRunCommand(Command):
             print("Launch cancelled; no session was started.")
             return 1
         # An upgrade may have changed the selection: derive again from the record.
-        prepared.selected = prepare_launch(start, replace(flags, save=False), print_only=True).selected
+        if command_report is None:
+            # Saved flags are now record inputs. Reapply only launch overrides,
+            # including terminal "once" answers, when checking the new selection.
+            again = RunFlags(allow_unverified=flags.allow_unverified) if flags.save else flags
+            again = replace(again, save=False, authorize=tuple(
+                (name, render_authorization_value(value)) for name, value in prepared.host_overrides.items()
+            ))
+            prepared.selected = prepare_launch(start, again, interactive=False).selected
         selected = prepared.selected
         review = review_configuration(selected.manifest, selected.lock, selected.checkout, load_workstation())
         root, manifest, lock = selected.root, selected.manifest, selected.lock
@@ -2316,9 +2315,11 @@ class ProjectRunCommand(Command):
         overrides, memory_override, cpus_override = prepared.host_overrides, prepared.memory_override, prepared.cpus_override
         # Capture before launching: a later session completion cannot certify
         # edits or a successor selection made while this session was running.
-        captured_files = {input_path.name: input_path.read_bytes(), output_path.name: output_path.read_bytes()}
+        captured_files = {} if command_report is not None else {
+            input_path.name: input_path.read_bytes(), output_path.name: output_path.read_bytes()
+        }
         try:
-            notice = version_sets.reminder(root)
+            notice = version_sets.reminder(root) if command_report is None else None
             if notice:
                 print(notice)
         except (OSError, CliError):
@@ -2338,7 +2339,7 @@ class ProjectRunCommand(Command):
                 raise DecisionPending(
                     "this base has no contained desktop (before recipe 8); the IDE can only show on your host's "
                     "X session, which hands the capsule your session credential. Allow it for this checkout: "
-                    f"{allow}, or for this launch: --authorize host-x11 true. Nothing was written."
+                    f"{allow}, or for this launch: --authorize host-x11 true. No capsule was started."
                 )
             display_transport = _select_display_transport(
                 base.labels, host_x11_answer=host_x11_answer
@@ -2529,7 +2530,7 @@ def _select_display_transport(image_labels: Mapping[str, str], *, host_x11_answe
     return transport
 
 
-def _run_flags(arguments: argparse.Namespace) -> tuple[RunFlags, dict[str, Any], int | None, int | None]:
+def _run_flags(arguments: argparse.Namespace, manifest: Mapping[str, Any]) -> RunFlags:
     """The run's flags, with the rc3 carriers ``--set`` and ``--authorize`` folded in.
 
     ``--authorize NODE VALUE`` is the host-access flag of section 3.7;
@@ -2546,14 +2547,14 @@ def _run_flags(arguments: argparse.Namespace) -> tuple[RunFlags, dict[str, Any],
                 "it does not apply to a launch."
             )
         if answer.family == "authorize":
-            if answer.name not in _RUN_ONCE_AUTHORIZATIONS:
+            if not arguments.save and answer.name not in _RUN_ONCE_AUTHORIZATIONS:
                 raise ProjectConfigurationError(
                     f"Authorization {answer.name!r} cannot be answered for one launch; "
                     "the host accesses can: " + ", ".join(_RUN_ONCE_AUTHORIZATIONS) + "."
                 )
             authorize.append((answer.name, answer.value))
         else:
-            name = "memory" if answer.name.endswith("memory-limit") else answer.name
+            name = "memory" if answer.name in legacy_memory_names(manifest) else answer.name
             if name == "memory":
                 memory = answer.value
             elif name == "cpus":
@@ -2569,7 +2570,7 @@ def _run_flags(arguments: argparse.Namespace) -> tuple[RunFlags, dict[str, Any],
         environment=tuple(arguments.env), authorize=tuple(authorize), trust=tuple(arguments.trust),
         save=arguments.save, allow_unverified=arguments.allow_unverified,
     )
-    return flags, {}, None, None
+    return flags
 
 
 class ProjectCommand(Group):

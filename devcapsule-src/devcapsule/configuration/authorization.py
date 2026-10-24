@@ -770,8 +770,9 @@ def authorized_base_reference(
     checkout: Mapping[str, Any],
     *,
     required: bool = True,
+    trust: WorkstationTrust | None = None,
 ) -> str | None:
     """Compatibility accessor for consumers needing only the selected reference."""
 
-    selection = authorized_base_selection(lock, checkout, required=required)
+    selection = authorized_base_selection(lock, checkout, required=required, trust=trust)
     return selection.reference if selection is not None else None

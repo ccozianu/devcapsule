@@ -24,6 +24,7 @@ from devcapsule.configuration.file_formats import canonical_digest, render_toml,
 from devcapsule.configuration.model import Configuration
 from devcapsule.configuration.capabilities import CapabilityPolicy, LocalCapabilities
 from devcapsule.configuration.capability_selection import usable_lock
+from devcapsule.configuration.trust import WorkstationTrust
 from devcapsule.configuration.storage import (
     load_workstation,
     ResolvedProject, activate_configuration, atomic_write, checkout_record_paths,
@@ -36,6 +37,11 @@ from devcapsule.resolution_matrix import MATRICES
 from devcapsule import runtime_configuration
 from devcapsule.build_info import current_build_info
 from devcapsule.component_status import CompatibilityLookup
+
+
+def workstation_trust() -> WorkstationTrust:
+    """The workstation's trust record (D-0011), which answers the base for every checkout here."""
+    return WorkstationTrust.read(load_workstation())
 
 
 @dataclass
@@ -530,7 +536,7 @@ def _selection(workspace: Workspace, lock: dict[str, Any], *, follow: bool = Fal
     elif base:
         reference, image_id = str(base["reference"]), base.get("image-id")
     else:
-        prior_base = authorized_base_selection(workspace.lock, workspace.checkout)
+        prior_base = authorized_base_selection(workspace.lock, workspace.checkout, trust=workstation_trust())
         if prior_base is None:
             raise CliError("Authorize a base before selecting a version set.")
         reference, image_id = prior_base.reference, prior_base.local_image_identity
@@ -607,7 +613,7 @@ def record_success(selected: ResolvedProject, realized: RealizedEnvironment | No
         return  # Earlier history remains readable; it lacks a reproducible set.
     state = state_directory(selected.root)
     _retain(selected.lock, state, acquire=False)
-    base = authorized_base_selection(selected.lock, selected.checkout)
+    base = authorized_base_selection(selected.lock, selected.checkout, trust=workstation_trust())
     assert base is not None
     record: dict[str, Any] = {"lock": render_toml(selected.lock), "last-success": time.time(),
                              "base": {"reference": base.reference}}
@@ -659,7 +665,7 @@ def rollback(start: Path, identity: str | None = None, *, reacquire: bool = Fals
         from devcapsule.environment_realization import required_local_image
         from devcapsule.materialization import formation_descriptor, canonical_image_name, verify_materialized_image
         from devcapsule.runtime_artifact import runtime_artifact
-        base = authorized_base_selection(lock, selected.checkout)
+        base = authorized_base_selection(lock, selected.checkout, trust=workstation_trust())
         assert base is not None
         try:
             details = required_local_image(base.reference)
