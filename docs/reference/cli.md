@@ -1,7 +1,7 @@
 ---
 description: The command tree of the devcapsule launcher, with one line of intent per command, as the executable prints it.
 weight: 1
-updated: 2026-10-24
+updated: 2026-10-25
 ---
 # Command reference
 
@@ -31,14 +31,14 @@ Commands that need host state name the launcher command to run outside.
 ### `init`
 
 ```text
-devcapsule project init [--require CAPABILITY]... [--offer CAPABILITY]... [--ide IDE]
+devcapsule project init [--require NAME[>=VERSION]]... [--offer CAPABILITY]... [--ide IDE] [--with CAPABILITY]...
                         [--name NAME] [--slug SLUG] [--creator CREATOR] [--project-mount PATH]
                         [--regenerate] [--unverified] [--set NAME VALUE]... [--authorize NAME VALUE]... [--bind NAME VALUE]...
 ```
 
-`--require` and `--offer` declare project capabilities. Set a minimum afterward
-with `config require`.
-`--ide` records your checkout choice. Use `config add` for personal additions.
+`--require` and `--offer` declare project capabilities. `--require` accepts
+the same `NAME>=VERSION` minimum as `config require`; quote it in the shell.
+`--ide` records your checkout choice. Repeat `--with` to add personal capabilities.
 New manifests use schema 2. Candidate 3 and older launchers cannot read them. With an IDE selected, initialization can still
 ask for per-checkout base or vendor consent. For scripts, supply the
 `--authorize NAME VALUE` answers it requests. `--set`, `--bind` and

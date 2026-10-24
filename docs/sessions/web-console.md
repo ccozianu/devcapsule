@@ -1,7 +1,7 @@
 ---
 description: "The web console: your capsule as a page, with what the devcapsule commands report, reached through one link behind the run's token."
 weight: 5
-updated: 2026-10-19
+updated: 2026-10-25
 ---
 # The web console
 

@@ -1,7 +1,7 @@
 ---
 description: Vendor software is downloaded under the vendor's terms; you accept a vendor's channel once for your computer, every version and every project, and DevCapsule's base images the same way.
 weight: 7
-updated: 2026-10-24
+updated: 2026-10-25
 ---
 # Vendor software and trust
 

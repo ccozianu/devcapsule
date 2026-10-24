@@ -2,7 +2,7 @@
 description: Add Claude Code, OpenAI Codex or the Antigravity CLI to your checkout in one command, and let it work at full speed inside the capsule's boundary.
 role: agents
 weight: 1
-updated: 2026-10-24
+updated: 2026-10-25
 ---
 # Choose an agent
 

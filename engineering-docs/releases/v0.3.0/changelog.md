@@ -167,8 +167,8 @@ use its display.
 
 `config require`, `offer` and `drop` take capabilities directly.
 `config require 'java>=21'` requires Java 21 or newer. Quote minimums in the
-shell. The lock pins the exact version. Initialization takes capability
-names; set a minimum afterward with `config require`.
+shell. The lock pins the exact version. `init --require` accepts the same
+minimum. Repeat `init --with CAPABILITY` to add personal capabilities.
 
 `config recommend frontend-ide codium` recommends a provider under
 `[capabilities.resolution]`. A resolution recommendation takes no reason.
@@ -185,8 +185,7 @@ old lock current until the next shared edit.
 
 The rc4 aliases and replaced agent and tool commands now return status 2.
 Each names its replacement in one line and writes nothing. Initialization's
-agent flag also refuses; add a personal capability with `config add` after
-initialization. `config capabilities --recover` remains available.
+old agent flag points to `init --with`. `config capabilities --recover` remains available.
 
 Candidate 4 ignores the new resolution table and uses the catalog's first
 provider. Each current capability has only one provider. Minimums and

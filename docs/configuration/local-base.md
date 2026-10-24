@@ -1,7 +1,7 @@
 ---
 description: Build a DevCapsule base image on your computer and select it for one checkout, when the published base lacks something the capsule needs, such as the web console.
 weight: 6
-updated: 2026-10-24
+updated: 2026-10-25
 ---
 # Build and select a local base
 

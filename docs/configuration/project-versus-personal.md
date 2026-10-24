@@ -1,7 +1,7 @@
 ---
 description: Which choices belong to the project and travel in Git, which are yours and stay on your computer, which are your computer's, and what happens when the project changes.
 weight: 2
-updated: 2026-10-24
+updated: 2026-10-25
 ---
 # Project versus personal
 
@@ -155,9 +155,9 @@ The launcher validates console requests with the corresponding CLI command.
 It can record IDE choices, values, environment variables with a literal
 value, denials and removed bindings.
 It can also withdraw workstation trust or clear saved Docker arguments.
-Use the host CLI for capability additions, omissions, restorations and provider
-choices. The console still uses the earlier command vocabulary; retired
-commands refuse with their replacement.
+The console accepts `add`, `omit`, `restore` and `use` for capability choices.
+The launcher applies valid requests to the next launch. Adding a vendor
+capability leaves its consent decision for that launch.
 
 Authorization grants, trust acceptance, bindings, replacement Docker
 arguments, forgotten answers and host-variable bindings need confirmation

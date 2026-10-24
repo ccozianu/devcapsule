@@ -1,7 +1,7 @@
 ---
 description: Inspect software, storage and the next launch's choices without changing configuration.
 weight: 3
-updated: 2026-10-24
+updated: 2026-10-25
 ---
 # Inspect a checkout
 

@@ -2,7 +2,7 @@
 description: What the DevCapsule documentation covers, the three places to start, and how to find the version you run.
 role: overview
 weight: 0
-updated: 2026-09-28
+updated: 2026-10-25
 ---
 # Use DevCapsule
 

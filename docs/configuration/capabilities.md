@@ -1,7 +1,7 @@
 ---
 description: Require or offer capabilities, set a minimum, recommend a provider, and choose what this checkout uses.
 weight: 25
-updated: 2026-10-24
+updated: 2026-10-25
 ---
 # Capabilities and components
 
@@ -26,16 +26,17 @@ From your project directory:
 
 ```sh
 devcapsule project init --creator mailto:you@example.org \
-  --require java --offer browser-automation --ide java-ide
+  --require 'java>=21' --offer browser-automation --ide java-ide \
+  --with codex-agent
 ```
 
-`--require` and `--offer` write capability names to the manifest.
-`--ide` records your checkout's choice. Use `config require` below to add
-a minimum. The relevant manifest section is:
+`--require` writes a capability name and optional minimum to the manifest.
+`--offer` writes a capability name. `--ide` records your checkout's choice.
+`--with` adds a personal capability and can repeat. The manifest section is:
 
 ```toml
 [capabilities]
-required = ["java"]
+required = ["java>=21"]
 optional = ["browser-automation"]
 ```
 

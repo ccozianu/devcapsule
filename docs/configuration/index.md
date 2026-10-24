@@ -1,7 +1,7 @@
 ---
 description: The project, checkout and workstation records that define a DevCapsule launch.
 weight: 1
-updated: 2026-10-24
+updated: 2026-10-25
 ---
 # Configuration
 

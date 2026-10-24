@@ -3,7 +3,7 @@ description: Try a newer component version for one checkout, inspect the result,
 aliases:
   - /docs/guides/component-upgrades/
 weight: 4
-updated: 2026-10-09
+updated: 2026-10-25
 ---
 # Try a component upgrade and recover
 
