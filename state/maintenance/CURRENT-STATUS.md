@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-23; releasing 0.3.0: rc2 tagged, published and verified as downloaded, the two C10 records closed on the owner's verification of rc2, the shared lock regenerated on the new pins and proven by a recursive launch, the network node's check on rc2 and the rc3 slices next; rc2 was prepared with the network node and C10 merged into the release branch, each with its review-partner loop settled; the pre-candidate merge then the tag on the owner's word; rc3 forced configuration and the diagnostics snapshot, rc4 image cleanup and C20; the base is published in the promotion; C17 stays a gate in both halves
+State: active 2026-10-24; releasing 0.3.0: rc3 in preparation by the owner's direction of 2026-10-24, carrying software approvals at launch, the saved Docker arguments and the regenerated lock, the pre-candidate pull request awaiting the owner's merge, then the tag; rc2 tagged, published and verified, the two C10 records closed on it, the network node's check on rc2 still open; rc2 was prepared with the network node and C10 merged into the release branch, each with its review-partner loop settled; the pre-candidate merge then the tag on the owner's word; forced configuration, the diagnostics snapshot and the schema-version slice move to rc4 with image cleanup and C20; the base is published in the promotion; C17 stays a gate in both halves
 
 Definition read: WORKFLOW.md@5c89396f2200, WORKFLOW-LOCAL.md@31819cc43359
 
@@ -119,6 +119,39 @@ the current release tip, whose workflow and approval changes are already
 present. The release branch is not synchronized or rewritten.
 
 ## Current State
+
+**2026-10-24: rc3 in preparation, by the owner's direction.** The owner
+needs the saved Docker arguments on a downloaded candidate to test
+development scenarios, environment variables and GPUs among them, so
+candidate 3 is tagged now with what the release branch carries: software
+approvals at launch (PR #250, review #251), the saved Docker arguments
+(PR #253, review #255) and the regenerated shared lock (`0c1a555`).
+Forced configuration, the diagnostics snapshot and the schema-version
+slice move to rc4 with image cleanup and C20; the overview records the
+direction and the changelog has its candidate-3 section. `main` is ahead
+of the release branch by PR #252, the AI Learning sample, and PR #256, the
+`.idea` rule; a test merge of the copy into `main` was clean, and `main`
+is not merged into the release branch this time, since nothing on it is
+release content and the owner gave no such direction. The full gate on
+the release tip `a22a215`: mypy clean over 224 files, 1769 unit tests
+passed, 36 deselected, 2 xfailed, packaging integration 17 passed, the
+documentation contract 188 pages, the web console clean and its tests
+passed. The throwaway copy `4PR-4-release-0.3.0`, the release tip plus the
+cherry-pick of `8b7fbc3` keeping `main`'s version files, is
+[PR #257](https://github.com/ccozianu/devcapsule/pull/257) into `main`, the
+gate posted on it. The session is interrupted here by the owner; the claim
+is released; nothing is uncommitted. On resumption, after the owner's
+merge: fetch and confirm the release tip `a22a215` is an ancestor of
+`main`; `git tag -a v0.3.0-rc3 a22a215 -m 'DevCapsule 0.3.0 candidate 3'`;
+from a detached checkout of the tag, `scripts/release-protocol.py
+v0.3.0-rc3 --output /opt/devcapsule-gate/rc3-release-protocol.json`,
+expecting `mainline`; `git push --atomic origin release-0.3.0 v0.3.0-rc3`;
+the backend run; download the three assets into
+`~/.cache/devcapsule-releases/v0.3.0-rc3`, verify the checksum and the
+version; record rc3 in the overview, the table and the changelog's
+candidate-3 date. Then the owner's test of the saved Docker arguments and
+of the approvals prompt on the download, provider acceptance of the new
+agent pins, and the network node's check on a fresh project.
 
 **2026-10-23: the repository's `.idea` rule reversed and executed,
 [PR #256](https://github.com/ccozianu/devcapsule/pull/256) into `main`.**
@@ -1118,6 +1151,7 @@ checklist and the evidence: [releases/v0.3.0](../../releases/v0.3.0/README.md).
 
 | Candidate | Source | Outcome |
 |---|---|---|
+| rc3 | — | in preparation 2026-10-24 by the owner's direction; carries software approvals at launch (#250, #251), the saved Docker arguments (#253, #255) and the regenerated lock; the pre-candidate PR awaits the owner's merge, then the tag |
 | rc2 | `e5b5a8b` | tagged 2026-10-22 after PR #249; gate `mainline`; backend run 39803285881 passed; published, downloaded and verified; carries the network node (#240, #242) and C10 (#244, #246); the two C10 records closed 2026-10-23 on the owner's verification; the network node's record verifies on it |
 | rc1 | `7016cdd` | tagged 2026-10-19 after PR #233; gate `mainline`; backend run 39265210147 passed; published, downloaded and verified; carries the console-link fix and the local-base guide; the owner verifies the fix on both bases |
 | rc0 | `53ebc17` | tagged 2026-10-18; gate `mainline`; backend run 39175482525 passed; published, downloaded and verified; the owner's downloaded copy launched the second checkout the first time; the local Docker proofs follow the owner's session |
