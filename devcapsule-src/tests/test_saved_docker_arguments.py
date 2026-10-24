@@ -43,7 +43,7 @@ def test_saved_args_replace_list_clear_and_share_hidden_env(project, tmp_path, c
     assert not path.exists()
     capsys.readouterr()
     assert config(project, 'list-extra-docker-args') == 0
-    assert 'No saved extra Docker arguments.' in capsys.readouterr().out
+    assert 'No saved Docker options.' in capsys.readouterr().out
 
 
 @pytest.mark.parametrize('args', [['--network=host'], ['--memory', '2g'], ['--user', 'root'], ['-m2g'], ['-u1000'], ['-dit']])
@@ -128,7 +128,8 @@ def test_env_conveniences_keep_adjacent_env_options_and_other_arguments(project)
     path = arguments_path(registered_checkouts()[0].record_path)
     saved = ['--env', 'A=1', '-eB=2', '--env=C=3', '-e', 'D=4', '--gpus', 'all', '--env', 'A=5', '-eE', '-eF=6']
     assert config(project, 'set-extra-docker-args', '--', *saved) == 0
-    assert read_environment(path) == {'A': '5', 'B': '2', 'C': '3', 'D': '4', 'E': '', 'F': '6'}
+    # -eE names no value: Docker passes the host's E through, which the store reports as None.
+    assert read_environment(path) == {'A': '5', 'B': '2', 'C': '3', 'D': '4', 'E': None, 'F': '6'}
     assert config(project, 'set-env', 'A', 'new') == 0  # first occurrence keeps its place, the repeat goes
     assert read_arguments(path) == ['--env', 'A=new', '-eB=2', '--env=C=3', '-e', 'D=4', '--gpus', 'all', '-eE', '-eF=6']
     assert config(project, 'unset-env', 'B') == 0

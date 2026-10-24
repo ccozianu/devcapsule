@@ -36,7 +36,7 @@ def test_cli_environment_lifecycle_and_isolation(project, tmp_path, capsys):
     assert not path.exists()
     capsys.readouterr()
     assert config(project, "list-env") == 0
-    assert capsys.readouterr().out == f"Docker arguments file: {path}\nNo saved environment variables.\n"
+    assert capsys.readouterr().out == f"Docker arguments file: {path}\nNo environment variables for this checkout.\n"
     secret = 'literal # $HOME = "quoted" \\ trailing '
     assert config(project, "set-env", "PASSWORD", secret) == 0
     assert not path.is_relative_to(record.parent)
@@ -48,9 +48,9 @@ def test_cli_environment_lifecycle_and_isolation(project, tmp_path, capsys):
     assert config(project, "set-env", "PASSWORD", "replacement") == 0
     capsys.readouterr()
     assert config(project, "list-env", "--json") == 0
-    assert json.loads(capsys.readouterr().out) == {"path": str(path), "names": ["EMPTY", "PASSWORD"]}
+    assert json.loads(capsys.readouterr().out) == {"path": str(path), "names": ["EMPTY", "PASSWORD"], "from-host": []}
     assert config(project, "list-env") == 0
-    assert capsys.readouterr().out == f"Docker arguments file: {path}\nEMPTY\nPASSWORD\n"
+    assert capsys.readouterr().out == f"Docker arguments file: {path}\nEMPTY  (saved)\nPASSWORD  (saved)\n"
     assert record.read_bytes() == before
     second = tmp_path / "second"
     shutil.copytree(project, second)

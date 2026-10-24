@@ -85,6 +85,33 @@ def config_root(env: Mapping[str, str] | None = None) -> Path:
     return XdgHomes.from_environment(env).config
 
 
+def workstation_path(env: Mapping[str, str] | None = None) -> Path:
+    """Where this workstation keeps its own defaults: ``$XDG_CONFIG_HOME/devcapsule/workstation.toml``."""
+    return config_root(env) / "workstation.toml"
+
+
+def load_workstation(env: Mapping[str, str] | None = None) -> dict[str, Any]:
+    """The workstation's configuration document, validated; empty when the file does not exist."""
+    from .workstation import WorkstationDefaults
+    path = workstation_path(env)
+    if not path.is_file():
+        return {}
+    document = load_toml(path)
+    try:
+        WorkstationDefaults.read(document)
+    except ProjectConfigurationError as exc:
+        raise ProjectConfigurationError(f"{path}: {exc}") from exc
+    return document
+
+
+def write_workstation(document: Mapping[str, Any], env: Mapping[str, str] | None = None) -> Path:
+    """Write the workstation's configuration document atomically; return its path."""
+    from .workstation import WorkstationDefaults, render_workstation
+    path = workstation_path(env)
+    atomic_write(path, render_workstation(WorkstationDefaults.read(document)))
+    return path
+
+
 def checkout_directory(manifest: Mapping[str, Any], env: Mapping[str, str] | None = None) -> Path:
     project = manifest["project"]
     creator = quote(str(project["creator"]), safe="")
@@ -347,7 +374,10 @@ def selection_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[s
     if "base" in value:
         locked_base_reference(value)
     if not value.get("components", {}).get("interactive-surface"):
-        raise ProjectConfigurationError("Choose a local IDE: devcapsule project config capabilities --local python-ide (or another IDE capability).")
+        raise ProjectConfigurationError(
+            "Choose your IDE for this checkout: devcapsule project config ide IDE "
+            "(python-ide, frontend-ide, java-ide, eclipse-ide or dotnet-ide)."
+        )
     build_node_registry(manifest, value)
     return path, composed, value
 

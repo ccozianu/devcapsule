@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import json
 from pathlib import Path
 import shutil
@@ -251,7 +252,7 @@ def test_project_list_does_not_scan_unregistered_source_trees(tmp_path: Path, ca
     assert "No registered DevCapsule project checkouts" in capsys.readouterr().out
 
 
-def test_project_config_list_materializes_default_checkout_and_reports_readiness(
+def test_project_config_list_writes_nothing_and_lists_from_nothing(
     tmp_path: Path, capsys
 ) -> None:
     project = tmp_path / "project"
@@ -279,45 +280,19 @@ def test_project_config_list_materializes_default_checkout_and_reports_readiness
         assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
         output = capsys.readouterr().out
         assert "Checkout name: default" in output
-        assert "Checkout input:" in output
-        assert "Generated plan:" in output
-        assert "runtime.memory-limit" in output
-        assert "unset-optional" in output
-        assert "managed-default" in output
-        assert "codex/openai-api-key" in output
-        assert "optional-unbound" in output
-        assert "OPENAI_API_KEY" in output
-        assert "missing-required" in output
-        assert "v026" in output
-        assert LOCKED_BASE in output
-        assert "missing-recommended" in output
-        assert "unresolved" in output
-
-        records = registered_checkouts()
-        assert len(records) == 1
-        record = records[0].record_path
-        resolved_path = record.with_name("devcapsule.resolved.toml")
-        with record.open("rb") as stream:
-            checkout = tomllib.load(stream)
-        assert checkout == {
-            "devcapsule-checkout-schema-version": 1,
-            "project": {"creator": "mailto:dev@example.test", "slug": "project"},
-            "checkout": {"path": str(project.resolve())},
-        }
-        with resolved_path.open("rb") as stream:
-            placeholder = tomllib.load(stream)
-        assert placeholder == {
-            "devcapsule-resolved-schema-version": 1,
-            "status": "unresolved",
-        }
-        assert record.stat().st_mode & 0o777 == 0o600
-        assert resolved_path.stat().st_mode & 0o777 == 0o600
-        original_input = record.read_bytes()
-        original_resolution = resolved_path.read_bytes()
-
-        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
-        assert record.read_bytes() == original_input
-        assert resolved_path.read_bytes() == original_resolution
+        assert "Checkout record:" in output
+        # The legacy memory declaration is the memory row; nothing is set yet.
+        assert "runtime.memory-limit" not in output
+        assert re.search(r"^memory\s+memory\s+no limit\s+none", output, re.M)
+        assert re.search(r"^binding\s+home\s+managed directory\s+managed default", output, re.M)
+        assert re.search(r"^secret\s+codex/openai-api-key\s+unbound", output, re.M)
+        assert re.search(r"^access\s+docker-daemon\s+none\s+secure default; project recommends host-socket", output, re.M)
+        assert "the project asks for docker-daemon host-socket; allow or deny" in output
+        assert "config authorize base-image default" in output
+        assert "Resolution: missing" in output
+        # The listing is read-only: no record and no placeholder exist afterwards.
+        assert registered_checkouts() == ()
+        assert not list(config_home.rglob("*.toml"))
 
 
 def _listing_document(project: Path, capsys) -> tuple[dict, str]:
@@ -326,10 +301,10 @@ def _listing_document(project: Path, capsys) -> tuple[dict, str]:
     return json.loads(captured.out), captured.err
 
 
-def test_project_config_list_json_carries_the_table_and_keeps_notices_off_stdout(
+def test_project_config_list_json_carries_the_listing(
     tmp_path: Path, capsys
 ) -> None:
-    """``--json`` is the contract the web console reads: schema version 1,
+    """``--json`` is the contract the web console reads: schema version 2,
     the identity, and every row of the text table under the same columns."""
     project = tmp_path / "project"
     project.mkdir()
@@ -349,49 +324,33 @@ def test_project_config_list_json_carries_the_table_and_keeps_notices_off_stdout
         select_codex_component(project)
 
         document, stderr = _listing_document(project, capsys)
-        # The first listing materializes the checkout records; the notices
-        # must not corrupt the JSON on standard output.
-        assert "Initialized checkout input:" in stderr
-        assert "Initialized resolution placeholder:" in stderr
-        assert document["schema-version"] == 1
+        assert stderr == ""
+        assert document["schema-version"] == 2
         assert document["context"] == "host selection (next launch)"
         assert document["project"] == {"creator": "mailto:dev@example.test", "slug": "project"}
-        record = registered_checkouts()[0].record_path
-        assert document["checkout"] == {
-            "name": "default",
-            "launcher-path": str(project.resolve()),
-            "input": str(record),
-            "resolution": str(record.with_name("devcapsule.resolved.toml")),
-        }
+        assert document["checkout"]["name"] == "default"
+        assert document["checkout"]["launcher-path"] == str(project.resolve())
+        assert document["resolution"] == "missing"
         rows = {(row["kind"], row["name"]): row for row in document["rows"]}
-        assert set(rows[("value", "runtime.memory-limit")]) == {"kind", "name", "status", "source", "value"}
-        assert rows[("value", "runtime.memory-limit")]["status"] == "unset-optional"
-        assert rows[("secret", "codex/openai-api-key")]["status"] == "optional-unbound"
-        assert rows[("authorization", "base-image")]["status"] == "missing-required"
-        assert document["rows"][-1]["kind"] == "resolution"
-        assert document["rows"][-1]["status"] == "unresolved"
+        assert set(rows[("memory", "memory")]) == {"kind", "name", "effective", "source", "pending", "command"}
+        assert rows[("memory", "memory")]["effective"] == "no limit"
+        assert rows[("secret", "codex/openai-api-key")]["source"] == "component (optional)"
+        assert rows[("access", "base-image")]["pending"]
+        assert "base-image" in document["pending"]
 
-        # A second listing is silent, and the JSON names the same rows the
-        # text table prints, in the same order.
-        again, stderr = _listing_document(project, capsys)
-        assert stderr == ""
-        assert again == document
+        # The JSON names the same rows the text table prints, in the same order.
         assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
         text = capsys.readouterr().out
-        header, *printed = text.splitlines()[text.splitlines().index("") + 1:]
-        columns = ("KIND", "NAME", "STATUS", "SOURCE", "VALUE / RECOMMENDATION")
-        starts = [header.index(column) for column in columns]
-        ends = [*starts[1:], None]
-        assert [
-            [line[start:end].rstrip() for start, end in zip(starts, ends)] for line in printed
-        ] == [
-            [row[key] for key in ("kind", "name", "status", "source", "value")] for row in document["rows"]
-        ]
+        table = text[text.index("KIND"):text.index("\nPending decisions:")].splitlines()
+        kinds = {row["kind"] for row in document["rows"]}
+        printed = [line for line in table[1:] if line.split()[:1] and line.split()[0] in kinds]
+        assert [line.split()[:2] for line in printed] == [[row["kind"], row["name"]] for row in document["rows"]]
 
-        assert cli.main(["project", "--path", str(project), "config", "set", "runtime.memory-limit", "2GiB"]) == 0
+        assert cli.main(["project", "--path", str(project), "config", "set", "memory", "2GiB"]) == 0
         capsys.readouterr()
         changed, _ = _listing_document(project, capsys)
-        assert {(row["kind"], row["name"]): row for row in changed["rows"]}[("value", "runtime.memory-limit")]["status"] == "configured"
+        memory = {(row["kind"], row["name"]): row for row in changed["rows"]}[("memory", "memory")]
+        assert (memory["effective"], memory["source"]) == ("2GiB", "checkout")
 
 
 @pytest.mark.parametrize("name", ["second-checkout", "devcapsule"])
@@ -405,7 +364,7 @@ def test_project_config_list_json_names_a_registered_checkout(tmp_path: Path, ca
     with patch.dict(os.environ, env, clear=False):
         initialize_project(first)
         shutil.copytree(first / ".devcapsule", second / ".devcapsule")
-        assert cli.main(["project", "--path", str(first), "config", "list"]) == 0
+        assert cli.main(["project", "--path", str(first), "config", "set", "memory", "1GiB"]) == 0
         assert cli.main(["project", "--path", str(second), "checkout", "register", name]) == 0
         capsys.readouterr()
         document, _ = _listing_document(second, capsys)
@@ -439,7 +398,7 @@ def test_json_help_names_the_schema_contract(command, capsys) -> None:
     assert "schema-version1" in "".join(help_text.split())
 
 
-def test_project_config_list_materializes_named_checkout_placeholder(
+def test_project_config_list_names_a_registered_second_checkout(
     tmp_path: Path, capsys
 ) -> None:
     first = tmp_path / "first"
@@ -452,9 +411,10 @@ def test_project_config_list_materializes_named_checkout_placeholder(
     with patch.dict(os.environ, env, clear=False):
         initialize_project(first)
         shutil.copytree(first / ".devcapsule", second / ".devcapsule")
-        assert cli.main(["project", "--path", str(first), "config", "list"]) == 0
-        assert cli.main(["project", "--path", str(second), "config", "list"]) == 2
-        assert "checkout register NAME" in capsys.readouterr().err
+        assert cli.main(["project", "--path", str(first), "config", "set", "memory", "1GiB"]) == 0
+        # The second checkout is listed from nothing while the default record is the first's.
+        assert cli.main(["project", "--path", str(second), "config", "list"]) == 0
+        assert "Checkout name: (unregistered)" in capsys.readouterr().out
         assert (
             cli.main(
                 ["project", "--path", str(second), "checkout", "register", "second-checkout"]
@@ -466,8 +426,7 @@ def test_project_config_list_materializes_named_checkout_placeholder(
         output = capsys.readouterr().out
         assert "Checkout name: second-checkout" in output
         records = {record.checkout_name: record for record in registered_checkouts()}
-        named = records["second-checkout"].record_path
-        assert named.with_name("second-checkout.resolved.toml").is_file()
+        assert records["second-checkout"].record_path.name == "second-checkout.checkout.toml"
 
 
 def test_project_config_list_reports_complete_and_stale_readiness(
@@ -498,7 +457,7 @@ def test_project_config_list_reports_complete_and_stale_readiness(
         write_formation_lock(project)
 
         assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
-        assert "missing-required" in capsys.readouterr().out
+        assert "Pending decisions:" in capsys.readouterr().out
         assert (
             cli.main(
                 [
@@ -507,7 +466,7 @@ def test_project_config_list_reports_complete_and_stale_readiness(
                     str(project),
                     "config",
                     "set",
-                    "runtime.memory-limit",
+                    "memory",
                     "8GiB",
                 ]
             )
@@ -547,11 +506,11 @@ def test_project_config_list_reports_complete_and_stale_readiness(
 
         assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
         output = capsys.readouterr().out
-        assert "runtime.memory-limit" in output and "configured" in output
-        assert "home" in output and "bound" in output
-        assert "base-image" in output and "authorized" in output
-        assert "network" in output and "authorized" in output
-        assert "generated" in output and "fresh" in output
+        assert re.search(r"^memory\s+memory\s+8GiB\s+checkout", output, re.M)
+        assert re.search(r"^binding\s+home\s+" + re.escape(str(bound_home)) + r"\s+checkout", output, re.M)
+        assert re.search(r"^access\s+base-image\s+\S+\s+checkout", output, re.M)
+        assert re.search(r"^access\s+network\s+host\s+checkout", output, re.M)
+        assert "Resolution: fresh" in output
 
         record = registered_checkouts()[0].record_path
         checkout_text = record.read_text(encoding="utf-8")
@@ -565,11 +524,9 @@ def test_project_config_list_reports_complete_and_stale_readiness(
 
         assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
         output = capsys.readouterr().out
-        network_row = next(line for line in output.splitlines() if "network" in line)
-        assert "stale" in network_row
-        resolution_row = next(line for line in output.splitlines() if "resolution" in line)
-        assert "stale" in resolution_row
-        assert "checkout-input" in resolution_row
+        network_row = next(line for line in output.splitlines() if line.startswith("access   network") or re.match(r"^access\s+network\s", line))
+        assert "the recommendation changed" in network_row
+        assert "Resolution: stale: checkout-input" in output
 
 
 def test_project_resolve_accepts_formation_lock_without_completed_image(tmp_path: Path) -> None:
@@ -1118,7 +1075,7 @@ def test_project_config_set_uses_declared_metadata_and_resolves_runtime_effect(
             )
             == 0
         )
-        assert "Checkout input:" in capsys.readouterr().out
+        assert "Checkout record:" in capsys.readouterr().out
         assert (
             cli.main(
                 [
@@ -1127,7 +1084,7 @@ def test_project_config_set_uses_declared_metadata_and_resolves_runtime_effect(
                     str(project),
                     "config",
                     "set",
-                    "runtime.memory-limit",
+                    "memory",
                     "8GiB",
                 ]
             )
@@ -1140,19 +1097,30 @@ def test_project_config_set_uses_declared_metadata_and_resolves_runtime_effect(
             == 2
         )
 
-        assert "is not declared" in capsys.readouterr().err
+        assert "No value named 'undeclared'" in capsys.readouterr().err
 
         # 'default' is an input artifact that resolves at decision time
         # (owner ruling 2026-09-03); value declarations carry no default
         # field, so there is nothing for it to resolve to — including for a
         # string-typed node where the literal is now reserved.
+        # 'default' forgets the checkout's answer (answer 13 of the CLI UX work
+        # order): the value recorded above is gone, and a second 'default'
+        # finds nothing to forget.
         assert (
             cli.main(
                 ["project", "--path", str(project), "config", "set", "editor.theme", "default"]
             )
-            == 2
+            == 0
         )
-        assert "declares no default" in capsys.readouterr().err
+        assert "Forgot editor.theme" in capsys.readouterr().out
+        assert (
+            cli.main(
+                ["project", "--path", str(project), "config", "set", "editor.theme", "default"]
+            )
+            == 0
+        )
+        assert "has no recorded answer for this checkout; nothing changed" in capsys.readouterr().out
+        assert cli.main(["project", "--path", str(project), "config", "set", "editor.theme", "dark"]) == 0
         assert (
             cli.main(
                 [
@@ -1161,13 +1129,17 @@ def test_project_config_set_uses_declared_metadata_and_resolves_runtime_effect(
                     str(project),
                     "config",
                     "set",
-                    "runtime.memory-limit",
+                    "memory",
                     "eight",
                 ]
             )
             == 2
         )
         assert "positive memory size" in capsys.readouterr().err
+        # The legacy declaration's name is an alias of memory, not a node of its own.
+        assert cli.main(["project", "--path", str(project), "config", "set", "runtime.memory-limit", "8GiB"]) == 2
+        assert "config set memory SIZE" in capsys.readouterr().err
+        assert cli.main(["project", "--path", str(project), "config", "set", "memory", "8GiB"]) == 0
 
         assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
         record = registered_checkouts()[0].record_path
@@ -1175,7 +1147,7 @@ def test_project_config_set_uses_declared_metadata_and_resolves_runtime_effect(
             checkout = tomllib.load(stream)
         assert checkout["configuration"]["values"] == {
             "editor.theme": "dark",
-            "runtime.memory-limit": "8GiB",
+            "memory": "8GiB",
         }
         with record.with_name("devcapsule.resolved.toml").open("rb") as stream:
             resolved = tomllib.load(stream)
@@ -1397,7 +1369,7 @@ def test_unset_refuses_mandatory_nodes_and_removes_optional_ones(
             cli.main(["project", "--path", str(project), "config", "unset", "editor.theme"])
             == 0
         )
-        assert "Unset editor.theme" in capsys.readouterr().out
+        assert "Forgot editor.theme" in capsys.readouterr().out
         records = list(config_home.rglob("devcapsule.checkout.toml"))
         with records[0].open("rb") as stream:
             checkout = tomllib.load(stream)
@@ -1539,7 +1511,7 @@ def test_project_config_authorize_uses_exact_recommendations_and_drives_run(
             )
             output = capsys.readouterr().out
             assert f"Authorized {name} for this checkout" in output
-            assert "Checkout input:" in output
+            assert "Checkout record:" in output
 
         assert (
             cli.main(
@@ -1549,7 +1521,7 @@ def test_project_config_authorize_uses_exact_recommendations_and_drives_run(
                     str(project),
                     "config",
                     "set",
-                    "runtime.memory-limit",
+                    "memory",
                     "8GiB",
                 ]
             )
@@ -1745,7 +1717,7 @@ def test_project_config_authorize_accepts_inspected_local_base_and_pins_image_id
         base_row = next(
             line for line in capsys.readouterr().out.splitlines() if "base-image" in line
         )
-        assert "authorized-local" in base_row
+        assert "checkout" in base_row and "devcapsule-local-base:v022" in base_row
         assert local_reference in base_row
 
 
@@ -1834,7 +1806,7 @@ def test_project_config_authorize_all_recommended_cancels_without_lowercase_y(
     with patch.dict(os.environ, env, clear=False):
         initialize_project(project)
         write_formation_lock(project)
-        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        assert cli.main(["project", "--path", str(project), "config", "set", "memory", "1GiB"]) == 0
         record = registered_checkouts()[0].record_path
         original_input = record.read_bytes()
         capsys.readouterr()
@@ -1937,7 +1909,7 @@ def test_project_authorizes_only_exact_locked_base_and_lock_change_stales_it(
             == 0
         )
         authorization_output = capsys.readouterr().out
-        assert "Checkout input:" in authorization_output
+        assert "Checkout record:" in authorization_output
         record = registered_checkouts()[0].record_path
         with record.open("rb") as stream:
             checkout = tomllib.load(stream)
@@ -2035,9 +2007,7 @@ def test_manifest_edit_after_lock_never_blocks_commands_and_resolve_reconciles(
         capsys.readouterr()
         assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
         listing = capsys.readouterr().out
-        resolution_row = next(line for line in listing.splitlines() if line.startswith("resolution"))
-        assert "fresh" in resolution_row
-        assert "manifest" in resolution_row
+        assert "Resolution: fresh" in listing
 
         # The documented remedy reconciles the ordinary change.
         assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
@@ -2190,8 +2160,8 @@ def test_network_is_a_node_on_every_project(
         assert cli.main(["project", "--path", str(project), "config", "authorize", "network", "vpn0"]) == 2
         assert "deny value 'bridge'" in capsys.readouterr().err
         assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
-    rows = {line.split()[1]: line.split() for line in capsys.readouterr().out.splitlines() if line.startswith("authorization")}
-    assert (rows["network"][2], rows["network"][-1]) == ("authorized", "host")
+    rows = {line.split()[1]: line.split() for line in capsys.readouterr().out.splitlines() if line.startswith("access")}
+    assert (rows["network"][2], rows["network"][3]) == ("host", "checkout")
 
 
 def test_unanswered_network_lists_its_source_and_is_not_bulk_authorized(
@@ -2206,8 +2176,8 @@ def test_unanswered_network_lists_its_source_and_is_not_bulk_authorized(
         document, _ = _listing_document(project, capsys)
         network = next(row for row in document["rows"] if row["name"] == "network")
         assert network == {
-            "kind": "authorization", "name": "network", "status": "available",
-            "source": "workstation default (unanswered)", "value": "host",
+            "kind": "access", "name": "network", "effective": "bridge",
+            "source": "secure default", "pending": "", "command": "",
         }
         with (
             patch("devcapsule.commands.project.sys.stdin") as terminal,
@@ -2260,9 +2230,8 @@ def test_network_answer_stales_when_recommendation_appears_and_disappears(
             assert record.read_bytes() == before
             document, _ = _listing_document(project, capsys)
             network = next(row for row in document["rows"] if row["name"] == "network")
-            assert network["status"] == "stale"
-            basis = "manifest recommendation" if source == "manifest" else "workstation default"
-            assert network["source"] == f"checkout (answer predates the {basis})"
+            assert network["pending"].startswith("the recommendation changed")
+            assert "config deny network" in network["command"]
             assert cli.main([*command, "authorize", "network", value]) == 0
             digest = tomllib.loads(record.read_text())["authorization"]["network"]["recommendation-digest"]
             assert (digest == default_digest) == (source == "workstation default")
@@ -2273,7 +2242,7 @@ def test_network_answer_stales_when_recommendation_appears_and_disappears(
 
 
 @pytest.mark.parametrize("value", ["host", "bridge"])
-def test_unset_network_removes_the_answer_and_resolves_to_bridge(
+def test_forget_network_removes_the_answer_and_resolves_to_bridge(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], value: str,
 ) -> None:
     project = tmp_path / "project"
@@ -2290,8 +2259,8 @@ def test_unset_network_removes_the_answer_and_resolves_to_bridge(
         resolution = record.with_name("devcapsule.resolved.toml")
         original = resolution.read_bytes()
         capsys.readouterr()
-        assert cli.main([*command, "unset", "network"]) == 0
-        assert "Unset network for this checkout." in capsys.readouterr().out
+        assert cli.main([*command, "forget", "network"]) == 0
+        assert "Forgot network for this checkout." in capsys.readouterr().out
         assert "network" not in tomllib.loads(record.read_text())["authorization"]
         assert resolution.read_bytes() == original
         assert cli.main([*command, "resolve"]) == 0
@@ -2301,9 +2270,9 @@ def test_unset_network_removes_the_answer_and_resolves_to_bridge(
         capsys.readouterr()
         document, _ = _listing_document(project, capsys)
         network = next(row for row in document["rows"] if row["name"] == "network")
-        assert network["status"] == "available"
-        assert network["source"] == "workstation default (unanswered)"
-        assert cli.main([*command, "unset", "network"]) == 2
+        assert network["effective"] == "bridge"
+        assert network["source"] == "secure default"
+        assert cli.main([*command, "forget", "network"]) == 2
         assert "has no recorded answer" in capsys.readouterr().err
 
 
@@ -2319,14 +2288,12 @@ def test_config_list_shows_the_recorded_answer_and_names_a_denial(
         assert cli.main(["project", "--path", str(project), "config", "authorize", "host-browser", "true"]) == 0
         capsys.readouterr()
         assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
-    # Columns: KIND NAME STATUS SOURCE VALUE; the source may contain spaces,
-    # so read the status by position and the value as the last token.
-    rows = {line.split()[1]: line.split() for line in capsys.readouterr().out.splitlines() if line.startswith("authorization")}
-    assert (rows["host-x11"][2], rows["host-x11"][-1]) == ("denied", "false")
-    assert (rows["host-browser"][2], rows["host-browser"][-1]) == ("authorized", "true")
-    assert (rows["development-sudo"][2], rows["development-sudo"][-1]) == ("available", "true")
-    assert rows["host-x11"][3] == "checkout"
-    assert " ".join(rows["development-sudo"][3:-1]) == "workstation default (unanswered)"
+    # Columns: KIND NAME EFFECTIVE SOURCE PENDING; the source may contain
+    # spaces, so read the effective value and the source's first word by position.
+    rows = {line.split()[1]: line.split() for line in capsys.readouterr().out.splitlines() if line.startswith("access")}
+    assert (rows["host-x11"][2], rows["host-x11"][3]) == ("false", "checkout")
+    assert (rows["host-browser"][2], rows["host-browser"][3]) == ("true", "checkout")
+    assert (rows["development-sudo"][2], " ".join(rows["development-sudo"][3:5])) == ("false", "secure default")
 
 
 @pytest.mark.parametrize('surface,needs', [('pycharm', ['python', 'python-ide']), ('codium', ['node', 'frontend-ide'])])

@@ -1,0 +1,376 @@
+"""The truthful listing: every choice of a checkout with its effective value, its source and what is pending.
+
+Principle 6 of the CLI UX redesign work order of 2026-10-24: a listing shows
+the value the next launch uses, where it comes from, and whether a decision
+is pending; a missing answer is a row, not a refusal, and the listing never
+writes anything.  ``config show`` prints it, ``config check`` exits 3 on its
+pending rows, the web console renders it.
+
+Every row is one of these kinds:
+
+- ``ide``, ``agent``, ``tool``: the capabilities of the checkout, from the
+  project's requirements and offers and the checkout's selection;
+- ``memory``, ``cpus``: the launcher-owned values, from the checkout, the
+  project's recommendation or the workstation's defaults;
+- ``access``: host access and the base and vendor consents, from the
+  authorization review;
+- ``env``: the environment the project asks for and the checkout saved;
+- ``value``, ``binding``, ``secret``: the project's declared values and the
+  selected components' state slots and secret inputs.
+
+The sources are plain words: ``checkout``, ``project (required)``,
+``project (offered)``, ``project recommendation``, ``workstation default``,
+``secure default``, ``none``.  A pending row carries the one command that
+settles it.
+
+This module is pure: the adapters load the documents and pass them in,
+with the launcher catalog's view of which capability is an IDE or an agent
+and which component supplies it.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+import os
+from pathlib import Path
+import shlex
+from typing import Any, Mapping
+
+from .authorization import (
+    CURATED_HOST_RECOMMENDATIONS,
+    WORKSTATION_CAPABILITY_DEFAULTS,
+    authorization_declarations,
+    authorization_deny_value,
+    render_authorization_value,
+    review_authorizations,
+)
+from .bindings import component_secret_inputs, configuration_binding_declarations
+from .capabilities import CapabilityPolicy, LocalCapabilities
+from .file_formats import ProjectConfigurationError, render_toml_scalar, table
+from .launcher_values import launcher_value_sources
+from .manifest_document import EnvironmentPolicy, Recommendations
+from .values import (
+    LAUNCHER_VALUE_DESCRIPTIONS,
+    LAUNCHER_VALUE_NAMES,
+    configuration_value_declarations,
+    legacy_memory_names,
+    normalize_configuration_value,
+)
+
+__all__ = ["LISTING_SCHEMA_VERSION", "Listing", "ListingRow", "assess_checkout"]
+
+LISTING_SCHEMA_VERSION = 2
+
+HOST_ACCESS_NODES = ("network", "docker-daemon", "development-sudo", "host-browser", "host-x11")
+
+
+@dataclass(frozen=True)
+class ListingRow:
+    kind: str
+    name: str
+    effective: str
+    source: str
+    pending: str = ""
+    command: str = ""
+
+    def document(self) -> dict[str, str]:
+        return {"kind": self.kind, "name": self.name, "effective": self.effective, "source": self.source,
+                "pending": self.pending, "command": self.command}
+
+
+@dataclass(frozen=True)
+class Listing:
+    rows: tuple[ListingRow, ...]
+    notes: tuple[str, ...] = ()
+
+    @property
+    def pending(self) -> tuple[ListingRow, ...]:
+        return tuple(row for row in self.rows if row.pending)
+
+    def render(self) -> str:
+        headers = ("KIND", "NAME", "EFFECTIVE", "SOURCE", "PENDING")
+        values = [(row.kind, row.name, row.effective, row.source, row.pending) for row in self.rows]
+        widths = [max(len(headers[index]), *(len(row[index]) for row in values)) if values else len(headers[index])
+                  for index in range(5)]
+        lines = ["  ".join(header.ljust(widths[index]) for index, header in enumerate(headers)).rstrip()]
+        lines.extend("  ".join(value.ljust(widths[index]) for index, value in enumerate(row)).rstrip() for row in values)
+        lines.extend(self.notes)
+        return "\n".join(lines)
+
+    def render_pending(self) -> str:
+        """The pending decisions, one per line, each with the command that settles it."""
+        if not self.pending:
+            return "Nothing is pending."
+        lines = ["Pending decisions:"]
+        lines.extend(f"  {row.kind} {row.name}: {row.pending}" + (f"\n      {row.command}" if row.command else "")
+                     for row in self.pending)
+        return "\n".join(lines)
+
+    def document(self) -> dict[str, Any]:
+        return {"schema-version": LISTING_SCHEMA_VERSION, "rows": [row.document() for row in self.rows],
+                "pending": [row.name for row in self.pending], "notes": list(self.notes)}
+
+
+def _command(project: Path | None, *arguments: str) -> str:
+    context = ["--path", str(project)] if project is not None else []
+    return shlex.join(["devcapsule", "project", *context, "config", *arguments])
+
+
+def _component_version(lock: Mapping[str, Any], component: str) -> str:
+    metadata = table(lock, "components").get(component)
+    version = metadata.get("version") if isinstance(metadata, dict) else None
+    return f"{component} {version}" if isinstance(version, str) and version else component
+
+
+def assess_checkout(
+    manifest: Mapping[str, Any],
+    shared_lock: Mapping[str, Any],
+    composed_lock: Mapping[str, Any],
+    checkout: Mapping[str, Any],
+    *,
+    workstation: Mapping[str, Any] | None = None,
+    saved_environment: Mapping[str, str | None] | None = None,
+    surfaces: Mapping[str, str],
+    agents: Mapping[str, str],
+    project: Path | None = None,
+    registered: bool = True,
+) -> Listing:
+    """The listing of one checkout, from its documents, writing nothing.
+
+    ``composed_lock`` is the shared lock with the checkout's pins laid over
+    it (``capability_selection.compose_lock``); ``surfaces`` and ``agents``
+    map IDE and agent capability names to the component each selects, as
+    the launcher's catalog knows them. ``saved_environment`` maps a saved
+    variable name to its value, or ``None`` when it is bound to the host's
+    variable; values are never shown. ``registered`` says whether the
+    checkout has a record yet; an unregistered checkout is listed from an
+    empty record.
+    """
+    rows: list[ListingRow] = []
+    notes: list[str] = []
+    policy = CapabilityPolicy.read(manifest)
+    local = LocalCapabilities.read(checkout)
+    recommendations = Recommendations.read(manifest)
+    rows.extend(_capability_rows(policy, local, recommendations, shared_lock, composed_lock, surfaces, agents, project))
+    rows.extend(_launcher_value_rows(manifest, checkout, workstation, project))
+    rows.extend(_access_rows(manifest, composed_lock, checkout, project))
+    rows.extend(_environment_rows(manifest, saved_environment or {}, project))
+    has_surface = bool(table(composed_lock, "components").get("interactive-surface"))
+    if has_surface:
+        rows.extend(_binding_rows(composed_lock, checkout, project))
+        rows.extend(_secret_rows(composed_lock, checkout, project))
+    else:
+        notes.append("State directories and component secrets are listed once an IDE is chosen.")
+    rows.extend(_value_rows(manifest, checkout, project))
+    if not registered:
+        notes.append("This checkout has no record yet; the first 'devcapsule project run' registers it.")
+    return Listing(tuple(rows), tuple(notes))
+
+
+def _capability_rows(
+    policy: CapabilityPolicy, local: LocalCapabilities, recommendations: Recommendations,
+    shared_lock: Mapping[str, Any], composed_lock: Mapping[str, Any],
+    surfaces: Mapping[str, str], agents: Mapping[str, str], project: Path | None,
+) -> list[ListingRow]:
+    rows: list[ListingRow] = []
+    selected_ide = next((name for name in local.selected if name in surfaces), None)
+    legacy_ide = next((name for name in policy.required if name in surfaces), None)
+    surface_component = table(composed_lock, "components").get("interactive-surface")
+    choices = ", ".join(sorted(surfaces))
+    if selected_ide is not None:
+        rows.append(ListingRow("ide", selected_ide, _component_version(composed_lock, surfaces[selected_ide]), "checkout"))
+    elif legacy_ide is not None and isinstance(surface_component, str):
+        rows.append(ListingRow("ide", legacy_ide, _component_version(shared_lock, surface_component), "project (required)"))
+    elif recommendations.ide is not None and recommendations.ide in surfaces:
+        reason = recommendations.reasons.get("ide", "")
+        rows.append(ListingRow("ide", recommendations.ide, surfaces[recommendations.ide],
+                               "project recommendation" + (f": {reason}" if reason else "") + "; recorded at the first run",
+                               "", _command(project, "ide", recommendations.ide)))
+    else:
+        rows.append(ListingRow("ide", "(none)", "-", "none", f"choose one: {choices}", _command(project, "ide", "IDE")))
+    for name in sorted(set(local.selected) & set(agents)):
+        rows.append(ListingRow("agent", name, _component_version(composed_lock, agents[name]), "checkout"))
+    for name in sorted(set(policy.required) & set(agents)):
+        rows.append(ListingRow("agent", name, _component_version(shared_lock, agents[name]), "project (required)"))
+    providers = table(composed_lock, "capability-providers")
+    personal = set(surfaces) | set(agents)
+    for scope, names in (("project (required)", policy.required), ("project (offered)", policy.optional)):
+        for name in names:
+            if name in personal:
+                continue
+            components = providers.get(name)
+            if isinstance(components, list) and components:
+                effective = ", ".join(_component_version(composed_lock, str(component)) for component in components)
+            else:
+                effective = "supplied by the base"
+            if name in local.without:
+                rows.append(ListingRow("tool", name, "omitted", "checkout (omitted)"))
+            else:
+                rows.append(ListingRow("tool", name, effective, scope))
+    for name in sorted(set(local.selected) - personal):
+        components = providers.get(name)
+        effective = ", ".join(_component_version(composed_lock, str(c)) for c in components) if isinstance(components, list) and components else name
+        rows.append(ListingRow("tool", name, effective, "checkout"))
+    return rows
+
+
+def _launcher_value_rows(
+    manifest: Mapping[str, Any], checkout: Mapping[str, Any], workstation: Mapping[str, Any] | None, project: Path | None,
+) -> list[ListingRow]:
+    rows: list[ListingRow] = []
+    try:
+        sources = launcher_value_sources(manifest, checkout, workstation)
+    except ProjectConfigurationError as exc:
+        return [ListingRow("memory", "*", "invalid", str(exc), "repair the recorded value", _command(project, "set", "memory", "SIZE"))]
+    for name in LAUNCHER_VALUE_NAMES:
+        value, source = sources[name]
+        effective = "no limit" if value is None else str(value)
+        rows.append(ListingRow(name, name, effective, source))
+    return rows
+
+
+def _access_rows(
+    manifest: Mapping[str, Any], lock: Mapping[str, Any], checkout: Mapping[str, Any], project: Path | None,
+) -> list[ListingRow]:
+    try:
+        reviews = {item.name: item for item in review_authorizations(manifest, lock, checkout)}
+        declarations = authorization_declarations(manifest, lock)
+    except ProjectConfigurationError as exc:
+        return [ListingRow("access", "*", "invalid", str(exc), "repair the checkout record", "")]
+    rows: list[ListingRow] = []
+    for name in (*HOST_ACCESS_NODES, *sorted(set(declarations) - set(HOST_ACCESS_NODES))):
+        declaration = declarations.get(name)
+        review = reviews.get(name)
+        if declaration is None or review is None:
+            continue
+        pending = ""
+        command = ""
+        if name in HOST_ACCESS_NODES:
+            deny = authorization_deny_value(declaration)
+            rendered_deny = render_authorization_value(deny) if deny is not None else "false"
+            recommended = render_authorization_value(declaration.recommended_value)
+            if review.value is not None and review.status != "stale":
+                effective = render_authorization_value(review.value)
+                source = "checkout"
+            else:
+                effective = rendered_deny if name != "host-x11" else "contained desktop"
+                source = "secure default"
+            if declaration.project_recommended:
+                source += f"; project recommends {recommended}: {declaration.description}"
+                if review.recorded == "unanswered":
+                    pending = f"the project asks for {name} {recommended}; allow or deny"
+                    command = _command(project, "authorize", name, recommended) + "  |  " + _command(project, "deny", name)
+            if review.status == "stale":
+                pending = "the recommendation changed since your answer; renew or change it"
+                command = _command(project, "authorize", name, recommended) + "  |  " + _command(project, "deny", name)
+            elif review.status == "invalid":
+                pending = str(review.problem or "invalid answer")
+                command = _command(project, "forget", name)
+        else:
+            effective = review.recorded if review.recorded != "unanswered" else "-"
+            source = "checkout" if review.recorded != "unanswered" else "lock (recommended)"
+            if review.problem is not None:
+                pending = review.problem
+                value = "default" if name == "base-image" else "true"
+                command = _command(project, "authorize", name, value)
+            if review.value is not None and name == "base-image":
+                effective = str(review.value)
+        rows.append(ListingRow("access", name, effective, source, pending, command))
+    return rows
+
+
+def _environment_rows(
+    manifest: Mapping[str, Any], saved: Mapping[str, str | None], project: Path | None,
+) -> list[ListingRow]:
+    rows: list[ListingRow] = []
+    environment = EnvironmentPolicy.read(manifest)
+    for scope, entries in (("project (required)", environment.required), ("project (offered)", environment.optional)):
+        for name, reason in entries.items():
+            source = scope + (f": {reason}" if reason else "")
+            if name in saved:
+                effective = "set" if saved[name] is not None else "from the host's variable"
+                rows.append(ListingRow("env", name, effective, "checkout; " + source))
+            elif scope.endswith("(required)"):
+                rows.append(ListingRow("env", name, "unset", source, "the project needs a value from you",
+                                       _command(project, "env", name)))
+            else:
+                rows.append(ListingRow("env", name, "unset", source))
+    for name in sorted(set(saved) - set(environment.names())):
+        effective = "set" if saved[name] is not None else "from the host's variable"
+        rows.append(ListingRow("env", name, effective, "checkout"))
+    return rows
+
+
+def _binding_rows(lock: Mapping[str, Any], checkout: Mapping[str, Any], project: Path | None) -> list[ListingRow]:
+    try:
+        declarations = configuration_binding_declarations(lock)
+    except ProjectConfigurationError as exc:
+        return [ListingRow("binding", "*", "invalid", str(exc))]
+    bindings = table(checkout, "configuration", "bindings", "host-directory")
+    adopted = table(checkout, "state", "adopted")
+    rows: list[ListingRow] = []
+    for name in sorted(declarations):
+        bound = bindings.get(name, adopted.get(name))
+        if isinstance(bound, str):
+            path = Path(bound).expanduser()
+            if path.is_dir():
+                rows.append(ListingRow("binding", name, str(path), "checkout"))
+            else:
+                rows.append(ListingRow("binding", name, str(path), "checkout", "the directory does not exist",
+                                       _command(project, "bind", name, "host-directory:PATH")))
+        else:
+            rows.append(ListingRow("binding", name, "managed directory", "managed default"))
+    return rows
+
+
+def _secret_rows(lock: Mapping[str, Any], checkout: Mapping[str, Any], project: Path | None) -> list[ListingRow]:
+    try:
+        declarations = component_secret_inputs(lock)
+    except ProjectConfigurationError as exc:
+        return [ListingRow("secret", "*", "invalid", str(exc))]
+    bound = table(checkout, "configuration", "bindings", "host-environment")
+    rows: list[ListingRow] = []
+    for name, declaration in sorted(declarations.items()):
+        variable = declaration.environment_variable
+        if name in bound:
+            available = variable in os.environ
+            rows.append(ListingRow("secret", name, f"from {variable}", "checkout" if available else "checkout (variable unset in this shell)"))
+        elif declaration.required:
+            rows.append(ListingRow("secret", name, "unbound", "component (required)", "bind the host variable",
+                                   _command(project, "bind", name, f"host-environment:{variable}")))
+        else:
+            rows.append(ListingRow("secret", name, "unbound; sign in inside the capsule", "component (optional)"))
+    return rows
+
+
+def _value_rows(manifest: Mapping[str, Any], checkout: Mapping[str, Any], project: Path | None) -> list[ListingRow]:
+    declarations = configuration_value_declarations(manifest)
+    aliases = set(legacy_memory_names(manifest))
+    configuration = table(checkout, "configuration")
+    raw_values = table(configuration, "values")
+    omitted = configuration.get("omitted-values", []) if isinstance(configuration.get("omitted-values", []), list) else []
+    rows: list[ListingRow] = []
+    for name, declaration in sorted(declarations.items()):
+        if name in aliases:
+            continue
+        if name in raw_values:
+            try:
+                value = normalize_configuration_value(manifest, name, raw_values[name])
+            except ProjectConfigurationError as exc:
+                rows.append(ListingRow("value", name, repr(raw_values[name]), "checkout", str(exc), _command(project, "set", name, "VALUE")))
+            else:
+                rows.append(ListingRow("value", name, render_toml_scalar(value), "checkout"))
+        elif name in omitted:
+            rows.append(ListingRow("value", name, "omitted", "checkout"))
+        elif "recommended" in declaration:
+            rows.append(ListingRow("value", name, render_toml_scalar(normalize_configuration_value(manifest, name, "default")),
+                                   "project recommendation"))
+        elif declaration.get("required", False):
+            rows.append(ListingRow("value", name, "unset", "project (required)", "the project needs a value from you",
+                                   _command(project, "set", name, "VALUE")))
+        else:
+            rows.append(ListingRow("value", name, "unset", "project (optional)"))
+    for name in sorted(set(raw_values) - set(declarations) - set(LAUNCHER_VALUE_NAMES) - aliases):
+        rows.append(ListingRow("value", name, repr(raw_values[name]), "checkout", "not declared by this project",
+                               _command(project, "set", name, "default")))
+    return rows

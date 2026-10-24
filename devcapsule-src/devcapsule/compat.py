@@ -17,6 +17,17 @@ class CliError(Exception):
     """User-facing command error."""
 
 
+class DecisionPending(CliError):
+    """A decision only the user can take is pending; the message names each with its command.
+
+    Exit status 3 (the CLI UX redesign work order of 2026-10-24, section 3.4):
+    a script tells "a human must decide" from "fix the command" (2) and
+    "the launch or session failed" (1).
+    """
+
+    EXIT_STATUS = 3
+
+
 def run_script(relative_path: str, args: Sequence[str]) -> int:
     with script_path(relative_path) as script:
         if not os.access(script, os.X_OK):

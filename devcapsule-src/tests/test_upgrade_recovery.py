@@ -452,7 +452,7 @@ type = "memory-size"
 runtime-effect = "docker.memory-limit"
 ''')
     assert invoke(project, "config", "set", "editor.theme", "dark") == 0
-    assert invoke(project, "config", "set", "runtime.memory-limit", "8GiB") == 0
+    assert invoke(project, "config", "set", "memory", "8GiB") == 0
     assert invoke(project, "config", "bind", "home", f"host-directory:{project}") == 0
     assert invoke(project, "config", "bind", "codex/openai-api-key", "host-environment:OPENAI_API_KEY") == 0
     record.write_text(record.read_text() + f'\n[state.adopted]\n"pycharm/config" = "{project.as_posix()}"\n')
