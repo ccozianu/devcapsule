@@ -320,8 +320,8 @@ the rest are implementation.
 
 1. **Developer command words:** `add`, `omit`, `restore` for capabilities;
    `use CAPABILITY COMPONENT|default` for the provider; `config ide` kept
-   for the surface. `select` and `resolve` avoided: the first reads as
-   the surface, the second was the retired step.
+   for the IDE. `select` and `resolve` avoided: the first reads as the
+   IDE choice, the second was the retired step.
 2. **Run flags:** `--with CAPABILITY` repeatable in place of `--agent`;
    `--use CAPABILITY=COMPONENT` repeatable; `--ide` kept.
 3. **Three coding-agent capabilities,** `codex-agent`, `claude-code-agent`,
