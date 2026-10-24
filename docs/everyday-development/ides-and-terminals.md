@@ -1,11 +1,13 @@
 ---
 description: The IDEs DevCapsule offers, the terminal inside them, and how the capsule's shell differs from your computer's.
-updated: 2026-10-04
+updated: 2026-10-24
 weight: 1
 ---
 # IDEs and terminals
 
-Select one IDE capability in your project's `.devcapsule/devcapsule.toml`:
+Choose one IDE for your checkout with `devcapsule project config ide NAME`.
+This choice stays outside the repository. For a new project, use `init --ide`
+as shown below.
 
 | Capability | IDE | Development tools |
 |---|---|---|
