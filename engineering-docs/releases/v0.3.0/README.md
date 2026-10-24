@@ -51,7 +51,12 @@ that is honest about what it skips.
   console needs recipe 11; the fixed bug records verified against a
   downloaded candidate; the release notes as `notes.md` beside this file.
   Project-operation instructions, C17, stay assigned to
-  `workflow-improvements` for 0.3.0 and gate the final tag.
+  `workflow-improvements` for 0.3.0 and gate the final tag. Added by the
+  owner's direction of 2026-10-24, on reading the candidate-4 stack: a
+  language review of the user documentation, which reads as machine prose
+  and whose sections lack a conceptual entry page, the configuration
+  section first; booked with `project-management` by mail at
+  `9fcfdb8db440`, which assigns the reviewer and the method.
 - **Rulings of 2026-10-21.** The base publication happens later, in the
   promotion of the accepted candidate, not before the next one. The
   candidates are grouped: rc2 carries the network node and C10; rc3 forced

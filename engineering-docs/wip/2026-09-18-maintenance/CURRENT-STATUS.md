@@ -271,6 +271,17 @@ The stack to `release-0.3.0`, in order: #260, #261, #263, #265, #266,
 tip of #269 carries everything. The owner merges it in that order, or
 merges #269 alone once the lower ones are reviewed as part of it.
 
+The owner read the stack on 2026-10-24 and accepted the code. On the
+documentation the owner found machine prose throughout, not only in the
+fifteen pages this stack changed, and a missing conceptual entry page per
+section, `docs/configuration/index.md` the named first case: what a
+configuration is before capabilities, IDEs, approvals and limits. A final
+review round of the documentation's language before 0.3.0 is the owner's
+direction; it went to `project-management` by mail at `9fcfdb8db440` as
+the booking, with the owner's words and the evidence, and is recorded in
+the release overview as a condition of the final tag. Maintenance does not
+begin the rewrite until project-management assigns it.
+
 ## Current State
 
 **2026-10-24: rc3 tagged, published and verified.** The owner merged
