@@ -1,6 +1,6 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-22. Stage: **candidate 2 in preparation: the network node and C10 merged, the pre-candidate merge next, then the tag on the owner's word**.
+Updated: 2026-10-24. Stage: **candidate 3 in preparation, by the owner's direction of 2026-10-24: it carries software approvals at launch and the saved Docker arguments, so development scenarios with environment variables and GPUs can be tested on a downloaded candidate; the pre-candidate pull request to `main` awaits the owner's merge, then the tag**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Changelog since 0.2.15](changelog.md) ·
@@ -60,6 +60,15 @@ that is honest about what it skips.
   `workflow-improvements` and this project's own operating instructions in
   `WORKFLOW-LOCAL.md`, the concrete case against which the abstract rule is
   debugged.
+- **Direction of 2026-10-24.** Candidate 3 is tagged now with what the
+  release branch carries, software approvals at launch (PR #250) and the
+  saved Docker arguments (PR #253), because the owner needs the extra
+  Docker arguments to test development scenarios, environment variables
+  and GPUs among them. Forced configuration and the diagnostics snapshot,
+  grouped into rc3 on 2026-10-21, move to rc4 with image cleanup and C20;
+  the manifest's schema-version slice goes with them. The regenerated
+  shared lock rides rc3, so provider acceptance of the new agent pins on
+  a downloaded candidate becomes possible there.
 - **Stopping points where the owner is consulted:** before each candidate
   tag; before the image-cleanup implementation; when a slice proves larger
   than the cycle tolerates; before the final tag. Scope changes go by the
@@ -175,7 +184,7 @@ replacement.
   web console session mypy clean over 8 files, 293 tests.
 - [x] Agent freshness upgrade attempt; dispositions in the table above.
 - [x] PR #224 merged into the release branch at `6b97657`; the release branch merged into `main` by PR #228 at `7c20292`, ancestry holds; `main` carries 0.3.0 during the cycle by the owner's merge. The branch, deleted by `delete_branch_on_merge`, restored at the same tip.
-- [ ] The owner regenerates the shared lock on the host; the written lock committed on the release branch, gated, merged to `main`.
+- [x] The shared lock regenerated on 2026-10-22 by `project config capabilities` on a fresh clone inside the capsule, where the command runs for any project but the capsule's own; committed on the release branch at `0c1a555`, gated (1672 unit tests), proven by the recursive attached launch from a fresh clone; merges to `main` with the next pre-candidate merge.
 - [x] `v0.3.0-rc0` tagged on the release branch at `53ebc17`; backend run
   passed; the three assets downloaded, checksum and version verified.
 - [ ] Local proofs against the download: clean machine, component cache,
@@ -259,7 +268,25 @@ replacement.
   The owner's judgment of the console: it works nicely, to the extent
   required for 0.3.0.
 
-### RC2 — in preparation, 2026-10-22
+### RC2 — tagged 2026-10-22
+
+- Tag `v0.3.0-rc2` on `e5b5a8b73309959f9407e115dcb3acd8707d6050`, the release
+  branch's tip at the pre-candidate merge (PR #249 from the throwaway copy
+  `4PR-3-release-0.3.0`, which carried one commit keeping `main`'s version
+  files); the record commits after it on the branch carry no source.
+- Candidate gate from a detached checkout of the tag before the push:
+  method `mainline`, no unintegrated commits, version `0.3.0rc2`.
+- Backend run [39803285881](https://github.com/ccozianu/devcapsule/actions/runs/39803285881)
+  passed; the [prerelease](https://github.com/ccozianu/devcapsule/releases/tag/v0.3.0-rc2)
+  is public, non-draft, with the three assets.
+- Downloaded over HTTPS into `/home/devcapsule/.cache/devcapsule-releases/v0.3.0-rc2`:
+  the checksum file verifies the executable, SHA-256
+  `abb9a8e18f6688326b7a94aae5b504ccdfa1e1782f1215465857eb9a03d9ba7e`; the
+  manifest records the tag, the branch, the source revision and the
+  `mainline` disposition; the executable reports `0.3.0rc2` at `e5b5a8b…`.
+- The shared lock is not in rc2: it was regenerated after the tag and
+  rides the next candidate. Provider acceptance of the new agent pins on a
+  downloaded candidate stays the owner's.
 
 - Carries, beyond rc1: the universal `network` authorization node (PR #240,
   review #242 by the Codex pair); the first-session summary and Ctrl+C
@@ -271,11 +298,29 @@ replacement.
 - The release branch synchronized with `main` twice on 2026-10-22, on the
   owner's word, so the cycle's workflow rules and both checkouts' records
   bind it; the version files kept the release side.
-- Next: the pre-candidate merge from `4PR-3-release-0.3.0`, the tag on the
-  release branch's tip, the backend, the download and its verification;
-  then the owner's dogfooding of the terminal and of Ctrl+C, and the three
+- Next: the owner's dogfooding of the terminal and of Ctrl+C, and the three
   records' verification: the IDE smoke on a fresh project, the interrupted
   launch, the quiet terminal.
+
+### RC3 — in preparation, 2026-10-24
+
+- Carries, beyond rc2: software approvals at launch, the one y/n for new
+  versions of software approved before and `project config approve`
+  (PR #250, review #251 by the Codex and gpt-6-astra pair); the saved
+  Docker arguments for each checkout, `set-extra-docker-args`,
+  `list-extra-docker-args`, `remove-extra-docker-args` and the `set-env`,
+  `list-env`, `unset-env` conveniences on the same list, with inline
+  environment values masked in every report (PR #253, review #255 by
+  Claude Code); the shared lock regenerated on matrix embedded-27, Codex
+  0.163.0, Claude Code 2.1.302, Antigravity CLI 1.4.2 (`0c1a555`). Each
+  slice was gated in full on its merged branch.
+- Full gate on the release tip before the pre-candidate merge: recorded
+  in the status file with the tag.
+- The pre-candidate merge: `4PR-4-release-0.3.0`, the throwaway copy with
+  the one commit keeping `main`'s version files, as PR #249 did for rc2;
+  the owner merges; the tag goes on the release branch's tip at the merge.
+- Not in rc3: forced configuration, the diagnostics snapshot, the
+  schema-version slice; see the direction of 2026-10-24 above.
 
 ## Release Notes Preparation
 

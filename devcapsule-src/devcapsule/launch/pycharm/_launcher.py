@@ -21,6 +21,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
+from ...docker_arguments import inline_environment_names, redact_environment
 from ...container_runtime.contract import (
     CONTAINED_DISPLAY_TRANSPORT,
     INFRASTRUCTURE_FAILURE_EXIT_CODE,
@@ -360,7 +361,11 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
                     watch_display_ready(
                         config.console_host_port, console, opener, stop_watching, label=CONSOLE_LABEL_TEXT,
                     )
-                _session_events.info("docker run: %s", shlex.join(command))
+                # The session log outlives the session on the host: mask the
+                # inline environment values of the extra arguments, as the
+                # printed command does; Docker receives the command unchanged.
+                _session_events.info("docker run: %s", shlex.join(
+                    redact_environment(command, inline_environment_names(config.extra_docker_args))))
                 try:
                     result = run_attached(
                         command, runtime_env, container_name=config.name, on_interrupt=stop_watching.set,
@@ -587,7 +592,10 @@ def describe_run_command(command: list[str], config: PycharmRunConfig,
     if config.secret_environment:
         comments.append("Required environment variables (values omitted): " + ", ".join(config.secret_environment))
     comments.append("No successful-use history was recorded. Manual execution and any edits are your responsibility.")
-    return render_command(command, comments)
+    names = inline_environment_names(config.extra_docker_args)
+    if names:
+        comments.append("Inline environment values are redacted; use project run to launch the saved arguments.")
+    return render_command(redact_environment(command, names), comments)
 
 
 def host_backed_runtime_environment(env: Mapping[str, str]) -> dict[str, str]:
@@ -1531,12 +1539,26 @@ LAUNCHER_OWNED_DOCKER_OPTIONS: dict[str, str] = {
 }
 
 
+CLUSTERED_SHORT_DOCKER_FLAGS = frozenset("ditP")
+"""docker run's boolean short flags, which may share one token: -d, -i, -t, -P."""
+
+
 def reject_launcher_owned_docker_options(options: Sequence[str]) -> None:
     """Refuse raw docker options the launcher already composes exactly once."""
 
     for option in options:
         name = option.split("=", 1)[0]
         remedy = LAUNCHER_OWNED_DOCKER_OPTIONS.get(name)
+        if remedy is None and option.startswith("-") and not option.startswith("--") and len(option) > 2:
+            # Attached short spellings: -m2g, -u1000, -dit, -ti. Docker lets
+            # boolean short flags cluster, so walk past the known ones; the
+            # first other letter owns the rest of the token as its value
+            # (-eNAME=value, -vSRC:DST) and is never inspected further.
+            for letter in option[1:]:
+                name = f"-{letter}"
+                remedy = LAUNCHER_OWNED_DOCKER_OPTIONS.get(name)
+                if remedy is not None or letter not in CLUSTERED_SHORT_DOCKER_FLAGS:
+                    break
         if remedy is not None:
             raise PycharmRunError(
                 f"Raw docker option {name!r} is composed by the launcher and cannot "

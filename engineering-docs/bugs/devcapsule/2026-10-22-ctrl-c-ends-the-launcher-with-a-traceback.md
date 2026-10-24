@@ -1,5 +1,5 @@
 ---
-status: fixed
+status: closed
 severity: minor
 target: 0.3.0
 owner: maintenance
@@ -64,3 +64,9 @@ gone.
 The unit tests pass on a 0.3.0 candidate and the interrupted
 fresh-workspace launch ends as described. Reopen if a traceback follows
 Ctrl+C or the capsule is left running without the launcher saying so.
+
+## Closed, 2026-10-23
+
+Verified by the owner on the downloaded `v0.3.0-rc2`: Ctrl+C ends the
+launcher with the result, not a traceback. The owner's word of 2026-10-23
+closes the record.

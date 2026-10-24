@@ -2,7 +2,7 @@
 
 [Release overview](README.md)
 
-Initial review: 2026-10-18 at the cut, `3c91183`; the console-link row added after the owner's rc0 launch the same day; reconciled 2026-10-21 after the owner's verification of rc1. The linked records own
+Initial review: 2026-10-18 at the cut, `3c91183`; the console-link row added after the owner's rc0 launch the same day; reconciled 2026-10-21 after the owner's verification of rc1; the two C10 rows closed 2026-10-23 on the owner's verification of rc2. The linked records own
 status, severity, target, ownership and technical evidence; this table
 mirrors those fields for review and records the release's disposition and
 next action. Update the record and its row together; reconcile before each
@@ -19,8 +19,8 @@ candidate and record the reconciliation revision here.
 | [Unpacked archive cache can lose concurrent work](../../bugs/devcapsule/2026-10-08-unpacked-cache-publication-and-recovery.md) | fixed | minor | maintenance | fixed on `main` through PR #172 | verify against a downloaded candidate; close |
 | [`project run --authorize network host` refused without a recommendation](../../bugs/devcapsule/2026-10-05-run-once-network-authorization-needs-a-recommendation.md) | fixed | minor | maintenance | the universal `network` node, fixed 2026-10-22 on the slice branch for rc2 | verify on rc2: the unit test and the IDE smoke on a fresh project; close |
 | [The launcher prints a web console link on a base without the console](../../bugs/devcapsule/2026-10-18-console-link-printed-on-a-base-without-the-console.md) | closed | minor | maintenance | found by the owner on rc0; fixed by PR #232, carried by rc1 | closed 2026-10-21 on the owner's verification of rc1 against the recipe-9 and a recipe-11 base |
-| [A healthy launch looks unhealthy in the terminal](../../bugs/devcapsule/2026-10-22-healthy-launch-looks-unhealthy-in-the-terminal.md) | fixed | minor | maintenance | C10, filed and fixed 2026-10-22 on the slice branch for rc2 | verify on rc2 by a fresh-workspace launch; close |
-| [Ctrl+C ends the launcher with a traceback instead of a result](../../bugs/devcapsule/2026-10-22-ctrl-c-ends-the-launcher-with-a-traceback.md) | fixed | minor | maintenance | C10, filed and fixed 2026-10-22 on the slice branch for rc2 | verify on rc2 by an interrupted fresh-workspace launch; close |
+| [A healthy launch looks unhealthy in the terminal](../../bugs/devcapsule/2026-10-22-healthy-launch-looks-unhealthy-in-the-terminal.md) | closed | minor | maintenance | C10, filed and fixed 2026-10-22 on the slice branch, carried by rc2 | closed 2026-10-23 on the owner's verification of rc2: the terminal summary as expected |
+| [Ctrl+C ends the launcher with a traceback instead of a result](../../bugs/devcapsule/2026-10-22-ctrl-c-ends-the-launcher-with-a-traceback.md) | closed | minor | maintenance | C10, filed and fixed 2026-10-22 on the slice branch, carried by rc2 | closed 2026-10-23 on the owner's verification of rc2: Ctrl+C ends with a result |
 | [Installed IDE cannot be reused before archive acquisition](../../bugs/devcapsule/2026-09-24-installed-ide-docker-reuse.md) | confirmed | minor | maintenance | split: cleanup of obsolete images and caches is a cycle slice after the owner's design review; reuse with an empty launcher cache is out of 0.3.0 | design review with the owner; retarget the reuse half at the next planning |
 
 ## Records of other workstreams the decision names

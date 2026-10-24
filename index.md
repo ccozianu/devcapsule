@@ -25,7 +25,7 @@ status file; internal WIP/archive documents use the local index in that status.
   - Your project: [An existing repository](docs/your-project/existing-repository.md), [A new project](docs/your-project/new-project.md), [What a project declares](docs/your-project/declare-needs.md) (coming soon), [Services and ports](docs/your-project/services-and-ports.md) (coming soon)
   - Working with AI: [Choose an agent](docs/working-with-ai/choose-an-agent.md), [Sign in and defaults](docs/working-with-ai/sign-in-and-defaults.md), [Instructions for agents](docs/working-with-ai/instructions-for-agents.md), [Hosted and local models](docs/working-with-ai/hosted-and-local-models.md) (coming soon), [Review and change agents](docs/working-with-ai/review-and-change-agents.md) (coming soon)
   - Everyday development: [Clipboard, keys and browser](docs/everyday-development/clipboard-and-browser.md); coming soon: [IDEs and terminals](docs/everyday-development/ides-and-terminals.md), [Git](docs/everyday-development/git.md), [Run, debug, test](docs/everyday-development/run-debug-test.md), [Previews and ports](docs/everyday-development/previews-and-ports.md)
-  - Configuration: [Inspect a checkout](docs/configuration/inspect.md), [Project versus personal](docs/configuration/project-versus-personal.md), [Capabilities and personal choices](docs/configuration/capabilities.md), [Extra tools](docs/configuration/extra-tools.md), [Resource limits](docs/configuration/resource-limits.md), [IDE preferences](docs/configuration/ide-preferences.md) (coming soon)
+  - Configuration: [Inspect a checkout](docs/configuration/inspect.md), [Project versus personal](docs/configuration/project-versus-personal.md), [Capabilities and personal choices](docs/configuration/capabilities.md), [Extra tools](docs/configuration/extra-tools.md), [Resource limits](docs/configuration/resource-limits.md), [Software approvals](docs/configuration/software-approvals.md), [IDE preferences](docs/configuration/ide-preferences.md) (coming soon)
   - Containment: [The boundary](docs/containment/the-boundary.md), [Granting and withdrawing access](docs/containment/granting-and-withdrawing.md)
   - Sessions: [Start, stop, reconnect](docs/sessions/start-stop-reconnect.md), [What persists](docs/sessions/what-persists.md), [The web console](docs/sessions/web-console.md); coming soon: [Several projects](docs/sessions/several-projects.md), [Another machine](docs/sessions/another-machine.md)
   - Collaboration: [Work in workstreams with humans and agents](docs/collaboration/working-in-workstreams.md)
@@ -127,6 +127,10 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Project workflow bootstrap](engineering-docs/specifications/product/project-workflow-bootstrap.md)
 
 ## Work Orders
+
+- [Saved Docker arguments for each checkout](engineering-docs/work-orders/2026-10-23-saved-docker-arguments.md)
+
+- [Persistent checkout environment for 0.3.0](engineering-docs/work-orders/2026-10-23-checkout-environment.md)
 
 - [Capture the Eclipse/Java “WOW factor” 1BRC hero demonstration video](engineering-docs/work-orders/2026-10-19-eclipse-java-1brc-hero-video.md)
 - [Make “Why DevCapsule?” clear on arrival](engineering-docs/work-orders/2026-10-18-landing-page-why-devcapsule.md)

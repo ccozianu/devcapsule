@@ -23,6 +23,9 @@ record them. All are yours, per checkout, outside the repository.
 
 `--all-recommended` previews every recommendation and authorizes all only on
 `y`. A run-once form, `project run --authorize NAME VALUE`, records nothing.
+`config approve [NAME...|--all]` records new versions of vendor software you
+approved before, the list `project run` offers in one question; see
+[software approvals](../configuration/software-approvals.md).
 
 ## Declared values, `config set NAME VALUE`
 

@@ -2353,6 +2353,8 @@ def test_print_command_uses_real_launch_builder_without_launch_or_success(
                      '--unverified', '--authorize', 'base-image', 'default']) == 0
     assert cli.main(['project', 'config', 'authorize', 'host-x11', str(display == 'host-x11').lower()]) == 0
     assert cli.main(['project', 'config', 'resolve']) == 0
+    assert cli.main(['project', 'config', 'set-extra-docker-args', '--', '--gpus', 'all', '--volume', str(tmp_path / 'data dir') + ':/data:ro']) == 0
+    assert cli.main(['project', 'config', 'set-env', 'APP_PASSWORD', 'managed-secret-sentinel']) == 0
     selected = ExecutionConfiguration.load(project).project
     locked = parse_locked_environment(selected.lock)
     realized = SimpleNamespace(image=SimpleNamespace(labels={'devcapsule.base.display': 'contained'},
@@ -2398,11 +2400,15 @@ def test_print_command_uses_real_launch_builder_without_launch_or_success(
     assert 'Child-style preparation progress' in output.err
     assert 'preparation progress' not in output.out
     assert 'do-not-render-this-value' not in output.out
+    assert 'managed-secret-sentinel' not in output.out + output.err
+    assert 'APP_PASSWORD=<redacted>' in output.out
+    assert '--gpus' in output.out and '/data:ro' in output.out
     assert 'Required environment variables' in output.out
     assert 'Temporary Runtime plan:' in output.out
     assert ('Temporary Display token:' in output.out) == (display == 'contained')
     expected = ['docker', 'run', *[a.replace(str(tmp_path), '/daemon/fixture') for a in captured['args']], captured['image']]
-    assert shlex.split(output.out.replace('\\\n', ''), comments=True) == expected
+    from devcapsule.docker_arguments import redact_environment
+    assert shlex.split(output.out.replace('\\\n', ''), comments=True) == redact_environment(expected, {'APP_PASSWORD'})
     subprocess.run(['sh', '-n'], input=output.out, text=True, check=True)
     assert all(not path.exists() for path in vars(captured['files']).values() if isinstance(path, Path))
     assert all(p.read_bytes() == content for p, content in before.items())

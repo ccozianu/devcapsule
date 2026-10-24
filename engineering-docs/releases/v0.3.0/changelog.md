@@ -134,10 +134,35 @@ integration and end-to-end suites.
 - The configuration listing attributed an unanswered workstation default
   to the manifest; it names the workstation default now.
 
-## Not in candidate 2
+## New in candidate 3
+
+- **Saved Docker arguments for each checkout.** `project config
+  set-extra-docker-args -- OPTIONS...` saves the extra `docker run` options
+  a development scenario needs, GPUs, mounts, environment variables, once
+  per checkout on the launcher host; `project run` passes them after its
+  own options and before anything given after `run --`, so returning to
+  that work is `project run` again. `list-extra-docker-args` shows the list
+  with inline environment values masked, `remove-extra-docker-args` clears
+  it. `set-env NAME` takes a value from a hidden prompt, out of shell
+  history; `list-env` and `unset-env` edit the same list. The list is a
+  private file outside Git and outside anything mounted or snapshotted;
+  launcher-owned options such as `--network` and `--memory` are refused in
+  every spelling. [Project versus personal](https://devcapsule.mycodespace.ai/docs/current/configuration/project-versus-personal/)
+  documents it (2026-10-23).
+- **Software approvals at launch, once for the whole list.** When the
+  project's lock brings new versions of vendor software you approved
+  before, from the same vendors under the same terms, `project run` shows
+  the list and asks one y/n instead of one question per component; any
+  other key stops the launch and names `project config approve`, which
+  approves from the command line and inside scripts. The page
+  [Software approvals](https://devcapsule.mycodespace.ai/docs/current/configuration/software-approvals/)
+  says what an approval by name leaves alone (2026-10-22).
+
+## Not in candidate 3
 
 Planned for later candidates of this cycle: forced configuration, `project config resolve --force` and
 `project run --force-config`; the diagnostics snapshot and export command;
+the manifest's schema version 2 for the `required`/`optional` vocabulary;
 cleanup of obsolete images and cached files; release-notes automation.
 Out of 0.3.0: consent and vendor trust, installed-IDE reuse with an empty
 launcher cache, browser evidence for diagnostics, the console's
