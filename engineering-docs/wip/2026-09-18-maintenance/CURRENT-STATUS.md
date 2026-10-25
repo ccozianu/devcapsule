@@ -284,6 +284,18 @@ begin the rewrite until project-management assigns it.
 
 ## Current State
 
+**2026-10-25: rc5 tagged, published and verified.** The owner merged
+PR #280 at `35d74d9`; `03ed348` is an ancestor of `main`; `v0.3.0-rc5` on
+`03ed348`, the candidate gate `mainline` with no unintegrated commits from
+a detached checkout, record at `/opt/devcapsule-gate/rc5-release-protocol.json`;
+pushed; backend run 40147675417 passed; the prerelease is public with its
+three assets; the download under `~/.cache/devcapsule-releases/v0.3.0-rc5`
+verifies, SHA-256 `429aefee…`, `devcapsule version` reporting `0.3.0rc5`
+at `03ed348`. The overview's rc5 entry and the changelog's candidate-5
+line are written. Next, the owner's: test the model's commands on the
+download; then the diagnostics snapshot, image cleanup and C20 for the
+next candidate; the documentation language review before the final tag.
+
 **2026-10-25: rc5 in preparation.** The owner merged the three slices;
 the release tip is `d01fb8c`. Full `nox -s build` on it from a separate
 worktree: mypy 246 files, 2281 unit tests, packaging integration 17,

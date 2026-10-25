@@ -6,7 +6,7 @@ new and what is fixed since 0.2.15. Records, workflow rules and the
 project's own housekeeping are left out on purpose. The adopter notes for
 the final release, `notes.md`, are written from this file.
 
-Candidate 5 is in preparation; candidate 4 was tagged 2026-10-24 at `78a9c66`; candidate 3 on 2026-10-24 at `a22a215`; candidate 2 was tagged
+Candidate 5 was tagged 2026-10-25 at `03ed348`; candidate 4 on 2026-10-24 at `78a9c66`; candidate 3 on 2026-10-24 at `a22a215`; candidate 2 was tagged
 2026-10-22 at `e5b5a8b`, candidate 1 on 2026-10-19 at `7016cdd` and
 candidate 0 on 2026-10-18 at `53ebc17`.
 
