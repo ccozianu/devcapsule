@@ -1,0 +1,5 @@
+who: Costin Cozianu
+branch: ws-maintenance/base-recipe-11-pin
+slice: Pin the published recipe-11 base; implementation only, release driver owns records
+since: 2026-10-25T11:38:28+00:00
+expires: 2026-10-25T23:38:28+00:00
