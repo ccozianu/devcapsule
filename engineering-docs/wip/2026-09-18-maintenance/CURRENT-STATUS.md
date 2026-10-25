@@ -284,6 +284,20 @@ begin the rewrite until project-management assigns it.
 
 ## Current State
 
+**2026-10-25: rc7 tagged, published and verified.** The owner merged
+PR #286 at `77ac058`; `73bbe53` is an ancestor of `main`; `v0.3.0-rc7` on
+`73bbe53`, the candidate gate `mainline` with no unintegrated commits from
+a detached checkout, record at `/opt/devcapsule-gate/rc7-release-protocol.json`;
+pushed; backend run 40198740279 passed; the prerelease is public with its
+three assets; the download under `~/.cache/devcapsule-releases/v0.3.0-rc7`
+verifies, SHA-256 `1fe418a2…`, the manifest's base reference the published
+recipe-11 digest, `devcapsule version` reporting `0.3.0rc7` at `73bbe53`.
+The overview's rc7 entry and the changelog's candidate-7 line are
+written. Next, the owner's: regenerate a project lock with rc7 and test
+the console on the published base; then the diagnostics snapshot, image
+cleanup and C20 for the next candidate; the documentation language review
+before the final tag.
+
 **2026-10-25: rc7 in preparation.** The owner merged PR #284; the
 release tip is `349b3ad`. Full `nox -s build` on it from a separate
 worktree: mypy 246 files, 2282 unit tests, packaging integration 17,

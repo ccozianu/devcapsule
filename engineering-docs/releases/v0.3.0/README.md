@@ -1,6 +1,6 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-25. Stage: **candidate 7 in preparation: the published recipe-11 base pinned, so the default base carries the web console; the pre-candidate merge into `main` is the owner's; then the diagnostics snapshot, image cleanup and C20**.
+Updated: 2026-10-25. Stage: **candidate 7 published and verified as downloaded; the default base is the published recipe-11 base with the web console; the owner's test on the download next, then the diagnostics snapshot, image cleanup and C20**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Changelog since 0.2.15](changelog.md) ·
@@ -527,10 +527,31 @@ How the candidate was prepared:
 - Not in rc6: the diagnostics snapshot, image cleanup, C20; the gaps the
   candidate-5 changelog lists under *Not in candidate 5*.
 
-### RC7 — in preparation, 2026-10-25
+### RC7 — tagged 2026-10-25
 
-- Tag `v0.3.0-rc7` on the release branch's tip after the pre-candidate
-  merge (PR from the throwaway copy `4PR-8-release-0.3.0`, the owner's).
+- Tag `v0.3.0-rc7` on `73bbe5361bad1ff190d2c27586aad578796f191f`, the release
+  branch's tip at the pre-candidate merge (PR #286 from the throwaway copy
+  `4PR-8-release-0.3.0`, merged by the owner at `77ac058`).
+- Candidate gate from a detached checkout of the tag before the push:
+  method `mainline`, no unintegrated commits, version `0.3.0rc7`; record at
+  `/opt/devcapsule-gate/rc7-release-protocol.json`.
+- Backend run [40198740279](https://github.com/ccozianu/devcapsule/actions/runs/40198740279)
+  passed; the [prerelease](https://github.com/ccozianu/devcapsule/releases/tag/v0.3.0-rc7)
+  is public, non-draft, with the three assets.
+- Downloaded over HTTPS into `/home/devcapsule/.cache/devcapsule-releases/v0.3.0-rc7`:
+  the checksum file verifies the executable, SHA-256
+  `1fe418a2c453c9640996bf8fbc86005c6b7e7de1518a5977b050a180a7ca7a91`; the
+  manifest records the tag, the branch, the source revision, the
+  `mainline` disposition and, as its base reference, the published
+  recipe-11 digest `8c97d308…`; `devcapsule version` from an empty
+  directory reports `0.3.0rc7`, build `v0.3.0-rc7`, at `73bbe53…`.
+- Next: the owner's test of the download on a regenerated lock, the
+  console on the published base first; then the diagnostics snapshot,
+  image cleanup and C20 for the next candidate; the documentation
+  language review before the final tag.
+
+How the candidate was prepared:
+
 - Carries, beyond rc6: the published recipe-11 base pinned in the matrix
   (PR #284, `dedb485`): `v0.3.0-rc6`, `ubuntu-24.04@11`, digest
   `8c97d308…`, newest pin of the family; matrix `embedded-28`; the golden
