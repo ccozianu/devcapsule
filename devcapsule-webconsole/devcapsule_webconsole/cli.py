@@ -97,7 +97,7 @@ class RuntimeCli:
         return completed.stdout.decode("utf-8", errors="replace").strip()
 
     def configuration(self) -> dict[str, Any]:
-        return self.read("config", "list")
+        return self.read("config", "show")
 
     def notifications(self, *, decisions: Path, unread_only: bool = False) -> dict[str, Any]:
         # The listing must merge the directory served by the decision pages,
