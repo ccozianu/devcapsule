@@ -284,6 +284,22 @@ begin the rewrite until project-management assigns it.
 
 ## Current State
 
+**2026-10-25: rc7 in preparation.** The owner merged PR #284; the
+release tip is `349b3ad`. Full `nox -s build` on it from a separate
+worktree: mypy 246 files, 2282 unit tests, packaging integration 17,
+console 357; the documentation contract 189 pages. The throwaway copy
+`4PR-8-release-0.3.0`, the release tip (this record's commit) plus the
+cherry-pick of `62fa063`, is the pull request for the owner's merge. On
+that merge, the rc6 steps with `rc7` in place of `rc6`: the ancestry
+check, the annotated tag on the tip, the release protocol from a detached
+checkout expecting `mainline`, the atomic push of branch and tag, the
+backend run, the download into `~/.cache/devcapsule-releases/v0.3.0-rc7`
+with checksum and version verified, the overview's rc7 entry and the
+changelog's candidate-7 line. The published-base gate is met by this
+candidate. The diagnostics snapshot, image cleanup and C20 stay with the
+next candidate; the documentation language review before the final tag;
+D-0015, a project's own constraint on its base, is proposed for V1.
+
 **2026-10-25: the published recipe-11 base pinned; rc7 next.** The
 owner built the base from the published rc6 executable and pushed it as
 `mycodespaceai/devcapsule-base:v0.3.0.rc6`, digest `8c97d308…`; the registry

@@ -1,6 +1,6 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-25. Stage: **candidate 6 published and verified as downloaded; candidate 5 with the console's configuration page repaired; the owner's test on the download next, then the diagnostics snapshot, image cleanup and C20**.
+Updated: 2026-10-25. Stage: **candidate 7 in preparation: the published recipe-11 base pinned, so the default base carries the web console; the pre-candidate merge into `main` is the owner's; then the diagnostics snapshot, image cleanup and C20**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Changelog since 0.2.15](changelog.md) ·
@@ -103,6 +103,15 @@ that is honest about what it skips.
   retired command fails the build instead of the page. Candidate 6 is cut
   on that repair alone; the diagnostics snapshot, image cleanup and C20
   stay with the next candidate.
+- **Direction of 2026-10-25, after the rc6 test.** The owner rebuilt the
+  base from the rc6 executable, confirmed the console's configuration
+  page on it, and published it as `mycodespaceai/devcapsule-base:v0.3.0.rc6`,
+  digest `8c97d308…`, `ubuntu-24.04@11`. The matrix pins it (PR #284,
+  `embedded-28`), the recipe-9 pin stays for existing locks, and candidate
+  7 is cut on that pin alone, so every regenerated lock reaches the
+  console on the published base. The published-base gate before the
+  final tag is met by this candidate. A project's own constraint on its
+  base is D-0015, proposed for V1, not for 0.3.0.
 - **Stopping points where the owner is consulted:** before each candidate
   tag; before the image-cleanup implementation; when a slice proves larger
   than the cycle tolerates; before the final tag. Scope changes go by the
@@ -516,6 +525,25 @@ How the candidate was prepared:
   the web console session mypy clean with 357 tests passed, 31 of them
   the new contract; the documentation contract 189 pages, passed.
 - Not in rc6: the diagnostics snapshot, image cleanup, C20; the gaps the
+  candidate-5 changelog lists under *Not in candidate 5*.
+
+### RC7 — in preparation, 2026-10-25
+
+- Tag `v0.3.0-rc7` on the release branch's tip after the pre-candidate
+  merge (PR from the throwaway copy `4PR-8-release-0.3.0`, the owner's).
+- Carries, beyond rc6: the published recipe-11 base pinned in the matrix
+  (PR #284, `dedb485`): `v0.3.0-rc6`, `ubuntu-24.04@11`, digest
+  `8c97d308…`, newest pin of the family; matrix `embedded-28`; the golden
+  locks and this repository's lock regenerated onto it; the lock's base
+  table records the recipe's source path so consent links it; the
+  recipe-9 pin kept, with a test that its locks still resolve.
+- The release branch's tip after the owner's merge of PR #284 is
+  `349b3ad`, whose tree is the reviewed `dedb485` plus the status entry.
+  Full gate on it from a separate worktree: mypy clean over 246 files,
+  2282 unit tests passed, 36 deselected, 2 xfailed, packaging integration
+  17 passed, the web console session mypy clean over 9 files with 357
+  tests passed; the documentation contract 189 pages, passed.
+- Not in rc7: the diagnostics snapshot, image cleanup, C20; the gaps the
   candidate-5 changelog lists under *Not in candidate 5*.
 
 ## Release Notes Preparation
