@@ -284,6 +284,19 @@ begin the rewrite until project-management assigns it.
 
 ## Current State
 
+**2026-10-25: rc6 tagged, published and verified.** The owner merged
+PR #282 at `b64187f`; `2ed8ecf` is an ancestor of `main`; `v0.3.0-rc6` on
+`2ed8ecf`, the candidate gate `mainline` with no unintegrated commits from
+a detached checkout, record at `/opt/devcapsule-gate/rc6-release-protocol.json`;
+pushed; backend run 40162886659 passed; the prerelease is public with its
+three assets; the download under `~/.cache/devcapsule-releases/v0.3.0-rc6`
+verifies, SHA-256 `6cef940e…`, `devcapsule version` reporting `0.3.0rc6`
+at `2ed8ecf`. The overview's rc6 entry and the changelog's candidate-6
+line are written. Next, the owner's: test the download, the console's
+configuration page first; then the diagnostics snapshot, image cleanup
+and C20 for the next candidate; the documentation language review before
+the final tag.
+
 **2026-10-25: rc5 regression repaired; rc6 in preparation.** The owner's
 test of the rc5 download found the console's configuration page failing:
 `/api/configuration` ran `config list`, retired by candidate 5, status 2.

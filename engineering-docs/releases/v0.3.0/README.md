@@ -1,6 +1,6 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-25. Stage: **candidate 6 in preparation: candidate 5 with the console's configuration page repaired; the pre-candidate merge into `main` is the owner's; then the diagnostics snapshot, image cleanup and C20**.
+Updated: 2026-10-25. Stage: **candidate 6 published and verified as downloaded; candidate 5 with the console's configuration page repaired; the owner's test on the download next, then the diagnostics snapshot, image cleanup and C20**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Changelog since 0.2.15](changelog.md) ·
@@ -477,10 +477,30 @@ How the candidate was prepared:
 - Not in rc5: the diagnostics snapshot, image cleanup, C20; the gaps the
   candidate-5 changelog lists under *Not in candidate 5*.
 
-### RC6 — in preparation, 2026-10-25
+### RC6 — tagged 2026-10-25
 
-- Tag `v0.3.0-rc6` on the release branch's tip after the pre-candidate
-  merge (PR from the throwaway copy `4PR-7-release-0.3.0`, the owner's).
+- Tag `v0.3.0-rc6` on `2ed8ecf536b0d653056ac35792cae413a6d6732a`, the release
+  branch's tip at the pre-candidate merge (PR #282 from the throwaway copy
+  `4PR-7-release-0.3.0`, merged by the owner at `b64187f`).
+- Candidate gate from a detached checkout of the tag before the push:
+  method `mainline`, no unintegrated commits, version `0.3.0rc6`; record at
+  `/opt/devcapsule-gate/rc6-release-protocol.json`.
+- Backend run [40162886659](https://github.com/ccozianu/devcapsule/actions/runs/40162886659)
+  passed; the [prerelease](https://github.com/ccozianu/devcapsule/releases/tag/v0.3.0-rc6)
+  is public, non-draft, with the three assets.
+- Downloaded over HTTPS into `/home/devcapsule/.cache/devcapsule-releases/v0.3.0-rc6`:
+  the checksum file verifies the executable, SHA-256
+  `6cef940ec86c4b45fc89bb265aeb2c3750155dcb7c0fec50ad8a1fe8e658de75`; the
+  manifest records the tag, the branch, the source revision and the
+  `mainline` disposition; `devcapsule version` from an empty directory
+  reports `0.3.0rc6`, build `v0.3.0-rc6`, at `2ed8ecf…`.
+- Next: the owner's test of the download, the console's configuration
+  page first, then the model's commands; then the diagnostics snapshot,
+  image cleanup and C20 for the next candidate; the documentation
+  language review before the final tag.
+
+How the candidate was prepared:
+
 - Carries, beyond rc5: the console's configuration page and the
   in-capsule hints calling `config show` (PR #281, `cd128bb`), and the
   console's test session installing the launcher with contract tests
@@ -489,7 +509,8 @@ How the candidate was prepared:
   deferred and secure sets agree with the launcher's; the channel
   document lists the verbs.
 - The release branch's tip after the owner's merge of PR #281 is
-  `5daf5a2`, whose tree is the reviewed `ed01b4d`. Full gate on it from a
+  `5daf5a2`, whose tree is the reviewed `ed01b4d`; `2ed8ecf`, the
+  preparation record, is the tagged tip. Full gate on `5daf5a2` from a
   separate worktree: mypy clean over 246 files, 2281 unit tests passed,
   36 deselected, 1 xfailed, 1 xpassed, packaging integration 17 passed,
   the web console session mypy clean with 357 tests passed, 31 of them
