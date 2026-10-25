@@ -1,75 +1,84 @@
 ---
 description: Which choices belong to the project and travel in Git, which are yours and stay on your computer, which are your computer's, and what happens when the project changes.
 weight: 2
-updated: 2026-10-24
+updated: 2026-10-25
 ---
 # Project versus personal
 
-Three kinds of decision shape a capsule, and they live in three places.
+The project, your checkout and your workstation each hold part of the
+configuration. [Configuration](index.md) introduces these three records.
 
-## The project's, in Git
+## The project, in Git
 
-`.devcapsule/devcapsule.toml` is the **manifest**: what the project
-requires and offers, the environment inputs it needs, and what it
-recommends, with the reasons. Beside it the **platform lock** pins the
-exact component versions and the base image that satisfy them. Both are
-committed. [Capabilities and personal choices](capabilities.md) explains
-the owner's commands: `config require`, `offer`, `drop` and `recommend`.
+The **manifest**, `.devcapsule/devcapsule.toml`, declares required and offered
+capabilities, environment inputs, and recommendations. A requirement can
+include a minimum, such as `java>=21`. A resolution recommendation names the
+component that should provide a capability. The **platform lock** pins the
+base image and resolved component versions. Commit both files.
+[Capabilities](capabilities.md) describes `require`, `offer`, `drop` and
+`recommend`.
 
-## Yours, on your computer
+## Your checkout, on your computer
 
-Your **checkout record** holds your IDE, your agents, the offered tools you
-omitted, the host access you allowed or denied, the values you set, the
-directories you bound and the secrets you bound. Beside it, private files
-hold your saved Docker arguments and environment variables, and
-DevCapsule-managed directories hold the capsule's persistent home, the IDE's
-settings and plugins, and each agent's sign-in. None of this is in the
-repository, and none of it is shared with another checkout of the same
-project by default. Explicit directory bindings can share storage.
+The **checkout record** holds your IDE, added capabilities, omissions,
+provider choices and local component pins. It also holds host-access answers,
+values, directory bindings and secret bindings. These choices do not travel
+in Git or apply to another checkout by default.
+
+`config ide` chooses the IDE capability. Its component owns the container's
+lifetime and can use the display. `config add` adds a capability, including
+a coding agent. `config omit` leaves out an offer or removes your addition.
+`config use` chooses a provider when alternatives exist.
+
+Private files hold your saved Docker arguments and environment variables.
+Managed directories hold the capsule's home, IDE settings and component
+sign-ins. Explicit directory bindings can share storage between checkouts.
 [What persists](../sessions/what-persists.md) lists the directories.
 
-A **recommendation** is the bridge. An ordinary recommendation, the IDE, a
-memory limit, a CPU count, applies unless you choose otherwise, and `config
-show` says so in its `SOURCE` column. A host-access recommendation is a
-question: `run` asks it at your terminal with the project's reason and
-DevCapsule's own description of the exposure. You can allow it once,
-record an allowance or denial, or defer it.
-`config set NAME default` forgets a value and follows the recommendation again.
-`config forget NAME` removes an access decision, so a recommendation can ask again.
+A project recommendation supplies a default when you have no local choice.
+`config show` names that source. `config use CAPABILITY default` removes a
+provider choice. `config set NAME default` removes a value override.
 
-## Your computer's
+A host-access recommendation asks for your decision. `run` shows the project's
+reason and the access it would grant. You can allow it once, save an allowance
+or denial, or defer it. `config forget NAME` removes your saved answer.
 
-Two records belong to the workstation, for every project on it. `config
-default memory 8GiB` and `config default cpus 4` set the limits every
-capsule here gets unless a project recommends or a checkout sets another.
-These defaults live in `$XDG_CONFIG_HOME/devcapsule/workstation.toml`,
-normally `~/.config/devcapsule/workstation.toml`.
-The **trust record** holds the vendors and channels you accepted once, for
-every project and version, as [Vendor software and trust](software-approvals.md)
-describes.
+## Your workstation
 
-## When the project changes
+Workstation records apply to every project under your user account.
+`config default memory 8GiB` and `config default cpus 4` set resource defaults.
+A project recommendation or checkout value overrides those defaults.
+The file is `$XDG_CONFIG_HOME/devcapsule/workstation.toml`, normally
+`~/.config/devcapsule/workstation.toml`.
 
-A project that changes its manifest or lock changes what the next launch
-derives. `devcapsule project run` derives the plan every time, from the
-project, your computer and your checkout, and asks only what nobody else can
-answer: an IDE you never chose, an input the project requires, a channel you
-have not trusted, a host access the project recommends and you never
-answered. Without a terminal, a missing required answer stops the review
-with status 3 before it saves answers. The message names each blocking
-decision and its flag or command. Unanswered host recommendations use their
-secure defaults instead. To inspect first:
+The **trust record** holds accepted vendor channels. A coding-agent capability
+uses the same acquisition rules as other capabilities. Its component owns
+its terms, consent, sign-in and persistent directories.
+[Vendor software and trust](software-approvals.md) explains channel acceptance.
 
-```bash
-~/.local/bin/devcapsule project config show
-~/.local/bin/devcapsule project config check
+## Changes at the next launch
+
+`devcapsule project run` derives a launch from all three records each time.
+The launcher asks for missing required decisions, including an IDE, an
+application input or software consent. Without a terminal, these decisions
+stop launch with status 3 before answers are saved. The message names each
+blocking decision and its command. Unanswered host-access recommendations
+use secure defaults.
+
+Inspect the next launch without downloading software or contacting Docker:
+
+```sh
+devcapsule project config show
+devcapsule project config check
 ```
 
-`show` prints every choice with the value the next launch uses, its source
-and what is pending; `check` exits 3 when something is. A host answer you
-recorded under an earlier recommendation is kept, never asked again; `show`
-says what changed beside it. Installing a newer DevCapsule changes none of
-this: your lock and your choices stay until you change them.
+`show` prints effective choices, providers, sources and pending decisions.
+`check` returns status 3 for pending decisions, including unanswered host
+recommendations. A saved host answer remains in force when its recommendation
+changes. The listing reports the difference.
+
+A required capability must remain present and meet its minimum. Your checkout
+cannot waive it. A launcher upgrade keeps the lock and your saved choices.
 
 ## Saved Docker arguments
 
@@ -143,9 +152,12 @@ It also shows later requests and their results; these do not update the snapshot
 Inside the capsule, `devcapsule project config show` reports the same view.
 
 The launcher validates console requests with the corresponding CLI command.
-It can record IDE and agent choices, tool omissions, values, environment
-variables with a literal value, denials and removed bindings.
+It can record IDE choices, values, environment variables with a literal
+value, denials and removed bindings.
 It can also withdraw workstation trust or clear saved Docker arguments.
+The console accepts `add`, `omit`, `restore` and `use` for capability choices.
+The launcher applies valid requests to the next launch. Adding a vendor
+capability leaves its consent decision for that launch.
 
 Authorization grants, trust acceptance, bindings, replacement Docker
 arguments, forgotten answers and host-variable bindings need confirmation

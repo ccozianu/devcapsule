@@ -97,9 +97,9 @@ def test_preamble_keeps_comment_whitespace_and_unicode_line_separators() -> None
 
 
 def test_capability_table_says_only_what_is_so() -> None:
-    policy = CapabilityPolicy(("node", "python"), (), (("python", 3),), layered=True)
+    policy = CapabilityPolicy(("node", "python"), (), (("python", "3"),), layered=True)
     assert capability_table(policy, {"node": "", "python": "the backend", "gone": "dropped"}) == {
-        "required": ["node", "python"], "sdk-major": {"python": 3}, "reasons": {"python": "the backend"},
+        "required": ["node", "python>=3"], "reasons": {"python": "the backend"},
     }
     assert capability_table(CapabilityPolicy(("node",), layered=True)) == {"required": ["node"]}
 

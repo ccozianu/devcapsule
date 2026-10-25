@@ -1,12 +1,12 @@
 """Capability policy values. Parsing does not depend on the installed catalog.
 
-The project owns required/optional intent and SDK majors. The developer owns
+The project owns required/optional intent and minimum versions. The developer owns
 extra selections and omissions. Unknown optional names remain ordinary data;
 only a consumer decides which of them it can supply.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Mapping
 
 from .file_formats import ProjectConfigurationError, table
@@ -27,71 +27,110 @@ def names(value: object, label: str) -> tuple[str, ...]:
     return tuple(sorted(set(value)))
 
 
+def provider_choices(value: Mapping[str, Any], label: str) -> dict[str, str]:
+    """Read a capability-to-component table without consulting the catalog."""
+    if any(not isinstance(key, str) or not key or key.strip() != key or "\x00" in key
+           or not isinstance(item, str) or not item or item.strip() != item or "\x00" in item
+           for key, item in value.items()):
+        raise ProjectConfigurationError(f"{label} must map capability names to component names.")
+    return dict(value)
+
+
+def resolution_recommendations(manifest: Mapping[str, Any]) -> dict[str, str]:
+    return provider_choices(table(manifest, "capabilities", "resolution"), "capabilities.resolution")
+
+
+def version_parts(value: str) -> tuple[int, ...]:
+    """Dotted integers, with an optional v prefix and numeric build suffix.
+
+    Missing trailing segments compare as zero. Prereleases and nonnumeric
+    segments are unsupported; no ecosystem-specific ordering is inferred.
+    """
+    import re
+    if not isinstance(value, str) or re.fullmatch(r"v?[0-9]+(?:\.[0-9]+)*(?:\+[0-9]+(?:\.[0-9]+)*)?", value) is None:
+        raise ProjectConfigurationError(
+            f"Unsupported version form {value!r}; use dotted integers, optionally prefixed by v "
+            "or followed by +build integers. Prereleases and non-numeric segments are unsupported."
+        )
+    parts = tuple(int(part) for part in value.removeprefix("v").split("+", 1)[0].split("."))
+    while len(parts) > 1 and parts[-1] == 0:
+        parts = parts[:-1]
+    return parts
+
+
+def meets_minimum(version: str | None, minimum: str) -> bool:
+    return version is not None and version_parts(version) >= version_parts(minimum)
+
+
+def requirement(value: str) -> tuple[str, str | None]:
+    """Parse one requirement; the only relation is >= and spaces are not syntax."""
+    name, relation, minimum = value.partition(">=")
+    if not name or any(character in name for character in "<>=!~ \t\r\n"):
+        raise ProjectConfigurationError(f"Unsupported requirement form {value!r}; use NAME or NAME>=VERSION.")
+    if relation:
+        version_parts(minimum)
+    return name, minimum if relation else None
+
+
+# One compatibility reader owns the obsolete field. Writers use its filter
+# without learning the retired vocabulary again.
+RETIRED_CAPABILITY_FIELD = "sdk-major"
+
+
+def current_capability_fields(value: Mapping[str, Any]) -> dict[str, Any]:
+    return {key: item for key, item in value.items() if key != RETIRED_CAPABILITY_FIELD}
+
+
+def capability_notes(manifest: Mapping[str, Any]) -> tuple[str, ...]:
+    if RETIRED_CAPABILITY_FIELD in table(manifest, "capabilities"):
+        return ("The SDK major constraint was removed by the capabilities and components change; "
+                "its old table is ignored and the next owner write drops it.",)
+    return ()
+
+
 @dataclass(frozen=True)
 class CapabilityPolicy:
-    """The development capabilities a project asks every checkout to provide.
+    """Shared capability names and optional minimums, independent of the catalog.
 
-    These are shared requirements from the manifest's ``[capabilities]``
-    table. Personal IDE/agent choices belong to LocalCapabilities.
-
-    Attributes:
-        required: Capability names that must be supplied before launch, such
-            as ``("python",)``. Names identify functionality, not component
-            packages: ``"python-ide"``, for example, is supplied by PyCharm.
-        optional: Desired enhancements, such as ``("browser-automation",)``.
-            A reader may omit unavailable enhancements with a warning.
-            No name may also appear in ``required``.
-        sdk_major: Exact SDK major-version constraints, stored as sorted
-            ``(capability_name, major_version)`` pairs. ``(("python", 3),)``
-            requires Python 3; minor/patch versions come from the lock.
-            Each name must be required and each major a positive integer.
-            An empty tuple imposes no major-version constraints.
-        layered: True when read from ``capabilities.required``; False when
-            read from legacy ``capabilities.need``. This selects compatibility
-            behavior when consuming old locks; it is not a TOML field.
-
-    Use ``read(manifest)`` for external data. Direct construction assumes
-    valid, normalized fields: names and SDK pairs are sorted and unique.
-    This value describes intent; lock selection checks whether it can be met.
+    Required names must be supplied; optional names may be omitted. Minimums
+    are sorted (name, version) pairs from NAME>=VERSION requirements, never
+    a separate manifest table. Layered distinguishes required from legacy need.
+    Direct construction requires normalized, unique names and minimums.
     """
     required: tuple[str, ...]
     optional: tuple[str, ...] = ()
-    sdk_major: tuple[tuple[str, int], ...] = ()
+    minimums: tuple[tuple[str, str], ...] = ()
     layered: bool = False
 
     @classmethod
     def read(cls, manifest: Mapping[str, Any]) -> CapabilityPolicy:
-        """Read the capabilities table from a full decoded manifest.
-
-        Normalize name lists and validate the field rules above, raising
-        ProjectConfigurationError for malformed or conflicting declarations.
-        Leave the input unchanged and accept unknown capability names;
-        catalog support is checked later.
-        """
         value = table(manifest, "capabilities")
         layered = "required" in value
         if layered and "need" in value:
             raise ProjectConfigurationError("Use capabilities.required or legacy capabilities.need, not both.")
         key = "required" if layered else "need"
-        required = names(value.get(key), f"capabilities.{key}")
+        required: dict[str, str | None] = {}
+        for item in names(value.get(key), f"capabilities.{key}"):
+            name, minimum = requirement(item)
+            if name in required and required[name] != minimum:
+                raise ProjectConfigurationError(f"Conflicting requirements for {name!r}; declare one minimum.")
+            required[name] = minimum
         optional = names(value.get("optional", []), "capabilities.optional")
+        for item in optional:
+            if requirement(item)[1] is not None:
+                raise ProjectConfigurationError("A minimum belongs on a required capability, not an optional one.")
         overlap = set(required) & set(optional)
         if overlap:
             raise ProjectConfigurationError(f"Capabilities cannot be both required and optional: {', '.join(sorted(overlap))}.")
-        majors = table(value, "sdk-major")
-        for capability, major in majors.items():
-            if capability not in required or type(major) is not int or major < 1:
-                raise ProjectConfigurationError("Each capabilities.sdk-major entry must name a required capability and a positive integer major.")
-        return cls(required, optional, tuple(sorted(majors.items())), layered)
+        return cls(tuple(sorted(required)), optional,
+                   tuple(sorted((name, minimum) for name, minimum in required.items() if minimum is not None)), layered)
+
+    def requirements(self) -> tuple[str, ...]:
+        minimums = dict(self.minimums)
+        return tuple(f"{name}>={minimums[name]}" if name in minimums else name for name in self.required)
 
     def document(self) -> dict[str, Any]:
-        """Return a fresh ``[capabilities]`` table using the ``required`` form.
-
-        The result contains only this policy's fields, not the whole manifest
-        or unrecognized fields from the input. Legacy ``need`` is not emitted.
-        """
-        return {"required": list(self.required), "optional": list(self.optional),
-                "sdk-major": dict(self.sdk_major)}
+        return {"required": list(self.requirements()), "optional": list(self.optional)}
 
 
 @dataclass(frozen=True)
@@ -104,6 +143,10 @@ class LocalCapabilities:
     to skip, such as ``("browser-automation",)``; it cannot waive a required
     capability or a dependency needed by another selected capability.
 
+    ``providers`` stores explicit component choices by capability. Missing
+    entries follow the project resolution or the catalog; the table selects
+    no capability and grants no acquisition permission.
+
     Both tuples are sorted and unique, with no name in both. Use
     ``read(checkout)`` then ``validate(policy)`` for external data; direct
     construction assumes these invariants. Version pins remain in the
@@ -111,6 +154,7 @@ class LocalCapabilities:
     """
     selected: tuple[str, ...] = ()
     without: tuple[str, ...] = ()
+    providers: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def read(cls, checkout: Mapping[str, Any]) -> LocalCapabilities:
@@ -122,7 +166,7 @@ class LocalCapabilities:
         checking catalog support belong to lock selection, not this method.
         """
         value = table(checkout, "capabilities")
-        if set(value) - {"selected", "without", "lock"}:
+        if set(value) - {"selected", "without", "lock", "providers"}:
             raise ProjectConfigurationError("Unsupported local capability fields; left intact.")
         selected = names(value.get("selected", []), "local capabilities.selected")
         without = names(value.get("without", []), "local capabilities.without")
@@ -130,7 +174,7 @@ class LocalCapabilities:
             raise ProjectConfigurationError("A local capability cannot be both selected and omitted.")
         if "lock" in value and not isinstance(value["lock"], str):
             raise ProjectConfigurationError("Local capabilities.lock must contain a TOML lock.")
-        return cls(selected, without)
+        return cls(selected, without, provider_choices(table(value, "providers"), "local capabilities.providers"))
 
     def validate(self, policy: CapabilityPolicy) -> None:
         """Raise ProjectConfigurationError if an omission is not project-optional.

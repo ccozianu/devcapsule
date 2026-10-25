@@ -339,7 +339,7 @@ def recommendation_lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Pa
     other project input changed. Drift between the manifest and a checkout's
     generated resolution belongs to the resolution layer
     (``fresh_resolved_project``), whose source digests name exactly what
-    drifted and whose remedy — ``devcapsule project config resolve`` — actually
+    drifted and whose remedy — ``devcapsule project run`` — actually
     reconciles it. See "The Lock Is A Record, Not A Mandate" in
     ``engineering-docs/design-notes/devcapsule/v1-user-experience.md``.
 
@@ -369,7 +369,7 @@ def recommendation_lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Pa
     # Every public consumer gets the same unambiguous vocabulary.
     from .capabilities import CapabilityPolicy
     policy = CapabilityPolicy.read(manifest)
-    if not policy.layered and not policy.optional and not policy.sdk_major:
+    if not policy.layered and not policy.optional and not policy.minimums:
         build_node_registry(manifest, value)
     return path, value
 

@@ -116,8 +116,8 @@ def _refuse_ambiguous(arguments: list[str]) -> None:
         raise ProjectConfigurationError(
             f"Saved Docker argument {start + 1} may be an environment option or the value of argument {start}; "
             "the environment commands cannot tell which. Replace the complete list with "
-            "'devcapsule project config set-extra-docker-args -- ...', placing environment options "
-            "first or after a value; 'list-extra-docker-args' shows the saved tokens with values masked."
+            "'devcapsule project config docker-args set -- ...', placing environment options "
+            "first or after a value; 'config docker-args list' shows the saved tokens with values masked."
         )
 
 

@@ -5,6 +5,8 @@ Codex adapter. Launch assertions inspect independently built formation labels.
 """
 from __future__ import annotations
 
+from tests.launch_preparation import run_until_prepared
+
 import base64
 from copy import deepcopy
 import hashlib
@@ -144,7 +146,7 @@ def journey(tmp_path, monkeypatch, request):
     if licensed:
         assert invoke(root, "config", "authorize", "widget-acquisition", "true") == 0
     assert invoke(root, "config", "authorize", "host-x11", "false") == 0
-    assert invoke(root, "config", "resolve") == 0
+    assert run_until_prepared(root) == 0
     selected = ExecutionConfiguration.load(root).project
     runtime = tmp_path / "runtime.pex"
     runtime.write_bytes(b"fixture-runtime")
@@ -201,7 +203,7 @@ def launched_version(state):
 def test_upgrade_failure_rollback_and_repeated_recovery_use_real_launch(journey, capsys):
     s = journey
     assert invoke(s.root, "config", "authorize", "docker-daemon", "host-socket") == 0
-    assert invoke(s.root, "config", "resolve") == 0
+    assert run_until_prepared(s.root) == 0
     assert invoke(s.root, "run") == 0
     a = s.launched[-1][1]
     preview_select(s, capsys)
@@ -371,7 +373,7 @@ def test_committed_activation_recovery_and_personal_state_survive(journey, capsy
     work = s.root / "work.txt"
     work.write_text("user work")
     assert invoke(s.root, "state", "adopt", "home", "--from", home) == 0
-    assert invoke(s.root, "config", "resolve") == 0
+    assert run_until_prepared(s.root) == 0
     assert invoke(s.root, "run") == 0
     identity = preview_select(s, capsys, select=False)
     import devcapsule.configuration.storage as storage
@@ -404,7 +406,7 @@ def test_local_base_rollback_uses_recorded_identity_after_tag_moves(journey, cap
     monkeypatch.setattr("devcapsule.commands.project.required_local_image", s.images.__getitem__)
     monkeypatch.setattr("devcapsule.configuration.operations.required_local_image", s.images.__getitem__)
     assert invoke(s.root, "config", "authorize", "base-image", old.reference) == 0
-    assert invoke(s.root, "config", "resolve") == 0
+    assert run_until_prepared(s.root) == 0
     assert invoke(s.root, "run") == 0
     preview_select(s, capsys)
     s.images[old.reference] = replace(old, identity="sha256:" + "c" * 64)
@@ -864,7 +866,7 @@ def test_runtime_json_reports_running_and_next_launch_sets(journey, monkeypatch,
     assert document["next-launch"]["components"][s.component] == "2.0.0"
     assert document["selection-changed"] is True
     # The configuration listing is the mounted record, without the selection.
-    assert invoke(runtime_root, "config", "list", "--json") == 0
+    assert invoke(runtime_root, "config", "show", "--json") == 0
     listing = json.loads(capsys.readouterr().out)
     assert listing["schema-version"] == 1
     assert listing["context"] == "running capsule (next launch, read-only)"
@@ -876,7 +878,7 @@ def test_runtime_json_reports_running_and_next_launch_sets(journey, monkeypatch,
     assert listing["checkout"]["record"]["checkout"]["path"] == str(s.root)
     assert "rows" not in listing
     assert listing["launcher-command"].endswith("config list") and str(s.root) in listing["launcher-command"]
-    assert invoke(runtime_root, "config", "list") == 0
+    assert invoke(runtime_root, "config", "show") == 0
     text = capsys.readouterr().out
     record_text = text.split("\n\n", 1)[1].split("\nTo change configuration", 1)[0]
     assert tomllib.loads(record_text) == listing["checkout"]["record"]
@@ -965,13 +967,13 @@ def test_runtime_inspection_from_anywhere_selects_the_capsule_project(journey, m
     outside.mkdir()
     monkeypatch.chdir(outside)
     capsys.readouterr()
-    for command in (["config", "list"], ["config", "show"], ["versions", "show"]):
+    for command in (["config", "show"], ["config", "show"], ["versions", "show"]):
         assert cli.main(["project", *command]) == 0, command
         out = capsys.readouterr().out
         assert ("Runtime context" in out) or ("Running session" in out), command
         assert str(s.root) in out  # the launcher remedy names the host checkout
     # An explicit unrelated path must not silently select the hosting capsule.
-    assert invoke(outside, "config", "list") == 2
+    assert invoke(outside, "config", "show") == 2
     assert "No .devcapsule/devcapsule.toml" in capsys.readouterr().err
     assert (s.record.read_bytes(), s.resolution.read_bytes()) == before
     assert not (tmp_path / "empty-runtime-config").exists()  # inspection wrote nothing
@@ -980,13 +982,13 @@ def test_runtime_inspection_from_anywhere_selects_the_capsule_project(journey, m
     nested = runtime_root / "nested"
     shutil.copytree(s.root, nested)
     monkeypatch.chdir(nested)
-    assert cli.main(["project", "config", "list"]) == 0
+    assert cli.main(["project", "config", "show"]) == 0
     assert "Runtime context" not in capsys.readouterr().out
     assert (s.record.read_bytes(), s.resolution.read_bytes()) == before
     # An older capsule without the mounted context is diagnosed, not guessed.
     context.unlink()
     monkeypatch.chdir(outside)
-    assert cli.main(["project", "config", "list"]) == 2
+    assert cli.main(["project", "config", "show"]) == 2
     assert "no launcher configuration mount" in capsys.readouterr().err
 
 
@@ -1044,7 +1046,7 @@ def test_runtime_init_acts_where_it_is_invoked(journey, monkeypatch, tmp_path):
     assert selected("init").capsule_root is None
     assert selected("list").capsule_root is None
     assert selected("recursive-e2e", "preflight").capsule_root is None
-    assert selected("config", "list").capsule_root == runtime_root
+    assert selected("config", "show").capsule_root == runtime_root
     assert selected("info").capsule_root == runtime_root
     assert selected("config").capsule_root is None  # a bare group prints help
 
@@ -1052,10 +1054,10 @@ def test_runtime_init_acts_where_it_is_invoked(journey, monkeypatch, tmp_path):
 @pytest.mark.parametrize("operation", [
     ("versions", "check"), ("versions", "preview", "codex", "latest"),
     ("versions", "select", "a" * 64), ("versions", "rollback"),
-    ("config", "resolve"), ("config", "authorize", "host-x11", "true"),
+    ("run",), ("config", "authorize", "host-x11", "true"),
     ("config", "set", "anything", "value"), ("init", "--regenerate"), ("run",),
-    ("config", "set-extra-docker-args", "--", "--gpus", "all"), ("config", "list-extra-docker-args"), ("config", "remove-extra-docker-args"),
-    ("config", "set-env", "APP_SECRET", "value"), ("config", "unset-env", "APP_SECRET"), ("config", "list-env"),
+    ("config", "docker-args", "set", "--", "--gpus", "all"), ("config", "docker-args", "list"), ("config", "docker-args", "clear"),
+    ("config", "env", "set", "APP_SECRET", "value"), ("config", "env", "unset", "APP_SECRET"), ("config", "env", "list"),
 ])
 @pytest.mark.parametrize("journey", ["codex"], indirect=True)
 def test_runtime_commands_requiring_launcher_are_refused_before_effects(journey, monkeypatch, capsys, tmp_path, operation):
@@ -1079,7 +1081,7 @@ def test_runtime_config_list_is_read_only_and_does_not_assess_host_paths(journey
     checkout.setdefault("configuration", {})["bindings"] = {"host-directory": {"home": "/only/on/the/host"}}
     s.record.write_text(render_toml(checkout))
     before = s.record.read_bytes(), s.resolution.read_bytes()
-    assert invoke(runtime_root, "config", "list") == 0
+    assert invoke(runtime_root, "config", "show") == 0
     out = capsys.readouterr().out
     assert "/only/on/the/host" in out
     assert "recorded choices" in out and "not an existing directory" not in out
@@ -1098,7 +1100,7 @@ def test_runtime_never_repairs_activation_and_keeps_running_snapshot(journey, mo
     assert snapshot["running"]["identity"] in out
     assert "Next-launch selection unavailable" in out and "never repairs host records" in out
     assert (s.record.read_bytes(), s.resolution.read_bytes(), journal.read_bytes()) == before
-    assert invoke(runtime_root, "config", "list") == 2
+    assert invoke(runtime_root, "config", "show") == 2
     assert journal.exists()
 
 
@@ -1140,7 +1142,7 @@ def test_runtime_rejects_invalid_checkout_name(journey, monkeypatch, capsys, tmp
     snapshot["checkout-name"] = invalid_name
     context_path.write_text(json.dumps(snapshot))
     capsys.readouterr()
-    assert invoke(runtime_root, "config", "list", "--json") == 2
+    assert invoke(runtime_root, "config", "show", "--json") == 2
     captured = capsys.readouterr()
     assert captured.out == ""
     assert "Cannot read runtime launch context: invalid checkout name. Relaunch with the updated launcher." in captured.err
@@ -1175,7 +1177,7 @@ def test_runtime_uses_exact_named_record_and_lists_its_identity(journey, monkeyp
     mounted = tmp_path / "mounted-checkout"
     shutil.copytree(named.parent, mounted)
     monkeypatch.setattr(runtime_configuration, "CONFIGURATION_PATH", mounted)
-    assert invoke(runtime_root, "config", "list", "--json") == 0
+    assert invoke(runtime_root, "config", "show", "--json") == 0
     listing = json.loads(capsys.readouterr().out)
     assert listing["checkout"]["name"] == name
     assert listing["checkout"]["record"]["checkout"]["path"] == str(s.root)
@@ -1194,7 +1196,7 @@ def test_runtime_uses_exact_named_record_and_lists_its_identity(journey, monkeyp
                 legacy.pop("checkout-name")
             context_path.write_text(json.dumps(legacy))
             expected = "default" if name == "devcapsule" and not has_name else name
-            for command in (("info",), ("config", "list")):
+            for command in (("info",), ("config", "show")):
                 assert invoke(runtime_root, *command, "--json") == 0
                 assert json.loads(capsys.readouterr().out)["checkout"]["name"] == expected
             assert invoke(runtime_root, "info") == 0
@@ -1213,7 +1215,7 @@ def test_version_selection_keeps_an_omitted_optional_pin_for_later_restoration(j
     playwright = tomllib.loads(MATRICES[Platform.current()].resolve(["python", "browser-automation"], project_only=True).render_lock())["components"]["playwright"]
     lock["components"]["playwright"] = dict(playwright, version="fixture-shared-pin")
     journey.lock.write_text(render_toml(lock))
-    assert invoke(journey.root, "config", "capabilities", "--without", "browser-automation") == 0
+    assert invoke(journey.root, "config", "omit", "browser-automation") == 0
     assert "playwright" not in lock_for(journey.root, manifest)[1]["components"]
     def host_decisions():  # base-image is formation trust, renewed by an explicit selection
         return {name: value for name, value in load_toml(journey.record)["authorization"].items() if name != "base-image"}
@@ -1223,7 +1225,7 @@ def test_version_selection_keeps_an_omitted_optional_pin_for_later_restoration(j
     assert selected is not None
     assert selected["components"]["playwright"]["version"] == "fixture-shared-pin"  # the omission is a run-time filter, not a loss
     assert selected["components"]["codex"]["version"] == "2.0.0"
-    assert invoke(journey.root, "config", "capabilities", "--without") == 0
+    assert invoke(journey.root, "config", "restore", "browser-automation") == 0
     effective = lock_for(journey.root, manifest)[1]
     assert effective["components"]["playwright"]["version"] == "fixture-shared-pin"
     assert effective["components"]["codex"]["version"] == "2.0.0"
@@ -1241,7 +1243,7 @@ def omit_shared_optional(journey, capability, component):
     extra = tomllib.loads(MATRICES[Platform.current()].resolve(["python", capability], project_only=True).render_lock())
     lock["components"][component] = extra["components"][component]
     journey.lock.write_text(render_toml(lock))
-    assert invoke(journey.root, "config", "capabilities", "--without", capability) == 0
+    assert invoke(journey.root, "config", "omit", capability) == 0
 
 
 @pytest.mark.parametrize("journey", ["codex"], indirect=True)
@@ -1260,9 +1262,9 @@ def test_select_ignores_an_omitted_acquisition(journey, capsys):
 def test_select_keeps_retained_consent_inactive_for_an_omitted_acquisition(journey, capsys):
     from devcapsule.configuration.storage import load_toml
     omit_shared_optional(journey, "antigravity-agent", "antigravity-cli")
-    assert invoke(journey.root, "config", "capabilities", "--without") == 0
+    assert invoke(journey.root, "config", "restore", "antigravity-agent") == 0
     assert invoke(journey.root, "config", "authorize", "antigravity-download", "true") == 0
-    assert invoke(journey.root, "config", "capabilities", "--without", "antigravity-agent") == 0
+    assert invoke(journey.root, "config", "omit", "antigravity-agent") == 0
     consent = load_toml(journey.record)["authorization"]["antigravity-download"]
     preview_select(journey, capsys)
     assert load_toml(journey.record)["authorization"]["antigravity-download"] == consent

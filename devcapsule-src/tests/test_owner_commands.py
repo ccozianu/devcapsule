@@ -45,7 +45,7 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
     root = tmp_path / "project"
     root.mkdir()
-    assert cli.main(["project", "--path", str(root), "init", "--require", "python=3", "--creator", "mailto:owner@example.test"]) == 0
+    assert cli.main(["project", "--path", str(root), "init", "--require", "python", "--creator", "mailto:owner@example.test"]) == 0
     return root
 
 
@@ -54,13 +54,13 @@ def manifest_text(root: Path) -> str:
 
 
 def test_require_tool_adds_regenerates_the_lock_and_writes_schema_two(project: Path, capsys) -> None:
-    assert cli.main(["project", "--path", str(project), "config", "require", "tool", "node", "postgresql-client",
+    assert cli.main(["project", "--path", str(project), "config", "require", "node", "postgresql-client",
                      "--because", "the API and its database"]) == 0
     out = capsys.readouterr().out
-    assert "Required node, postgresql-client" in out and "Required: node postgresql-client python" in out
+    assert "Required node, postgresql-client" in out and "Required: python node postgresql-client" in out
     manifest = load_toml(paths(project)[0])
     assert manifest["devcapsule-schema-version"] == 2
-    assert manifest["capabilities"] == {"required": ["node", "postgresql-client", "python"], "sdk-major": {"python": 3},
+    assert manifest["capabilities"] == {"required": ["python", "node", "postgresql-client"],
                                         "reasons": {"node": "the API and its database", "postgresql-client": "the API and its database"}}
     lock = load_toml(paths(project)[1])
     assert "postgresql-client" in lock["components"] and "interactive-surface" not in lock["components"]
@@ -68,10 +68,10 @@ def test_require_tool_adds_regenerates_the_lock_and_writes_schema_two(project: P
     assert "[capabilities]\nrequired = [" in text and '"required"' not in text
 
 
-def test_require_tool_with_major_and_drop_removes_the_major_too(project: Path) -> None:
-    owner_commands.require_tools(project, ["dotnet=10"])
+def test_require_tool_and_drop_removes_it(project: Path) -> None:
+    owner_commands.require_tools(project, ["dotnet"])
     manifest = load_toml(paths(project)[0])
-    assert manifest["capabilities"]["sdk-major"] == {"dotnet": 10, "python": 3}
+    assert manifest["capabilities"]["required"] == ["dotnet", "python"]
     owner_commands.drop_tools(project, ["dotnet", "python"])
     manifest = load_toml(paths(project)[0])
     assert manifest["capabilities"] == {"required": []}
@@ -84,15 +84,32 @@ def test_offer_moves_a_tool_out_of_required_and_drops_its_major(project: Path) -
     manifest = load_toml(paths(project)[0])
     assert manifest["capabilities"]["optional"] == ["browser-automation"]
     assert manifest["capabilities"]["reasons"] == {"browser-automation": "end-to-end tests"}
-    with pytest.raises(ProjectConfigurationError, match="SDK major applies to a required tool"):
+    with pytest.raises(ProjectConfigurationError, match="Unknown tool"):
         owner_commands.offer_tools(project, ["python=3"])
     owner_commands.offer_tools(project, ["python"])
     assert load_toml(paths(project)[0])["capabilities"] == {"optional": ["browser-automation", "python"], "required": [],
                                                             "reasons": {"browser-automation": "end-to-end tests"}}
 
 
-@pytest.mark.parametrize("name", ["frontend-ide", "codex-agent", "pycharm", "codex", "python-ide=3", "codex=1"])
-def test_ide_and_agent_names_are_refused_as_project_tools(project: Path, name: str) -> None:
+@pytest.mark.parametrize("name", ["codex-agent", "codex", "claude-code-agent"])
+def test_agent_names_are_project_capabilities(project: Path, name: str) -> None:
+    expected = "codex-agent" if name == "codex" else name
+    owner_commands.require_tools(project, [name])
+    assert expected in load_toml(paths(project)[0])["capabilities"]["required"]
+    owner_commands.offer_tools(project, [name])
+    assert expected in load_toml(paths(project)[0])["capabilities"]["optional"]
+
+
+@pytest.mark.parametrize("name", ["python=3", "python>=3.12", "codex=1"])
+def test_cli_version_forms_are_refused_before_writes(project: Path, name: str) -> None:
+    before = manifest_text(project)
+    with pytest.raises(ProjectConfigurationError, match="Unknown tool"):
+        owner_commands.require_tools(project, [name])
+    assert manifest_text(project) == before
+
+
+@pytest.mark.parametrize("name", ["frontend-ide", "pycharm"])
+def test_ide_names_are_refused_as_project_tools(project: Path, name: str) -> None:
     before = manifest_text(project)
     with pytest.raises(ProjectConfigurationError, match="each developer's"):
         owner_commands.require_tools(project, [name])
@@ -193,27 +210,19 @@ def test_an_owner_edit_converts_a_legacy_manifest_and_keeps_its_leading_comment(
 def test_an_unrelated_command_never_rewrites_a_legacy_manifest(legacy_project: Path) -> None:
     before = manifest_text(legacy_project)
     assert cli.main(["project", "--path", str(legacy_project), "config", "check"]) in (0, 3)
-    assert cli.main(["project", "--path", str(legacy_project), "config", "capabilities", "--local", "python-ide"]) == 0
-    assert cli.main(["project", "--path", str(legacy_project), "config", "list"]) == 0
+    assert cli.main(["project", "--path", str(legacy_project), "config", "ide", "python-ide"]) == 0
+    assert cli.main(["project", "--path", str(legacy_project), "config", "show"]) == 0
     assert manifest_text(legacy_project) == before
 
 
-def test_retired_spellings_name_their_replacement(project: Path, capsys) -> None:
-    assert cli.main(["project", "--path", str(project), "config", "need", "node"]) == 2
-    assert "config require tool node" in capsys.readouterr().err
-    assert cli.main(["project", "--path", str(project), "config", "capabilities", "--required", "node"]) == 2
-    assert "config require tool" in capsys.readouterr().err
-    from devcapsule.commands.framework import render_command_listing
-    from devcapsule.commands.project import ConfigGroup
-    assert " need " not in render_command_listing(ConfigGroup.subcommands())
 
 
 def test_drop_offered_tool_removes_only_its_declaration_and_reason(project: Path) -> None:
-    owner_commands.require_tools(project, ["python=3"], because="backend")
+    owner_commands.require_tools(project, ["python"], because="backend")
     owner_commands.offer_tools(project, ["playwright"], because="browser tests")
     owner_commands.drop_tools(project, ["playwright"])
     assert load_toml(paths(project)[0])["capabilities"] == {
-        "required": ["python"], "sdk-major": {"python": 3}, "reasons": {"python": "backend"},
+        "required": ["python"], "reasons": {"python": "backend"},
     }
     assert "playwright" not in load_toml(paths(project)[1])["components"]
     owner_commands.drop_tools(project, ["python"])
@@ -277,7 +286,7 @@ def test_owner_edits_preserve_unknown_declaration_metadata(project: Path) -> Non
 @pytest.mark.parametrize("pending_ide", [False, True])
 def test_tool_edit_does_not_change_checkout_answers_when_not_ready(project: Path, pending_ide: bool) -> None:
     if pending_ide:
-        assert cli.main(["project", "--path", str(project), "config", "capabilities", "--local", "python-ide"]) == 0
+        assert cli.main(["project", "--path", str(project), "config", "ide", "python-ide"]) == 0
     record, resolution = checkout_record_paths(load_toml(paths(project)[0]), project)
     before = record.read_bytes()
     report = owner_commands.require_tools(project, ["node"])
@@ -287,11 +296,11 @@ def test_tool_edit_does_not_change_checkout_answers_when_not_ready(project: Path
 
 
 @pytest.mark.parametrize("verb", ["require", "offer", "drop"])
-def test_owner_tool_help_describes_only_supported_major_syntax(capsys, verb: str) -> None:
+def test_owner_tool_help_has_no_removed_version_syntax(capsys, verb: str) -> None:
     assert cli.main(["project", "config", verb, "tool", "--help"]) == 0
     output = capsys.readouterr().out
-    assert ("TOOL[=MAJOR]" in output) == (verb == "require")
-    assert ("python=3" in output) == (verb == "require")
+    assert "TOOL[=MAJOR]" not in output
+    assert "python=3" not in output
 
 
 @pytest.mark.parametrize("kind", ["tool", "env", "recommendation"])

@@ -153,7 +153,7 @@ class Resolution:
             raise ProjectConfigurationError(f"Resolved runtime.devcapsule-command: {exc}") from exc
         if (not isinstance(component, str) or component not in INTERACTIVE_SURFACES
                 or not isinstance(mount, str) or not mount.startswith("/") or "\x00" in mount):
-            raise ProjectConfigurationError("Run requires a valid resolved runtime; run 'devcapsule project config resolve'.")
+            raise ProjectConfigurationError("Run requires a valid resolved runtime; run 'devcapsule project run'.")
         try:
             normalize_project_mount(mount, "resolved-project")
         except ProjectMountError as exc:

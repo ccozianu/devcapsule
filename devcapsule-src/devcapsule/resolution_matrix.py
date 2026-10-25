@@ -1,5 +1,11 @@
 """The resolution matrix: capability needs × platform → a verified formation.
 
+The capability table is the one place the launcher learns what a capability
+is. Its keys are capability names. Each Capability lists alternative providing
+components in catalog order and an ide flag for the single IDE role. Empty
+providers mean the base supplies it. Dependencies belong to components, not
+to this table. Base pins declare supplied versions; None means unpinned.
+
 The user expresses capability needs; this module looks up component versions
 that satisfy those needs on a platform, constrained by what has been tested
 (D-0007). Verification is a fact about a combination and does not expire:
@@ -45,6 +51,8 @@ from devcapsule.images.contract import (
     BaseImage,
     Provenance,
 )
+from devcapsule.images.tooling import NODE_VERSION, TEMURIN_VERSION, MAVEN_VERSION
+from devcapsule.configuration.capabilities import meets_minimum, requirement
 from devcapsule.platforms import Platform
 from devcapsule.components.catalog import COMPONENTS
 from devcapsule.components.playwright_pin import PIN as PLAYWRIGHT_PIN
@@ -81,6 +89,14 @@ _MATRIX_VERSION = "embedded-27"
 
 
 @dataclass(frozen=True)
+class Capability:
+    """Alternative providers in catalog order, and whether this is the IDE."""
+
+    providers: tuple[str, ...] = ()
+    ide: bool = False
+
+
+@dataclass(frozen=True)
 class _BasePin:
     """One published base image and the capabilities it ships."""
 
@@ -94,7 +110,7 @@ class _BasePin:
     # vocabulary older releases cannot execute (owner rulings 2026-09-02
     # and 2026-09-06, amending D-0007).
     base_family: str
-    satisfies: frozenset[str]
+    satisfies: Mapping[str, str | None]
     lock_table: Mapping[str, Any]
     # The contract's compatible-evolution version and the promises the
     # labels of that recipe carry; see base_contract. The family above is
@@ -102,12 +118,11 @@ class _BasePin:
     recipe: int = 0
     display: str = HOST_X11_ONLY_DISPLAY
     runtime: str = LAUNCHER_SUPPLIED_RUNTIME
-    sdk_majors: Mapping[str, int] = field(default_factory=dict)
 
     @property
     def contract(self) -> BaseContract:
         return BaseContract(
-            family=self.base_family, recipe=self.recipe, services=self.satisfies,
+            family=self.base_family, recipe=self.recipe, services=frozenset(self.satisfies),
             display=self.display, runtime=self.runtime,
         )
 
@@ -161,6 +176,9 @@ class _Coupling:
 class Formation:
     """One resolved formation, ready to be committed as a lock.
 
+    ``resolved`` maps capabilities to selected providers (None for base services).
+    It is derivation metadata; it does not change the rendered lock format.
+
     ``unverified`` is empty for a fully verified formation; otherwise it
     names the combinations the matrix has no evidence for — resolution
     proceeded past them at the caller's explicit request (owner ruling
@@ -170,6 +188,7 @@ class Formation:
 
     capabilities: tuple[str, ...]
     provenance: str
+    resolved: Mapping[str, str | None] = field(default_factory=dict)
     unverified: tuple[str, ...] = ()
     _document: Mapping[str, Any] = field(repr=False, default_factory=dict)
     _header: str = field(repr=False, default="")
@@ -197,8 +216,7 @@ class ResolutionMatrix:
         components: Mapping[str, tuple[_ComponentPin, ...]],
         edges: tuple[_VerifiedEdge, ...],
         couplings: tuple[_Coupling, ...],
-        surface_capabilities: Mapping[str, str],
-        ancillary_capabilities: Mapping[str, str],
+        capability_table: Mapping[str, Capability],
         materialization: Mapping[str, Mapping[str, Any]],
     ) -> None:
         # Bases and per-component pins are append-only, newest last;
@@ -212,8 +230,7 @@ class ResolutionMatrix:
             for edge in edges
         }
         self._couplings = couplings
-        self._surface_capabilities = dict(surface_capabilities)
-        self._ancillary_capabilities = dict(ancillary_capabilities)
+        self._capability_table = dict(capability_table)
         self._materialization = materialization
 
     def base_family(self, lock: Mapping[str, Any]) -> str | None:
@@ -281,61 +298,109 @@ class ResolutionMatrix:
         return tuple(evidence), tuple(missing)
 
     def capabilities(self) -> tuple[str, ...]:
-        """The complete capability vocabulary this matrix can resolve."""
+        """The capability vocabulary, defined only by the capability table."""
+        return tuple(sorted(self._capability_table))
 
-        base_satisfied: set[str] = set()
-        for base in self._bases:
-            base_satisfied |= base.satisfies
-        return tuple(
-            sorted(
-                base_satisfied
-                | set(self._surface_capabilities)
-                | set(self._ancillary_capabilities)
-            )
-        )
+    def canonical_name(self, name: str) -> str:
+        """Accept a component name when exactly one capability provides it alone."""
+        if name in self._capability_table:
+            return name
+        matches = [key for key, entry in self._capability_table.items() if entry.providers == (name,)]
+        if len(matches) == 1:
+            return matches[0]
+        raise ResolutionError(f"The embedded resolution matrix does not know {name!r}; supported capabilities: "
+                              + ", ".join(self.capabilities()) + ".")
+
+    def is_ide(self, capability: str) -> bool:
+        return self._capability_table[self.canonical_name(capability)].ide
+
+    def ide_capabilities(self) -> tuple[str, ...]:
+        return tuple(name for name in self.capabilities() if self.is_ide(name))
 
     def providers(self, capability: str) -> tuple[str, ...]:
-        """Return component IDs needed by a capability, including dependencies.
+        """Alternative components in catalog order; empty for a base service."""
+        return self._capability_table[self.canonical_name(capability)].providers
 
-        For example, ``dotnet-ide`` needs both Rider and the .NET SDK. Results
-        are sorted and unique. An empty tuple denotes a base-supplied service;
-        callers must still check that their selected base supplies it.
-        Raise ResolutionError for an unknown capability name.
+    def resolve_provider(self, capability: str, minimum: str | None = None,
+                         lock: Mapping[str, Any] | None = None, *,
+                         choice: str | None = None, recommended: str | None = None) -> str | None:
+        """Resolve one capability; this is the only provider-selection function.
+
+        Filter by the minimum first. An explicit checkout choice wins, then
+        the project's recommendation, then the first eligible catalog provider.
+        A named choice that cannot meet the minimum is an error, not permission
+        to substitute software. A lock establishes an already resolved choice
+        and exact versions; it never requests newer pins or other providers.
+        Base services return None and are version-checked during base selection.
+        Inputs are unchanged. Invalid names or unavailable choices raise ResolutionError.
         """
-        self.normalize([capability])
-        component = self._surface_capabilities.get(capability) or self._ancillary_capabilities.get(capability)
+        providers = self.providers(capability)
+        requested = choice if choice is not None else recommended
+        if requested is not None and requested not in providers:
+            raise ResolutionError(f"{requested!r} does not provide {capability!r}; providers: "
+                                  + (", ".join(providers) or "the base") + ".")
+        if not providers:
+            return None
+        if lock is not None:
+            evidence = lock.get("capability-providers", {})
+            recorded = evidence.get(capability, evidence.get(self.canonical_name(capability), []))
+            choices = tuple(component for component in providers if component in recorded)
+            if len(choices) > 1:
+                raise ResolutionError(f"Lock names multiple providers for {capability!r}.")
+            if choices:
+                providers = choices
+        eligible = list(providers)
+        if minimum is not None:
+            eligible = []
+            for component in providers:
+                versions: tuple[str | None, ...]
+                if lock is not None:
+                    metadata = lock.get("components", {}).get(component, {})
+                    versions = (metadata.get("version"),) if isinstance(metadata, Mapping) else ()
+                else:
+                    versions = tuple(pin.version for pin in self._components.get(component, ()))
+                if any(version is not None and meets_minimum(version, minimum) for version in versions):
+                    eligible.append(component)
+        requirement_text = capability if minimum is None else f"{capability}>={minimum}"
+        if choice is not None:
+            if choice not in eligible:
+                raise ResolutionError(f"Provider {choice!r} cannot supply {requirement_text}; "
+                                      "choose a compatible provider.")
+            return choice
+        if recommended is not None:
+            if recommended not in eligible:
+                raise ResolutionError(f"Provider {recommended!r} cannot supply {requirement_text}; "
+                                      "choose a compatible provider.")
+            return recommended
+        if eligible:
+            return eligible[0]
+        if lock is not None:
+            raise ResolutionError("missing supported providers: " + ", ".join(providers))
+        available = ", ".join(f"{component} {pin.version}" for component in providers
+                              for pin in self._components.get(component, ()))
+        raise ResolutionError(f"No provider supplies {capability} {minimum or ''} or newer; catalog supplies {available or 'none'}.")
+
+    def component_closure(self, capability: str, minimum: str | None = None,
+                          lock: Mapping[str, Any] | None = None, *,
+                          choice: str | None = None, recommended: str | None = None) -> tuple[str, ...]:
+        """The chosen provider and its transitive component dependencies."""
+        component = self.resolve_provider(capability, minimum, lock, choice=choice, recommended=recommended)
         result = [component] if component else []
         for name in result:
-            result.extend(item for item in COMPONENTS[name].required_components() if item not in result)
+            definition = COMPONENTS.get(name)
+            if definition is not None:
+                result.extend(item for item in definition.required_components() if item not in result)
         return tuple(sorted(result))
 
-    def local_capabilities(self) -> frozenset[str]:
-        """Return IDE and coding-agent capability names owned by developers.
-
-        Shared-policy writers use this set to reject new personal preferences
-        in project declarations. Other capabilities may also be selected locally.
-        """
-        return frozenset(self._surface_capabilities) | frozenset(
-            name for name in self._ancillary_capabilities if name.endswith("-agent")
-        )
-
-    def sdk_major(self, capability: str, lock: Mapping[str, Any]) -> int | None:
-        """Return the selected SDK's major version, or None when not established.
-
-        For base SDKs, use catalog metadata for the lock's exact base reference.
-        For ``dotnet``, read the locked ``dotnet-sdk`` component's version.
-        This examines metadata, not an installed executable. None means unknown,
-        so callers enforcing a major-version constraint must reject it.
-        """
+    def supplied_version(self, capability: str, lock: Mapping[str, Any]) -> str | None:
+        """The version established by the exact base reference or locked provider."""
+        name = self.canonical_name(capability)
+        if self.providers(name):
+            component = self.resolve_provider(name, lock=lock)
+            return lock.get("components", {}).get(component, {}).get("version")
         reference = lock.get("base", {}).get("reference")
         base = next((item for item in self._bases if item.lock_table.get("reference") == reference), None)
-        if base is not None and capability in base.sdk_majors:
-            return base.sdk_majors[capability]
-        if capability == "dotnet":
-            version = lock.get("components", {}).get("dotnet-sdk", {}).get("version", "")
-            major = str(version).split(".")[0]
-            return int(major) if major.isdecimal() else None
-        return None
+        return base.satisfies.get(name) if base else None
 
     def normalize(self, need: object) -> tuple[str, ...]:
         """Normalize a manifest ``capabilities.need`` value: sorted, unique, known."""
@@ -348,19 +413,11 @@ class ResolutionMatrix:
                 raise ResolutionError(
                     "capabilities.need entries must be non-empty strings."
                 )
-            names.add(item)
-        unknown = sorted(names - set(self.capabilities()))
-        if unknown:
-            raise ResolutionError(
-                "The embedded resolution matrix does not know "
-                + ", ".join(repr(name) for name in unknown)
-                + "; supported capabilities: "
-                + ", ".join(self.capabilities())
-                + "."
-            )
+            names.add(self.canonical_name(item))
         return tuple(sorted(names))
 
-    def resolve(self, need: object, *, allow_unverified: bool = False, project_only: bool = False) -> Formation:
+    def resolve(self, need: object, *, allow_unverified: bool = False, project_only: bool = False,
+                choices: Mapping[str, str] | None = None, recommendations: Mapping[str, str] | None = None) -> Formation:
         """Derive one complete formation from a capability set, offline.
 
         Fully verified resolution is always tried first, so the escape hatch
@@ -370,31 +427,49 @@ class ResolutionMatrix:
         one in the formation for the caller's gentle warning and the lock.
         """
 
-        capabilities = self.normalize(need)
-        surface_id = (None if project_only and not set(capabilities) & set(self._surface_capabilities)
-                      else self._selected_surface(capabilities))
+        if not isinstance(need, Sequence) or isinstance(need, (str, bytes)):
+            raise ResolutionError("capabilities.need must be an array of capability names.")
+        if any(not isinstance(item, str) or not item for item in need):
+            raise ResolutionError("capabilities.need entries must be non-empty strings.")
+        declarations = [requirement(item) for item in need]
+        capabilities = self.normalize([name for name, _ in declarations])
+        minimums = {self.canonical_name(name): minimum for name, minimum in declarations if minimum is not None}
+        choices = {self.canonical_name(name): value for name, value in (choices or {}).items()}
+        recommendations = {self.canonical_name(name): value for name, value in (recommendations or {}).items()}
+        resolved = {name: self.resolve_provider(name, minimums.get(name),
+                    choice=choices.get(name), recommended=recommendations.get(name)) for name in capabilities}
+        ide_names = [name for name in capabilities if self.is_ide(name)]
+        surface_id = (None if project_only and not ide_names else self._selected_surface(capabilities, resolved))
         required = [surface_id] if surface_id else []
-        for capability in capabilities:
-            component_id = self._ancillary_capabilities.get(capability)
-            if component_id is not None:
-                required.append(component_id)
-        for component_id in required:
-            definition = COMPONENTS.get(component_id)
+        for name in capabilities:
+            provider = resolved[name]
+            if provider is not None and provider not in required:
+                required.append(provider)
+        for component in required:
+            definition = COMPONENTS.get(component)
             if definition is not None:
                 required.extend(item for item in definition.required_components() if item not in required)
-        base_needs = {
-            capability
-            for capability in capabilities
-            if capability not in self._surface_capabilities
-            and capability not in self._ancillary_capabilities
-        }
+        component_minimums = {resolved[name]: minimum
+                              for name, minimum in minimums.items() if self.providers(name)}
+        candidates = {component: tuple(pin for pin in self._components[component]
+                                      if component not in component_minimums
+                                      or meets_minimum(pin.version, component_minimums[component]))
+                      for component in required}
+        base_needs = {name for name in capabilities if not self.providers(name)}
+        bases = tuple(base for base in self._bases if not base_needs - set(base.satisfies)
+                      and all(meets_minimum(base.satisfies.get(name), minimums[name])
+                              for name in base_needs if name in minimums))
+        if not bases:
+            for name in sorted(base_needs & minimums.keys()):
+                versions = ", ".join(dict.fromkeys(base.satisfies.get(name) or "unknown" for base in self._bases))
+                families = ", ".join(dict.fromkeys(base.base_family.replace("ubuntu-", "Ubuntu ") for base in self._bases))
+                if not any(meets_minimum(base.satisfies.get(name), minimums[name]) for base in self._bases):
+                    raise ResolutionError(f"no base supplies {name} {minimums[name]} or newer; the {families} bases supply {versions}")
 
-        for base in reversed(self._bases):
-            if base_needs - base.satisfies:
-                continue
-            chosen = self._verified_selection(required, base)
+        for base in reversed(bases):
+            chosen = self._verified_selection(required, base, candidates)
             if chosen is not None:
-                return self._formation(capabilities, surface_id, base, chosen)
+                return self._formation(capabilities, surface_id, base, chosen, minimums=minimums, resolved=resolved)
 
         # Nothing fully validated. What the user reads from here on is the
         # owner's 2026-09-06 ruling: a missing validation is a fact about
@@ -403,11 +478,11 @@ class ResolutionMatrix:
         # versions, base; never the model's own vocabulary — and offers the
         # experiment. Only a base that does not ship a needed toolchain is a
         # refusal on grounds, and it says that --unverified cannot help.
-        fallback = self._unverified_selection(required, base_needs)
+        fallback = self._unverified_selection(required, bases, candidates)
         if fallback is None:
             gaps = [
                 f"{base.mnemonic}: does not ship "
-                + ", ".join(sorted(base_needs - base.satisfies))
+                + ", ".join(sorted(base_needs - set(base.satisfies)))
                 for base in reversed(self._bases)
             ]
             raise ResolutionError(
@@ -419,7 +494,7 @@ class ResolutionMatrix:
         base, chosen, unverified = fallback
         if allow_unverified:
             return self._formation(
-                capabilities, surface_id, base, chosen, unverified=unverified
+                capabilities, surface_id, base, chosen, unverified=unverified, minimums=minimums, resolved=resolved
             )
         raise ResolutionError(
             "Not yet validated: "
@@ -428,10 +503,10 @@ class ResolutionMatrix:
             "what is unvalidated for everyone who uses it."
         )
 
-    def _selected_surface(self, capabilities: tuple[str, ...]) -> str:
-        interactive = sorted(set(capabilities) & set(self._surface_capabilities))
+    def _selected_surface(self, capabilities: tuple[str, ...], resolved: Mapping[str, str | None]) -> str:
+        interactive = sorted(set(capabilities) & set(self.ide_capabilities()))
         if not interactive:
-            choices = ", ".join(sorted(self._surface_capabilities))
+            choices = ", ".join(self.ide_capabilities())
             raise ResolutionError(
                 "The V1 environment needs an interactive-surface capability to select "
                 f"its surface; add exactly one of {choices} to capabilities.need."
@@ -441,10 +516,12 @@ class ResolutionMatrix:
                 "A V1 platform lock holds exactly one interactive surface, but "
                 f"capabilities.need selects {', '.join(interactive)}; keep exactly one."
             )
-        return self._surface_capabilities[interactive[0]]
+        provider = resolved[interactive[0]]
+        assert provider is not None
+        return provider
 
     def _verified_selection(
-        self, required: list[str], base: _BasePin
+        self, required: list[str], base: _BasePin, candidates: Mapping[str, tuple[_ComponentPin, ...]]
     ) -> dict[str, _ComponentPin] | None:
         """The newest verified pin of every required component on this base,
         or None when some component or coupling lacks verification there."""
@@ -454,7 +531,7 @@ class ResolutionMatrix:
             pin = next(
                 (
                     candidate
-                    for candidate in reversed(self._components[component_id])
+                    for candidate in reversed(candidates[component_id])
                     if (component_id, candidate.version, base.base_family) in self._verified
                 ),
                 None,
@@ -473,7 +550,7 @@ class ResolutionMatrix:
         return chosen
 
     def _unverified_selection(
-        self, required: list[str], base_needs: set[str]
+        self, required: list[str], bases: tuple[_BasePin, ...], candidates: Mapping[str, tuple[_ComponentPin, ...]]
     ) -> tuple[_BasePin, dict[str, _ComponentPin], tuple[str, ...]] | None:
         """The capability-satisfying base with the fewest unverified pairs.
 
@@ -486,13 +563,11 @@ class ResolutionMatrix:
         """
 
         best: tuple[_BasePin, dict[str, _ComponentPin], tuple[str, ...]] | None = None
-        for base in reversed(self._bases):
-            if base_needs - base.satisfies:
-                continue
+        for base in reversed(bases):
             chosen: dict[str, _ComponentPin] = {}
             unverified: list[str] = []
             for component_id in required:
-                pins = self._components[component_id]
+                pins = candidates[component_id]
                 verified_pin = next(
                     (
                         candidate
@@ -530,6 +605,8 @@ class ResolutionMatrix:
         base: _BasePin,
         chosen: Mapping[str, _ComponentPin],
         unverified: tuple[str, ...] = (),
+        minimums: Mapping[str, str] | None = None,
+        resolved: Mapping[str, str | None] | None = None,
     ) -> Formation:
         components: dict[str, Any] = {}
         if surface_id is not None:
@@ -544,7 +621,8 @@ class ResolutionMatrix:
             "platform": self._platform.value,
             # The scoped digest: the one derivation input beside the platform,
             # which the filename already carries.
-            "capabilities-digest": canonical_digest({"need": list(capabilities)}),
+            "capabilities-digest": canonical_digest({"need": [f"{name}>={minimums[name]}" if minimums and name in minimums else name
+                                                       for name in capabilities]}),
             "base": dict(base.lock_table),
             "components": components,
             "materialization": dict(self._materialization[surface_id]) if surface_id else {},
@@ -572,6 +650,7 @@ class ResolutionMatrix:
         return Formation(
             capabilities=capabilities,
             provenance=provenance,
+            resolved=dict(resolved or {}),
             unverified=unverified,
             _document=document,
             _header=header,
@@ -600,8 +679,7 @@ _BASE_FAMILY_UBUNTU_24_04 = "ubuntu-24.04"
 _V0_2_8_BASE = _BasePin(
     mnemonic="v0.2.8",
     base_family=_BASE_FAMILY_UBUNTU_24_04,
-    satisfies=frozenset({"python", "docker-cli", "node", "java", "maven"}),
-    sdk_majors={"python": 3},
+    satisfies={"python": "3.12", "docker-cli": None, "node": NODE_VERSION, "java": TEMURIN_VERSION, "maven": MAVEN_VERSION},
     recipe=5,
     display=HOST_X11_ONLY_DISPLAY,
     runtime=EMBEDDED_RUNTIME,
@@ -639,8 +717,7 @@ _V0_2_8_BASE = _BasePin(
 _V0_2_10_BASE = _BasePin(
     mnemonic="v0.2.10",
     base_family=_BASE_FAMILY_UBUNTU_24_04,
-    satisfies=frozenset({"python", "docker-cli", "node", "java", "maven"}),
-    sdk_majors={"python": 3},
+    satisfies={"python": "3.12", "docker-cli": None, "node": NODE_VERSION, "java": TEMURIN_VERSION, "maven": MAVEN_VERSION},
     recipe=6,
     display=HOST_X11_ONLY_DISPLAY,
     runtime=LAUNCHER_SUPPLIED_RUNTIME,
@@ -677,8 +754,7 @@ _V0_2_12_BASE = _BasePin(
     # the mnemonic records the builder, the contract names the base.
     mnemonic="v0.2.12-rc5",
     base_family=_BASE_FAMILY_UBUNTU_24_04,
-    satisfies=frozenset({"python", "docker-cli", "node", "java", "maven"}),
-    sdk_majors={"python": 3},
+    satisfies={"python": "3.12", "docker-cli": None, "node": NODE_VERSION, "java": TEMURIN_VERSION, "maven": MAVEN_VERSION},
     recipe=9,
     display=CONTAINED_DISPLAY,
     runtime=LAUNCHER_SUPPLIED_RUNTIME,
@@ -1295,26 +1371,23 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
     # standalone CLI component only; the coupling mechanism stays for
     # future jointly-verified integrations.
     couplings=(),
-    # Each interactive capability selects exactly one surface component. A V1
-    # platform lock holds exactly one interactive surface, so a capability set
-    # must name exactly one of these: none has nothing to run, and two would
-    # ask one lock to carry two surfaces.
-    surface_capabilities={
-        "python-ide": "pycharm",
-        "java-ide": "intellij",
-        "eclipse-ide": "eclipse",
-        "dotnet-ide": "rider",
-        "frontend-ide": "codium",
-    },
-    # Ancillary capabilities select additive components; the value is the
-    # component id the lock records.
-    ancillary_capabilities={
-        "codex-agent": "codex",
-        "claude-code-agent": "claude-code",
-        "antigravity-agent": "antigravity-cli",
-        "postgresql-client": "postgresql-client",
-        "browser-automation": "playwright",
-        "dotnet": "dotnet-sdk",
+    capability_table={
+        "python-ide": Capability(("pycharm",), ide=True),
+        "java-ide": Capability(("intellij",), ide=True),
+        "eclipse-ide": Capability(("eclipse",), ide=True),
+        "dotnet-ide": Capability(("rider",), ide=True),
+        "frontend-ide": Capability(("codium",), ide=True),
+        "codex-agent": Capability(("codex",)),
+        "claude-code-agent": Capability(("claude-code",)),
+        "antigravity-agent": Capability(("antigravity-cli",)),
+        "postgresql-client": Capability(("postgresql-client",)),
+        "browser-automation": Capability(("playwright",)),
+        "dotnet": Capability(("dotnet-sdk",)),
+        "python": Capability(),
+        "node": Capability(),
+        "java": Capability(),
+        "maven": Capability(),
+        "docker-cli": Capability(),
     },
     # The materialization recipe follows the selected surface: each surface
     # family unpacks and fixes up its installation differently.
@@ -1384,12 +1457,13 @@ def _render_table(prefix: str | None, table: Mapping[str, Any], lines: list[str]
             lines.append("")
         lines.append(f"[{prefix}]")
     for key, value in scalars.items():
-        if not isinstance(value, (str, int, bool)):
+        if not isinstance(value, (str, int, bool, list)) or isinstance(value, list) and any(not isinstance(item, str) for item in value):
             raise ProjectConfigurationError(
                 f"Unsupported lock value type for {key!r}: {type(value).__name__}."
             )
         rendered_key = key if _is_bare_key(key) else quote_toml(key)
-        lines.append(f"{rendered_key} = {render_toml_scalar(value)}")
+        rendered_value = "[" + ", ".join(quote_toml(item) for item in value) + "]" if isinstance(value, list) else render_toml_scalar(value)
+        lines.append(f"{rendered_key} = {rendered_value}")
     for key, value in subtables.items():
         component = key if _is_bare_key(key) else quote_toml(key)
         _render_table(component if prefix is None else f"{prefix}.{component}", value, lines)

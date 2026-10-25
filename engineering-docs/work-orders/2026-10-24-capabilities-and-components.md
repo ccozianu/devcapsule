@@ -214,7 +214,7 @@ devcapsule project config offer browser-automation --because "npm run test:ui"
 devcapsule project config offer codex-agent --because "the project's agent instructions assume it"
 devcapsule project config recommend ide frontend-ide
 devcapsule project config recommend frontend-ide codium            # the resolution, optional
-devcapsule project config recommend cpp-compiler clang --because "the sanitizer flags in CMakeLists"
+devcapsule project config recommend cpp-compiler clang
 devcapsule project config drop browser-automation
 ```
 
@@ -226,19 +226,22 @@ the `tool` sub-word goes; `require env NAME` and `offer env NAME` keep
 the `env` word, since an environment input is not a capability. `recommend` takes either a recommendation name (`ide`, `memory`,
 `cpus`, a host access) or a capability followed by a provider; a provider
 the catalog does not list for that capability is refused before anything
-is written. The manifest gains one table and loses none:
+is written. A resolution carries no reason of its own: the requirement's
+reason says why the capability is needed, and the resolution is only the
+default provider (reviewer's decision during slice 2, by the owner's rule
+of removal; nothing reads such a reason). The manifest gains one table and loses none:
 
 ```toml
 [capabilities]
 required = ["cpp-compiler", "python>=3.14", "java>=21", "playwright>=1.21"]
 optional = ["browser-automation", "codex-agent"]
 
-[recommendations]
-ide = "frontend-ide"
-
-[recommendations.resolution]
+[capabilities.resolution]
 frontend-ide = "codium"
 cpp-compiler = "clang"
+
+[recommendations]
+ide = "frontend-ide"
 ```
 
 ### 3.2 For developers
@@ -330,10 +333,18 @@ the rest are implementation.
    are; a project's agent instructions name one. A single `coding-agent`
    with three providers could not express "both Codex and Claude Code"
    without the cardinality the owner struck.
-4. **The resolution lives in `[recommendations.resolution]`,** a table from
-   capability to component beside `[recommendations]`, read by the rc4
-   launcher as an unknown recommendation it warns about and ignores; the
-   schema stays 2 (R-CONFIG-001, tolerant readers). The minimum-DevCapsule
+4. **The resolution lives in `[capabilities.resolution]`,** a table from
+   capability to component beside `[capabilities.reasons]`; the schema
+   stays 2 (R-CONFIG-001, tolerant readers). Corrected 2026-10-24 during
+   slice 2: the rc4 reader refuses an unknown key under
+   `[recommendations]` ("recommendations declares resolution; known
+   recommendations: ide, memory, cpus") and silently tolerates an unknown
+   table under `[capabilities]`, verified with the rc4 executable; the
+   earlier placement would have made every manifest with a resolution
+   unreadable by rc4. rc4 ignores the table and derives the catalog's
+   first provider, which is the only provider of every capability today.
+   A manifest that names a minimum or a component alias is unreadable by
+   rc4 regardless, as any new vocabulary is. The minimum-DevCapsule
    declaration of the 2026-10-22 requirement is not folded in here.
 5. **The lock pins the resolved provider only.** A developer who chooses
    another gets it pinned in the checkout record and the version

@@ -19,8 +19,8 @@ def stale_resolution_inputs(
 
     This is the single staleness policy for the resolution layer: drift is
     detected here — never by a loader refusing to read an artifact — and the
-    remedy is always ``devcapsule project config resolve``.  Every consumer
-    (``config list``, ``run``, ``fresh_resolved_project``) asks this one
+    remedy is always ``devcapsule project run``.  Every consumer
+    (``config show``, ``run``, ``fresh_resolved_project``) asks this one
     function so the policy cannot fork.
     """
 

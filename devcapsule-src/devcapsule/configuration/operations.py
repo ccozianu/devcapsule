@@ -40,8 +40,8 @@ from .authorization import (
     normalize_authorization_value,
     render_authorization_value,
 )
-from .capabilities import CapabilityPolicy, LocalCapabilities
-from .capability_commands import check_documents, parse_tool_names, pin_selection
+from .capabilities import CapabilityPolicy, LocalCapabilities, requirement
+from .capability_commands import check_documents, pin_selection
 from .capability_selection import compose_lock, effective_lock, generate_lock, local_pins
 from .file_formats import (
     AuthorizationScalar,
@@ -251,7 +251,7 @@ class InitializeRequest:
     """Everything ``devcapsule project init`` collected from its command line.
 
     ``require`` and ``offer`` are the project's: the tools every checkout
-    must have (``TOOL`` or ``TOOL=MAJOR`` for an SDK major) and the tools a
+    must have (``TOOL``) and the tools a
     developer may leave out. ``ide`` and ``agents`` are the owner's own
     checkout's choices, recorded in the owner's checkout record and never in
     the manifest (R-CONFIG-001, refinement of 2026-10-06).
@@ -291,7 +291,6 @@ class InitializeReport:
     project_mount: str
     required: tuple[str, ...]
     offered: tuple[str, ...]
-    sdk_majors: tuple[tuple[str, int], ...]
     lock_path: Path
     lock_action: str
     base_display: str
@@ -314,8 +313,7 @@ class InitializeReport:
     resolve: ResolveReport | None
 
     def render(self) -> str:
-        majors = {name: major for name, major in self.sdk_majors}
-        required = " ".join(f"{name}={majors[name]}" if name in majors else name for name in self.required) or "none"
+        required = " ".join(self.required) or "none"
         lines = [
             f"{self.manifest_action} {self.manifest_path}",
             f"Project: {self.project_name} — {self.creator}/{self.slug}",
@@ -330,7 +328,7 @@ class InitializeReport:
             lines.append(f"{line} ({justification})." if justification else f"{line}.")
         selection = [self.ide] if self.ide else []
         selection.extend(self.agents)
-        lines.append("Your checkout: " + (" ".join(selection) if selection else "no IDE and no agent selected yet"))
+        lines.append("Your checkout: " + (" ".join(selection) if selection else "no IDE or personal capability selected yet"))
         lines.extend(_authorization_lines(self.answered, self.carried, self.recommended))
         lines.append(f"Checkout record: {self.checkout_record}")
         if self.resolve is not None:
@@ -469,7 +467,9 @@ def initialize_project(
         shared_lock = load_toml(lock_path)
     else:
         lock_action = "Regenerated" if lock_path.is_file() else "Created"
+        from .capabilities import resolution_recommendations
         shared_lock = generate_lock(identity.policy, matrix, previous=existing_lock,
+                                    recommendations=resolution_recommendations(existing_manifest or {}),
                                     allow_unverified=request.allow_unverified)
         _report_unverified(shared_lock)
     # A manifest written before 0.3.0 rc4 may require the IDE itself; then
@@ -571,9 +571,8 @@ def _initialize_report(
         creator=identity.creator,
         slug=identity.slug,
         project_mount=identity.mount,
-        required=identity.policy.required,
+        required=identity.policy.requirements(),
         offered=identity.policy.optional,
-        sdk_majors=identity.policy.sdk_major,
         lock_path=lock_path,
         lock_action=lock_action,
         base_display=base_display,
@@ -637,7 +636,7 @@ def _existing_selection(root: Path, manifest: Mapping[str, Any] | None) -> _Owne
         return _OwnerSelection(None, ())
     local = LocalCapabilities.read(load_toml(input_path))
     matrix = _current_matrix()
-    surfaces = {name for name in matrix.local_capabilities() if not name.endswith("-agent")}
+    surfaces = set(matrix.ide_capabilities())
     ide = next((name for name in local.selected if name in surfaces), None)
     return _OwnerSelection(ide, tuple(name for name in local.selected if name not in surfaces))
 
@@ -650,12 +649,12 @@ def _elicit_owner_selection(
 
     The IDE is asked interactively with Enter meaning "decide later": a
     project does not need an IDE to be initialized, a checkout needs one to
-    run. Agents join through ``--agent`` or the default-agent offer. With
+    run. Personal capabilities join through ``--with``, ``config add`` or
+    the default-agent offer. With
     ``ask_ide`` false the lock already carries the IDE (a manifest from
     before 0.3.0 rc4) and only an explicit ``--ide`` is taken.
     """
-    surfaces = sorted(name for name in matrix.local_capabilities() if not name.endswith("-agent"))
-    agent_names = sorted(name for name in matrix.local_capabilities() if name.endswith("-agent"))
+    surfaces = list(matrix.ide_capabilities())
     answer = elicitor.seek(
         "ide",
         description=f"Your IDE for this checkout ({', '.join(surfaces)}; Enter to decide later)",
@@ -667,13 +666,16 @@ def _elicit_owner_selection(
         validate=_ide_validator(matrix, surfaces),
     )
     ide = None if answer is None or answer.value == "none" else answer.value
-    agents = tuple(sorted({_agent_name(matrix, agent_names, name) for name in request.agents} | set(existing.agents)))
+    additions = {matrix.canonical_name(name) for name in request.agents}
+    if any(matrix.is_ide(name) for name in additions):
+        raise ProjectConfigurationError("Use init --ide for an IDE choice; --with adds other capabilities.")
+    agents = tuple(sorted(additions | set(existing.agents)))
     agents = _with_default_agent(elicitor, agents, offer=fresh and not existing.selected, matrix=matrix)
     return _OwnerSelection(ide, agents)
 
 
 def _ide_validator(matrix: ResolutionMatrix, surfaces: list[str]) -> Any:
-    by_component = {matrix.providers(name)[0]: name for name in surfaces}
+    by_component = {matrix.resolve_provider(name): name for name in surfaces}
 
     def validate(value: str) -> str:
         candidate = value.strip()
@@ -687,15 +689,6 @@ def _ide_validator(matrix: ResolutionMatrix, surfaces: list[str]) -> Any:
     return validate
 
 
-def _agent_name(matrix: ResolutionMatrix, agent_names: list[str], value: str) -> str:
-    candidate = value.strip()
-    by_component = {matrix.providers(name)[0]: name for name in agent_names}
-    candidate = by_component.get(candidate, candidate)
-    if candidate not in agent_names:
-        raise ProjectConfigurationError(f"Unknown agent {value!r}; choose from {', '.join(agent_names)}.")
-    return candidate
-
-
 def _preview_effective_lock(
     manifest: Mapping[str, Any], shared_lock: Mapping[str, Any], selection: _OwnerSelection, matrix: ResolutionMatrix,
 ) -> dict[str, Any]:
@@ -704,7 +697,9 @@ def _preview_effective_lock(
         return dict(shared_lock)
     policy = CapabilityPolicy.read(manifest)
     local = LocalCapabilities(selected=selection.selected)
-    pins = pin_selection(matrix, policy, local, shared_lock, LocalCapabilities(), {}, allow_unverified=True)
+    from .capabilities import resolution_recommendations
+    pins = pin_selection(matrix, policy, local, shared_lock, LocalCapabilities(), {}, allow_unverified=True,
+                         recommendations=resolution_recommendations(manifest))
     checkout = {"devcapsule-checkout-schema-version": 1,
                 "capabilities": {"selected": list(selection.selected), "without": [], "lock": render_toml(pins)}}
     return effective_lock(manifest, compose_lock(manifest, shared_lock, checkout), checkout, warn=False)
@@ -716,20 +711,21 @@ def _stage_owner_selection(
 ) -> None:
     """Put the owner's IDE and agents, with their pins, into the staged checkout record.
 
-    The same pins ``config ide`` and ``config agent add`` record; nothing is
+    The same pins ``config ide`` and ``config add`` record; nothing is
     written here. An empty selection leaves whatever the record selects.
     """
     if not selection.selected:
         return
     policy = CapabilityPolicy.read(manifest)
     previous = LocalCapabilities.read(record.document)
-    local = LocalCapabilities(selected=selection.selected, without=previous.without)
+    local = LocalCapabilities(selected=selection.selected, without=previous.without, providers=previous.providers)
     local.validate(policy)
+    from .capabilities import resolution_recommendations
     pins = pin_selection(matrix, policy, local, shared_lock, previous, local_pins(record.document),
-                         allow_unverified=allow_unverified)
+                         allow_unverified=allow_unverified, recommendations=resolution_recommendations(manifest))
     _report_unverified(pins)
     record.document["capabilities"] = {"selected": list(local.selected), "without": list(local.without),
-                                       "lock": render_toml(pins)}
+                                       "lock": render_toml(pins), **({"providers": local.providers} if local.providers else {})}
 
 
 @dataclass(frozen=True)
@@ -750,6 +746,9 @@ def _init_command_line(request: InitializeRequest) -> dict[AnswerKey, str]:
     """
 
     command_line: dict[AnswerKey, str] = {}
+    for entry in (*request.require, *request.offer):
+        if entry.strip().lower() != "none":
+            requirement(entry)
     if request.require:
         command_line[("require", "value")] = " ".join(request.require)
     if request.offer:
@@ -849,6 +848,9 @@ def _reject_answers_needing_an_ide(
 def _elicit_identity(
     elicitor: Elicitor, root: Path, existing_manifest: Mapping[str, Any] | None, matrix: ResolutionMatrix,
 ) -> _ProjectIdentity:
+    from .capabilities import capability_notes
+    for note in capability_notes(existing_manifest or {}):
+        print(f"Note: {note}", file=sys.stderr)
     project = (existing_manifest or {}).get("project", {})
     existing_policy = CapabilityPolicy.read(existing_manifest) if existing_manifest is not None else None
 
@@ -885,50 +887,36 @@ def _elicit_identity(
         existing=existing_field("mount"),
         default=f"/workspace/{slug.value}",
     )
-    tools = sorted(set(matrix.capabilities()) - matrix.local_capabilities())
-    majors = dict(existing_policy.sdk_major) if existing_policy is not None else {}
-    existing_require = (
-        " ".join(f"{item}={majors[item]}" if item in majors else item for item in existing_policy.required)
-        if existing_policy is not None else None
-    )
-    # A manifest written before 0.3.0 rc4 may require an IDE or an agent
-    # (the ``need`` form mixed them with the tools); such a declaration is
-    # grandfathered as it stands, never introduced anew.
-    grandfathered = frozenset(existing_policy.required) & matrix.local_capabilities() if existing_policy else frozenset()
+    tools = list(matrix.capabilities())
+    existing_require = " ".join(existing_policy.requirements()) if existing_policy is not None else None
     require = elicitor.seek(
         "require",
         description=(
-            "Tools the project requires, space-separated, TOOL=MAJOR for an SDK major "
+            "Capabilities the project requires, optionally NAME>=VERSION, space-separated "
             f"({', '.join(tools)}; Enter for none)"
         ),
-        remedy="--require TOOL [--require TOOL ...]",
+        remedy="--require CAPABILITY [--require CAPABILITY ...]",
         existing=existing_require if existing_require is not None else None,
         empty_answer="none",
         omitted_answer="none",
-        validate=_require_validator(matrix, grandfathered),
+        validate=_require_validator(matrix, required=True),
     )
     offer = elicitor.seek(
         "offer",
-        description="Tools the project offers",
-        remedy="--offer TOOL [--offer TOOL ...]",
+        description="Capabilities the project offers",
+        remedy="--offer CAPABILITY [--offer CAPABILITY ...]",
         mandatory=False,
         existing=" ".join(existing_policy.optional) if existing_policy is not None and existing_policy.optional else None,
-        validate=_require_validator(matrix, grandfathered),
+        validate=_require_validator(matrix, required=False),
     )
-    required_names, sdk_majors = _split_tools(matrix, require.value if require else "none", grandfathered)
-    offered_names, offered_majors = _split_tools(matrix, offer.value if offer else "none", grandfathered)
-    if offered_majors:
-        raise ProjectConfigurationError("An SDK major applies to a required tool, not an offered one.")
-    if existing_policy is not None and not existing_policy.layered and existing_policy.required == required_names:
-        # A legacy ``need`` manifest is honored as it is, IDE and agents included.
-        policy = existing_policy
+    required_names = _split_capabilities(matrix, require.value if require else "none", required=True)
+    offered_names = _split_capabilities(matrix, offer.value if offer else "none", required=False)
+    if existing_policy is not None and require is not None and require.source == SOURCE_EXISTING_RECORD:
+        if offer is not None and offer.source == SOURCE_EXISTING_RECORD:
+            offered_names = existing_policy.optional
+        policy = CapabilityPolicy(existing_policy.required, offered_names, existing_policy.minimums, existing_policy.layered)
     else:
-        policy = CapabilityPolicy(
-            tuple(sorted(set(required_names))),
-            tuple(sorted(set(offered_names))),
-            tuple(sorted(sdk_majors.items())),
-            layered=True,
-        )
+        policy = CapabilityPolicy.read({"capabilities": {"required": list(required_names), "optional": list(offered_names)}})
     return _ProjectIdentity(
         name=name.value if name else "",
         slug=slug.value,
@@ -938,30 +926,26 @@ def _elicit_identity(
     )
 
 
-def _require_validator(matrix: ResolutionMatrix, grandfathered: frozenset[str] = frozenset()) -> Any:
+def _require_validator(matrix: ResolutionMatrix, *, required: bool) -> Any:
     def validate(value: str) -> str:
         if value.strip().lower() == "none":
             return "none"
-        names, majors = _split_tools(matrix, value, grandfathered)
-        return " ".join(f"{name}={majors[name]}" if name in majors else name for name in names)
+        return " ".join(_split_capabilities(matrix, value, required=required))
 
     return validate
 
 
-def _split_tools(
-    matrix: ResolutionMatrix, value: str, grandfathered: frozenset[str] = frozenset(),
-) -> tuple[tuple[str, ...], dict[str, int]]:
-    """Canonical tool names and SDK majors from a space- or comma-separated answer.
-
-    IDE and agent names are refused, as every developer's, except the
-    ``grandfathered`` ones an existing manifest already requires.
-    """
+def _split_capabilities(matrix: ResolutionMatrix, value: str, *, required: bool) -> tuple[str, ...]:
+    """Use the shared requirement grammar for initialization answers."""
     if value.strip().lower() == "none":
-        return (), {}
-    items = [item for item in value.replace(",", " ").split() if item]
-    kept = [item for item in items if item in grandfathered]
-    names, majors = parse_tool_names(matrix, [item for item in items if item not in grandfathered])
-    return tuple(sorted({*names, *kept})), majors
+        return ()
+    entries = value.split()
+    policy = CapabilityPolicy.read({"capabilities": {
+        "required": entries if required else [], "optional": [] if required else entries,
+    }})
+    for name in (*policy.required, *policy.optional):
+        matrix.canonical_name(name)
+    return policy.requirements() if required else policy.optional
 
 
 def _with_default_agent(
@@ -977,7 +961,7 @@ def _with_default_agent(
     CLI is default-selected: "available by default" without living in any
     base. Concretely: an interactive init whose fresh checkout names no agent
     asks once, with Enter meaning yes; a noninteractive init keeps its
-    explicit ``--agent`` list unchanged (the remedy *is* the agent flag), and
+    existing selection unchanged, and
     a re-init over an existing checkout selection never grows it behind the
     owner's back.
     """
@@ -998,7 +982,7 @@ def _with_default_agent(
         description=(
             f"Select the default agent component ({default_capability}) for your checkout? (yes/no)"
         ),
-        remedy=f"--agent {default_capability}",
+        remedy=f"devcapsule project config add {default_capability}",
         empty_answer="yes",
         omitted_answer="no",
         validate=_yes_no_validator("default-agent"),
@@ -1173,7 +1157,7 @@ def _elicit_acquisitions(
             raise ProjectConfigurationError(
                 "Initialization needs the base authorization to reach a fresh resolution; "
                 "declined. Authorize later with 'devcapsule project config authorize "
-                f"base-image {reference}' and run 'devcapsule project config resolve'."
+                f"base-image {reference}' and run 'devcapsule project run'."
             )
         if answer.value != "default":
             _record_base_selection(
@@ -1294,8 +1278,8 @@ def _base_answer_validator(name: str, recommended: str) -> Any:
             "as-is with the reserved keyword 'default' (interactively, Enter), "
             "or a locally built or pulled image (tag or image ID) to run on "
             "this checkout instead — DevCapsule reads its digest and metadata "
-            "and asks you to confirm the selection ('--less-pedantic' skips "
-            f"the confirmation). 'no' declines. {value!r} is neither a value "
+            "and asks you to confirm the selection. "
+            f"'no' declines. {value!r} is neither a value "
             "nor an image reference."
         )
 
@@ -1354,7 +1338,7 @@ def _record_base_selection(
             "base-image",
             facet="confirmation",
             description=presentation,
-            remedy="--less-pedantic (records the reviewed selection without this confirmation)",
+            remedy=f"devcapsule project config authorize base-image {selection}",
             empty_answer="yes",
             validate=_acquisition_validator("base-image (confirmation)", "yes"),
         )

@@ -159,6 +159,43 @@ integration and end-to-end suites.
   [Software approvals](https://devcapsule.mycodespace.ai/docs/current/configuration/software-approvals/)
   says what an approval by name leaves alone (2026-10-22).
 
+## New in candidate 5
+
+A capability names what the project needs. A component provides it. Coding
+agents use this same model. The IDE owns the container's lifetime and can
+use its display.
+
+`config require`, `offer` and `drop` take capabilities directly.
+`config require 'java>=21'` requires Java 21 or newer. Quote minimums in the
+shell. The lock pins the exact version. `init --require` accepts the same
+minimum. Repeat `init --with CAPABILITY` to add personal capabilities.
+
+`config recommend frontend-ide codium` recommends a provider under
+`[capabilities.resolution]`. A resolution recommendation takes no reason.
+It grants no trust or host access.
+
+`config add`, `omit` and `restore` select capabilities for your checkout.
+`config use CAPABILITY COMPONENT` chooses among providers. `default` removes
+that choice. `run --with` and `--use` apply choices to one launch. `--save`
+records them.
+
+The SDK major is removed. Old manifests remain readable with a note.
+The next owner write drops the old table. An unchanged manifest keeps its
+old lock current until the next shared edit.
+
+The rc4 aliases and replaced agent and tool commands now return status 2.
+Each names its replacement in one line and writes nothing. Initialization's
+old agent flag points to `init --with`. `config capabilities --recover` remains available.
+
+Candidate 4 ignores the new resolution table and uses the catalog's first
+provider. Each current capability has only one provider. Minimums and
+component aliases introduce vocabulary that candidate 4 cannot read.
+Existing rc4 files remain readable by candidate 5.
+
+The configuration documentation now starts with the project, checkout and
+workstation records. The detail pages use the capability model and current
+commands.
+
 ## New in candidate 4
 
 The CLI redesign separates project requirements from personal choices.
@@ -224,8 +261,9 @@ on 2026-10-24.
 
 ## Not in candidate 4
 
-The resolve step no longer needs a force option. Shared-memory passthrough
-and retirement of `init --less-pedantic` remain incomplete against the redesign.
+Shared-memory passthrough remains incomplete against the redesign.
+Candidate 5 completes the retirement of `init --less-pedantic` and the old
+force options; the retired-spelling entry above records the replacement rule.
 The `--print-command` path can still materialize images and write caches;
 use `config show` or `config check` for read-only inspection.
 
