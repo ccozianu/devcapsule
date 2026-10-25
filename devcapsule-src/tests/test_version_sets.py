@@ -877,7 +877,7 @@ def test_runtime_json_reports_running_and_next_launch_sets(journey, monkeypatch,
     assert "version-set" not in listing["checkout"]["record"]
     assert listing["checkout"]["record"]["checkout"]["path"] == str(s.root)
     assert "rows" not in listing
-    assert listing["launcher-command"].endswith("config list") and str(s.root) in listing["launcher-command"]
+    assert listing["launcher-command"].endswith("config show") and str(s.root) in listing["launcher-command"]
     assert invoke(runtime_root, "config", "show") == 0
     text = capsys.readouterr().out
     record_text = text.split("\n\n", 1)[1].split("\nTo change configuration", 1)[0]

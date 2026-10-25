@@ -283,6 +283,11 @@ def run_webconsole_checks(session: nox.Session) -> None:
     """
     session.install("--require-hashes", "-r", str(WEBCONSOLE_ROOT / "requirements-dev.txt"))
     session.install("-e", str(WEBCONSOLE_ROOT), "--no-deps")
+    # The launcher too, with its one runtime dependency, which its command
+    # tree imports: the console's contract tests check every command it runs
+    # and every verb it forwards against the launcher's own parser and channel
+    # tables, so a retirement on one side fails here before it reaches a capsule.
+    session.install("-e", str(PROJECT_ROOT))
     session.run("python", "-m", "mypy", "--config-file", str(WEBCONSOLE_ROOT / "pyproject.toml"),
                 str(WEBCONSOLE_ROOT / "devcapsule_webconsole"))
     session.run("python", "-m", "pytest", str(WEBCONSOLE_ROOT / "tests"))

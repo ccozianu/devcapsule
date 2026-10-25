@@ -185,7 +185,7 @@ def test_upgrade_recovery_commands_converge_to_the_intended_launch(
         browser = next(r for r in review(project, record).authorizations if r.name == "host-browser")
         assert browser.superseded and browser.problem is None
     # The remedies are advice, and advice lives in `config show` since
-    # 2026-09-24; `config list` is the data listing alone.
+    # 2026-09-24; `config show` is the data listing alone.
     assert invoke(project, "config", "show") == 0
     listing = capsys.readouterr().out
     for item in pending.values():

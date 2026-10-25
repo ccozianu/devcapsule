@@ -156,7 +156,7 @@ class RuntimeConfiguration:
                          "launcher-path": self.document["launcher-root"],
                          "runtime-path": self.document["runtime-root"],
                          "record": self._recorded_checkout()},
-            "launcher-command": self.launcher_command(["config", "list"]),
+            "launcher-command": self.launcher_command(["config", "show"]),
         }
 
     def configuration_report(self) -> str:
@@ -166,7 +166,7 @@ class RuntimeConfiguration:
                 "Use 'devcapsule project versions show' for running and next-launch software.\n\n"
                 + render_toml(shown)
                 + "\nTo change configuration, use the launcher outside this capsule: "
-                + self.launcher_command(["config", "list"]))
+                + self.launcher_command(["config", "show"]))
 
 
 def capsule_project_root(start: Path) -> Path | None:

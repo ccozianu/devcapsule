@@ -1971,7 +1971,7 @@ def test_manifest_edit_after_lock_never_blocks_commands_and_resolve_reconciles(
 
     Editing the manifest after the lock exists (the trading-research failure:
     adding ``workflow-type`` as the workflow-init step instructs) used to make
-    every project command — including read-only ``config list`` — fail with
+    every project command — including read-only ``config show`` — fail with
     "<lock> is stale; run 'devcapsule project lock'", a remedy that could not
     produce a valid lock. The lock's ``manifest-digest`` is informational
     (R-COMPAT-001): drift is the resolution layer's to report, ``config
