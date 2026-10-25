@@ -75,7 +75,7 @@ SECURE_AUTHORIZATIONS = {
     "network": {"bridge", "none"}, "docker-daemon": {"none"},
     "development-sudo": {"false", "none"}, "host-browser": {"false", "none"}, "host-x11": {"false", "none"},
 }
-READ_ONLY_VERBS = {"show", "list", "check", "console"}
+READ_ONLY_VERBS = {"show", "check", "console"}
 READ_ONLY_SUBVERBS = {("env", "list"), ("trust", "list"), ("docker-args", "list")}
 
 

@@ -595,7 +595,7 @@ description = "Hard memory limit applied to the checkout's project container."
 
 A declaration may also supply a typed `recommended` value. Resolution uses it
 when the checkout has neither an explicit value nor an explicit omission;
-`config list` labels it `project-recommended`. `config set NAME default` records
+`config show` labels it `project-recommended`. `config set NAME default` records
 the current recommendation, while `config unset NAME` follows it again. These
 ordinary-value defaults never grant host access or authorize downloads.
 
@@ -626,12 +626,12 @@ This value is persistent checkout configuration, not a run-once `--set` effect.
 The developer selects a value for one checkout with the generic command:
 
 ```bash
-devcapsule project config list
+devcapsule project config show
 devcapsule project config set runtime.memory-limit 8GiB
 devcapsule project config resolve
 ```
 
-`project config list` initializes the selected checkout's workstation-owned
+`project config show` initializes the selected checkout's workstation-owned
 directory, minimal checkout input, and unresolved generated-plan placeholder
 when they do not exist, then prints every declared value, component binding,
 recommended authorization, and the generated resolution's state. It is a
@@ -767,7 +767,7 @@ TOML seeding described above.
 Codex falls back to file-backed authentication beneath `$CODEX_HOME` when no
 container keyring is available, so its login and configuration survive later
 launches. The component interface also declares `OPENAI_API_KEY` as an
-optional secret input. `project config list` shows that input and warns that
+optional secret input. `project config show` shows that input and warns that
 environment delivery exposes it to every process in the capsule and through
 Docker inspection while the container runs. DevCapsule never imports it
 ambiently: the developer must explicitly bind the declared same-named host
@@ -871,7 +871,7 @@ Docker image ID; the selection stays valid across lock changes, being bound
 to the image. Resolve and run inspect it again;
 removing or retagging the name fails instead of pulling or silently running a
 different image. Reauthorize after deliberately rebuilding the tag.
-`config list` reports this state as `authorized-local`, while
+`config show` reports this state as `authorized-local`, while
 `authorize --all-recommended` deliberately switches back to the lock's
 published recommendation. A different published registry digest remains
 rejected unless the project lock recommends it.
@@ -1207,7 +1207,7 @@ or the configured environment materialization used by `project run`.
 
 Project launch preserves home and IDE state through declared bindings, including
 `home`, `pycharm/config`, `pycharm/plugins`, `pycharm/system`, `pycharm/log`, and
-`pycharm/cache`. Use `project config list` to inspect them and
+`pycharm/cache`. Use `project config show` to inspect them and
 `project config bind NAME host-directory:/path/to/directory` to select an
 explicit location, then `project config resolve`. Separate concurrent PyCharm
 sessions must use separate IDE configuration directories. Legacy profile and

@@ -1979,7 +1979,7 @@ def current_host_user() -> HostUser:
 
 
 def config_lock_message(ide_config: Path, project: Path, project_state: Path) -> str:
-    inspect = shlex.join(["devcapsule", "project", "--path", str(project), "config", "list"])
+    inspect = shlex.join(["devcapsule", "project", "--path", str(project), "config", "show"])
     return f"""PyCharm config directory appears to be locked:
   {ide_config / ".lock"}
 Project state:
