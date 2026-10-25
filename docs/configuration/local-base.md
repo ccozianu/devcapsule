@@ -9,7 +9,8 @@ Every capsule image starts from a base: the operating system, the toolchains,
 the contained display and, since base recipe 11, the web console. The project
 lock pins a published base, and that is what you get unless you choose
 otherwise. A base built on your computer is the way to run a checkout on a
-newer recipe than the published one, for example when the launcher says:
+newer recipe than the published one; a checkout whose lock still pins an
+older base can show this message:
 
 ```text
 Web console: none on this base (ubuntu-24.04@9; the console needs base recipe 11 or later); the capsule runs without it.

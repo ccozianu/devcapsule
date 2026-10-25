@@ -66,9 +66,29 @@ def test_recipe_declares_the_current_contract() -> None:
     contract = current_contract()
     assert contract.identity == f"ubuntu-24.04@{BASE_RECIPE_VERSION}"
     assert contract.services == BASE_SERVICES
-    pinned = known_base_image("docker.io/mycodespaceai/devcapsule-base@sha256:8837edd36720763796ab9fe1dbeb66f1aa7ca2db0dabc8d73a58716440f42f7c")
-    assert pinned is not None and pinned.contract.identity == "ubuntu-24.04@9"
+    pinned = known_base_image("docker.io/mycodespaceai/devcapsule-base@sha256:8c97d308b4ac8172ce91ef4f96406063bfcd85a55efb09d4a23e795b10a834a3")
+    assert pinned is not None and pinned.contract.identity == "ubuntu-24.04@11"
+    assert pinned.contract.services == BASE_SERVICES
     assert contract.accepts(pinned.contract), "today's recipe still honours what the pinned base promised"
+
+
+def test_recipe_9_lock_still_resolves_as_a_known_base_of_the_family() -> None:
+    lock = tomllib.loads(REPO_LOCK.read_text(encoding="utf-8"))
+    lock["base"] = {
+        "reference": "docker.io/mycodespaceai/devcapsule-base@sha256:8837edd36720763796ab9fe1dbeb66f1aa7ca2db0dabc8d73a58716440f42f7c",
+        "build-mnemonic": "v0.2.12-rc5",
+        "contract": "ubuntu-24.04@9",
+    }
+    pinned = known_base_image(lock["base"]["reference"])
+    assert pinned is not None
+    assert pinned.contract.identity == "ubuntu-24.04@9"
+    assert pinned.contract.family == "ubuntu-24.04"
+    assert current_contract().accepts(pinned.contract)
+    report = compatibility_report(lock)
+    assert report[0].startswith("Compatibility: components validated on family ubuntu-24.04 run on ubuntu-24.04@9")
+    assert any(line.startswith("  validated:") for line in report[1:])
+    declaration = authorization_declarations({}, lock)["base-image"]
+    assert f"{REPOSITORY}/blob/v0.2.12-rc5/{LEGACY_RECIPE_SOURCE_PATH}" in declaration.description
 
 
 def test_image_is_reconstructed_from_its_labels() -> None:
@@ -98,16 +118,16 @@ def test_consent_names_the_contract_and_the_recipe_source() -> None:
     manifest = tomllib.loads(REPO_MANIFEST.read_text(encoding="utf-8"))
     lock = tomllib.loads(REPO_LOCK.read_text(encoding="utf-8"))
     declaration = authorization_declarations(manifest, lock)["base-image"]
-    assert declaration.description.startswith("Execute base ubuntu-24.04@9 at docker.io/")
-    assert "built by v0.2.12-rc5" in declaration.description
-    assert f"{REPOSITORY}/blob/v0.2.12-rc5/{LEGACY_RECIPE_SOURCE_PATH}" in declaration.description
-    assert declaration.display_value is not None and declaration.display_value.startswith("ubuntu-24.04@9 — ")
+    assert declaration.description.startswith("Execute base ubuntu-24.04@11 at docker.io/")
+    assert "built by v0.3.0-rc6" in declaration.description
+    assert f"{REPOSITORY}/blob/v0.3.0-rc6/{RECIPE_SOURCE_PATH}" in declaration.description
+    assert declaration.display_value is not None and declaration.display_value.startswith("ubuntu-24.04@11 — ")
 
 
 def test_compatibility_report_names_the_rule_and_the_evidence() -> None:
     lock = tomllib.loads(REPO_LOCK.read_text(encoding="utf-8"))
     report = compatibility_report(lock)
-    assert report[0].startswith("Compatibility: components validated on family ubuntu-24.04 run on ubuntu-24.04@9")
+    assert report[0].startswith("Compatibility: components validated on family ubuntu-24.04 run on ubuntu-24.04@11")
     assert any(line.startswith("  validated:") or line.startswith("  not validated:") for line in report[1:])
 
 
