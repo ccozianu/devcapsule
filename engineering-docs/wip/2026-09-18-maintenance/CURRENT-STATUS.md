@@ -284,6 +284,36 @@ begin the rewrite until project-management assigns it.
 
 ## Current State
 
+**2026-10-25: rc5 regression repaired; rc6 in preparation.** The owner's
+test of the rc5 download found the console's configuration page failing:
+`/api/configuration` ran `config list`, retired by candidate 5, status 2.
+[PR #281](https://github.com/ccozianu/devcapsule/pull/281) on
+`ws-maintenance/console-config-show` from the release tip `1f1a5cc`:
+`cd128bb` points the console's `cli.py`, the runtime configuration's
+launcher command, the PyCharm launcher's lock hint and the channel's
+read-only verbs at `config show`; `ed01b4d` adds the forcing functions,
+the console's nox session installing the launcher from this checkout, a
+`READ_COMMANDS` table in the console, and `test_launcher_contract.py`
+against the launcher's own command tree (commands exist and take
+`--json`; the channel's verbs equal the launcher's applied, deferred and
+subverb sets; widening equals deferred; the secure authorizations agree;
+the channel document lists the verbs; the listing row's fields). Full
+gate on `ed01b4d` after clearing a stale `__pycache__`: mypy 246 files,
+2281 unit tests, packaging integration 17, console 357 (31 new). The
+owner merged it; the release tip is `5daf5a2`, the same tree. The owner's
+direction: cut rc6 now. The throwaway copy `4PR-7-release-0.3.0`, the
+release tip (this record's commit) plus the cherry-pick of `62fa063`, is
+the pull request for the owner's merge; on that merge, the rc5 steps
+with `rc6` in place of `rc5`: the ancestry check, the annotated tag on
+the tip, `scripts/release-protocol.py v0.3.0-rc6 --output
+/opt/devcapsule-gate/rc6-release-protocol.json` from a detached checkout,
+expecting `mainline`; the atomic push of the branch and the tag; the
+backend run; the download into `~/.cache/devcapsule-releases/v0.3.0-rc6`
+with checksum and version verified; the overview's rc6 entry and the
+changelog's candidate-6 line. The diagnostics snapshot, image cleanup
+and C20 stay with the next candidate; the documentation language review
+before the final tag.
+
 **2026-10-25: rc5 tagged, published and verified.** The owner merged
 PR #280 at `35d74d9`; `03ed348` is an ancestor of `main`; `v0.3.0-rc5` on
 `03ed348`, the candidate gate `mainline` with no unintegrated commits from

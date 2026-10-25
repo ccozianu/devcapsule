@@ -1,6 +1,6 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-25. Stage: **candidate 5 published and verified as downloaded; it carries the capabilities and components model; the owner's test on the download next, then the diagnostics snapshot, image cleanup and C20**.
+Updated: 2026-10-25. Stage: **candidate 6 in preparation: candidate 5 with the console's configuration page repaired; the pre-candidate merge into `main` is the owner's; then the diagnostics snapshot, image cleanup and C20**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Changelog since 0.2.15](changelog.md) ·
@@ -94,6 +94,15 @@ that is honest about what it skips.
   configuration documentation rewritten on the model, with its entry
   page. The diagnostics snapshot, image cleanup and C20 move to the next
   candidate.
+- **Direction of 2026-10-25, after the rc5 test.** The owner's test of
+  the rc5 download found the console's configuration page failing: the
+  console ran `config list`, retired by candidate 5, and showed its
+  status-2 refusal. The repair, PR #281 on the release branch, points the
+  console and the launcher's in-capsule hints at `config show`, and the
+  console's own test session now runs the launcher it ships with, so a
+  retired command fails the build instead of the page. Candidate 6 is cut
+  on that repair alone; the diagnostics snapshot, image cleanup and C20
+  stay with the next candidate.
 - **Stopping points where the owner is consulted:** before each candidate
   tag; before the image-cleanup implementation; when a slice proves larger
   than the cycle tolerates; before the final tag. Scope changes go by the
@@ -466,6 +475,26 @@ How the candidate was prepared:
   into `main` cleanly and was PR #280, merged by the owner; the tag
   followed on the release tip, `03ed348`, the record commit.
 - Not in rc5: the diagnostics snapshot, image cleanup, C20; the gaps the
+  candidate-5 changelog lists under *Not in candidate 5*.
+
+### RC6 — in preparation, 2026-10-25
+
+- Tag `v0.3.0-rc6` on the release branch's tip after the pre-candidate
+  merge (PR from the throwaway copy `4PR-7-release-0.3.0`, the owner's).
+- Carries, beyond rc5: the console's configuration page and the
+  in-capsule hints calling `config show` (PR #281, `cd128bb`), and the
+  console's test session installing the launcher with contract tests
+  against its command tree (`ed01b4d`): every configuration-channel verb
+  is a `config` command that takes `--json`; the channel's applied,
+  deferred and secure sets agree with the launcher's; the channel
+  document lists the verbs.
+- The release branch's tip after the owner's merge of PR #281 is
+  `5daf5a2`, whose tree is the reviewed `ed01b4d`. Full gate on it from a
+  separate worktree: mypy clean over 246 files, 2281 unit tests passed,
+  36 deselected, 1 xfailed, 1 xpassed, packaging integration 17 passed,
+  the web console session mypy clean with 357 tests passed, 31 of them
+  the new contract; the documentation contract 189 pages, passed.
+- Not in rc6: the diagnostics snapshot, image cleanup, C20; the gaps the
   candidate-5 changelog lists under *Not in candidate 5*.
 
 ## Release Notes Preparation
