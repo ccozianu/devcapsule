@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from tests.launch_preparation import run_until_prepared
+
 import os
 import re
 import json
@@ -171,7 +173,7 @@ def test_project_resolve_registers_default_checkout_and_list_uses_registry(
         nested.mkdir(parents=True)
         monkeypatch.chdir(nested)
 
-        assert cli.main(["project", "config", "resolve"]) == 0
+        assert run_until_prepared() == 0
         records = registered_checkouts()
         assert len(records) == 1
         assert records[0].checkout_name == "default"
@@ -205,7 +207,7 @@ def test_named_checkout_registration_selects_distinct_record_and_reports_missing
     with patch.dict(os.environ, env, clear=False):
         initialize_project(first)
         shutil.copytree(first / ".devcapsule", second / ".devcapsule")
-        assert cli.main(["project", "--path", str(first), "config", "resolve"]) == 0
+        assert run_until_prepared(first) == 0
 
         assert (
             cli.main(
@@ -220,7 +222,7 @@ def test_named_checkout_registration_selects_distinct_record_and_reports_missing
             )
             == 0
         )
-        assert cli.main(["project", "--path", str(second), "config", "resolve"]) == 0
+        assert run_until_prepared(second) == 0
 
         records = registered_checkouts()
         assert [(record.checkout_name, record.checkout_path) for record in records] == [
@@ -277,7 +279,7 @@ def test_project_config_list_writes_nothing_and_lists_from_nothing(
         write_formation_lock(project)
         select_codex_component(project)
 
-        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        assert cli.main(["project", "--path", str(project), "config", "show"]) == 0
         output = capsys.readouterr().out
         assert "Checkout name: default" in output
         assert "Checkout record:" in output
@@ -295,7 +297,7 @@ def test_project_config_list_writes_nothing_and_lists_from_nothing(
 
 
 def _listing_document(project: Path, capsys) -> tuple[dict, str]:
-    assert cli.main(["project", "--path", str(project), "config", "list", "--json"]) == 0
+    assert cli.main(["project", "--path", str(project), "config", "show", "--json"]) == 0
     captured = capsys.readouterr()
     return json.loads(captured.out), captured.err
 
@@ -337,7 +339,7 @@ def test_project_config_list_json_carries_the_listing(
         assert "base-image" in document["pending"]
 
         # The JSON names the same rows the text table prints, in the same order.
-        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        assert cli.main(["project", "--path", str(project), "config", "show"]) == 0
         text = capsys.readouterr().out
         table = text[text.index("KIND"):text.index("\nPending decisions:")].splitlines()
         kinds = {row["kind"] for row in document["rows"]}
@@ -370,7 +372,7 @@ def test_project_config_list_json_names_a_registered_checkout(tmp_path: Path, ca
         assert document["checkout"]["launcher-path"] == str(second.resolve())
         assert document["checkout"]["input"].endswith(f"{name}.checkout.toml")
         assert next(record for record in registered_checkouts() if record.checkout_path == second).checkout_name == name
-        assert cli.main(["project", "--path", str(second), "config", "list"]) == 0
+        assert cli.main(["project", "--path", str(second), "config", "show"]) == 0
         assert f"Checkout name: {name}\n" in capsys.readouterr().out
 
     # An explicit registry environment must also govern name derivation.
@@ -388,7 +390,7 @@ def test_checkout_record_name_rejects_a_non_record_path() -> None:
         checkout_record_name(Path("devcapsule.resolved.toml"))
 
 
-@pytest.mark.parametrize("command", [("config", "list"), ("versions", "show")])
+@pytest.mark.parametrize("command", [("config", "show"), ("versions", "show")])
 def test_json_help_names_the_schema_contract(command, capsys) -> None:
     assert cli.main(["project", *command, "--help"]) == 0
     help_text = capsys.readouterr().out
@@ -411,7 +413,7 @@ def test_project_config_list_names_a_registered_second_checkout(
         shutil.copytree(first / ".devcapsule", second / ".devcapsule")
         assert cli.main(["project", "--path", str(first), "config", "set", "memory", "1GiB"]) == 0
         # The second checkout is listed from nothing while the default record is the first's.
-        assert cli.main(["project", "--path", str(second), "config", "list"]) == 0
+        assert cli.main(["project", "--path", str(second), "config", "show"]) == 0
         assert "Checkout name: (unregistered)" in capsys.readouterr().out
         assert (
             cli.main(
@@ -420,7 +422,7 @@ def test_project_config_list_names_a_registered_second_checkout(
             == 0
         )
         capsys.readouterr()
-        assert cli.main(["project", "--path", str(second), "config", "list"]) == 0
+        assert cli.main(["project", "--path", str(second), "config", "show"]) == 0
         output = capsys.readouterr().out
         assert "Checkout name: second-checkout" in output
         records = {record.checkout_name: record for record in registered_checkouts()}
@@ -454,7 +456,7 @@ def test_project_config_list_reports_complete_and_stale_readiness(
         )
         write_formation_lock(project)
 
-        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        assert cli.main(["project", "--path", str(project), "config", "show"]) == 0
         assert "Pending decisions:" in capsys.readouterr().out
         assert (
             cli.main(
@@ -499,10 +501,10 @@ def test_project_config_list_reports_complete_and_stale_readiness(
                 )
                 == 0
             )
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        assert run_until_prepared(project) == 0
         capsys.readouterr()
 
-        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        assert cli.main(["project", "--path", str(project), "config", "show"]) == 0
         output = capsys.readouterr().out
         assert re.search(r"^memory\s+memory\s+8GiB\s+checkout", output, re.M)
         assert re.search(r"^binding\s+home\s+" + re.escape(str(bound_home)) + r"\s+checkout", output, re.M)
@@ -519,7 +521,7 @@ def test_project_config_list_reports_complete_and_stale_readiness(
             encoding="utf-8",
         )
 
-        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        assert cli.main(["project", "--path", str(project), "config", "show"]) == 0
         output = capsys.readouterr().out
         network_row = next(line for line in output.splitlines() if re.match(r"^access\s+network\s", line))
         assert "kept" in network_row  # the answer stands under the changed recommendation
@@ -536,7 +538,7 @@ def test_project_resolve_accepts_formation_lock_without_completed_image(tmp_path
         write_formation_lock(project)
         assert cli.main(["project", "--path", str(project), "config", "authorize", "base-image", "default"]) == 0
 
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        assert run_until_prepared(project) == 0
 
         records = registered_checkouts()
         resolved_path = records[0].record_path.with_name("devcapsule.resolved.toml")
@@ -602,7 +604,7 @@ def initialize_codium_project(project: Path) -> Path:
 
 
 def test_project_run_starts_immediately_after_init(tmp_path: Path, capsys) -> None:
-    """Init's postcondition is run-readiness: no 'config resolve' in between."""
+    """Init's postcondition is run-readiness: no 'project run' in between."""
 
     project = tmp_path / "fresh-project"
     project.mkdir()
@@ -671,7 +673,7 @@ def test_project_run_records_known_good_configuration_only_on_success(
             )
             == 0
         )
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        assert run_until_prepared(project) == 0
         realized = SimpleNamespace(
             image=SimpleNamespace(labels={}, reference="devcapsule-local-codium:0123456789abcdef0123"),
             created=True,
@@ -734,7 +736,7 @@ def test_project_run_launches_a_codium_surface_from_its_plan_slots(
             )
             == 0
         )
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        assert run_until_prepared(project) == 0
         records = registered_checkouts()
         resolved_path = records[0].record_path.with_name("devcapsule.resolved.toml")
         with resolved_path.open("rb") as stream:
@@ -829,7 +831,7 @@ def test_project_run_realizes_formation_and_launches_canonical_image(
             )
             == 0
         )
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        assert run_until_prepared(project) == 0
         capsys.readouterr()
 
         realized = SimpleNamespace(
@@ -957,7 +959,7 @@ def test_host_browser_authorization_persists_and_drives_run(tmp_path: Path, caps
             )
             == 0
         )
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        assert run_until_prepared(project) == 0
         with patch("devcapsule.commands.project.run_pycharm", return_value=0) as launch:
             assert cli.main(["project", "--path", str(project), "run"]) == 0
     assert launch.call_args.args[0].enable_host_browser is True
@@ -972,7 +974,7 @@ def test_run_once_authorization_rejects_unknown_and_persistent_nodes(
 
     with patch.dict(os.environ, env, clear=False):
         initialize_project(project)
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        assert run_until_prepared(project) == 0
         capsys.readouterr()
         assert (
             cli.main(
@@ -1019,7 +1021,7 @@ def test_project_run_does_not_launch_when_environment_realization_fails(
             )
             == 0
         )
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        assert run_until_prepared(project) == 0
         capsys.readouterr()
 
         with (
@@ -1137,7 +1139,7 @@ def test_project_config_set_uses_declared_metadata_and_resolves_runtime_effect(
         assert "config set memory SIZE" in capsys.readouterr().err
         assert cli.main(["project", "--path", str(project), "config", "set", "memory", "8GiB"]) == 0
 
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        assert run_until_prepared(project) == 0
         record = registered_checkouts()[0].record_path
         with record.open("rb") as stream:
             checkout = tomllib.load(stream)
@@ -1204,7 +1206,7 @@ def test_authorize_records_denial_as_a_value(tmp_path: Path, capsys) -> None:
         assert checkout["authorization"]["docker-daemon"]["value"] == "none"
 
         # The denials survive resolution: the resolver honors them as values.
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        assert run_until_prepared(project) == 0
         with records[0].with_name("devcapsule.resolved.toml").open("rb") as stream:
             resolved = tomllib.load(stream)
         assert resolved["authorization"]["development-sudo"] is False
@@ -1267,7 +1269,7 @@ def test_set_none_records_an_explicit_omission(tmp_path: Path, capsys) -> None:
         assert checkout["configuration"]["omitted-values"] == ["editor.theme"]
         assert "editor.theme" not in checkout["configuration"].get("values", {})
 
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        assert run_until_prepared(project) == 0
         with records[0].with_name("devcapsule.resolved.toml").open("rb") as stream:
             resolved = tomllib.load(stream)
         assert "editor.theme" not in resolved.get("configuration", {}).get("values", {})
@@ -1306,7 +1308,7 @@ def test_set_none_records_an_explicit_omission(tmp_path: Path, capsys) -> None:
             == 0
         )
         assert (
-            cli.main(["project", "--path", str(project), "config", "unset", "editor.theme"])
+            cli.main(["project", "--path", str(project), "config", "set", 'editor.theme', "default"])
             == 0
         )
         with records[0].open("rb") as stream:
@@ -1314,10 +1316,10 @@ def test_set_none_records_an_explicit_omission(tmp_path: Path, capsys) -> None:
         assert "omitted-values" not in checkout.get("configuration", {})
 
 
-def test_unset_forgets_required_and_optional_value_answers(
+def test_default_forgets_required_and_optional_value_answers(
     tmp_path: Path, capsys
 ) -> None:
-    """The hidden alias now forgets answers, as set NAME default does."""
+    """Default forgets an answer while preserving its declaration."""
 
     project = tmp_path / "project"
     project.mkdir()
@@ -1349,18 +1351,18 @@ def test_unset_forgets_required_and_optional_value_answers(
         # Forgetting leaves the required declaration intact and makes it pending.
         assert (
             cli.main(
-                ["project", "--path", str(project), "config", "unset", "registry.token-name"]
+                ["project", "--path", str(project), "config", "set", 'registry.token-name', "default"]
             )
             == 0
         )
         message = capsys.readouterr().err
-        assert "config set NAME default" in message
+        assert message == ""
         assert cli.main(["project", "--path", str(project), "config", "check"]) == 3
         assert "registry.token-name" in capsys.readouterr().err
 
         # An optional node still unsets — the name is removed from the tree.
         assert (
-            cli.main(["project", "--path", str(project), "config", "unset", "editor.theme"])
+            cli.main(["project", "--path", str(project), "config", "set", 'editor.theme', "default"])
             == 0
         )
         assert "Forgot editor.theme" in capsys.readouterr().out
@@ -1441,7 +1443,7 @@ def test_project_config_bind_uses_component_metadata_and_resolves_host_directori
         )
         assert "not an existing directory" in capsys.readouterr().err
 
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        assert run_until_prepared(project) == 0
         record = registered_checkouts()[0].record_path
         with record.open("rb") as stream:
             checkout = tomllib.load(stream)
@@ -1582,7 +1584,7 @@ def test_project_config_authorize_uses_exact_recommendations_and_drives_run(
         )
         assert "is not declared" in capsys.readouterr().err
 
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        assert run_until_prepared(project) == 0
         record = registered_checkouts()[0].record_path
         with record.open("rb") as stream:
             checkout = tomllib.load(stream)
@@ -1627,7 +1629,7 @@ def test_project_config_authorize_uses_exact_recommendations_and_drives_run(
             encoding="utf-8",
         )
         # The changed justification does not re-ask: the answer is kept (D-0012).
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        assert run_until_prepared(project) == 0
 
 
 def test_project_config_authorize_accepts_inspected_local_base_and_pins_image_id(
@@ -1697,7 +1699,7 @@ def test_project_config_authorize_accepts_inspected_local_base_and_pins_image_id
             "devcapsule.configuration.operations.required_local_image",
             return_value=local_base,
         ) as inspect_resolved_local:
-            assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+            assert run_until_prepared(project) == 0
         inspect_resolved_local.assert_called_once_with(local_reference)
         with record.with_name("devcapsule.resolved.toml").open("rb") as stream:
             resolved = tomllib.load(stream)
@@ -1707,7 +1709,7 @@ def test_project_config_authorize_accepts_inspected_local_base_and_pins_image_id
             "image-id": local_identity,
         }
 
-        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        assert cli.main(["project", "--path", str(project), "config", "show"]) == 0
         base_row = next(
             line for line in capsys.readouterr().out.splitlines() if "base-image" in line
         )
@@ -1742,7 +1744,7 @@ def test_project_config_authorize_all_recommended_previews_and_requires_lowercas
             """,
         )
         write_formation_lock(project)
-        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        assert cli.main(["project", "--path", str(project), "config", "show"]) == 0
         capsys.readouterr()
 
         with (
@@ -1875,7 +1877,7 @@ def test_project_authorizes_only_exact_locked_base_and_lock_change_stales_it(
         initialize_project(project)
         lock_path = write_formation_lock(project)
         # An unconsented formation is inspectable, but cannot be resolved as ready.
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 3
+        assert run_until_prepared(project) == 3
 
         wrong = f"docker.io/example/devcapsule-base@sha256:{'c' * 64}"
         assert (
@@ -1930,7 +1932,7 @@ def test_project_authorizes_only_exact_locked_base_and_lock_change_stales_it(
             checkout = tomllib.load(stream)
         assert checkout["authorization"]["base-image"]["reference"] == LOCKED_BASE
 
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        assert run_until_prepared(project) == 0
         resolved_path = record.with_name("devcapsule.resolved.toml")
         with resolved_path.open("rb") as stream:
             resolved = tomllib.load(stream)
@@ -1943,7 +1945,7 @@ def test_project_authorizes_only_exact_locked_base_and_lock_change_stales_it(
             encoding="utf-8",
         )
         capsys.readouterr()
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        assert run_until_prepared(project) == 0
         with resolved_path.open("rb") as stream:
             assert tomllib.load(stream)["authorization"]["base-image"]["reference"] == LOCKED_BASE
 
@@ -1983,7 +1985,7 @@ def test_manifest_edit_after_lock_never_blocks_commands_and_resolve_reconciles(
 
     with patch.dict(os.environ, env, clear=False):
         initialize_project(project)
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        assert run_until_prepared(project) == 0
         lock_path = project / ".devcapsule" / "devcapsule.linux-amd64.lock"
         lock_before = lock_path.read_text(encoding="utf-8")
 
@@ -1999,12 +2001,12 @@ def test_manifest_edit_after_lock_never_blocks_commands_and_resolve_reconciles(
         # Inspection never gates: list succeeds and reports the resolution
         # as stale instead of refusing to run.
         capsys.readouterr()
-        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        assert cli.main(["project", "--path", str(project), "config", "show"]) == 0
         listing = capsys.readouterr().out
         assert "Nothing is pending." in listing
 
         # The documented remedy reconciles the ordinary change.
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        assert run_until_prepared(project) == 0
         records = registered_checkouts()
         assert [record.status for record in records] == ["ready"]
 
@@ -2013,7 +2015,7 @@ def test_manifest_edit_after_lock_never_blocks_commands_and_resolve_reconciles(
         assert lock_path.read_text(encoding="utf-8") == lock_before
 
         capsys.readouterr()
-        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        assert cli.main(["project", "--path", str(project), "config", "show"]) == 0
         assert "stale" not in capsys.readouterr().out
 
 
@@ -2076,7 +2078,7 @@ def test_run_passes_the_selected_transport_and_accepts_host_x11_run_once(
         initialize_project(project)
         lock_path = write_formation_lock(project)
         assert cli.main(["project", "--path", str(project), "config", "authorize", "base-image", LOCKED_BASE]) == 0
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        assert run_until_prepared(project) == 0
         capsys.readouterr()
         realized = SimpleNamespace(
             image=SimpleNamespace(labels={"devcapsule.base.display": "contained"}, reference="devcapsule-local-pycharm:0123456789abcdef0123"),
@@ -2117,7 +2119,7 @@ def test_network_is_a_node_on_every_project(
         assert "[host.network" not in manifest_text  # the precondition: no recommendation
         lock_path = write_formation_lock(project)
         assert cli.main(["project", "--path", str(project), "config", "authorize", "base-image", LOCKED_BASE]) == 0
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        assert run_until_prepared(project) == 0
         capsys.readouterr()
         record = registered_checkouts()[0].record_path
         original_input = record.read_bytes()
@@ -2153,7 +2155,7 @@ def test_network_is_a_node_on_every_project(
         # Only the node's grammar is accepted; the refusal names the deny value.
         assert cli.main(["project", "--path", str(project), "config", "authorize", "network", "vpn0"]) == 2
         assert "deny value 'bridge'" in capsys.readouterr().err
-        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        assert cli.main(["project", "--path", str(project), "config", "show"]) == 0
     rows = {line.split()[1]: line.split() for line in capsys.readouterr().out.splitlines() if line.startswith("access")}
     assert (rows["network"][2], rows["network"][3]) == ("host", "checkout")
 
@@ -2201,7 +2203,7 @@ def test_network_answer_stales_when_recommendation_appears_and_disappears(
         original_manifest = manifest_path.read_text()
         assert cli.main([*command, "authorize", "base-image", "default"]) == 0
         assert cli.main([*command, "authorize", "network", value]) == 0
-        assert cli.main([*command, "resolve"]) == 0
+        assert run_until_prepared(project) == 0
         record = registered_checkouts()[0].record_path
         default_digest = tomllib.loads(record.read_text())["authorization"]["network"]["recommendation-digest"]
         recommendation = (
@@ -2218,7 +2220,7 @@ def test_network_answer_stales_when_recommendation_appears_and_disappears(
             capsys.readouterr()
             # The recorded answer is kept under the changed recommendation and
             # disclosed; nothing is asked and nothing is written (D-0012, answer 23).
-            assert cli.main([*command, "resolve"]) == 0
+            assert run_until_prepared(project) == 0
             assert record.read_bytes() == before
             capsys.readouterr()
             document, _ = _listing_document(project, capsys)
@@ -2228,7 +2230,7 @@ def test_network_answer_stales_when_recommendation_appears_and_disappears(
             assert cli.main([*command, "authorize", "network", value]) == 0
             digest = tomllib.loads(record.read_text())["authorization"]["network"]["recommendation-digest"]
             assert (digest == default_digest) == (source == "workstation default")
-            assert cli.main([*command, "resolve"]) == 0
+            assert run_until_prepared(project) == 0
             resolved = tomllib.loads(record.with_name("devcapsule.resolved.toml").read_text())
             assert resolved["authorization"]["network"] == value
             assert Resolution(resolved).host_access.network == value
@@ -2247,7 +2249,7 @@ def test_forget_network_removes_the_answer_and_resolves_to_bridge(
         write_formation_lock(project)
         assert cli.main([*command, "authorize", "base-image", "default"]) == 0
         assert cli.main([*command, "authorize", "network", value]) == 0
-        assert cli.main([*command, "resolve"]) == 0
+        assert run_until_prepared(project) == 0
         record = registered_checkouts()[0].record_path
         resolution = record.with_name("devcapsule.resolved.toml")
         original = resolution.read_bytes()
@@ -2256,7 +2258,7 @@ def test_forget_network_removes_the_answer_and_resolves_to_bridge(
         assert "Forgot network for this checkout." in capsys.readouterr().out
         assert "network" not in tomllib.loads(record.read_text())["authorization"]
         assert resolution.read_bytes() == original
-        assert cli.main([*command, "resolve"]) == 0
+        assert run_until_prepared(project) == 0
         resolved = tomllib.loads(resolution.read_text())
         assert "network" not in resolved["authorization"]
         assert Resolution(resolved).host_access.network == "bridge"
@@ -2280,7 +2282,7 @@ def test_config_list_shows_the_recorded_answer_and_names_a_denial(
         assert cli.main(["project", "--path", str(project), "config", "authorize", "host-x11", "false"]) == 0
         assert cli.main(["project", "--path", str(project), "config", "authorize", "host-browser", "true"]) == 0
         capsys.readouterr()
-        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        assert cli.main(["project", "--path", str(project), "config", "show"]) == 0
     # Columns: KIND NAME EFFECTIVE SOURCE PENDING; the source may contain
     # spaces, so read the effective value and the source's first word by position.
     rows = {line.split()[1]: line.split() for line in capsys.readouterr().out.splitlines() if line.startswith("access")}
@@ -2308,15 +2310,15 @@ def test_print_command_uses_real_launch_builder_without_launch_or_success(
         monkeypatch.setenv(key, str(tmp_path / leaf))
     monkeypatch.setenv('DISPLAY', ':fixture')
     monkeypatch.setenv('PRINT_TEST_SECRET', 'do-not-render-this-value')
-    need_arguments = [arg for need in needs for arg in ('--need', need)]
+    need_arguments = [arg for need in needs for arg in ('--ide' if need.endswith('-ide') else '--offer', need)]
     assert cli.main(['project', 'init', *need_arguments, '--creator', 'https://example.test',
                      '--unverified', '--authorize', 'base-image', 'default']) == 0
     assert cli.main(['project', 'config', 'authorize', 'host-x11', str(display == 'host-x11').lower()]) == 0
-    assert cli.main(['project', 'config', 'resolve']) == 0
-    assert cli.main(['project', 'config', 'set-extra-docker-args', '--', '--gpus', 'all', '--volume', str(tmp_path / 'data dir') + ':/data:ro']) == 0
-    assert cli.main(['project', 'config', 'set-env', 'APP_PASSWORD', 'managed-secret-sentinel']) == 0
+    assert run_until_prepared() == 0
+    assert cli.main(['project', 'config', 'docker-args', 'set', '--', '--gpus', 'all', '--volume', str(tmp_path / 'data dir') + ':/data:ro']) == 0
+    assert cli.main(['project', 'config', 'env', 'set', 'APP_PASSWORD', 'managed-secret-sentinel']) == 0
     assert cli.main(['project', 'config', 'set', 'cpus', '2']) == 0
-    assert cli.main(['project', 'config', 'resolve']) == 0
+    assert run_until_prepared() == 0
     selected = ExecutionConfiguration.load(project).project
     assert selected.resolution['runtime']['cpus'] == 2
     locked = parse_locked_environment(selected.lock)
@@ -2493,7 +2495,6 @@ def test_every_project_leaf_declares_its_capsule_access() -> None:
     assert declared[("info",)] is CapsuleAccess.INSPECTS
     assert declared[("run",)] is CapsuleAccess.MUTATES
     assert declared[("versions", "select")] is CapsuleAccess.MUTATES
-    assert declared[("config", "resolve")] is CapsuleAccess.MUTATES
     assert declared[("init",)] is CapsuleAccess.CREATES_HERE
     assert declared[("list",)] is CapsuleAccess.INDEPENDENT
     assert declared[("recursive-e2e", "preflight")] is CapsuleAccess.INDEPENDENT

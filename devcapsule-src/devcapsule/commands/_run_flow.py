@@ -53,7 +53,8 @@ class RunFlags:
     """Run-once choices unless ``save``; trust is saved after the complete review, even without ``save``."""
 
     ide: str | None = None
-    agents: tuple[str, ...] = ()
+    capabilities: tuple[str, ...] = ()
+    providers: tuple[tuple[str, str], ...] = ()
     memory: str | None = None
     cpus: str | None = None
     environment: tuple[str, ...] = ()  # NAME=VALUE saved for this run, or NAME taken from the host
@@ -98,7 +99,8 @@ def prepare_launch(
     input_path = register_checkout(state, write=False)
     record = CheckoutRecord.staged(input_path, state.checkout)
     original = deepcopy(record.document)
-    notes: list[str] = []
+    from devcapsule.configuration.capabilities import capability_notes
+    notes: list[str] = list(capability_notes(manifest))
     # Channels accepted for this workstation, by flag or at the terminal:
     # staged on the state's workstation document, written with the record.
     accepted: list[str] = []
@@ -134,7 +136,7 @@ def prepare_launch(
     def launch_checkout() -> dict[str, Any]:
         saved = record.export()
         document = _selected_checkout(state, saved, flags) if not flags.save else saved
-        local = Selection(LocalCapabilities.read(document), state.surfaces, state.agents)
+        local = Selection(LocalCapabilities.read(document), state.surfaces)
         recommended_ide = Recommendations.read(manifest).ide
         if local.ide is None and recommended_ide is not None and not (set(CapabilityPolicy.read(manifest).required) & set(state.surfaces)):
             local.ide = recommended_ide
@@ -215,13 +217,19 @@ def _resource_answers(record: CheckoutRecord, manifest: Mapping[str, Any], flags
 
 
 def _selected_checkout(state: CheckoutState, document: dict[str, Any], flags: RunFlags) -> dict[str, Any]:
-    if flags.ide is None and not flags.agents:
+    if flags.ide is None and not flags.capabilities and not flags.providers:
         return document
-    selection = Selection(LocalCapabilities.read(document), state.surfaces, state.agents)
+    selection = Selection(LocalCapabilities.read(document), state.surfaces)
     if flags.ide is not None:
         selection.ide = _capability(flags.ide, state.surfaces, "IDE")
-    for agent in flags.agents:
-        selection.agents.add(_capability(agent, state.agents, "agent"))
+    for capability in flags.capabilities:
+        name = state.matrix.canonical_name(capability)
+        if state.matrix.is_ide(name):
+            raise ProjectConfigurationError(f"Choose an IDE with '--ide {name}'.")
+        selection.without = {item for item in selection.without if state.matrix.canonical_name(item) != name}
+        selection.extra.add(name)
+    for capability, component in flags.providers:
+        selection.use(state.matrix, CapabilityPolicy.read(state.manifest), Recommendations.read(state.manifest), capability, component)
     return state.with_selection(selection, checkout=document, allow_unverified=flags.allow_unverified)
 
 
@@ -314,7 +322,7 @@ def _settle(
         choice = _ask(output, reader, f"IDE [1-{len(decision.choices)}]: ")
         names = [name for name, _ in decision.choices]
         picked = names[int(choice) - 1] if choice.isdecimal() and 1 <= int(choice) <= len(names) else _capability(choice, state.surfaces, "IDE")
-        selection = Selection(LocalCapabilities.read(record.document), state.surfaces, state.agents)
+        selection = Selection(LocalCapabilities.read(record.document), state.surfaces)
         selection.ide = picked
         selected = state.with_selection(selection, checkout=record.document, allow_unverified=flags.allow_unverified)
         record.document["capabilities"] = selected["capabilities"]

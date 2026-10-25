@@ -67,9 +67,11 @@ def realize_environment(
 ) -> RealizedEnvironment:
     """Strictly reuse or materialize the canonical image for one resolved project."""
 
-    if base_override is not None and selected.manifest.get("capabilities", {}).get("sdk-major"):
+    from devcapsule.configuration.capabilities import CapabilityPolicy
+    if (base_override is not None and "capabilities" in selected.manifest
+            and CapabilityPolicy.read(selected.manifest).minimums):
         if base_override != selected.lock.get("base", {}).get("reference"):
-            raise CliError("A base override cannot establish the project's SDK-major guarantee; use its pinned compatible base.")
+            raise CliError("A base override cannot establish the project's minimum-version guarantee; use its pinned compatible base.")
     locked = parse_locked_environment(selected.lock)
     from devcapsule.configuration.storage import load_workstation
     if trust is None:
@@ -252,11 +254,11 @@ def omit_unavailable_optional(selected: ResolvedProject, url: str) -> ResolvedPr
     failed = {name for name, metadata in selected.lock["components"].items()
               if isinstance(metadata, dict) and name in COMPONENTS
               and any(artifact.url == url for artifact in COMPONENTS[name].locked_artifacts(metadata, str(selected.lock["platform"])))}
-    mandatory = {component for capability in (*policy.required, *local.selected) for component in matrix.providers(capability)}
+    mandatory = {component for capability in (*policy.required, *local.selected) for component in matrix.component_closure(capability)}
     if not failed or failed & mandatory:
         return None
     omitted = {capability for capability in policy.optional if capability in matrix.capabilities()
-               and failed & set(matrix.providers(capability))}
+               and failed & set(matrix.component_closure(capability))}
     if not omitted:
         return None
     choice = LocalCapabilities(local.selected, tuple(sorted(set(local.without) | omitted)))

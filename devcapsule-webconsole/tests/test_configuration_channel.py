@@ -237,3 +237,27 @@ def test_sequence_exhaustion_is_an_explained_refusal(channel_client, channel):
                                    headers={"Origin": "http://testserver"})
     assert response.status_code == 422 and "exhausted" in response.text
     assert len(list(channel.glob("*.request.json"))) == 1
+
+
+@pytest.mark.parametrize("command", [
+    "add claude-code-agent", "omit browser-automation", "restore browser-automation",
+    "use frontend-ide codium",
+])
+def test_capability_requests_use_current_verbs_without_confirmation(channel_client, channel, command):
+    tokens = parse_command(command)
+    assert not is_widening(tokens)
+    response = channel_client.post("/api/configuration/requests", json={"command": command},
+                                   headers={"Origin": "http://testserver"})
+    assert response.status_code == 201
+    identifier = response.json()["request"]["id"]
+    document = json.loads((channel / f"{identifier}.request.json").read_text())
+    assert document["arguments"] == tokens
+    assert response.json()["request"]["widening"] is False
+
+
+@pytest.mark.parametrize("command", ["agent add codex", "tool omit browser-automation"])
+def test_deleted_channel_verbs_do_not_write_requests(channel_client, channel, command):
+    response = channel_client.post("/api/configuration/requests", json={"command": command},
+                                   headers={"Origin": "http://testserver"})
+    assert response.status_code == 422
+    assert not list(channel.glob("*.request.json"))

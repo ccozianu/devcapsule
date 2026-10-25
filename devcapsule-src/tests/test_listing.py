@@ -18,8 +18,8 @@ from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES
 
 MATRIX = MATRICES[Platform.LINUX_AMD64]
-SURFACES = {name: MATRIX.providers(name)[0] for name in MATRIX.local_capabilities() if not name.endswith("-agent")}
-AGENTS = {name: MATRIX.providers(name)[0] for name in MATRIX.local_capabilities() if name.endswith("-agent")}
+
+SURFACES = {name: MATRIX.resolve_provider(name) or name for name in MATRIX.ide_capabilities()}
 
 
 def manifest(**extra) -> dict:
@@ -33,7 +33,7 @@ def listing(document: dict, checkout: dict | None = None, *, workstation: dict |
     checkout = checkout or {"devcapsule-checkout-schema-version": 1}
     composed = compose_lock(document, shared, checkout)
     return assess_checkout(document, shared, composed, checkout, workstation=workstation, saved_environment=saved,
-                           surfaces=SURFACES, agents=AGENTS, project=Path("/p"), base_display="contained")
+                           surfaces=SURFACES, project=Path("/p"), base_display="contained")
 
 
 def rows(result, kind):
@@ -55,9 +55,9 @@ def test_a_recommended_ide_is_disclosed_with_its_reason_and_not_pending() -> Non
     assert ide.command.endswith("config ide frontend-ide")
 
 
-def test_tools_show_their_scope_and_omission() -> None:
+def test_capabilities_show_their_scope_and_omission() -> None:
     result = listing(manifest(), {"devcapsule-checkout-schema-version": 1, "capabilities": {"without": ["browser-automation"]}})
-    tools = rows(result, "tool")
+    tools = rows(result, "capability")
     assert tools["node"].source == "project (required)" and tools["node"].effective == "supplied by the base"
     assert tools["browser-automation"].effective == "omitted" and tools["browser-automation"].source == "checkout (omitted)"
 
@@ -127,9 +127,9 @@ def test_bindings_and_secrets_appear_once_an_ide_is_chosen(tmp_path: Path) -> No
     checkout = {"devcapsule-checkout-schema-version": 1,
                 "capabilities": {"selected": list(local.selected), "without": [], "lock": render_toml(pins)}}
     composed = compose_lock(document, shared, checkout)
-    result = assess_checkout(document, shared, composed, checkout, surfaces=SURFACES, agents=AGENTS, project=Path("/p"), base_display="contained")
+    result = assess_checkout(document, shared, composed, checkout, surfaces=SURFACES, project=Path("/p"), base_display="contained")
     assert rows(result, "ide")["frontend-ide"].effective.startswith("codium ")
-    assert rows(result, "agent")["codex-agent"].effective.startswith("codex ")
+    assert rows(result, "capability")["codex-agent"].effective.startswith("codex ")
     assert rows(result, "binding")["home"].effective == "managed directory"
     assert rows(result, "secret")["codex/openai-api-key"].source == "component (optional)"
     assert not result.notes
@@ -148,7 +148,7 @@ def test_declared_values_rows_and_undeclared_answers() -> None:
 def test_render_and_document_carry_every_column() -> None:
     result = listing(manifest())
     text = result.render()
-    assert text.splitlines()[0].split() == ["KIND", "NAME", "EFFECTIVE", "SOURCE", "PENDING"]
+    assert text.splitlines()[0].split() == ["KIND", "NAME", "EFFECTIVE", "SOURCE", "PROVIDER", "PENDING"]
     document = result.document()
     assert document["schema-version"] == 2 and "(none)" in document["pending"]
     assert set(document["rows"][0]) == {"kind", "name", "effective", "source", "pending", "command"}
@@ -250,3 +250,31 @@ def test_legacy_host_answer_is_the_effective_value(recommended):
     host = {"network": {"mode": {"recommended": {"value": "host", "justification": "ports"}}}} if recommended else {}
     row = rows(listing(manifest(host=host), {"host": {"network": "host"}}), "access")["network"]
     assert row.effective == "host" and row.source.startswith("checkout (legacy)") and not row.pending
+
+
+@pytest.mark.parametrize("scope", ["required", "optional", "checkout", "omitted"])
+@pytest.mark.parametrize("provider", ["codex", "postgresql-client"])
+def test_capability_kind_is_independent_of_provider_and_name_suffix(monkeypatch, scope, provider):
+    from devcapsule.resolution_matrix import Capability
+    monkeypatch.setitem(MATRIX._capability_table, "assistant", Capability((provider,)))
+    document = manifest()
+    checkout = {"devcapsule-checkout-schema-version": 1}
+    if scope == "checkout":
+        checkout["capabilities"] = {"selected": ["assistant"]}
+    else:
+        document["capabilities"]["optional" if scope == "omitted" else scope] = ["assistant"]
+        if scope == "omitted":
+            checkout["capabilities"] = {"without": ["assistant"]}
+    shared = generate_lock(CapabilityPolicy.read(document), MATRIX)
+    if scope == "checkout":
+        from devcapsule.configuration.capability_commands import pin_selection
+        from devcapsule.configuration.capabilities import LocalCapabilities
+        pins = pin_selection(MATRIX, CapabilityPolicy.read(document), LocalCapabilities.read(checkout),
+                             shared, LocalCapabilities(), {}, allow_unverified=True)
+        checkout["capabilities"]["lock"] = render_toml(pins)
+    composed = compose_lock(document, shared, checkout)
+    result = assess_checkout(document, shared, composed, checkout,
+                             surfaces=SURFACES)
+    assert rows(result, "capability")["assistant"].effective == (
+        "omitted" if scope == "omitted" else f"{provider} {composed['components'][provider]['version']}")
+    assert not rows(result, "agent") and not rows(result, "tool")

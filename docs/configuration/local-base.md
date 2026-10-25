@@ -1,7 +1,7 @@
 ---
 description: Build a DevCapsule base image on your computer and select it for one checkout, when the published base lacks something the capsule needs, such as the web console.
 weight: 6
-updated: 2026-10-24
+updated: 2026-10-25
 ---
 # Build and select a local base
 
@@ -77,9 +77,9 @@ What the selection is, and is not:
 - It is a qualification, not validation: a run on a local base proves that
   run, not the base, and a lock proposal from such a checkout says so.
 - It cannot satisfy a mandatory guarantee the project declares, such as an
-  SDK major; see [capabilities](capabilities.md).
+  capability minimum; see [capabilities](capabilities.md).
 
-`devcapsule project config list` shows the override among this checkout's
+`devcapsule project config show` shows the override among this checkout's
 answers.
 
 ## Back to the published base

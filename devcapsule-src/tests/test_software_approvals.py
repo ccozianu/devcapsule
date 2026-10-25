@@ -7,6 +7,8 @@ real command line.
 
 from __future__ import annotations
 
+from tests.launch_preparation import run_until_prepared
+
 import json
 import tomllib
 from pathlib import Path
@@ -50,7 +52,7 @@ def approved_then_bumped(project: Path, record: Path) -> None:
     pin(project, "claude-code", "claude-code-download", CLAUDE_TERMS, "1.0.0")
     assert invoke(project, "config", "authorize", "base-image", "default") == 0
     assert invoke(project, "config", "authorize", "claude-code-download", "true") == 0
-    assert invoke(project, "config", "resolve") == 0
+    assert run_until_prepared(project) == 0
     pin(project, "claude-code", "claude-code-download", CLAUDE_TERMS, "1.1.0")
     assert review(project, record).ready is False
 
@@ -237,7 +239,7 @@ def test_run_with_other_pending_decisions_refuses_as_before(checkout, monkeypatc
     # The download's channel is the workstation's question (D-0011), named by its channel.
     assert "antigravity-cli" in captured.err and "Nothing was written" in captured.err
     assert "--trust antigravity-cli" in captured.err
-    assert invoke(project, "config", "resolve") == 3
+    assert run_until_prepared(project) == 3
     err = capsys.readouterr().err
     assert "antigravity-cli" in err
     assert launch.call_count == 0
@@ -369,8 +371,8 @@ def test_resolution_failure_keeps_approvals_and_names_recovery(checkout, monkeyp
     err = capsys.readouterr().err
     assert "Approvals were saved, but resolution failed" in err
     assert "fixture resolution failure" in err
-    assert f"devcapsule project --path '{project}' config resolve" in err
-    assert invoke(project, "config", "resolve") == 0  # the printed recovery is sufficient
+    assert f"devcapsule project --path '{project}' run" in err
+    assert run_until_prepared(project) == 0  # the printed recovery is sufficient
 
 
 def test_config_approve_refuses_inside_its_own_capsule(checkout, monkeypatch, tmp_path, capsys) -> None:
@@ -422,9 +424,9 @@ def test_inspecting_approvals_defers_activation_recovery(checkout, monkeypatch, 
     assert {p: p.read_bytes() for p in before} == before
     assert invoke(project, "config", "approve") == 2
     err = capsys.readouterr().err
-    assert "Interrupted activation" in err and "config resolve" in err
+    assert "Interrupted activation" in err and f"--path '{project}' run" in err
     assert {p: p.read_bytes() for p in before} == before
-    assert invoke(project, "config", "resolve") == 3  # recovers, then reports the pending consent
+    assert run_until_prepared(project) == 3  # recovers, then reports the pending consent
     assert "claude-code-download" in capsys.readouterr().err
     assert not journal.exists()
     assert invoke(project, "config", "approve", "--all") == 0

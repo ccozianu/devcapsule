@@ -105,7 +105,7 @@ class ConfigurationReview:
                 f"To require the contained desktop: {deny}\n"
                 "The selected base is checked before building."
             )
-        resolve = shlex.join(["devcapsule", "project", "--path", str(project), "config", "resolve"])
+        resolve = shlex.join(["devcapsule", "project", "--path", str(project), "run"])
         if fresh:
             lines.append(f"Nothing to resolve; 'project run' uses the current resolution. After changing a choice: {resolve}")
         elif self.ready and resolution is not None and resolution.startswith("stale"):

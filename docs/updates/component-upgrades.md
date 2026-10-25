@@ -3,7 +3,7 @@ description: Try a newer component version for one checkout, inspect the result,
 aliases:
   - /docs/guides/component-upgrades/
 weight: 4
-updated: 2026-10-09
+updated: 2026-10-25
 ---
 # Try a component upgrade and recover
 
@@ -52,7 +52,7 @@ registering another checkout in the container's home:
 
 ```sh
 devcapsule project versions show
-devcapsule project config list
+devcapsule project config show
 ```
 
 Both take `--json` for a script or the capsule web console: a stable document
@@ -62,7 +62,7 @@ host's next launch or the running capsule.
 `versions show` distinguishes the **running session's version set**, captured
 when it launched, from the **current selection for the next launch**. Changing
 the selection outside the capsule does not change its running software.
-`config list` shows the launcher's recorded configuration; host paths and
+`config show` shows the launcher's recorded configuration; host paths and
 permissions are not reinterpreted as container paths or current-session grants.
 
 The launcher mounts the directory containing the selected checkout's local

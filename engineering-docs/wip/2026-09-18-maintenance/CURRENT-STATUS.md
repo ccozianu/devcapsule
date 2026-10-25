@@ -284,6 +284,122 @@ begin the rewrite until project-management assigns it.
 
 ## Current State
 
+**2026-10-25: rc5 in preparation.** The owner merged the three slices;
+the release tip is `d01fb8c`. Full `nox -s build` on it from a separate
+worktree: mypy 246 files, 2281 unit tests, packaging integration 17,
+console 326; the documentation contract 189 pages. The throwaway copy
+`4PR-6-release-0.3.0`, the release tip (this record's commit) plus the
+cherry-pick of `62fa063`, is the pull request for the owner's merge. On
+that merge: confirm the release tip is an ancestor of `main`; `git tag -a
+v0.3.0-rc5 <tip> -m 'DevCapsule 0.3.0 candidate 5'`; from a detached
+checkout of the tag, `scripts/release-protocol.py v0.3.0-rc5 --output
+/opt/devcapsule-gate/rc5-release-protocol.json`, expecting `mainline`;
+push the tag; the backend run; download into
+`~/.cache/devcapsule-releases/v0.3.0-rc5`, verify the checksum and the
+version; record rc5 in the overview and the changelog's candidate-5 line.
+
+**2026-10-25: capabilities and components, slice 3 accepted; the stack is
+complete.** Slice 3, the retired spellings deleted, the documentation on
+the model, the configuration entry page and the candidate-5 changelog, is
+[PR #279](https://github.com/ccozianu/devcapsule/pull/279) on
+`ws-maintenance/capabilities-3-docs` into slice 2's branch, Codex session
+`01a1702e-7625-7230-adc1-7a9fb6d98e4b`. One review round: the console's
+configuration channel still named the deleted `agent` and `tool` verbs on
+both sides (the brief's "do not touch the web console" caused it; the
+round lifted it), the listing labelled rows "agent" by a credentials-slot
+rule, `init` kept its own grammar and lacked `--with`, the pages carried
+the previous day's date; fixed at `1ae09df`. Accepted there: full gate
+from a separate worktree, mypy 246 files, 2281 unit tests, packaging
+integration 17, console 326; the documentation check 189 pages; the
+commands and the channel classifier verified by hand. The three slices
+(#276, #277, #279) are the owner's to merge in order into
+`release-0.3.0`; each later PR targets the previous slice's branch, so
+GitHub retargets it as the earlier one merges. The next candidate, rc5,
+follows the merges, with the diagnostics snapshot, image cleanup and C20
+still to come, and the documentation language review before the final tag.
+**2026-10-25: capabilities and components, slice 2 accepted; slice 3
+running.** Slice 2, the owner's and the developer's commands, the
+resolution recommendation and the provider choice, is
+[PR #277](https://github.com/ccozianu/devcapsule/pull/277) on
+`ws-maintenance/capabilities-2-commands` into slice 1's branch, Codex
+session `01a17009-1972-75e1-a5e1-29bc111a6de4`. Codex stopped first on a
+real blocker: the rc4 reader refuses an unknown key under
+`[recommendations]`, so the order's `[recommendations.resolution]` was
+unreadable by rc4; the reviewer verified with the rc4 executable that an
+unknown table under `[capabilities]` is tolerated silently, moved the
+table to `[capabilities.resolution]` and corrected the order (`168181d`);
+the reviewer also struck the reason on a resolution recommendation, by
+the owner's rule of removal, nothing reading it (`34fa5f1`). One review
+round: `compose_lock` had become a writer, the resolver's steps were not
+legible and the lock's shape depended on inputs, the resolution's reason
+was encoded in a key, two messages named retired words, base rows showed
+a provider; fixed at `be3821c`. Accepted there: full gate from a separate
+worktree, mypy 244 files, 2191 unit tests, packaging integration 17,
+console 320; the commands verified by hand on a scratch project. Slice 3,
+the retired spellings deleted, the documentation on the model, the
+configuration entry page and the candidate-5 changelog, is running on
+`ws-maintenance/capabilities-3-docs`, worktree `maintenance-impl-3`,
+session `01a1702e-7625-7230-adc1-7a9fb6d98e4b`. The owner merges #276 then
+#277; #277's PR targets #276's branch.
+**2026-10-24, night: capabilities and components, slice 1 accepted.** The
+owner merged the work order (PR #275) and swapped the roles: Codex with
+gpt-6-astra implements, Claude Fable 5.1 reviews, the owner merges.
+Slice 1, the catalog and derivation on one capability table with the rc4
+commands still working, is [PR #276](https://github.com/ccozianu/devcapsule/pull/276)
+on `ws-maintenance/capabilities-1-model` into `release-0.3.0`, Codex
+session `01a16fe7-2eeb-7b70-8013-0d585196e04b`, brief under
+`evidence/2026-10-24-capabilities/`. One review round: the listing had
+rewritten the capability's name with its minimum, the base refusal
+special-cased "Python", a versionless locked provider failed without a
+minimum, and the retired-table note had two spellings; fixed at `5530843`.
+Accepted there: full gate from a separate worktree, mypy 243 files, 2130
+unit tests, packaging integration 17, console 320; the acceptance greps
+hold; the owner's three-requirement use case and the AI Learning rc2
+files verified by hand (refusal naming 3.12; byte-identical regenerated
+lock; the old table dropped on the next owner write). Slice 2, the
+commands, run flags, resolution recommendation and provider choice, is
+running on `ws-maintenance/capabilities-2-commands`, stacked on slice 1,
+worktree `maintenance-impl-2`, session `01a17009-1972-75e1-a5e1-29bc111a6de4`.
+The owner merges #276 when ready; slice 2's PR targets slice 1's branch.
+
+**2026-10-24, late: the next work order drafted.** Reviewing rc4's
+vocabulary, the owner found the split of components into IDEs, agents
+and tools unjustified and settled the model with the agent in
+conversation: capabilities (the project's word) provided by components
+(the catalog's), the surface the one special role, cardinality a property
+of the capability, and the project able to require, offer or recommend a
+capability and, optionally, recommend its resolution. The draft
+[work order](../../work-orders/2026-10-24-capabilities-and-components.md)
+refactors the redesign's output: it deletes the `-agent` kind, the
+matrix's refusal of agents in the shared contract and the three command
+families, and adds `[recommendations.resolution]` and a minimum version on any
+requirement; the SDK major is removed entirely by the owner's ruling. Its
+Part 5 asks the owner nothing: the implementation choices are taken by the
+agent within the rulings and the owner reverses any by a word; the two
+that change scope, deleting the rc4 aliases and targeting the final 0.3.0
+tag, are marked. The owner struck cardinality from the model and tabled
+the renaming of the IDE role to the capsule's entry point as D-0014,
+proposed and in scope for V1; the order and the records say the IDE owns
+the container's lifetime and can make use of the display, never that it
+owns the display. The owner's complaint that every work order makes work
+for them is taken: an order is written as decisions taken, not as
+questions. Nothing is implemented.
+
+**2026-10-24, evening: rc4 tagged, published and verified.** The owner
+merged PR #274 at `c04cb4e`; `78a9c66` is an ancestor of `main`;
+`v0.3.0-rc4` on `78a9c66`, the candidate gate `mainline` with no
+unintegrated commits from a detached checkout, record at
+`/opt/devcapsule-gate/rc4-release-protocol.json`; pushed with the branch;
+backend run 40123896286 passed; the prerelease is public with its three
+assets; the download under `~/.cache/devcapsule-releases/v0.3.0-rc4`
+verifies, SHA-256 `474fea1e…`, `devcapsule version` reporting `0.3.0rc4`
+at `78a9c66`. The overview's rc4 entry and the changelog's candidate-4
+line are written. The AI Learning setup the owner asked for is delivered
+in chat from the dry run described below. Next, the owner's: test the
+redesigned commands on the download; then the diagnostics snapshot, image
+cleanup and C20 for the next candidate; the documentation language review
+before the final tag, booked with project-management.
+
 **2026-10-24, evening: rc4 in preparation.** The owner merged the CLI UX
 stack, #260 to #269, the release tip at `3cc8a50`. The full `nox -s build`
 on it failed in the packaging integration: one test of seventeen expected

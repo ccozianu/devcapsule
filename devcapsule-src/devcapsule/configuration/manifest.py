@@ -7,7 +7,7 @@ from devcapsule.project import normalize_project_mount, ProjectMountError
 
 from .file_formats import ConfigurationFileKind, ProjectConfigurationError, validate_file_format
 from .values import configuration_value_declarations
-from .capabilities import CapabilityPolicy
+from .capabilities import CapabilityPolicy, resolution_recommendations
 from .manifest_document import EnvironmentPolicy, Recommendations, capability_reasons
 
 
@@ -24,6 +24,7 @@ def validate_manifest(value: Mapping[str, Any], path: Path) -> None:
     except ProjectMountError as exc:
         raise ProjectConfigurationError(f"{path}: {exc}") from exc
     CapabilityPolicy.read(value)
+    resolution_recommendations(value)
     configuration_value_declarations(value, source=str(path))
     try:
         capability_reasons(value)

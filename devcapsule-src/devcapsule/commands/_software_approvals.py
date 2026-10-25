@@ -89,7 +89,7 @@ def pending_for(root: Path, manifest: dict[str, Any]) -> tuple[SoftwareApproval,
     # Both lock_for and load_checkout can recover an activation by writing
     # the resolution. Inspection and refusal must leave these files alone.
     if interrupted_activation(input_path):
-        command = shlex.join(["devcapsule", "project", "--path", str(root), "config", "resolve"])
+        command = shlex.join(["devcapsule", "project", "--path", str(root), "run"])
         raise ProjectConfigurationError(
             f"Interrupted activation; finish recovery before reviewing software approvals: {command}"
         )
@@ -121,7 +121,7 @@ def approve(root: Path, manifest: dict[str, Any], approvals: tuple[SoftwareAppro
             return
         print(resolve_checkout(root).render())
     except (CliError, OSError) as exc:
-        command = shlex.join(["devcapsule", "project", "--path", str(root), "config", "resolve"])
+        command = shlex.join(["devcapsule", "project", "--path", str(root), "run"])
         raise ProjectConfigurationError(
             f"Approvals were saved, but resolution failed: {exc}\n"
             f"Resolve the reported problem, then run: {command}"

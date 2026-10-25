@@ -306,7 +306,7 @@ def test_trust_never_overrides_a_normalized_denial_or_invalid_answer(project: Pa
 
 
 def test_foreign_base_still_requires_checkout_consent(project: Path) -> None:
-    assert config(project, "drop", "tool", "node") == 0
+    assert config(project, "drop", "node") == 0
     assert config(project, "trust", "accept", BASE_CHANNEL) == 0
     lock = load_toml(lock_path(project))
     lock["base"]["reference"] = "registry.example.test/base@sha256:" + "b" * 64

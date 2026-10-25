@@ -6,7 +6,7 @@ new and what is fixed since 0.2.15. Records, workflow rules and the
 project's own housekeeping are left out on purpose. The adopter notes for
 the final release, `notes.md`, are written from this file.
 
-Candidate 4 is in preparation; candidate 3 was tagged 2026-10-24 at `a22a215`; candidate 2 was tagged
+Candidate 5 is in preparation; candidate 4 was tagged 2026-10-24 at `78a9c66`; candidate 3 on 2026-10-24 at `a22a215`; candidate 2 was tagged
 2026-10-22 at `e5b5a8b`, candidate 1 on 2026-10-19 at `7016cdd` and
 candidate 0 on 2026-10-18 at `53ebc17`.
 
@@ -159,6 +159,43 @@ integration and end-to-end suites.
   [Software approvals](https://devcapsule.mycodespace.ai/docs/current/configuration/software-approvals/)
   says what an approval by name leaves alone (2026-10-22).
 
+## New in candidate 5
+
+A capability names what the project needs. A component provides it. Coding
+agents use this same model. The IDE owns the container's lifetime and can
+use its display.
+
+`config require`, `offer` and `drop` take capabilities directly.
+`config require 'java>=21'` requires Java 21 or newer. Quote minimums in the
+shell. The lock pins the exact version. `init --require` accepts the same
+minimum. Repeat `init --with CAPABILITY` to add personal capabilities.
+
+`config recommend frontend-ide codium` recommends a provider under
+`[capabilities.resolution]`. A resolution recommendation takes no reason.
+It grants no trust or host access.
+
+`config add`, `omit` and `restore` select capabilities for your checkout.
+`config use CAPABILITY COMPONENT` chooses among providers. `default` removes
+that choice. `run --with` and `--use` apply choices to one launch. `--save`
+records them.
+
+The SDK major is removed. Old manifests remain readable with a note.
+The next owner write drops the old table. An unchanged manifest keeps its
+old lock current until the next shared edit.
+
+The rc4 aliases and replaced agent and tool commands now return status 2.
+Each names its replacement in one line and writes nothing. Initialization's
+old agent flag points to `init --with`. `config capabilities --recover` remains available.
+
+Candidate 4 ignores the new resolution table and uses the catalog's first
+provider. Each current capability has only one provider. Minimums and
+component aliases introduce vocabulary that candidate 4 cannot read.
+Existing rc4 files remain readable by candidate 5.
+
+The configuration documentation now starts with the project, checkout and
+workstation records. The detail pages use the capability model and current
+commands.
+
 ## New in candidate 4
 
 The CLI redesign separates project requirements from personal choices.
@@ -222,10 +259,25 @@ on 2026-10-24.
   [command reference](https://devcapsule.mycodespace.ai/docs/current/reference/cli/)
   lists each retained form and its behavior.
 
+## Not in candidate 5
+
+Shared-memory passthrough remains incomplete against the redesign. The
+`--print-command` path can still materialize images and write caches; use
+`config show` or `config check` for read-only inspection. `init` still asks
+per-checkout consent for the base and the agent downloads without a
+terminal even when the channels are trusted; pass `--authorize base-image
+default` and the download consents, or run it at a terminal.
+
+Planned for later candidates: diagnostics snapshot and export, obsolete
+image and cache cleanup, and release-notes automation.
+Outside 0.3.0: installed-IDE reuse with an empty launcher cache, browser
+evidence for diagnostics, console materialized views, and ecosystem-aware bootstrap.
+
 ## Not in candidate 4
 
-The resolve step no longer needs a force option. Shared-memory passthrough
-and retirement of `init --less-pedantic` remain incomplete against the redesign.
+Shared-memory passthrough remains incomplete against the redesign.
+Candidate 5 completes the retirement of `init --less-pedantic` and the old
+force options; the retired-spelling entry above records the replacement rule.
 The `--print-command` path can still materialize images and write caches;
 use `config show` or `config check` for read-only inspection.
 

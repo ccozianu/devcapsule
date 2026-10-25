@@ -6,7 +6,7 @@ command. It reads the project's manifest and lock, the workstation's
 defaults and the checkout's record, derives the plan, asks only what it
 cannot derive, and launches. Nothing derived is the user's to refresh:
 the generated resolution is written here, every time, as the launch's own
-artifact, and ``config resolve`` is gone.
+artifact.
 
 This module is the adapter between the documents on disk and the
 in-memory :class:`Configuration`: it registers a checkout that has no record
@@ -31,13 +31,14 @@ from devcapsule.project import sanitize_name
 from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix, known_base_image
 
 from .authorization import authorized_base_selection
-from .capabilities import CapabilityPolicy, LocalCapabilities
+from .capabilities import CapabilityPolicy, LocalCapabilities, resolution_recommendations
 from .capability_commands import pin_selection, release_deselected
-from .capability_selection import compose_lock, effective_lock, local_pins
+from .capability_selection import compose_lock, effective_lock, local_pins, inspection_capabilities, inspection_providers, known_policy_names
 from .console_requests import deferred_rows
 from .file_formats import ProjectConfigurationError, canonical_digest, render_checkout, render_toml
 from .listing import Listing, assess_checkout
 from .model import Configuration
+from .manifest_document import Recommendations
 from .trust import WorkstationTrust
 from .storage import (
     ResolvedProject,
@@ -54,30 +55,51 @@ from .storage import (
 from .file_formats import selected_version_lock
 from .docker_arguments import arguments_path, read_arguments, read_environment
 
-__all__ = ["CheckoutState", "Selection", "derive_plan", "load_state", "register_checkout", "selection_catalog"]
-
-
-def selection_catalog(matrix: ResolutionMatrix | None = None) -> tuple[dict[str, str], dict[str, str]]:
-    """The IDE and agent capabilities this launcher knows, each with the component it selects."""
-    matrix = matrix or MATRICES[Platform.current()]
-    personal = matrix.local_capabilities()
-    surfaces = {name: matrix.providers(name)[0] for name in personal if not name.endswith("-agent")}
-    agents = {name: matrix.providers(name)[0] for name in personal if name.endswith("-agent")}
-    return surfaces, agents
+__all__ = ["CheckoutState", "Selection", "derive_plan", "load_state", "register_checkout"]
 
 
 class Selection:
-    """A checkout's IDE, agents and omissions, as capability names, editable in memory."""
+    """A checkout's capability selections, omissions and provider choices, editable in memory."""
 
-    def __init__(self, local: LocalCapabilities, surfaces: Mapping[str, str], agents: Mapping[str, str]) -> None:
-        self.ide = next((name for name in local.selected if name in surfaces), None)
-        self.agents = {name for name in local.selected if name in agents}
-        self.extra = {name for name in local.selected if name not in surfaces and name not in agents}
+    def __init__(self, local: LocalCapabilities, surfaces: Mapping[str, str]) -> None:
+        self.surfaces = set(surfaces)
+        self._ide = next((name for name in local.selected if name in surfaces), None)
+        self.extra = {name for name in local.selected if name not in surfaces}
+        self.providers = dict(local.providers)
         self.without = set(local.without)
 
+    @property
+    def ide(self) -> str | None:
+        return self._ide
+
+    @ide.setter
+    def ide(self, value: str | None) -> None:
+        self._ide = value
+        self.providers = {name: component for name, component in self.providers.items()
+                          if name not in self.surfaces or name == value}
+
     def local(self) -> LocalCapabilities:
-        selected = {*self.agents, *self.extra} | ({self.ide} if self.ide else set())
-        return LocalCapabilities(tuple(sorted(selected)), tuple(sorted(self.without)))
+        selected = {*self.extra} | ({self.ide} if self.ide else set())
+        return LocalCapabilities(tuple(sorted(selected)), tuple(sorted(self.without)), dict(self.providers))
+
+    def use(self, matrix: ResolutionMatrix, policy: CapabilityPolicy, recommendations: Recommendations,
+            capability: str, component: str) -> None:
+        """Choose a provider without adding or authorizing its capability."""
+        name = matrix.canonical_name(capability)
+        providers = matrix.providers(name)
+        if len(providers) < 2:
+            raise ProjectConfigurationError(f"{name!r} has no provider choice; supplied by {', '.join(providers) or 'the base'}.")
+        active = set(known_policy_names(policy, matrix).values()) | {matrix.canonical_name(item) for item in self.local().selected}
+        if recommendations.ide:
+            active.add(matrix.canonical_name(recommendations.ide))
+        if name not in active:
+            raise ProjectConfigurationError(f"{name!r} is not selected; use 'config add {name}' or 'config ide {name}' first.")
+        if component == "default":
+            self.providers.pop(name, None)
+        else:
+            minimums = {matrix.canonical_name(key): minimum for key, minimum in policy.minimums}
+            matrix.resolve_provider(name, minimums.get(name), choice=component)
+            self.providers[name] = component
 
 
 class CheckoutState:
@@ -87,7 +109,7 @@ class CheckoutState:
         self.root = root
         self.manifest = manifest
         self.matrix = MATRICES[Platform.current()]
-        self.surfaces, self.agents = selection_catalog(self.matrix)
+        self.surfaces = {name: self.matrix.resolve_provider(name) or name for name in self.matrix.ide_capabilities()}
         self.lock_path, self.shared_lock = recommendation_lock_for(root, manifest)
         self.workstation = load_workstation()
         record = find_checkout_record(manifest, root)
@@ -133,10 +155,14 @@ class CheckoutState:
         if selection is not None:
             reference = selection.reference
         base = known_base_image(str(reference))
+        access_lock, versions = inspection_capabilities(self.manifest, lock, document)
+        providers = inspection_providers(self.manifest, lock, document)
         listing = assess_checkout(
             self.manifest, self.shared_lock, lock, document,
             workstation=self.workstation, saved_environment=self.saved_environment,
-            surfaces=self.surfaces, agents=self.agents, project=self.root, registered=self.registered,
+            surfaces=self.surfaces, project=self.root, registered=self.registered,
+            access_lock=access_lock, capability_versions=versions,
+            capability_providers=providers,
             base_display=base.contract.display if check_display and base is not None else None,
         )
         return Listing(listing.rows + tuple(deferred_rows(self.input_path, self.root)), listing.notes)
@@ -152,13 +178,16 @@ class CheckoutState:
         version_record = document.pop("version-set", None)
         source = deepcopy(selected if selected is not None else self.shared_lock)
         if selected is not None:
-            release_deselected(source, self.matrix, CapabilityPolicy.read(self.manifest), previous, local)
+            release_deselected(source, self.matrix, CapabilityPolicy.read(self.manifest), previous, local,
+                               recommendations=resolution_recommendations(self.manifest))
         pins = pin_selection(self.matrix, CapabilityPolicy.read(self.manifest), local, source, previous,
-                             local_pins(document), allow_unverified=allow_unverified)
+                             local_pins(document), allow_unverified=allow_unverified,
+                             recommendations=resolution_recommendations(self.manifest))
         document["capabilities"] = {"selected": list(local.selected), "without": list(local.without),
-                                    "lock": render_toml(pins)}
+                                    "lock": render_toml(pins), **({"providers": local.providers} if local.providers else {})}
         if version_record is not None:
-            version_record["lock"] = render_toml(compose_lock(self.manifest, source, document))
+            version_record["lock"] = render_toml(compose_lock(self.manifest, source, document,
+                reset_providers=tuple(set(previous.providers) - set(local.providers))))
             document["version-set"] = version_record
         return document
 

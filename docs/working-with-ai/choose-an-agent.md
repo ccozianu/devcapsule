@@ -2,7 +2,7 @@
 description: Add Claude Code, OpenAI Codex or the Antigravity CLI to your checkout in one command, and let it work at full speed inside the capsule's boundary.
 role: agents
 weight: 1
-updated: 2026-10-24
+updated: 2026-10-25
 ---
 # Choose an agent
 
@@ -11,11 +11,11 @@ DevCapsule acquires them on the next launch and keeps their sign-in state betwee
 
 | Agent | Add it to your checkout | Start it in the IDE terminal |
 |---|---|---|
-| Claude Code | `~/.local/bin/devcapsule project config agent add claude-code-agent` | `claude` |
-| OpenAI Codex | `~/.local/bin/devcapsule project config agent add codex-agent` | `codex` |
-| Antigravity CLI | `~/.local/bin/devcapsule project config agent add antigravity-agent` | `antigravity` |
+| Claude Code | `~/.local/bin/devcapsule project config add claude-code-agent` | `claude` |
+| OpenAI Codex | `~/.local/bin/devcapsule project config add codex-agent` | `codex` |
+| Antigravity CLI | `~/.local/bin/devcapsule project config add antigravity-agent` | `antigravity` |
 
-Run the `config agent add` command in your computer's terminal, from the
+Run the `config add` command in your computer's terminal, from the
 project folder. It changes your checkout's selection and local version pins.
 It does not change the shared manifest or lock. Save your work, stop the
 capsule, then use `project run` to acquire the agent and start another session.
@@ -50,7 +50,7 @@ Read the result, run the project's checks, commit what you keep. Give the
 agent durable context with an instructions file at the project root; see
 [Instructions for agents](instructions-for-agents.md).
 
-## Which agent?
+## Subscriptions and choice
 
 Whichever your subscription covers. All three read a project instructions
 file, run inside the same boundary, and keep their sign-in per checkout. You

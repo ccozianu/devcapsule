@@ -50,8 +50,8 @@ class Configuration:
         from .capabilities import CapabilityPolicy, LocalCapabilities
         policy = CapabilityPolicy.read(self._manifest)
         LocalCapabilities.read(self._checkout).validate(policy)
-        if policy.sdk_major and table(self._checkout, "authorization", "base-image").get("image-id"):
-            raise ProjectConfigurationError("A local base override cannot establish the project's SDK-major guarantee; select the pinned project base.")
+        if policy.minimums and table(self._checkout, "authorization", "base-image").get("image-id"):
+            raise ProjectConfigurationError("A local base override cannot establish the project's minimum-version guarantee; select the pinned project base.")
         self._review = review_configuration(self._manifest, self._lock, self._checkout, self._workstation)
 
     def review(self) -> ConfigurationReview:
@@ -85,14 +85,14 @@ class Configuration:
         stale = self.stale_inputs(resolution)
         if stale and not force:
             raise ProjectConfigurationError(
-                f"Local resolution is stale ({', '.join(stale)}); run 'devcapsule project config resolve'."
+                f"Local resolution is stale ({', '.join(stale)}); run 'devcapsule project run'."
             )
         if not self._review.ready:
             raise ProjectConfigurationError("Cannot consume an incomplete configuration review.")
         if resolution.component != self._lock["components"]["interactive-surface"]:
-            raise ProjectConfigurationError("Resolved surface differs from the lock; run 'devcapsule project config resolve'.")
+            raise ProjectConfigurationError("Resolved surface differs from the lock; run 'devcapsule project run'.")
         if not stale and not resolution.same_meaning_as(self.resolve()):
             raise ProjectConfigurationError(
-                "Generated resolution does not match its inputs; run 'devcapsule project config resolve'."
+                "Generated resolution does not match its inputs; run 'devcapsule project run'."
             )
         return stale

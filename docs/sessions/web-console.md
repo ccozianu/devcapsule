@@ -1,7 +1,7 @@
 ---
 description: "The web console: your capsule as a page, with what the devcapsule commands report, reached through one link behind the run's token."
 weight: 5
-updated: 2026-10-19
+updated: 2026-10-25
 ---
 # The web console
 
@@ -21,7 +21,7 @@ Web console: http://127.0.0.1:41273/?token=…
 Open the link and you see the capsule's identity, then one page for each of
 the inspection commands:
 
-- **Configuration**: what `devcapsule project config list` reports.
+- **Configuration**: what `devcapsule project config show` reports.
 - **Versions**: what `devcapsule project versions show` reports, the running
   session's version set and the one selected for the next launch.
 - **Project**: what `devcapsule project info` reports: components,
