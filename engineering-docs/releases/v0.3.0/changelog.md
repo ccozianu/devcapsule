@@ -6,7 +6,7 @@ new and what is fixed since 0.2.15. Records, workflow rules and the
 project's own housekeeping are left out on purpose. The adopter notes for
 the final release, `notes.md`, are written from this file.
 
-Candidate 4 was tagged 2026-10-24 at `78a9c66`; candidate 3 on 2026-10-24 at `a22a215`; candidate 2 was tagged
+Candidate 5 is in preparation; candidate 4 was tagged 2026-10-24 at `78a9c66`; candidate 3 on 2026-10-24 at `a22a215`; candidate 2 was tagged
 2026-10-22 at `e5b5a8b`, candidate 1 on 2026-10-19 at `7016cdd` and
 candidate 0 on 2026-10-18 at `53ebc17`.
 
@@ -258,6 +258,20 @@ on 2026-10-24.
   `init --less-pedantic` remains accepted. The
   [command reference](https://devcapsule.mycodespace.ai/docs/current/reference/cli/)
   lists each retained form and its behavior.
+
+## Not in candidate 5
+
+Shared-memory passthrough remains incomplete against the redesign. The
+`--print-command` path can still materialize images and write caches; use
+`config show` or `config check` for read-only inspection. `init` still asks
+per-checkout consent for the base and the agent downloads without a
+terminal even when the channels are trusted; pass `--authorize base-image
+default` and the download consents, or run it at a terminal.
+
+Planned for later candidates: diagnostics snapshot and export, obsolete
+image and cache cleanup, and release-notes automation.
+Outside 0.3.0: installed-IDE reuse with an empty launcher cache, browser
+evidence for diagnostics, console materialized views, and ecosystem-aware bootstrap.
 
 ## Not in candidate 4
 

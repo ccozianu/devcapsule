@@ -284,6 +284,20 @@ begin the rewrite until project-management assigns it.
 
 ## Current State
 
+**2026-10-25: rc5 in preparation.** The owner merged the three slices;
+the release tip is `d01fb8c`. Full `nox -s build` on it from a separate
+worktree: mypy 246 files, 2281 unit tests, packaging integration 17,
+console 326; the documentation contract 189 pages. The throwaway copy
+`4PR-6-release-0.3.0`, the release tip (this record's commit) plus the
+cherry-pick of `62fa063`, is the pull request for the owner's merge. On
+that merge: confirm the release tip is an ancestor of `main`; `git tag -a
+v0.3.0-rc5 <tip> -m 'DevCapsule 0.3.0 candidate 5'`; from a detached
+checkout of the tag, `scripts/release-protocol.py v0.3.0-rc5 --output
+/opt/devcapsule-gate/rc5-release-protocol.json`, expecting `mainline`;
+push the tag; the backend run; download into
+`~/.cache/devcapsule-releases/v0.3.0-rc5`, verify the checksum and the
+version; record rc5 in the overview and the changelog's candidate-5 line.
+
 **2026-10-25: capabilities and components, slice 3 accepted; the stack is
 complete.** Slice 3, the retired spellings deleted, the documentation on
 the model, the configuration entry page and the candidate-5 changelog, is
