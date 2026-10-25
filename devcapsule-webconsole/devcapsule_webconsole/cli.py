@@ -39,6 +39,16 @@ class CommandRefused(CommandError):
 
 REFUSAL_STATUS = 2
 
+# Every ``project`` subcommand the console runs, each with ``--json`` appended
+# by ``RuntimeCli.command``. The contract test runs each against the
+# launcher's parser; a command retired on the launcher's side fails there.
+READ_COMMANDS: dict[str, tuple[str, ...]] = {
+    "configuration": ("config", "show"),
+    "notifications": ("checkout", "notifications", "list"),
+    "versions": ("versions", "show"),
+    "information": ("info",),
+}
+
 
 @dataclass(frozen=True)
 class RuntimeCli:
@@ -97,19 +107,19 @@ class RuntimeCli:
         return completed.stdout.decode("utf-8", errors="replace").strip()
 
     def configuration(self) -> dict[str, Any]:
-        return self.read("config", "show")
+        return self.read(*READ_COMMANDS["configuration"])
 
     def notifications(self, *, decisions: Path, unread_only: bool = False) -> dict[str, Any]:
         # The listing must merge the directory served by the decision pages,
         # including an explicit --decisions override. Do not change os.environ.
         environ = {**os.environ, DECISIONS_ENV: str(decisions)}
-        return self.read("checkout", "notifications", "list", *(("--unread",) if unread_only else ()), environ=environ)
+        return self.read(*READ_COMMANDS["notifications"], *(("--unread",) if unread_only else ()), environ=environ)
 
     def versions(self) -> dict[str, Any]:
-        return self.read("versions", "show")
+        return self.read(*READ_COMMANDS["versions"])
 
     def information(self) -> dict[str, Any]:
-        return self.read("info")
+        return self.read(*READ_COMMANDS["information"])
 
 
 def _finite_number(value: str) -> float:
