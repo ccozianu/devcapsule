@@ -6,7 +6,7 @@ import shlex
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
-from devcapsule.images.contract import Provenance
+from devcapsule.images.contract import LEGACY_RECIPE_SOURCE_PATH, Provenance
 from devcapsule.components.catalog import COMPONENTS
 
 from .file_formats import AuthorizationScalar, ProjectConfigurationError, canonical_digest
@@ -205,7 +205,10 @@ def authorization_declarations(
         # states it; who built it is provenance and follows, with a permalink
         # to the recipe. Locks written before contracts were recorded fall
         # back to the builder's name, which is all they carry.
-        provenance = Provenance(builder=build_mnemonic) if build_mnemonic is not None else None
+        provenance = Provenance(
+            builder=build_mnemonic,
+            recipe_path=str(lock["base"].get("recipe-source", LEGACY_RECIPE_SOURCE_PATH)),
+        ) if build_mnemonic is not None else None
         if contract_identity is not None:
             description = (
                 f"Execute base {contract_identity} at {reference}"

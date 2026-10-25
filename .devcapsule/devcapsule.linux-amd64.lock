@@ -1,12 +1,13 @@
 "capabilities-digest" = "5a8581f94902def37cc35f11e607c81bf0ecce7cd8b2d70417a3502d24fc4468"
 "devcapsule-lock-format-version" = 1
 "platform" = "linux-amd64"
-"resolution-matrix-version" = "embedded-27"
+"resolution-matrix-version" = "embedded-28"
 
 ["base"]
-"build-mnemonic" = "v0.2.12-rc5"
-"contract" = "ubuntu-24.04@9"
-"reference" = "docker.io/mycodespaceai/devcapsule-base@sha256:8837edd36720763796ab9fe1dbeb66f1aa7ca2db0dabc8d73a58716440f42f7c"
+"build-mnemonic" = "v0.3.0-rc6"
+"contract" = "ubuntu-24.04@11"
+"recipe-source" = "devcapsule-src/devcapsule/images/base.py"
+"reference" = "docker.io/mycodespaceai/devcapsule-base@sha256:8c97d308b4ac8172ce91ef4f96406063bfcd85a55efb09d4a23e795b10a834a3"
 
 ["capability-providers"]
 "antigravity-agent" = ["antigravity-cli"]

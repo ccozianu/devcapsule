@@ -47,6 +47,8 @@ from devcapsule.images.contract import (
     EMBEDDED_RUNTIME,
     HOST_X11_ONLY_DISPLAY,
     LAUNCHER_SUPPLIED_RUNTIME,
+    LEGACY_RECIPE_SOURCE_PATH,
+    RECIPE_SOURCE_PATH,
     BaseContract,
     BaseImage,
     Provenance,
@@ -79,7 +81,7 @@ class ResolutionError(ProjectConfigurationError):
     """
 
 
-_MATRIX_VERSION = "embedded-27"
+_MATRIX_VERSION = "embedded-28"
 
 
 # --------------------------------------------------------------------------
@@ -131,7 +133,10 @@ class _BasePin:
         return BaseImage(
             contract=self.contract,
             reference=str(self.lock_table["reference"]),
-            built=Provenance(builder=str(self.lock_table.get("build-mnemonic", "unknown"))),
+            built=Provenance(
+                builder=str(self.lock_table.get("build-mnemonic", "unknown")),
+                recipe_path=str(self.lock_table.get("recipe-source", LEGACY_RECIPE_SOURCE_PATH)),
+            ),
         )
 
 
@@ -768,6 +773,40 @@ _V0_2_12_BASE = _BasePin(
     },
 )
 
+# The v0.3.0-rc6 base (recipe version 11) adds the web console under
+# /opt/devcapsule-webconsole over recipe 9: recipe 10 added the console,
+# and recipe 11 its process and resource monitor. Same family, same OS
+# and toolchain, and the launcher supplies the runtime, so it inherits
+# every validation below. Costin Cozianu built it with the published
+# v0.3.0-rc6 executable from tag revision 2ed8ecf536b0d653056ac35792cae413a6d6732a
+# and pushed it on 2026-10-25 as mycodespaceai/devcapsule-base:v0.3.0.rc6.
+# The digest was read from the registry and the copy re-inspected by digest
+# (linux/amd64, recipe 11, display=contained, runtime=launcher-supplied,
+# all six services and the web console root). Evidence: the owner's
+# 2026-10-25 test on the locally built twin of this recipe, with the
+# console's configuration page working after PR #281 repaired the rc5
+# regression. The recipe-9 pin remains; retirement is explicit under D-0007.
+_V0_3_0_RC6_BASE = _BasePin(
+    mnemonic="v0.3.0-rc6",
+    base_family=_BASE_FAMILY_UBUNTU_24_04,
+    satisfies={
+        "python": "3.12", "docker-cli": None, "node": NODE_VERSION,
+        "java": TEMURIN_VERSION, "maven": MAVEN_VERSION, "postgresql-client": None,
+    },
+    recipe=11,
+    display=CONTAINED_DISPLAY,
+    runtime=LAUNCHER_SUPPLIED_RUNTIME,
+    lock_table={
+        "reference": (
+            "docker.io/mycodespaceai/devcapsule-base"
+            "@sha256:8c97d308b4ac8172ce91ef4f96406063bfcd85a55efb09d4a23e795b10a834a3"
+        ),
+        "build-mnemonic": "v0.3.0-rc6",
+        "contract": "ubuntu-24.04@11",
+        "recipe-source": RECIPE_SOURCE_PATH,
+    },
+)
+
 # Vendor release metadata and complete archive checksums verified 2026-10-04.
 _DOTNET_SDK_10_0_401 = _ComponentPin(
     component_id="dotnet-sdk", version="10.0.401",
@@ -1197,7 +1236,7 @@ _POSTGRESQL_CLIENT_16 = _ComponentPin(
 _LINUX_AMD64_MATRIX = ResolutionMatrix(
     platform=Platform.LINUX_AMD64,
     matrix_version=_MATRIX_VERSION,
-    bases=(_V0_2_8_BASE, _V0_2_10_BASE, _V0_2_12_BASE),
+    bases=(_V0_2_8_BASE, _V0_2_10_BASE, _V0_2_12_BASE, _V0_3_0_RC6_BASE),
     components={
         "pycharm": (_PYCHARM_2026_2_0_1,),
         "intellij": (_INTELLIJ_2026_2_3,),
