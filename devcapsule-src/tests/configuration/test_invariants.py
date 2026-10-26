@@ -32,6 +32,7 @@ from devcapsule.configuration.file_formats import (
 from devcapsule.configuration.storage import (
     load_toml,
     atomic_write,
+    manifest_for,
 )
 from devcapsule.configuration.freshness import (
     stale_resolution_inputs,
@@ -276,7 +277,7 @@ def test_metadata_only_changes_are_fresh_but_runtime_changes_are_stale(checkout,
     project, record, resolution = checkout
     if scoped:
         assert run_until_prepared(project) == 0
-    manifest = load_toml(project / '.devcapsule/devcapsule.toml')
+    _, manifest = manifest_for(project)
     lock = load_toml(project / '.devcapsule/devcapsule.linux-amd64.lock')
     original = deepcopy(manifest)
     manifest['workflow'] = {'mode': 'multiple-streams'}
@@ -413,7 +414,7 @@ def test_incomplete_assessment_cannot_be_serialized_or_treated_as_compatible(che
         same_effective_resolution,
     )
     project, record, resolution = checkout
-    manifest = load_toml(project / '.devcapsule/devcapsule.toml')
+    _, manifest = manifest_for(project)
     lock = load_toml(project / '.devcapsule/devcapsule.linux-amd64.lock')
     document = load_toml(record)
     document['authorization'].pop('base-image')

@@ -251,7 +251,7 @@ def test_resolver_precedence_minimum_lock_and_errors(matrix):
     assert matrix.resolve_provider("python") is None
     with pytest.raises(ProjectConfigurationError, match="the base"):
         matrix.resolve_provider("python", choice="codex")
-    lock = generate_lock(CapabilityPolicy((name,), layered=True), matrix, recommendations={name: "claude-code"})
+    lock = generate_lock(CapabilityPolicy((name,)), matrix, recommendations={name: "claude-code"})
     assert matrix.resolve_provider(name, lock=lock) == "claude-code"
     with pytest.raises(ProjectConfigurationError, match="missing supported providers"):
         matrix.resolve_provider(name, minimum="999", lock=lock)
@@ -433,7 +433,7 @@ def test_offer_component_alias_keeps_its_spelling(project):
 
 
 def test_minimum_alone_records_the_filtered_provider(matrix):
-    policy = CapabilityPolicy(("assistant",), minimums=(("assistant", "1"),), layered=True)
+    policy = CapabilityPolicy(("assistant",), minimums=(("assistant", "1"),))
     formation = matrix.resolve(["assistant>=1"], project_only=True)
     assert formation.resolved == {"assistant": "claude-code"}
     assert "capability-providers" not in tomllib.loads(formation.render_lock())

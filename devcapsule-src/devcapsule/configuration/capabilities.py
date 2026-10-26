@@ -94,23 +94,27 @@ class CapabilityPolicy:
 
     Required names must be supplied; optional names may be omitted. Minimums
     are sorted (name, version) pairs from NAME>=VERSION requirements, never
-    a separate manifest table. Layered distinguishes required from legacy need.
+    a separate manifest table.
     Direct construction requires normalized, unique names and minimums.
     """
     required: tuple[str, ...]
     optional: tuple[str, ...] = ()
     minimums: tuple[tuple[str, str], ...] = ()
-    layered: bool = False
 
     @classmethod
     def read(cls, manifest: Mapping[str, Any]) -> CapabilityPolicy:
+        """Read ``[capabilities]`` in the schema-2 form.
+
+        A schema-1 ``need`` list is not read here: ``manifest_schemas`` reads
+        it as :class:`ManifestV1` and ``upgrade`` turns it into this form.
+        """
         value = table(manifest, "capabilities")
-        layered = "required" in value
-        if layered and "need" in value:
-            raise ProjectConfigurationError("Use capabilities.required or legacy capabilities.need, not both.")
-        key = "required" if layered else "need"
+        if "need" in value:
+            raise ProjectConfigurationError(
+                "capabilities.need is the schema-1 form; read the manifest through manifest_schemas.read_manifest and upgrade."
+            )
         required: dict[str, str | None] = {}
-        for item in names(value.get(key), f"capabilities.{key}"):
+        for item in names(value.get("required"), "capabilities.required"):
             name, minimum = requirement(item)
             if name in required and required[name] != minimum:
                 raise ProjectConfigurationError(f"Conflicting requirements for {name!r}; declare one minimum.")
@@ -123,7 +127,7 @@ class CapabilityPolicy:
         if overlap:
             raise ProjectConfigurationError(f"Capabilities cannot be both required and optional: {', '.join(sorted(overlap))}.")
         return cls(tuple(sorted(required)), optional,
-                   tuple(sorted((name, minimum) for name, minimum in required.items() if minimum is not None)), layered)
+                   tuple(sorted((name, minimum) for name, minimum in required.items() if minimum is not None)))
 
     def requirements(self) -> tuple[str, ...]:
         minimums = dict(self.minimums)

@@ -1,6 +1,6 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-25. Stage: **candidate 7 in preparation: the published recipe-11 base pinned, so the default base carries the web console; the pre-candidate merge into `main` is the owner's; then the diagnostics snapshot, image cleanup and C20**.
+Updated: 2026-10-26. Stage: **candidate 8 in preparation: the manifest's two schemas as classes and `init --regenerate` migrating to schema 2, the owner's gate of 2026-10-26; the pre-candidate merge into `main` is the owner's; then the diagnostics snapshot, image cleanup and C20**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Changelog since 0.2.15](changelog.md) ·
@@ -57,6 +57,9 @@ that is honest about what it skips.
   and whose sections lack a conceptual entry page, the configuration
   section first; booked with `project-management` by mail at
   `9fcfdb8db440`, which assigns the reviewer and the method.
+  Added by the owner's direction of 2026-10-26: `init --regenerate`
+  migrates the manifest to schema 2, and schema 1 and schema 2 are
+  represented as classes; the work order of 2026-10-26 in `work-orders/`.
 - **Rulings of 2026-10-21.** The base publication happens later, in the
   promotion of the accepted candidate, not before the next one. The
   candidates are grouped: rc2 carries the network node and C10; rc3 forced
@@ -112,6 +115,14 @@ that is honest about what it skips.
   console on the published base. The published-base gate before the
   final tag is met by this candidate. A project's own constraint on its
   base is D-0015, proposed for V1, not for 0.3.0.
+- **Direction of 2026-10-26.** On finding that `init --regenerate` left the
+  AI Learning manifest at schema 1, the owner ruled that regeneration
+  migrates the manifest to schema 2 and that schema 1 and schema 2 are
+  represented explicitly, as classes, and made both a gate of the final
+  tag: the work order of 2026-10-26, implemented as PR #289 with Codex,
+  gpt-6-astra, as the review partner, merged at `9e4a2a8`. Candidate 8 is
+  cut on it. The owner's own regeneration of this repository's, the
+  website's and the samples' manifests follows the shipped candidate.
 - **Stopping points where the owner is consulted:** before each candidate
   tag; before the image-cleanup implementation; when a slice proves larger
   than the cycle tolerates; before the final tag. Scope changes go by the
@@ -527,10 +538,31 @@ How the candidate was prepared:
 - Not in rc6: the diagnostics snapshot, image cleanup, C20; the gaps the
   candidate-5 changelog lists under *Not in candidate 5*.
 
-### RC7 — in preparation, 2026-10-25
+### RC7 — tagged 2026-10-25
 
-- Tag `v0.3.0-rc7` on the release branch's tip after the pre-candidate
-  merge (PR from the throwaway copy `4PR-8-release-0.3.0`, the owner's).
+- Tag `v0.3.0-rc7` on `73bbe5361bad1ff190d2c27586aad578796f191f`, the release
+  branch's tip at the pre-candidate merge (PR #286 from the throwaway copy
+  `4PR-8-release-0.3.0`, merged by the owner at `77ac058`).
+- Candidate gate from a detached checkout of the tag before the push:
+  method `mainline`, no unintegrated commits, version `0.3.0rc7`; record at
+  `/opt/devcapsule-gate/rc7-release-protocol.json`.
+- Backend run [40198740279](https://github.com/ccozianu/devcapsule/actions/runs/40198740279)
+  passed; the [prerelease](https://github.com/ccozianu/devcapsule/releases/tag/v0.3.0-rc7)
+  is public, non-draft, with the three assets.
+- Downloaded over HTTPS into `/home/devcapsule/.cache/devcapsule-releases/v0.3.0-rc7`:
+  the checksum file verifies the executable, SHA-256
+  `1fe418a2c453c9640996bf8fbc86005c6b7e7de1518a5977b050a180a7ca7a91`; the
+  manifest records the tag, the branch, the source revision, the
+  `mainline` disposition and, as its base reference, the published
+  recipe-11 digest `8c97d308…`; `devcapsule version` from an empty
+  directory reports `0.3.0rc7`, build `v0.3.0-rc7`, at `73bbe53…`.
+- Next: the owner's test of the download on a regenerated lock, the
+  console on the published base first; then the diagnostics snapshot,
+  image cleanup and C20 for the next candidate; the documentation
+  language review before the final tag.
+
+How the candidate was prepared:
+
 - Carries, beyond rc6: the published recipe-11 base pinned in the matrix
   (PR #284, `dedb485`): `v0.3.0-rc6`, `ubuntu-24.04@11`, digest
   `8c97d308…`, newest pin of the family; matrix `embedded-28`; the golden
@@ -544,6 +576,28 @@ How the candidate was prepared:
   17 passed, the web console session mypy clean over 9 files with 357
   tests passed; the documentation contract 189 pages, passed.
 - Not in rc7: the diagnostics snapshot, image cleanup, C20; the gaps the
+  candidate-5 changelog lists under *Not in candidate 5*.
+
+### RC8 — in preparation, 2026-10-26
+
+- Tag `v0.3.0-rc8` on the release branch's tip after the pre-candidate
+  merge (PR from the throwaway copy `4PR-9-release-0.3.0`, the owner's).
+- Carries, beyond rc7: the manifest's two schemas as classes (PR #289,
+  reviewed by PR #290, accepted without a round): `ManifestV1`,
+  `ManifestV2`, `read_manifest` and `upgrade` in one module, every
+  consumer reading schema 2; `project init --regenerate` writes a
+  schema-1 manifest as schema 2 with its leading comment block kept and
+  says so, a schema-2 manifest stays byte for byte, a plain `init` writes
+  neither; the IDE a schema-1 file required becomes the project's IDE
+  recommendation and each developer may choose another; the retired
+  SDK-major table and the root `workflow-type` are never written again;
+  legacy locks are recognized by their own evidence and matrix generation.
+- The release branch's tip after the owner's merge of PR #289 is
+  `9e4a2a8`, whose tree is the reviewed `f4d0566` plus the status entry.
+  Full gate on it from a separate worktree: mypy clean over 248 files, 2338 unit tests passed, 36 deselected, 1 xfailed, 1 xpassed, packaging integration
+  17 passed, the web console session mypy clean over 9 files with 357
+  tests passed; the documentation contract 189 pages, passed.
+- Not in rc8: the diagnostics snapshot, image cleanup, C20; the gaps the
   candidate-5 changelog lists under *Not in candidate 5*.
 
 ## Release Notes Preparation

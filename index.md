@@ -111,6 +111,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [D-0012 Host Access Is Asked Only When The Project Recommends The Less Secure Value](engineering-docs/decisions/product/d-0012-host-access-asked-only-when-recommended.md)
 - [D-0013 A Provenance Sidecar Beside Each Checkout Records Which Client Wrote It](engineering-docs/decisions/product/d-0013-provenance-sidecar-for-local-records.md)
 - [D-0014 The IDE Role Stays As It Is, Or Generalizes To An Entry Point That Owns The Container's Lifetime](engineering-docs/decisions/product/d-0014-entry-point-generalizes-the-ide-role.md) (proposed, in scope for V1)
+- [D-0015 A Project Constrains Its Base Directly, Not Through Capabilities Or Components](engineering-docs/decisions/product/d-0015-a-project-constrains-its-base-directly.md) (proposed, in scope for V1)
 
 - [Decision record template](engineering-docs/decisions/product/_template.md)
 - [D-0001 Capability-First CLI Model](engineering-docs/decisions/product/d-0001-capability-first-cli-model.md)
@@ -130,6 +131,8 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Work Orders
 
+- [The manifest's two schemas as classes; `init --regenerate` migrates](engineering-docs/work-orders/2026-10-26-manifest-schemas-as-classes.md)
+- [Orientation, concepts, persistence and recipes in the documentation](engineering-docs/work-orders/2026-10-25-documentation-orientation-and-concepts.md)
 - [Redesign the project config and project run experience (draft)](engineering-docs/work-orders/2026-10-24-cli-ux-redesign.md)
 
 - [Saved Docker arguments for each checkout](engineering-docs/work-orders/2026-10-23-saved-docker-arguments.md)
@@ -284,6 +287,7 @@ history; record current decisions in the active documents above.
 
 ## Bugs
 
+- [Workstation-scoped commands live under `project config` and need a project](engineering-docs/bugs/devcapsule/2026-10-25-workstation-commands-live-under-project-config.md)
 - [Console link printed on a base without the console](engineering-docs/bugs/devcapsule/2026-10-18-console-link-printed-on-a-base-without-the-console.md)
 - [No test proves old projects launch with new releases](engineering-docs/bugs/devcapsule/2026-10-18-no-test-proves-old-projects-launch-with-new-releases.md)
 - [Unpacked archive cache publication and recovery](engineering-docs/bugs/devcapsule/2026-10-08-unpacked-cache-publication-and-recovery.md)

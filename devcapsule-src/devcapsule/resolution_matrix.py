@@ -408,15 +408,15 @@ class ResolutionMatrix:
         return base.satisfies.get(name) if base else None
 
     def normalize(self, need: object) -> tuple[str, ...]:
-        """Normalize a manifest ``capabilities.need`` value: sorted, unique, known."""
+        """Normalize a list of capability names: sorted, unique, known."""
 
         if not isinstance(need, Sequence) or isinstance(need, (str, bytes)):
-            raise ResolutionError("capabilities.need must be an array of capability names.")
+            raise ResolutionError("The capability requirements must be an array of capability names.")
         names: set[str] = set()
         for item in need:
             if not isinstance(item, str) or not item:
                 raise ResolutionError(
-                    "capabilities.need entries must be non-empty strings."
+                    "Capability requirement entries must be non-empty strings."
                 )
             names.add(self.canonical_name(item))
         return tuple(sorted(names))
@@ -433,9 +433,9 @@ class ResolutionMatrix:
         """
 
         if not isinstance(need, Sequence) or isinstance(need, (str, bytes)):
-            raise ResolutionError("capabilities.need must be an array of capability names.")
+            raise ResolutionError("The capability requirements must be an array of capability names.")
         if any(not isinstance(item, str) or not item for item in need):
-            raise ResolutionError("capabilities.need entries must be non-empty strings.")
+            raise ResolutionError("Capability requirement entries must be non-empty strings.")
         declarations = [requirement(item) for item in need]
         capabilities = self.normalize([name for name, _ in declarations])
         minimums = {self.canonical_name(name): minimum for name, minimum in declarations if minimum is not None}
@@ -514,12 +514,12 @@ class ResolutionMatrix:
             choices = ", ".join(self.ide_capabilities())
             raise ResolutionError(
                 "The V1 environment needs an interactive-surface capability to select "
-                f"its surface; add exactly one of {choices} to capabilities.need."
+                f"its surface; select exactly one of {choices}."
             )
         if len(interactive) > 1:
             raise ResolutionError(
                 "A V1 platform lock holds exactly one interactive surface, but "
-                f"capabilities.need selects {', '.join(interactive)}; keep exactly one."
+                f"the requirements select {', '.join(interactive)}; keep exactly one."
             )
         provider = resolved[interactive[0]]
         assert provider is not None

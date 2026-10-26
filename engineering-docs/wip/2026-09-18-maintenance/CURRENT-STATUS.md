@@ -284,6 +284,85 @@ begin the rewrite until project-management assigns it.
 
 ## Current State
 
+**2026-10-26: rc8 in preparation.** The owner merged PR #289; the
+release tip is `9e4a2a8`. Full `nox -s build` on it from a separate
+worktree: mypy clean over 248 files, 2338 unit tests passed, 36 deselected, 1 xfailed, 1 xpassed, packaging integration 17, console 357; the
+documentation contract 189 pages. The throwaway copy
+`4PR-9-release-0.3.0`, the release tip (this record's commit) plus the
+cherry-pick of `62fa063`, is the pull request for the owner's merge. On
+that merge, the rc7 steps with `rc8` in place of `rc7`: the ancestry
+check, the annotated tag on the tip, the release protocol from a detached
+checkout expecting `mainline`, the atomic push of branch and tag, the
+backend run, the download into `~/.cache/devcapsule-releases/v0.3.0-rc8`
+with checksum and version verified, the overview's rc8 entry and the
+changelog's candidate-8 line. The owner's gate of 2026-10-26 is met by
+this candidate; the diagnostics snapshot, image cleanup and C20 stay with
+the next; the documentation round before the final tag.
+
+**2026-10-26: the manifest's two schemas as classes, implemented; PR #289 ready.**
+The slice of the order of 2026-10-26, implemented by Claude Code, Claude
+Fable 5.1, with Codex, gpt-6-astra, as the review partner (PR #290,
+PR289.1, accepted at `94d2108` without a round, merged at `f4d0566`). One
+pure module, `configuration/manifest_schemas.py`: `ManifestV1`,
+`ManifestV2`, `read_manifest`, `upgrade` by the order's laws; the
+boundary `manifest.current_manifest`, the IDE question answered by the
+component catalog since the configuration core may not import the matrix;
+every consumer reads schema 2; `CapabilityPolicy.layered` deleted, the
+compatibility branches it gated keyed on the lock (`legacy_lock`: no
+provider evidence, or a generation before embedded-27, which no release
+carried between 22 and 27); `init --regenerate` writes a schema-1 file as
+schema 2 with the leading comment block kept and says so, a schema-2 file
+stays byte for byte, plain `init` honors either schema and refuses to
+append a recommendation to a schema-1 file. Departures from the order's
+letter, each for the owner in the PR body: `ManifestV2.read` folds a
+carried-over `workflow-type` instead of refusing it, since rc4 to rc7
+wrote such files; the environment and recommendation tables are kept as
+written beside their values; the IDE a schema-1 file required is the
+owner's checkout default at `init`, and the recommended IDE is the
+`run` default only when the lock pins none; the two-IDE refusal cannot
+name `config drop`, which the same admission refuses first. The review
+made admission lossless (`document()` reproduces the file, explicit
+empties included), validated the schema-1 policy before migration, and
+added the launch test for a migrated project's old checkout. Gate on
+`f4d0566`: mypy 248 files, 2338 unit tests (36 deselected, 1 xfailed,
+1 xpassed), 17 packaging, 357 console, docs 189 pages. Acceptance on
+scratch copies of the trading sample and the rc3 AI Learning manifest in
+the PR body. Awaiting the owner's merge; then the repository's own,
+the website's and the samples' manifests are the owner's regeneration.
+
+**2026-10-26: the manifest's two schemas as classes; regenerate migrates.**
+The owner, on learning that `init --regenerate` left the AI Learning
+manifest at schema 1, ruled that regeneration migrates the manifest to
+schema 2 and that the codebase keeps schema 1 and schema 2 explicitly
+represented as classes; a gate of the final 0.3.0 tag. Written as
+[2026-10-26-manifest-schemas-as-classes.md](../../work-orders/2026-10-26-manifest-schemas-as-classes.md),
+listed in `index.md`, on `ws-maintenance/manifest-schema-classes` from the
+release tip `e415e5b`, for the owner's edits in the IDE and merge. The
+design: one pure module with `ManifestV1`, `ManifestV2`, `read_manifest`
+and `upgrade`, each class strict about the other's words, tolerant of
+unknown tables; the upgrade laws (need to required, a required IDE to the
+IDE recommendation, the SDK-major table dropped, `workflow-type` folded
+into `[workflow].mode`); every consumer reads a `ManifestV2`;
+`init --regenerate` writes the migrated manifest with the leading comment
+block kept and says so, a schema-2 file stays byte for byte; the owner
+commands migrate through the same path. The gate is recorded in the
+overview. Merged the same day: PR #283 (the documentation order), #285
+(D-0015) and #287 (the workstation-commands bug).
+
+**2026-10-25: rc7 tagged, published and verified.** The owner merged
+PR #286 at `77ac058`; `73bbe53` is an ancestor of `main`; `v0.3.0-rc7` on
+`73bbe53`, the candidate gate `mainline` with no unintegrated commits from
+a detached checkout, record at `/opt/devcapsule-gate/rc7-release-protocol.json`;
+pushed; backend run 40198740279 passed; the prerelease is public with its
+three assets; the download under `~/.cache/devcapsule-releases/v0.3.0-rc7`
+verifies, SHA-256 `1fe418a2…`, the manifest's base reference the published
+recipe-11 digest, `devcapsule version` reporting `0.3.0rc7` at `73bbe53`.
+The overview's rc7 entry and the changelog's candidate-7 line are
+written. Next, the owner's: regenerate a project lock with rc7 and test
+the console on the published base; then the diagnostics snapshot, image
+cleanup and C20 for the next candidate; the documentation language review
+before the final tag.
+
 **2026-10-25: rc7 in preparation.** The owner merged PR #284; the
 release tip is `349b3ad`. Full `nox -s build` on it from a separate
 worktree: mypy 246 files, 2282 unit tests, packaging integration 17,
@@ -325,6 +404,30 @@ owner's merge: the rc7 record, the pre-candidate copy, the tag; a
 regenerated lock in any project then moves to recipe 11, the AI Learning
 bootstrap among them. `config show` prints the base's digest and not its
 contract; left as is.
+
+**2026-10-25: documentation work order from the owner's outside list.**
+The owner brought an analysis, made outside this project, of a
+complementary product's documentation and eight improvements it suggests for
+ours, and asked for it as a work order attached to an existing workstream.
+Written as
+[2026-10-25-documentation-orientation-and-concepts.md](../../work-orders/2026-10-25-documentation-orientation-and-concepts.md),
+listed in `index.md`, on `ws-maintenance/docs-orientation-order` from the
+release tip `7c86141`, the rc7 publication record, for the owner's edits in the IDE and merge. Grounded
+against `docs/` at that tip, the rc6 executable and the content contract:
+the sidebar's first group is the six role pages in the contract's order,
+not a misordered section; *What persists* is already the storage table;
+the configuration entry page already defines the words; glossary and
+recipes are items 5 and 6 of the eleven open user-docs proposals, taken as
+decided by the owner's handing-over. Kept, corrected: *what it is not* on
+the overview and `/why/`; a *What a capsule is* page leading Getting
+started; two columns and a *when the manifest changes* section on *What
+persists*; a `docs/recipes/` area, four recipes on catalog capabilities; a
+background-agents section in the workstreams guide; and, as Part B after
+the final tag's documentation round, the Windows role moved up in the
+contract, a five-step landing strip as a new contract section, one
+dogfooding journal entry. Dropped: a separate concepts area, a Scala recipe,
+product names in `docs/`. Attached to `maintenance`, joining the booked
+language review (`9fcfdb8db440`) so the pages are rewritten once.
 
 **2026-10-25: rc6 tagged, published and verified.** The owner merged
 PR #282 at `b64187f`; `2ed8ecf` is an ancestor of `main`; `v0.3.0-rc6` on

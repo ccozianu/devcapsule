@@ -562,7 +562,7 @@ def review_authorizations(
                     if required:
                         problem = (
                             f"The selected {declaration.subject} acquisition is denied. "
-                            f"Remove {declaration.capability!r} from the project need, or explicitly authorize it."
+                            f"Remove {declaration.capability!r} from the project's required capabilities, or explicitly authorize it."
                         )
                 else:
                     status = "authorized"

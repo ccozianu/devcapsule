@@ -74,9 +74,11 @@ def invoke(project, *args):
 
 
 def review(project, record):
+    # The checkout's effective lock: a lock regenerated since rc4 is
+    # project-only, the IDE comes from the checkout's own pins.
+    from devcapsule.configuration.storage import lock_for
     _, manifest = manifest_for(project)
-    lock = load_toml(project / ".devcapsule/devcapsule.linux-amd64.lock")
-    return review_configuration(manifest, lock, load_toml(record))
+    return review_configuration(manifest, lock_for(project, manifest)[1], load_toml(record))
 
 
 def replace_answers(project, record, answers):
