@@ -284,6 +284,25 @@ begin the rewrite until project-management assigns it.
 
 ## Current State
 
+**2026-10-26: the manifest's two schemas as classes; regenerate migrates.**
+The owner, on learning that `init --regenerate` left the AI Learning
+manifest at schema 1, ruled that regeneration migrates the manifest to
+schema 2 and that the codebase keeps schema 1 and schema 2 explicitly
+represented as classes; a gate of the final 0.3.0 tag. Written as
+[2026-10-26-manifest-schemas-as-classes.md](../../work-orders/2026-10-26-manifest-schemas-as-classes.md),
+listed in `index.md`, on `ws-maintenance/manifest-schema-classes` from the
+release tip `e415e5b`, for the owner's edits in the IDE and merge. The
+design: one pure module with `ManifestV1`, `ManifestV2`, `read_manifest`
+and `upgrade`, each class strict about the other's words, tolerant of
+unknown tables; the upgrade laws (need to required, a required IDE to the
+IDE recommendation, the SDK-major table dropped, `workflow-type` folded
+into `[workflow].mode`); every consumer reads a `ManifestV2`;
+`init --regenerate` writes the migrated manifest with the leading comment
+block kept and says so, a schema-2 file stays byte for byte; the owner
+commands migrate through the same path. The gate is recorded in the
+overview. Merged the same day: PR #283 (the documentation order), #285
+(D-0015) and #287 (the workstation-commands bug).
+
 **2026-10-25: rc7 tagged, published and verified.** The owner merged
 PR #286 at `77ac058`; `73bbe53` is an ancestor of `main`; `v0.3.0-rc7` on
 `73bbe53`, the candidate gate `mainline` with no unintegrated commits from
