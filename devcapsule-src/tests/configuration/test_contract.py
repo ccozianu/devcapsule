@@ -22,6 +22,8 @@ from devcapsule.configuration.file_formats import (
 from devcapsule.configuration.storage import (
     load_toml,
     checkout_record_paths,
+    manifest_for,
+    manifest_source_digest,
 )
 from devcapsule.configuration.freshness import (
     stale_resolution_inputs,
@@ -212,7 +214,7 @@ justification = "Repository requests Docker access."
 
 def test_workflow_metadata_is_not_a_configuration_dependency(checkout):
     project, record, resolution = checkout
-    manifest = load_toml(project / '.devcapsule/devcapsule.toml')
+    _, manifest = manifest_for(project)
     lock = load_toml(project / '.devcapsule/devcapsule.linux-amd64.lock')
     manifest['workflow'] = {'definition': 'devcapsule', 'version': '0.2.14.dev0', 'mode': 'single-stream'}
     assert stale_resolution_inputs(manifest, lock, load_toml(record), load_toml(resolution)) == ()
@@ -406,21 +408,24 @@ def test_workstation_defaults_stale_only_the_workstation_input(checkout):
     from devcapsule.configuration.storage import load_workstation
     from devcapsule.configuration.execution import ExecutionConfiguration
     project, record, resolution = checkout
-    # This fixture contains a plan written by the released 0.2.11 launcher.
-    manifest = load_toml(project / '.devcapsule/devcapsule.toml')
+    # This fixture contains a plan written by the released 0.2.11 launcher,
+    # which recorded the whole schema-1 file's digest; a reader of the file
+    # passes that digest beside the schema-2 reading, as the adapters do.
+    _, manifest = manifest_for(project)
+    digest = manifest_source_digest(project)
     lock = load_toml(project / '.devcapsule/devcapsule.linux-amd64.lock')
     local, previous = load_toml(record), load_toml(resolution)
     assert previous['sources']['workstation-config'] == 'absent'
-    assert stale_resolution_inputs(manifest, lock, local, previous, load_workstation()) == ()
+    assert stale_resolution_inputs(manifest, lock, local, previous, load_workstation(), source_digest=digest) == ()
     assert invoke(project, 'config', 'default', 'cpus', '2') == 0
-    assert stale_resolution_inputs(manifest, lock, local, previous, load_workstation()) == ('workstation-config',)
+    assert stale_resolution_inputs(manifest, lock, local, previous, load_workstation(), source_digest=digest) == ('workstation-config',)
     assert run_until_prepared(project) == 0
     current = ExecutionConfiguration.load(project).project.resolution
     assert current['runtime']['cpus'] == 2
     assert invoke(project, 'config', 'default', 'cpus', '3') == 0
     assert stale_resolution_inputs(manifest, lock, load_toml(record), current, load_workstation()) == ('workstation-config',)
     assert invoke(project, 'config', 'default', 'cpus', 'none') == 0
-    assert stale_resolution_inputs(manifest, lock, local, previous, load_workstation()) == ()
+    assert stale_resolution_inputs(manifest, lock, local, previous, load_workstation(), source_digest=digest) == ()
 
 
 def test_old_base_listing_reports_host_x11_without_changing_consent(checkout, capsys):

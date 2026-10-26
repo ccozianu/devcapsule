@@ -18,8 +18,9 @@ from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix
 from .capabilities import CapabilityPolicy, LocalCapabilities, capability_notes, resolution_recommendations
 from .capability_selection import compose_lock, effective_lock, generate_lock, local_pins, usable_lock, matrix_for, pin_selection
 from .file_formats import ConfigurationFileKind, ProjectConfigurationError, table, validate_file_format, render_checkout, render_toml, selected_version_lock
-from .manifest import validate_manifest
-from .manifest_document import CURRENT_MANIFEST_SCHEMA_VERSION, capability_reasons, capability_table, manifest_preamble, render_manifest
+from .manifest import current_manifest
+from .manifest_document import capability_reasons, capability_table, manifest_preamble, render_manifest
+from .manifest_schemas import ManifestV2
 from .nodes import build_node_registry
 from .storage import atomic_write, checkout_record_paths, discover_project, load_toml, require_settled
 
@@ -83,6 +84,7 @@ def promote(root: Path, manifest: dict[str, Any], lock: dict[str, Any] | None = 
     lock file's bytes exactly, for an edit that changes the manifest alone.
     """
     manifest_path, lock_path, journal = paths(root)
+    ManifestV2.read(manifest, manifest_path)  # The one writer writes schema 2 and nothing else.
     require_settled(root)
     before_manifest = manifest_path.read_bytes().decode("utf-8") if manifest_path.exists() else ""
     before_lock = lock_path.read_bytes().decode("utf-8") if lock_path.exists() else ""
@@ -108,7 +110,7 @@ def check_documents(manifest: dict[str, Any], lock: dict[str, Any], *, check_res
     subclass. This does not change inputs or files, download artifacts, or
     grant host access.
     """
-    validate_manifest(manifest, Path("manifest"))
+    manifest = current_manifest(manifest, Path("manifest")).document()
     validate_file_format(lock, ConfigurationFileKind.lock, "platform lock")
     policy = CapabilityPolicy.read(manifest)
     matrix = matrix_for(lock)
@@ -184,7 +186,7 @@ def configure(start: Path, *, required: Sequence[str] | None = None,
     root = discover_project(start)
     require_settled(root)
     manifest_path, lock_path, _ = paths(root)
-    manifest, lock = load_toml(manifest_path), load_toml(lock_path)
+    manifest, lock = current_manifest(load_toml(manifest_path), manifest_path).document(), load_toml(lock_path)
     check_documents(manifest, lock)
     project_edit = any(value is not None for value in (required, optional))
     local_edit = local is not None or without is not None or providers is not None
@@ -208,7 +210,6 @@ def configure_project(root: Path, manifest: dict[str, Any], lock: dict[str, Any]
     """
     policy = CapabilityPolicy.read(manifest)
     candidate_manifest = deepcopy(manifest)
-    candidate_manifest["devcapsule-schema-version"] = CURRENT_MANIFEST_SCHEMA_VERSION
     declarations: dict[str, Any] = {
         "required": list(policy.requirements() if required is None else required),
         "optional": list(policy.optional if optional is None else optional),

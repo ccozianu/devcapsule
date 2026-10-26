@@ -202,9 +202,11 @@ def test_an_owner_edit_converts_a_legacy_manifest_and_keeps_its_leading_comment(
     assert text.startswith("# The owner's note\n\ndevcapsule-schema-version = 2\n")
     manifest = tomllib.loads(text)
     assert "need" not in manifest["capabilities"]
-    # The legacy IDE in ``need`` is grandfathered as a requirement; the lock keeps it.
-    assert manifest["capabilities"]["required"] == ["node", "python", "python-ide"]
-    assert load_toml(paths(legacy_project)[1])["components"]["interactive-surface"] == "pycharm"
+    # The IDE in ``need`` becomes the project's recommendation; the regenerated
+    # lock is project-only, as every lock written since rc4.
+    assert manifest["capabilities"]["required"] == ["node", "python"]
+    assert manifest["recommendations"] == {"ide": "python-ide"}
+    assert "interactive-surface" not in load_toml(paths(legacy_project)[1])["components"]
 
 
 def test_an_unrelated_command_never_rewrites_a_legacy_manifest(legacy_project: Path) -> None:
@@ -275,7 +277,8 @@ def test_owner_edits_preserve_unknown_declaration_metadata(project: Path) -> Non
     owner_commands.offer_environment(project, ["DB_HOST"], because="optional db")
     owner_commands.require_environment(project, ["NEW"])
     result = load_toml(paths(project)[0])
-    assert result["workflow-type"] == "multiple-streams"
+    # The root key of schema 1 folds into [workflow].mode and is not written again.
+    assert "workflow-type" not in result and result["workflow"]["mode"] == "multiple-streams"
     assert result["environment"] == {
         "required": {"NEW": {}},
         "optional": {"DB_HOST": {"reason": "optional db", "extension": {"keep": True}},

@@ -486,6 +486,8 @@ def test_generated_lock_passes_the_real_loaders(tmp_path: Path) -> None:
         rendered(need), encoding="utf-8"
     )
 
+    from devcapsule.configuration.manifest import current_manifest
+    manifest = current_manifest(manifest, "manifest").document()
     lock_path, lock = lock_for(project, manifest)
     assert lock_path.name == "devcapsule.linux-amd64.lock"
 

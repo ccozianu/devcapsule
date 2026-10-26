@@ -26,11 +26,10 @@ class ProjectConfigurationError(CliError):
     """An actionable project configuration failure."""
 
 
-# The manifest schema versions this launcher reads. Version 2 (2026-10-24)
-# adds the project's environment declarations and ordinary recommendations;
-# a version-1 manifest is read as it is and never rewritten by an unrelated
-# command. Writers emit the current version, defined with the manifest's
-# vocabulary in ``manifest_document``.
+# The manifest schema versions this launcher reads. Each is a class in
+# ``manifest_schemas``, which also holds the migration from 1 to 2: a
+# version-1 file is read as it is, upgraded in memory, and written as
+# version 2 only by an owner's edit or ``project init --regenerate``.
 MANIFEST_SCHEMA_VERSIONS = (1, 2)
 
 
@@ -44,6 +43,36 @@ class ConfigurationFileKind(Enum):
     lock = "devcapsule-lock-format-version"
     checkout = "devcapsule-checkout-schema-version"
     resolution = "devcapsule-resolved-schema-version"
+
+
+# The first embedded matrix generation whose locks record provider evidence,
+# the ``capability-providers`` table: added on 2026-10-06 at embedded-26,
+# which no release carried (0.2.15 shipped embedded-22, 0.3.0 rc0 shipped
+# embedded-27), so every released lock before 27 lacks it and every released
+# lock from 27 on has it.
+EVIDENCE_MATRIX_GENERATION = 27
+
+
+def legacy_lock(lock: Mapping[str, Any]) -> bool:
+    """Whether ``lock`` is a record from before provider evidence, not a selection to filter.
+
+    A lock is filtered against the policy, and its capability baseline
+    fingerprinted, only when it records provider evidence and names an
+    embedded matrix generation of :data:`EVIDENCE_MATRIX_GENERATION` or
+    later.  Every other lock, one written by an older launcher, or a matrix
+    rendering without evidence, stays a record of what was selected, so a
+    project written for an older launcher keeps launching until its owner
+    regenerates the lock.  Both are read because a checkout's pins laid over
+    a legacy lock bring their own evidence with them, while the generation
+    they keep is the legacy lock's.
+    """
+    if "capability-providers" not in lock:
+        return True
+    version = lock.get("resolution-matrix-version")
+    if not isinstance(version, str) or not version.startswith("embedded-"):
+        return True
+    generation = version.removeprefix("embedded-")
+    return not generation.isdecimal() or int(generation) < EVIDENCE_MATRIX_GENERATION
 
 
 def table(document: Mapping[str, Any], *path: str) -> Mapping[str, Any]:

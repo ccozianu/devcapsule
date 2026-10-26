@@ -18,9 +18,9 @@ from typing import Any, Mapping
 from devcapsule.components.catalog import INTERACTIVE_SURFACES
 
 from .authorization import locked_base_reference
-from .file_formats import ConfigurationFileKind, ProjectConfigurationError, validate_file_format, table
+from .file_formats import ConfigurationFileKind, ProjectConfigurationError, canonical_digest, validate_file_format, table
 from .freshness import stale_resolution_inputs
-from .manifest import validate_manifest
+from .manifest import current_manifest
 from .resolution import Resolution, render_resolution
 from .review import ConfigurationReview, review_configuration
 
@@ -35,11 +35,16 @@ class Configuration:
 
     def __init__(self, manifest: Mapping[str, Any], lock: Mapping[str, Any],
                  checkout: Mapping[str, Any], workstation: Mapping[str, Any] | None = None) -> None:
-        self._manifest = deepcopy(dict(manifest))
+        # The manifest as given is the file's own schema; a checkpoint from
+        # before scoped digests recorded its whole digest, kept for freshness.
+        self._manifest = current_manifest(manifest, Path("manifest")).document()
+        try:
+            self._source_digest: str | None = canonical_digest(dict(manifest))
+        except ProjectConfigurationError:
+            self._source_digest = None
         self._lock = deepcopy(dict(lock))
         self._checkout = deepcopy(dict(checkout))
         self._workstation = deepcopy(dict(workstation or {}))
-        validate_manifest(self._manifest, Path("manifest"))
         validate_file_format(self._lock, ConfigurationFileKind.lock, "platform lock")
         validate_file_format(self._checkout, ConfigurationFileKind.checkout, "checkout")
         if "base" in self._lock:
@@ -73,7 +78,8 @@ class Configuration:
         )))
 
     def stale_inputs(self, resolution: Resolution) -> tuple[str, ...]:
-        return stale_resolution_inputs(self._manifest, self._lock, self._checkout, resolution.document(), self._workstation)
+        return stale_resolution_inputs(self._manifest, self._lock, self._checkout, resolution.document(), self._workstation,
+                                       source_digest=self._source_digest)
 
     def accept(self, resolution: Resolution, *, force: bool = False) -> tuple[str, ...]:
         """Admit a saved plan. Force waives freshness only, never validity.

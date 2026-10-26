@@ -7,7 +7,7 @@ import tomllib
 import pytest
 
 from devcapsule.configuration.file_formats import ConfigurationFileKind, ProjectConfigurationError, validate_file_format
-from devcapsule.configuration.manifest import validate_manifest
+from devcapsule.configuration.manifest_schemas import read_manifest
 from devcapsule.configuration.manifest_document import (
     EnvironmentPolicy,
     Recommendations,
@@ -51,7 +51,7 @@ def test_writer_uses_bare_keys_owner_order_and_omits_what_says_nothing() -> None
     parsed = tomllib.loads(text)
     assert parsed["environment"]["optional"]["SMTP_HOST"] == {}
     assert parsed["configuration"]["values"]["db.url"]["type"] == "string"
-    validate_manifest(parsed, Path("manifest"))
+    read_manifest(parsed, Path("manifest"))
 
 
 def test_writer_keeps_the_leading_comment_block_and_nothing_else() -> None:
@@ -77,7 +77,7 @@ def test_writer_quotes_keys_and_values_without_changing_them(key: str) -> None:
 
 def test_writer_preserves_tolerated_root_fields_and_extension_types() -> None:
     source = document(workflow={"mode": "multiple-streams"})
-    source.update(tomllib.loads('''workflow-type = "multiple-streams"
+    source.update(tomllib.loads('''generator = "a newer launcher"
 [extension]
 ratio = 1.5
 date = 2026-10-24
@@ -85,7 +85,7 @@ time = 12:30:00
 timestamp = 2026-10-24T12:30:00Z
 entries = [{ "a.b" = {}, value = "x" }]
 '''))
-    validate_manifest(source, Path("manifest"))
+    read_manifest(source, Path("manifest"))
     rendered = render_manifest(source)
     assert tomllib.loads(rendered) == source
     assert rendered.index("[extension]") < rendered.index("# The project's workflow choice.") < rendered.index("[workflow]")
@@ -97,11 +97,11 @@ def test_preamble_keeps_comment_whitespace_and_unicode_line_separators() -> None
 
 
 def test_capability_table_says_only_what_is_so() -> None:
-    policy = CapabilityPolicy(("node", "python"), (), (("python", "3"),), layered=True)
+    policy = CapabilityPolicy(("node", "python"), (), (("python", "3"),))
     assert capability_table(policy, {"node": "", "python": "the backend", "gone": "dropped"}) == {
         "required": ["node", "python>=3"], "reasons": {"python": "the backend"},
     }
-    assert capability_table(CapabilityPolicy(("node",), layered=True)) == {"required": ["node"]}
+    assert capability_table(CapabilityPolicy(("node",))) == {"required": ["node"]}
 
 
 @pytest.mark.parametrize("version, accepted", [(1, True), (2, True), (3, False), ("2", False), (True, False)])
@@ -170,4 +170,4 @@ def test_memory_size_refusals_name_the_field(bad) -> None:
 
 def test_manifest_validation_reports_environment_and_recommendation_problems_with_the_path() -> None:
     with pytest.raises(ProjectConfigurationError, match="manifest: recommendations.cpus"):
-        validate_manifest(document(recommendations={"cpus": -1}), Path("manifest"))
+        read_manifest(document(recommendations={"cpus": -1}), Path("manifest"))

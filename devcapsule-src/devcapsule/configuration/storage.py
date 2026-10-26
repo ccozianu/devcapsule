@@ -11,8 +11,8 @@ from urllib.parse import quote
 from devcapsule.platforms import Platform, UnsupportedPlatformError, XdgHomes
 
 from .authorization import locked_base_reference
-from .file_formats import ConfigurationFileKind, ProjectConfigurationError, validate_file_format, table, selected_version_lock, render_toml
-from .manifest import validate_manifest
+from .file_formats import ConfigurationFileKind, ProjectConfigurationError, canonical_digest, legacy_lock, validate_file_format, table, selected_version_lock, render_toml
+from .manifest import current_manifest
 from .nodes import build_node_registry
 
 
@@ -322,12 +322,23 @@ def require_settled(root: Path) -> None:
 
 
 def manifest_for(project: Path) -> tuple[Path, dict[str, Any]]:
+    """The project root and its manifest as this launcher reads it: schema 2, a schema-1 file upgraded in memory."""
     root = discover_project(project)
     require_settled(root)
     path = root / ".devcapsule" / "devcapsule.toml"
-    value = load_toml(path)
-    validate_manifest(value, path)
-    return root, value
+    return root, current_manifest(load_toml(path), path).document()
+
+
+def manifest_source_digest(root: Path) -> str | None:
+    """The digest of the manifest file as written, which checkpoints before scoped digests recorded.
+
+    None when the file holds a TOML value the digest does not support; the
+    freshness check then compares derived meaning instead.
+    """
+    try:
+        return canonical_digest(load_toml(root / ".devcapsule" / "devcapsule.toml"))
+    except ProjectConfigurationError:
+        return None
 
 
 def recommendation_lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[str, Any]]:
@@ -369,7 +380,7 @@ def recommendation_lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Pa
     # Every public consumer gets the same unambiguous vocabulary.
     from .capabilities import CapabilityPolicy
     policy = CapabilityPolicy.read(manifest)
-    if not policy.layered and not policy.optional and not policy.minimums:
+    if legacy_lock(value) and not policy.optional and not policy.minimums:
         build_node_registry(manifest, value)
     return path, value
 

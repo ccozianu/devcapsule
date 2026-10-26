@@ -54,8 +54,9 @@ from .file_formats import (
     validate_file_format,
 )
 from .freshness import stale_resolution_inputs
-from .manifest import validate_manifest
-from .manifest_document import CURRENT_MANIFEST_SCHEMA_VERSION, capability_table, render_manifest
+from .manifest import current, current_manifest
+from .manifest_schemas import ManifestV1, read_manifest
+from .manifest_document import CURRENT_MANIFEST_SCHEMA_VERSION, Recommendations, capability_table, manifest_preamble, render_manifest
 from .model import Configuration
 from .nodes import (
     CARRIER_FAMILY_AUTHORIZE,
@@ -73,6 +74,7 @@ from .storage import (
     load_workstation,
     lock_for,
     manifest_for,
+    manifest_source_digest,
     require_settled,
 )
 from .values import checkout_omitted_values, normalize_configuration_value
@@ -315,7 +317,8 @@ class InitializeReport:
     def render(self) -> str:
         required = " ".join(self.required) or "none"
         lines = [
-            f"{self.manifest_action} {self.manifest_path}",
+            f"Migrated {self.manifest_path} to schema 2; the leading comment block is kept, other comments are not."
+            if self.manifest_action == "Migrated" else f"{self.manifest_action} {self.manifest_path}",
             f"Project: {self.project_name} — {self.creator}/{self.slug}",
             f"Project mount: {self.project_mount}",
             f"Requires: {required}",
@@ -408,12 +411,17 @@ def initialize_project(
 
     existing_manifest: dict[str, Any] | None = None
     existing_lock: dict[str, Any] | None = None
+    legacy = migrate = False
     if manifest_path.is_file():
         # A hand-authored or carried-over manifest is the ordinary form of
         # partial initialization, not an error: honor it and generate what
         # follows from it.
-        existing_manifest = load_toml(manifest_path)
-        validate_manifest(existing_manifest, manifest_path)
+        written = read_manifest(load_toml(manifest_path), manifest_path)
+        # The owner's regeneration writes a schema-1 file as schema 2; every
+        # other path reads the upgraded form and leaves the file alone.
+        legacy = isinstance(written, ManifestV1)
+        migrate = legacy and request.regenerate
+        existing_manifest = current(written, manifest_path).document()
         if lock_path.is_file():
             existing_lock = load_toml(lock_path)
             validate_file_format(existing_lock, ConfigurationFileKind.lock, lock_path)
@@ -476,13 +484,19 @@ def initialize_project(
     # the lock carries it and the owner's checkout has no IDE question.
     lock_has_ide = bool(shared_lock.get("components", {}).get("interactive-surface"))
     existing_selection = _existing_selection(root, existing_manifest)
+    # A schema-1 file required its IDE for everyone and the lock pinned it;
+    # read as schema 2 it recommends it. The owner's checkout keeps that IDE
+    # as its default, so regenerating the project-only lock leaves the owner
+    # able to run. A schema-2 recommendation is applied at run (decision 24),
+    # not here: init's own contract since rc4 is that a project needs no IDE.
     selection = _elicit_owner_selection(elicitor, request, matrix, existing_selection,
-                                        ask_ide=not lock_has_ide, fresh=existing_manifest is None)
+                                        ask_ide=not lock_has_ide, fresh=existing_manifest is None,
+                                        pinned=Recommendations.read(existing_manifest or {}).ide if legacy else None)
     runnable = lock_has_ide or selection.ide is not None
     preview_manifest = existing_manifest if existing_manifest is not None else _preview_manifest(identity)
     if existing_manifest is None:
         # A bad mount path or slug is refused here, before the first write.
-        validate_manifest(preview_manifest, manifest_path)
+        read_manifest(preview_manifest, manifest_path)
     authoring = frozenset(CURATED_HOST_RECOMMENDATIONS) if existing_manifest is None else authored
     if runnable:
         preview_lock = _preview_effective_lock(preview_manifest, shared_lock, selection, matrix)
@@ -499,10 +513,9 @@ def initialize_project(
         elicitor.finish(require_all_consumed=False)
 
     manifest_action, manifest_text = _prepare_manifest(
-        manifest_path, existing_manifest, identity, recommendations
+        manifest_path, existing_manifest, identity, recommendations, migrate=migrate
     )
-    manifest = tomllib.loads(manifest_text)
-    validate_manifest(manifest, manifest_path)
+    manifest = current_manifest(tomllib.loads(manifest_text), manifest_path).document()
     check_documents(manifest, shared_lock)
     # All artifacts stay in memory until every answer is accepted. A batch
     # failure must leave shared files and the private record untouched.
@@ -643,7 +656,7 @@ def _existing_selection(root: Path, manifest: Mapping[str, Any] | None) -> _Owne
 
 def _elicit_owner_selection(
     elicitor: Elicitor, request: InitializeRequest, matrix: ResolutionMatrix, existing: _OwnerSelection,
-    *, ask_ide: bool = True, fresh: bool = True,
+    *, ask_ide: bool = True, fresh: bool = True, pinned: str | None = None,
 ) -> _OwnerSelection:
     """Ask the owner's own IDE and agents, for the owner's checkout alone.
 
@@ -652,7 +665,9 @@ def _elicit_owner_selection(
     run. Personal capabilities join through ``--with``, ``config add`` or
     the default-agent offer. With
     ``ask_ide`` false the lock already carries the IDE (a manifest from
-    before 0.3.0 rc4) and only an explicit ``--ide`` is taken.
+    before 0.3.0 rc4) and only an explicit ``--ide`` is taken.  ``pinned``
+    is the IDE a schema-1 manifest required, the default for the owner's
+    checkout when its record names none, applied and disclosed, not asked.
     """
     surfaces = list(matrix.ide_capabilities())
     answer = elicitor.seek(
@@ -660,6 +675,7 @@ def _elicit_owner_selection(
         description=f"Your IDE for this checkout ({', '.join(surfaces)}; Enter to decide later)",
         remedy="--ide IDE",
         existing=existing.ide,
+        default=pinned if ask_ide else None,
         empty_answer="none",
         omitted_answer="none",
         mandatory=ask_ide,
@@ -914,7 +930,7 @@ def _elicit_identity(
     if existing_policy is not None and require is not None and require.source == SOURCE_EXISTING_RECORD:
         if offer is not None and offer.source == SOURCE_EXISTING_RECORD:
             offered_names = existing_policy.optional
-        policy = CapabilityPolicy(existing_policy.required, offered_names, existing_policy.minimums, existing_policy.layered)
+        policy = CapabilityPolicy(existing_policy.required, offered_names, existing_policy.minimums)
     else:
         policy = CapabilityPolicy.read({"capabilities": {"required": list(required_names), "optional": list(offered_names)}})
     return _ProjectIdentity(
@@ -1212,7 +1228,7 @@ def _elicit_component_acquisitions(
         if answer.value == "no":
             raise ProjectConfigurationError(
                 f"Initialization needs the {declaration.subject} acquisition answered; "
-                f"declined. Remove {declaration.capability!r} from capabilities.need or "
+                f"declined. Remove {declaration.capability!r} from the project's required capabilities or "
                 f"authorize with 'devcapsule project config authorize "
                 f"{declaration.name} true'."
             )
@@ -1274,7 +1290,7 @@ def _base_answer_validator(name: str, recommended: str) -> Any:
             return candidate
         raise ProjectConfigurationError(
             f"Authorization {name!r} takes a value: the base the resolution "
-            f"matrix selected from capabilities.need ({recommended}), accepted "
+            f"matrix selected from the project's requirements ({recommended}), accepted "
             "as-is with the reserved keyword 'default' (interactively, Enter), "
             "or a locally built or pulled image (tag or image ID) to run on "
             "this checkout instead — DevCapsule reads its digest and metadata "
@@ -1498,7 +1514,7 @@ def _fully_initialized(root: Path, manifest: Mapping[str, Any]) -> bool:
     resolution = load_resolution(output_path)
     if resolution.get("status") == "unresolved":
         return False
-    if stale_resolution_inputs(manifest, lock, checkout, resolution):
+    if stale_resolution_inputs(manifest, lock, checkout, resolution, source_digest=manifest_source_digest(root)):
         return False
     return True
 
@@ -1519,8 +1535,7 @@ def _apply_answers_to_standing_checkout(
     run' works immediately afterward.
     """
 
-    manifest = load_toml(manifest_path)
-    validate_manifest(manifest, manifest_path)
+    manifest = current_manifest(load_toml(manifest_path), manifest_path).document()
     _, lock = lock_for(root, manifest)
     _reject_undeclared_answers(request.answers, manifest, lock, authoring=frozenset())
     declarations = authorization_declarations(manifest, lock)
@@ -1576,22 +1591,34 @@ def _prepare_manifest(
     existing_manifest: Mapping[str, Any] | None,
     identity: _ProjectIdentity,
     recommendations: list[tuple[str, str]],
+    *,
+    migrate: bool = False,
 ) -> tuple[str, str]:
     """Prepare a fresh manifest, or append only what an existing one lacks, without IO writes.
 
     An existing manifest is authored content: it is never rewritten from its
     parsed form, which would destroy comments and fields init does not model.
+    The one exception is ``migrate``, the owner's ``--regenerate`` on a
+    schema-1 file: ``existing_manifest`` is then the upgraded schema-2
+    mapping, written by the one writer with the file's leading comment block
+    kept; comments elsewhere are not, which the report says.
     """
 
-    if existing_manifest is None:
-        document = _preview_manifest(identity)
+    if existing_manifest is None or migrate:
+        document = dict(_preview_manifest(identity)) if existing_manifest is None else deepcopy(dict(existing_manifest))
+        existing_host = document.get("host", {})
         for name, justification in recommendations:
             path, supported = CURATED_HOST_RECOMMENDATIONS[name]
+            if migrate and _declared_recommendation(existing_host if isinstance(existing_host, Mapping) else {}, path) is not None:
+                continue
             node: dict[str, Any] = document.setdefault("host", {})
             for key in path:
                 node = node.setdefault(key, {})
             node["value"] = supported
             node["justification"] = justification
+        if migrate:
+            preamble = manifest_preamble(manifest_path.read_text(encoding="utf-8"))
+            return "Migrated", render_manifest(document, preamble=preamble)
         return "Created", render_manifest(document)
 
     host = existing_manifest.get("host", {})

@@ -18,7 +18,7 @@ from devcapsule.components.catalog import COMPONENTS
 from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix
 from .capabilities import CapabilityPolicy, LocalCapabilities, names, meets_minimum, resolution_recommendations
-from .file_formats import ProjectConfigurationError, table
+from .file_formats import ProjectConfigurationError, legacy_lock, table
 
 
 def matrix_for(lock: Mapping[str, Any]) -> ResolutionMatrix:
@@ -267,13 +267,16 @@ def usable_lock(policy: CapabilityPolicy, source: Mapping[str, Any],
     Unsupported or missing optional providers are skipped with a warning.
 
     The returned lock is a filtered copy for execution, not a replacement for
-    persisted version pins. Inputs remain unchanged. A legacy policy without
-    optional, minimum or local choices returns an unfiltered copy for compatibility.
+    persisted version pins. Inputs remain unchanged. A lock generated before
+    provider evidence (``legacy_lock``), under a policy without optional or
+    minimum capabilities, returns an unfiltered copy: its base cannot vouch
+    for the services the catalog expects of it, and what the checkout
+    selected is already laid over it.
     This checks provider availability; artifact integrity and host permissions
     are checked by later admission stages.
     """
     lock = deepcopy(dict(source))
-    if not policy.layered and not policy.optional and not policy.minimums and not local.selected and not local.without:
+    if legacy_lock(source) and not policy.optional and not policy.minimums:
         return lock, ()  # Old locks remain records, not requests to re-resolve.
     local.validate(policy)
     matrix = matrix_for(lock)
@@ -301,6 +304,13 @@ def usable_lock(policy: CapabilityPolicy, source: Mapping[str, Any],
                 keep.update(supply(capability))
             except ProjectConfigurationError as exc:
                 raise ProjectConfigurationError(f"{role} capability {capability!r} is unavailable: {exc}. Upgrade the launcher or select compatible components.") from exc
+    # The pinned IDE is a selection, never an optional to omit: a lock written
+    # when the project required its IDE stands for every checkout that chose
+    # none, and a checkout's own choice already replaced the surface.
+    pinned = components.get("interactive-surface")
+    for capability in matrix.ide_capabilities():
+        if pinned in matrix.providers(capability) and isinstance(components.get(pinned), dict):
+            keep.update(supply(capability))
     check_minimums(policy, lock, matrix)
     for capability in policy.optional:
         if capability in local.without:

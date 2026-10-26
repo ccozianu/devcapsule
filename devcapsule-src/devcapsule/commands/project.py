@@ -266,7 +266,7 @@ class ProjectInitCommand(Command):
         parser.add_argument(
             "--regenerate",
             action="store_true",
-            help="Rewrite the derived platform lock from the current embedded matrix; keep the authored manifest.",
+            help="Rewrite the derived platform lock from the current embedded matrix; migrate a schema-1 manifest to schema 2, keeping its leading comment block.",
         )
         parser.add_argument(
             "--unverified",
@@ -595,7 +595,9 @@ class CheckoutDocuments:
         try:
             from devcapsule.configuration.capability_selection import effective_lock
             selected = effective_lock(self.manifest, self.composed_lock, self.checkout, warn=False)
-            stale = stale_resolution_inputs(self.manifest, selected, self.checkout, resolved, self.workstation)
+            from devcapsule.configuration.storage import manifest_source_digest
+            stale = stale_resolution_inputs(self.manifest, selected, self.checkout, resolved, self.workstation,
+                                            source_digest=manifest_source_digest(self.root))
         except ProjectConfigurationError as exc:
             return f"unreadable ({exc})"
         return "stale: " + ", ".join(stale) if stale else "fresh"

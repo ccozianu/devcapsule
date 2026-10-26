@@ -138,7 +138,12 @@ def prepare_launch(
         document = _selected_checkout(state, saved, flags) if not flags.save else saved
         local = Selection(LocalCapabilities.read(document), state.surfaces)
         recommended_ide = Recommendations.read(manifest).ide
-        if local.ide is None and recommended_ide is not None and not (set(CapabilityPolicy.read(manifest).required) & set(state.surfaces)):
+        # A lock that still pins an IDE (written when the project required
+        # one) stands for every checkout that chose none; the recommended IDE
+        # is the default only when the lock is project-only.
+        pinned_surface = state.composed_lock(document).get("components", {}).get("interactive-surface")
+        if (local.ide is None and recommended_ide is not None and pinned_surface is None
+                and not (set(CapabilityPolicy.read(manifest).required) & set(state.surfaces))):
             local.ide = recommended_ide
             document = state.with_selection(local, checkout=document, allow_unverified=flags.allow_unverified)
         transient = CheckoutRecord.staged(input_path, document)
