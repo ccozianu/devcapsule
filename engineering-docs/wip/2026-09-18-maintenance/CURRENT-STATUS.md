@@ -284,6 +284,37 @@ begin the rewrite until project-management assigns it.
 
 ## Current State
 
+**2026-10-26: the manifest's two schemas as classes, implemented; PR #289 ready.**
+The slice of the order of 2026-10-26, implemented by Claude Code, Claude
+Fable 5.1, with Codex, gpt-6-astra, as the review partner (PR #290,
+PR289.1, accepted at `94d2108` without a round, merged at `f4d0566`). One
+pure module, `configuration/manifest_schemas.py`: `ManifestV1`,
+`ManifestV2`, `read_manifest`, `upgrade` by the order's laws; the
+boundary `manifest.current_manifest`, the IDE question answered by the
+component catalog since the configuration core may not import the matrix;
+every consumer reads schema 2; `CapabilityPolicy.layered` deleted, the
+compatibility branches it gated keyed on the lock (`legacy_lock`: no
+provider evidence, or a generation before embedded-27, which no release
+carried between 22 and 27); `init --regenerate` writes a schema-1 file as
+schema 2 with the leading comment block kept and says so, a schema-2 file
+stays byte for byte, plain `init` honors either schema and refuses to
+append a recommendation to a schema-1 file. Departures from the order's
+letter, each for the owner in the PR body: `ManifestV2.read` folds a
+carried-over `workflow-type` instead of refusing it, since rc4 to rc7
+wrote such files; the environment and recommendation tables are kept as
+written beside their values; the IDE a schema-1 file required is the
+owner's checkout default at `init`, and the recommended IDE is the
+`run` default only when the lock pins none; the two-IDE refusal cannot
+name `config drop`, which the same admission refuses first. The review
+made admission lossless (`document()` reproduces the file, explicit
+empties included), validated the schema-1 policy before migration, and
+added the launch test for a migrated project's old checkout. Gate on
+`f4d0566`: mypy 248 files, 2338 unit tests (36 deselected, 1 xfailed,
+1 xpassed), 17 packaging, 357 console, docs 189 pages. Acceptance on
+scratch copies of the trading sample and the rc3 AI Learning manifest in
+the PR body. Awaiting the owner's merge; then the repository's own,
+the website's and the samples' manifests are the owner's regeneration.
+
 **2026-10-26: the manifest's two schemas as classes; regenerate migrates.**
 The owner, on learning that `init --regenerate` left the AI Learning
 manifest at schema 1, ruled that regeneration migrates the manifest to
