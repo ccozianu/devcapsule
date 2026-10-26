@@ -131,6 +131,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Work Orders
 
+- [The manifest's two schemas as classes; `init --regenerate` migrates](engineering-docs/work-orders/2026-10-26-manifest-schemas-as-classes.md)
 - [Orientation, concepts, persistence and recipes in the documentation](engineering-docs/work-orders/2026-10-25-documentation-orientation-and-concepts.md)
 - [Redesign the project config and project run experience (draft)](engineering-docs/work-orders/2026-10-24-cli-ux-redesign.md)
 

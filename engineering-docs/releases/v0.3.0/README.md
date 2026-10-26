@@ -57,6 +57,9 @@ that is honest about what it skips.
   and whose sections lack a conceptual entry page, the configuration
   section first; booked with `project-management` by mail at
   `9fcfdb8db440`, which assigns the reviewer and the method.
+  Added by the owner's direction of 2026-10-26: `init --regenerate`
+  migrates the manifest to schema 2, and schema 1 and schema 2 are
+  represented as classes; the work order of 2026-10-26 in `work-orders/`.
 - **Rulings of 2026-10-21.** The base publication happens later, in the
   promotion of the accepted candidate, not before the next one. The
   candidates are grouped: rc2 carries the network node and C10; rc3 forced
