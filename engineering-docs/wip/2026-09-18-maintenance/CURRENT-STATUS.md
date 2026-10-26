@@ -340,6 +340,30 @@ regenerated lock in any project then moves to recipe 11, the AI Learning
 bootstrap among them. `config show` prints the base's digest and not its
 contract; left as is.
 
+**2026-10-25: documentation work order from the owner's outside list.**
+The owner brought an analysis, made outside this project, of a
+complementary product's documentation and eight improvements it suggests for
+ours, and asked for it as a work order attached to an existing workstream.
+Written as
+[2026-10-25-documentation-orientation-and-concepts.md](../../work-orders/2026-10-25-documentation-orientation-and-concepts.md),
+listed in `index.md`, on `ws-maintenance/docs-orientation-order` from the
+release tip `7c86141`, the rc7 publication record, for the owner's edits in the IDE and merge. Grounded
+against `docs/` at that tip, the rc6 executable and the content contract:
+the sidebar's first group is the six role pages in the contract's order,
+not a misordered section; *What persists* is already the storage table;
+the configuration entry page already defines the words; glossary and
+recipes are items 5 and 6 of the eleven open user-docs proposals, taken as
+decided by the owner's handing-over. Kept, corrected: *what it is not* on
+the overview and `/why/`; a *What a capsule is* page leading Getting
+started; two columns and a *when the manifest changes* section on *What
+persists*; a `docs/recipes/` area, four recipes on catalog capabilities; a
+background-agents section in the workstreams guide; and, as Part B after
+the final tag's documentation round, the Windows role moved up in the
+contract, a five-step landing strip as a new contract section, one
+dogfooding journal entry. Dropped: a separate concepts area, a Scala recipe,
+product names in `docs/`. Attached to `maintenance`, joining the booked
+language review (`9fcfdb8db440`) so the pages are rewritten once.
+
 **2026-10-25: rc6 tagged, published and verified.** The owner merged
 PR #282 at `b64187f`; `2ed8ecf` is an ancestor of `main`; `v0.3.0-rc6` on
 `2ed8ecf`, the candidate gate `mainline` with no unintegrated commits from

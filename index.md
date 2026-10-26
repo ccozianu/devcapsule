@@ -130,6 +130,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Work Orders
 
+- [Orientation, concepts, persistence and recipes in the documentation](engineering-docs/work-orders/2026-10-25-documentation-orientation-and-concepts.md)
 - [Redesign the project config and project run experience (draft)](engineering-docs/work-orders/2026-10-24-cli-ux-redesign.md)
 
 - [Saved Docker arguments for each checkout](engineering-docs/work-orders/2026-10-23-saved-docker-arguments.md)
