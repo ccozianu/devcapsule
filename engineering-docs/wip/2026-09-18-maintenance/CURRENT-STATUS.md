@@ -284,6 +284,23 @@ begin the rewrite until project-management assigns it.
 
 ## Current State
 
+**2026-10-26: rc8 tagged, published and verified.** The owner merged
+PR #291 at `8afa5f6`; `8d41fab` is an ancestor of `main`; `v0.3.0-rc8` on
+`8d41fab`, the candidate gate `mainline` with no unintegrated commits from
+a detached checkout, the atomic push, run 40271738816 passed, the
+prerelease public with its three assets; downloaded, the checksum
+verified (SHA-256 `5f1f8429…`), the manifest's base reference the
+published recipe-11 digest, `version --json` from an empty directory
+`0.3.0rc8` at `8d41fab`. The downloaded executable migrated a copy of the
+trading sample to schema 2. The overview's rc8 entry and the changelog's
+candidate-8 line record it. Note for the next cut: run the downloaded
+executable directly after `chmod +x`; `python3 -I devcapsule.pex` picked
+up another installation in this capsule and reported a different version.
+The owner's gate of 2026-10-26 is met. Next: the owner regenerates this
+repository's, the website's and the samples' manifests; the diagnostics
+snapshot, image cleanup and C20; the documentation round before the
+final tag.
+
 **2026-10-26: rc8 in preparation.** The owner merged PR #289; the
 release tip is `9e4a2a8`. Full `nox -s build` on it from a separate
 worktree: mypy clean over 248 files, 2338 unit tests passed, 36 deselected, 1 xfailed, 1 xpassed, packaging integration 17, console 357; the
