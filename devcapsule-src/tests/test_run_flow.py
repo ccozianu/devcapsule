@@ -464,6 +464,35 @@ def test_schema_one_ide_in_need_launches_without_rewriting_manifest(tmp_path: Pa
     assert 'capabilities' not in record(root)
 
 
+def test_migrated_project_launches_its_recommended_ide_for_an_old_checkout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from tests.test_upgrade_recovery import FIXTURE, install_external_fakes, invoke
+    for key in ('HOME', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME'):
+        monkeypatch.setenv(key, str(tmp_path / key.lower()))
+    owner = copy_project(FIXTURE / 'project', tmp_path / 'owner')
+    developer = copy_project(FIXTURE / 'project', tmp_path / 'developer')
+    assert config(developer, 'authorize', 'base-image', 'default') == 0
+    developer_record = checkout_record_paths(load_toml(paths(developer)[0]), developer)[0]
+    assert 'capabilities' not in record(developer)
+    with monkeypatch.context() as owner_environment:
+        for key in ('HOME', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME'):
+            owner_environment.setenv(key, str(tmp_path / 'owner-home' / key.lower()))
+        assert invoke(owner, 'init', '--regenerate', '--authorize', 'base-image', 'default') == 0
+    for source, target in zip(paths(owner)[:2], paths(developer)[:2]):
+        target.write_bytes(source.read_bytes())
+    shared = {path: path.read_bytes() for path in paths(developer)[:2]}
+    assert load_toml(paths(developer)[0])['recommendations']['ide'] == 'python-ide'
+    assert 'interactive-surface' not in load_toml(paths(developer)[1])['components']
+    assert config(developer, 'authorize', 'base-image', 'default') == 0
+    before = developer_record.read_bytes()
+    assert 'capabilities' not in record(developer)
+    launch = install_external_fakes(monkeypatch, [])
+    assert invoke(developer, 'run', '--no-update-check') == 0
+    assert launch.call_count == 1
+    assert launch.call_args.args[0].runtime_plan.component.id == 'pycharm'
+    assert developer_record.read_bytes() == before
+    assert {path: path.read_bytes() for path in shared} == shared
+
+
 def test_new_required_tool_blocks_a_saved_set_without_replacing_it(project: Path, tmp_path: Path) -> None:
     from devcapsule.configuration.derivation import load_state
     from devcapsule.configuration.file_formats import canonical_digest, render_toml

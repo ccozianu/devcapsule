@@ -161,7 +161,7 @@ def test_newest_base_below_minimum_is_not_selected() -> None:
 def test_provider_without_version_composes_without_a_minimum() -> None:
     manifest = {"capabilities": {"required": ["python"]}}
     shared = generate_lock(CapabilityPolicy.read(manifest), MATRIX)
-    pins = generate_lock(CapabilityPolicy(("codex-agent",), layered=True), MATRIX)
+    pins = generate_lock(CapabilityPolicy(("codex-agent",)), MATRIX)
     del pins["components"]["codex"]["version"]
     checkout = {"capabilities": {"selected": ["codex-agent"], "lock": render_toml(pins)}}
     composed = compose_lock(manifest, shared, checkout)
@@ -169,7 +169,7 @@ def test_provider_without_version_composes_without_a_minimum() -> None:
     assert usable["components"]["codex"] == pins["components"]["codex"]
     assert MATRIX.supplied_version("codex-agent", usable) is None
     with pytest.raises(ProjectConfigurationError, match="unknown version"):
-        usable_lock(CapabilityPolicy(("codex-agent",), minimums=(("codex-agent", "1"),), layered=True), composed)
+        usable_lock(CapabilityPolicy(("codex-agent",), minimums=(("codex-agent", "1"),)), composed)
 
 
 def test_saved_version_set_below_minimum_stops_run_with_three(project: Path, tmp_path: Path, capsys, monkeypatch) -> None:

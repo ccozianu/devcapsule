@@ -27,8 +27,8 @@ from .capabilities import CapabilityPolicy, requirement, resolution_recommendati
 from .capability_commands import canonical_tool_name, check_documents, paths, promote
 from .capability_selection import generate_lock
 from .file_formats import ProjectConfigurationError
+from .manifest import current_manifest
 from .manifest_document import (
-    CURRENT_MANIFEST_SCHEMA_VERSION,
     RECOMMENDATION_NAMES,
     EnvironmentPolicy,
     Recommendations,
@@ -55,7 +55,7 @@ def _project(start: Path, *, check_resolutions: bool = True) -> tuple[Path, dict
     root = discover_project(start)
     require_settled(root)
     manifest_path, lock_path, _ = paths(root)
-    manifest, lock = load_toml(manifest_path), load_toml(lock_path)
+    manifest, lock = current_manifest(load_toml(manifest_path), manifest_path).document(), load_toml(lock_path)
     check_documents(manifest, lock, check_resolutions=check_resolutions)
     return root, manifest, lock, MATRICES[Platform.current()]
 
@@ -118,13 +118,12 @@ def _policy_edit(
         if change == "offer":
             for name in canonical:
                 minimums.pop(name, None)
-    required_order = [requirement(item)[0] for item in manifest["capabilities"].get("required", manifest["capabilities"].get("need", []))]
+    required_order = [requirement(item)[0] for item in manifest["capabilities"].get("required", [])]
     optional_order = list(manifest["capabilities"].get("optional", []))
     def ordered(values: set[str], previous: list[str]) -> tuple[str, ...]:
         return tuple(name for name in dict.fromkeys((*previous, *canonical)) if name in values) if native else tuple(sorted(values))
-    candidate = CapabilityPolicy(ordered(required, required_order), ordered(optional, optional_order), tuple(sorted(minimums.items())), layered=True)
+    candidate = CapabilityPolicy(ordered(required, required_order), ordered(optional, optional_order), tuple(sorted(minimums.items())))
     candidate_manifest = deepcopy(manifest)
-    candidate_manifest["devcapsule-schema-version"] = CURRENT_MANIFEST_SCHEMA_VERSION
     candidate_manifest["capabilities"] = capability_table(candidate, reasons, previous=manifest["capabilities"])
     generated = generate_lock(candidate, matrix, previous=lock, allow_unverified=allow_unverified,
                               recommendations=resolution_recommendations(candidate_manifest))
@@ -204,7 +203,6 @@ def _environment_edit(start: Path, *, change: str, names: Sequence[str], because
                 entry["reason"] = because
             target[name] = entry
     candidate_manifest = deepcopy(manifest)
-    candidate_manifest["devcapsule-schema-version"] = CURRENT_MANIFEST_SCHEMA_VERSION
     candidate_manifest.pop("environment", None)
     document = {scope: dict(sorted(entries.items())) for scope, entries in
                 (("required", required), ("optional", optional)) if entries}
@@ -253,7 +251,6 @@ def recommend(start: Path, name: str, value: str, *, because: str | None = None,
     """
     root, manifest, lock, matrix = _project(start, check_resolutions=False)
     candidate_manifest = deepcopy(manifest)
-    candidate_manifest["devcapsule-schema-version"] = CURRENT_MANIFEST_SCHEMA_VERSION
     removing = value.strip().lower() == "none"
     generated = None
     if name in RECOMMENDATION_NAMES:
@@ -391,7 +388,7 @@ def _remove_host_recommendation(host: dict[str, Any], path: tuple[str, ...]) -> 
 
 
 def _validate(manifest: dict[str, Any]) -> None:
-    from .manifest import validate_manifest
-    validate_manifest(manifest, Path("manifest"))
+    from .manifest_schemas import ManifestV2
+    ManifestV2.read(manifest, Path("manifest"))
     from .authorization import authorization_declarations
     authorization_declarations(manifest, {})

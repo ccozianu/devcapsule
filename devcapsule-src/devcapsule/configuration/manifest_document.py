@@ -10,10 +10,10 @@ requires or offers, each name with the owner's reason, and the project's
 recommendations for the IDE, the memory limit and the CPU count, which the
 launcher applies as defaults and discloses, never asks (decision 24).
 
-Readers stay tolerant (R-CONFIG-001): a schema-1 manifest, with the legacy
-``capabilities.need`` form or the ``required``/``optional`` form, is read as
-it is and never rewritten by a command that does not edit it.  Only an owner's
-edit writes the file, and every owner's edit writes schema 2.
+Readers stay tolerant (R-CONFIG-001): a schema-1 manifest is read as it is,
+by :class:`manifest_schemas.ManifestV1`, upgraded in memory and never
+rewritten by a command that does not edit it.  An owner's edit and
+``project init --regenerate`` write the file, and both write schema 2.
 
 This module is pure: it validates and renders mappings.  Validation against
 the launcher's catalog (is ``frontend-ide`` an IDE?) belongs to the adapters

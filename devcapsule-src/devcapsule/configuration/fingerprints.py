@@ -3,7 +3,7 @@
 from __future__ import annotations
 from typing import Any, Mapping
 
-from .file_formats import canonical_digest, table, ProjectConfigurationError
+from .file_formats import canonical_digest, legacy_lock, table, ProjectConfigurationError
 from .manifest import configuration_manifest
 from .workstation import WorkstationDefaults
 
@@ -30,8 +30,8 @@ def resolution_source_digests(
 
     from .capabilities import CapabilityPolicy, LocalCapabilities
     policy = CapabilityPolicy.read(manifest)
-    if policy.layered:
-        baseline_policy = CapabilityPolicy(policy.required, (), policy.minimums, True)
+    if not legacy_lock(lock):
+        baseline_policy = CapabilityPolicy(policy.required, (), policy.minimums)
         local = LocalCapabilities.read(checkout)
         providers = table(lock, "capability-providers")
         required = (*policy.required, *local.selected)

@@ -26,11 +26,10 @@ class ProjectConfigurationError(CliError):
     """An actionable project configuration failure."""
 
 
-# The manifest schema versions this launcher reads. Version 2 (2026-10-24)
-# adds the project's environment declarations and ordinary recommendations;
-# a version-1 manifest is read as it is and never rewritten by an unrelated
-# command. Writers emit the current version, defined with the manifest's
-# vocabulary in ``manifest_document``.
+# The manifest schema versions this launcher reads. Each is a class in
+# ``manifest_schemas``, which also holds the migration from 1 to 2: a
+# version-1 file is read as it is, upgraded in memory, and written as
+# version 2 only by an owner's edit or ``project init --regenerate``.
 MANIFEST_SCHEMA_VERSIONS = (1, 2)
 
 
@@ -44,6 +43,33 @@ class ConfigurationFileKind(Enum):
     lock = "devcapsule-lock-format-version"
     checkout = "devcapsule-checkout-schema-version"
     resolution = "devcapsule-resolved-schema-version"
+
+
+# The first embedded matrix generation whose locks record provider evidence,
+# the ``capability-providers`` table: added on 2026-10-06 at embedded-26,
+# which no release carried (0.2.15 shipped embedded-22, 0.3.0 rc0 shipped
+# embedded-27), so every released lock before 27 lacks it and every released
+# lock from 27 on has it.
+EVIDENCE_MATRIX_GENERATION = 27
+
+
+def legacy_lock(lock: Mapping[str, Any]) -> bool:
+    """Whether ``lock`` is a record from before provider evidence, not a selection to filter.
+
+    Missing evidence identifies old locks and bare matrix renderings. An
+    embedded generation before :data:`EVIDENCE_MATRIX_GENERATION` also
+    identifies a legacy lock: personal pins can add evidence during
+    composition, while retaining the shared lock's older generation.
+    An unrecognized version with evidence does not establish legacy status;
+    its required providers must still be checked.
+    """
+    if "capability-providers" not in lock:
+        return True
+    version = lock.get("resolution-matrix-version")
+    if not isinstance(version, str) or not version.startswith("embedded-"):
+        return False
+    generation = version.removeprefix("embedded-")
+    return generation.isdecimal() and int(generation) < EVIDENCE_MATRIX_GENERATION
 
 
 def table(document: Mapping[str, Any], *path: str) -> Mapping[str, Any]:

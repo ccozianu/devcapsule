@@ -1,7 +1,7 @@
 ---
 description: Require or offer capabilities, set a minimum, recommend a provider, and choose what this checkout uses.
 weight: 25
-updated: 2026-10-25
+updated: 2026-10-26
 ---
 # Capabilities and components
 
@@ -174,7 +174,8 @@ set stops `run` with status 3. `devcapsule project versions follow-project
 
 This launcher reads existing checkout selections, offers, IDE recommendations,
 provider locks and trust records. It ignores the removed SDK-major table with
-a note. The next owner write removes that table. An unchanged manifest keeps
+a note. The next owner write, or `project init --regenerate`, writes the
+manifest as schema 2 and removes that table. An unchanged manifest keeps
 its old lock current until the next shared edit.
 
 Candidate 4 reads a resolution recommendation under `capabilities` and ignores

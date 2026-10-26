@@ -318,9 +318,11 @@ def test_legacy_need_allows_agent_and_optional_tool_edits(project):
     from devcapsule.resolution_matrix import MATRICES
     manifest_path, lock_path, _ = paths(project)
     document = load_toml(manifest_path)
+    document["devcapsule-schema-version"] = 1  # the legacy form belongs to schema 1
     document["capabilities"] = {"need": ["node", "frontend-ide"], "optional": ["browser-automation"]}
     manifest_path.write_text(render_toml(document))
-    lock_path.write_text(render_toml(generate_lock(CapabilityPolicy.read(document), MATRICES[Platform.current()])))
+    from devcapsule.configuration.manifest import current_manifest
+    lock_path.write_text(render_toml(generate_lock(current_manifest(document, manifest_path).policy, MATRICES[Platform.current()])))
     before = manifest_path.read_bytes(), lock_path.read_bytes()
     assert run(project, "add", "codex") == 0
     assert record(project)["capabilities"]["selected"] == ["codex-agent"]

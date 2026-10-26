@@ -1,7 +1,7 @@
 ---
 description: The command tree of the devcapsule launcher, with one line of intent per command, as the executable prints it.
 weight: 1
-updated: 2026-10-25
+updated: 2026-10-26
 ---
 # Command reference
 
@@ -39,7 +39,9 @@ devcapsule project init [--require NAME[>=VERSION]]... [--offer CAPABILITY]... [
 `--require` and `--offer` declare project capabilities. `--require` accepts
 the same `NAME>=VERSION` minimum as `config require`; quote it in the shell.
 `--ide` records your checkout choice. Repeat `--with` to add personal capabilities.
-New manifests use schema 2. Candidate 3 and older launchers cannot read them. With an IDE selected, initialization can still
+New manifests use schema 2. Candidate 3 and older launchers cannot read them. `--regenerate` rewrites the
+platform lock and migrates a schema-1 manifest to schema 2, keeping its leading comment block; a schema-2
+manifest is left as it is. With an IDE selected, initialization can still
 ask for per-checkout base or vendor consent. For scripts, supply the
 `--authorize NAME VALUE` answers it requests. `--set`, `--bind` and
 `--authorize` also accept one quoted justification after the value.
