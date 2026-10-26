@@ -515,6 +515,11 @@ def initialize_project(
     manifest_action, manifest_text = _prepare_manifest(
         manifest_path, existing_manifest, identity, recommendations, migrate=migrate
     )
+    if legacy and manifest_action == "Updated":
+        raise ProjectConfigurationError(
+            "Adding a shared recommendation to a schema-1 manifest requires 'project init --regenerate'; "
+            "nothing was written."
+        )
     manifest = current_manifest(tomllib.loads(manifest_text), manifest_path).document()
     check_documents(manifest, shared_lock)
     # All artifacts stay in memory until every answer is accepted. A batch

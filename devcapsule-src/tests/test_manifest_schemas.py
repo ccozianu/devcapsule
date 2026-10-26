@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from copy import deepcopy
 from pathlib import Path
 import tomllib
 
@@ -12,7 +13,7 @@ from devcapsule.configuration.file_formats import ProjectConfigurationError, leg
 from devcapsule.configuration.manifest import current_manifest, ide_capability
 from devcapsule.configuration.manifest_document import Recommendations, render_manifest
 from devcapsule.configuration.manifest_schemas import ManifestV1, ManifestV2, NeedForm, RequiredForm, read_manifest, upgrade
-from devcapsule.configuration.storage import load_toml
+from devcapsule.configuration.storage import load_toml, manifest_for
 from tests.test_upgrade_recovery import checkout, invoke  # noqa: F401  (the released v0.2.11 fixture)
 
 PROJECT = {"name": "Sample", "slug": "sample", "creator": "mailto:owner@example.test", "mount": "/workspace/sample"}
@@ -77,7 +78,7 @@ def test_schema_one_shapes_are_read_as_v1_and_upgraded_by_the_laws(name: str) ->
 
 
 def test_the_forms_say_which_one_the_file_used() -> None:
-    assert ManifestV1.read(v1(capabilities={"need": ["python", "python"], "optional": ["codex-agent"]}), "m").form == NeedForm(("python",), ("codex-agent",))
+    assert ManifestV1.read(v1(capabilities={"need": ["python", "python"], "optional": ["codex-agent"]}), "m").form == NeedForm(("python", "python"), ("codex-agent",))
     assert ManifestV1.read(v1(capabilities={"required": ["python>=3"]}), "m").form == RequiredForm(("python>=3",))
 
 
@@ -85,7 +86,7 @@ def test_upgrade_drops_an_optional_ide_and_refuses_two_required_ides() -> None:
     read = ManifestV1.read(v1(capabilities={"need": ["python"], "optional": ["frontend-ide", "codex-agent"]}), "m")
     assert upgrade(read, ide=ide_capability).optional == ("codex-agent",)
     read = ManifestV1.read(v1(capabilities={"need": ["python-ide", "frontend-ide"]}), "m")
-    with pytest.raises(ProjectConfigurationError, match="two IDEs, python-ide, frontend-ide.*config drop NAME"):
+    with pytest.raises(ProjectConfigurationError, match="two IDEs, python-ide, frontend-ide.*owner must remove"):
         upgrade(read, ide=ide_capability)
 
 
@@ -149,6 +150,73 @@ def test_schema_two_reads_losslessly_and_exposes_its_values() -> None:
     assert current_manifest(document, "manifest") == read
 
 
+@pytest.mark.parametrize("fields", [
+    {"capabilities": {"required": ["python", "python"], "optional": []}},
+    {"capabilities": {"required": ["python"], "reasons": {"python": "", "future-tool": "keep"}}},
+    {"capabilities": {"required": [], "resolution": {}, "reasons": {}, "sdk-major": {"python": "3"}, "future": {"x": [1]}}},
+    {"recommendations": {"memory": "8g", "reasons": {"memory": "", "cpus": "keep for later"}}},
+    {"host": {}, "configuration": {}, "environment": {}, "recommendations": {}},
+    {"capabilities.optional": [], "capabilities.resolution": {}, "capabilities.reasons": {}},
+    {"project": {**PROJECT, "future": {"x": [1]}}, "extension": {"nested": {"x": [2]}},
+     "environment": {"required": {"DB": {"reason": "", "future": {"x": [3]}}}}},
+])
+def test_schema_two_file_mapping_survives_admission(tmp_path: Path, fields: dict) -> None:
+    document = v2(**fields)
+    path = tmp_path / ".devcapsule/devcapsule.toml"
+    path.parent.mkdir()
+    # The generic fixture writer retains even the retired table.
+    from devcapsule.configuration.file_formats import render_toml
+    path.write_text(render_toml(document))
+    assert ManifestV2.read(document, path).document() == document
+    _, admitted = manifest_for(tmp_path)
+    assert admitted == document
+    admitted["project"]["name"] = "Changed"
+    assert document["project"]["name"] == PROJECT["name"]
+
+
+@pytest.mark.parametrize("capabilities", [
+    {},
+    {"need": ["python", "python>=3"]},
+    {"required": ["python"], "optional": ["python"]},
+    {"need": ["python"], "optional": ["future-tool>=1"]},
+])
+def test_schema_one_admission_checks_the_policy_before_upgrade(capabilities: dict) -> None:
+    with pytest.raises(ProjectConfigurationError):
+        ManifestV1.read(v1(capabilities=capabilities), "manifest")
+
+
+def test_upgrade_keeps_unknown_names_and_does_not_alias_its_input() -> None:
+    document = v1(capabilities={"need": ["python>=3", "pycharm", "python-ide", "future-tool", "future-tool"],
+                               "optional": ["codex-agent", "frontend-ide"], "resolution": {"python-ide": "pycharm"}},
+                  host={"extension": {"nested": [1]}}, workflow={"definition": "devcapsule"},
+                  **{"workflow-type": "single-stream"})
+    before = deepcopy(document)
+    read = ManifestV1.read(document, "manifest")
+    read_before = deepcopy(read)
+    upgraded = upgrade(read, ide=ide_capability)
+    assert upgraded.required == ("python>=3", "future-tool")
+    assert upgraded.optional == ("codex-agent",)
+    assert upgraded.recommendations.ide == "python-ide"
+    assert upgraded.workflow == {"definition": "devcapsule", "mode": "single-stream"}
+    assert read == read_before and document == before
+    upgraded.host["extension"]["nested"].append(2)
+    upgraded.resolution["python-ide"] = "changed"
+    assert read == read_before and document == before
+
+
+def test_schema_one_document_preserves_all_accepted_fields() -> None:
+    document = v1(project={**PROJECT, "future": {"items": [1]}},
+                  capabilities={"need": ["python", "python"], "optional": [], "resolution": {},
+                                "sdk-major": {}, "future": {"items": [2]}},
+                  host={}, configuration={}, workflow={}, extension={"items": [3]})
+    read = ManifestV1.read(document, "manifest")
+    assert read.document() == document
+    exported = read.document()
+    exported["project"]["future"]["items"].append(4)
+    exported["capabilities"]["future"]["items"].append(5)
+    assert read.document() == document
+
+
 def test_ide_capability_answers_from_the_component_catalog() -> None:
     assert ide_capability("python-ide") == "python-ide"
     assert ide_capability("pycharm") == "python-ide"
@@ -160,13 +228,27 @@ def test_ide_capability_answers_from_the_component_catalog() -> None:
     ({"resolution-matrix-version": "embedded-18"}, True),
     ({"resolution-matrix-version": "dogfood-v1"}, True),
     ({"resolution-matrix-version": "embedded-28"}, True),
-    ({"capability-providers": {}}, True),
+    ({"capability-providers": {}}, False),
+    ({"resolution-matrix-version": "vendor-v1", "capability-providers": {}}, False),
+    ({"resolution-matrix-version": "embedded-next", "capability-providers": {}}, False),
     ({"resolution-matrix-version": "embedded-26", "capability-providers": {}}, True),
     ({"resolution-matrix-version": "embedded-27", "capability-providers": {}}, False),
     ({"resolution-matrix-version": "embedded-28", "capability-providers": {"python": []}}, False),
 ])
-def test_a_lock_is_legacy_unless_it_records_evidence_from_generation_27_on(lock: dict, legacy: bool) -> None:
+def test_legacy_locks_lack_evidence_or_name_a_generation_before_27(lock: dict, legacy: bool) -> None:
     assert legacy_lock(lock) is legacy
+
+
+def test_two_ide_refusal_does_not_offer_an_unreachable_drop_command(checkout, capsys) -> None:  # noqa: F811
+    project, _, _ = checkout
+    path = project / ".devcapsule/devcapsule.toml"
+    path.write_text(path.read_text().replace('"python-ide"', '"python-ide", "frontend-ide"'))
+    before = path.read_bytes()
+    assert invoke(project, "config", "drop", "frontend-ide") == 2
+    error = capsys.readouterr().err
+    assert "two IDEs, python-ide, frontend-ide" in error
+    assert "owner must remove" in error and "config drop" not in error
+    assert path.read_bytes() == before
 
 
 def test_regenerate_migrates_a_schema_one_manifest_and_keeps_its_leading_comment(checkout, capsys) -> None:  # noqa: F811
@@ -201,3 +283,70 @@ def test_init_without_regenerate_leaves_a_schema_one_manifest_alone(checkout) ->
     assert invoke(project, "init", "--authorize", "base-image", "default") == 0
     assert manifest_path.read_bytes() == before
     assert load_toml(manifest_path)["devcapsule-schema-version"] == 1
+
+
+def test_regenerate_with_a_new_host_recommendation_uses_the_migration_writer(checkout) -> None:  # noqa: F811
+    from devcapsule.configuration.operations import InitializeRequest, ProvidedAnswer, initialize_project
+    project, record, _ = checkout
+    path = project / ".devcapsule/devcapsule.toml"
+    path.write_text("# Owner note\n\n" + path.read_text())
+    expected = current_manifest(load_toml(path), path).document()
+    expected["host"] = {"network": {"mode": {"recommended": {"value": "host", "justification": "dev servers"}}}}
+    report = initialize_project(InitializeRequest(directory=project, regenerate=True, interactive=False, answers=(
+        ProvidedAnswer("authorize", "base-image", "default"),
+        ProvidedAnswer("authorize", "network", "host", justification="dev servers"),
+    )))
+    assert report.manifest_action == "Migrated"
+    assert "to schema 2" in report.render()
+    assert path.read_text() == render_manifest(expected, preamble="# Owner note\n")
+    pins = tomllib.loads(load_toml(record)["capabilities"]["lock"])
+    assert pins["components"]["interactive-surface"] == "pycharm"
+    assert pins["components"]["pycharm"]["version"]
+
+
+def test_regenerate_does_not_save_a_schema_two_recommendation_as_a_personal_choice(checkout) -> None:  # noqa: F811
+    from devcapsule.configuration.operations import InitializeRequest, initialize_project
+    project, record, _ = checkout
+    path = project / ".devcapsule/devcapsule.toml"
+    path.write_text(render_manifest(current_manifest(load_toml(path), path).document()))
+    before = path.read_bytes()
+    assert "capabilities" not in load_toml(record)
+    report = initialize_project(InitializeRequest(directory=project, regenerate=True, interactive=False))
+    assert report.ide is None and report.resolve is None
+    assert "capabilities" not in load_toml(record)
+    assert path.read_bytes() == before
+
+
+def test_plain_init_cannot_append_to_a_schema_one_manifest(checkout) -> None:  # noqa: F811
+    from devcapsule.configuration.operations import InitializeRequest, ProvidedAnswer, initialize_project
+    project, record, resolution = checkout
+    resolution.unlink()  # Exercise partial initialization, which prepares shared content.
+    paths = [project / ".devcapsule/devcapsule.toml", project / ".devcapsule/devcapsule.linux-amd64.lock", record]
+    before = {path: path.read_bytes() for path in paths}
+    with pytest.raises(ProjectConfigurationError, match="--regenerate"):
+        initialize_project(InitializeRequest(directory=project, interactive=False, answers=(
+            ProvidedAnswer("authorize", "base-image", "default"),
+            ProvidedAnswer("authorize", "network", "host", justification="dev servers"),
+        )))
+    assert {path: path.read_bytes() for path in paths} == before
+    assert not resolution.exists()
+
+
+def test_regenerate_keeps_every_file_when_a_later_answer_fails(checkout, monkeypatch) -> None:  # noqa: F811
+    from devcapsule.configuration import operations
+    project, record, resolution = checkout
+    paths = [project / ".devcapsule/devcapsule.toml", project / ".devcapsule/devcapsule.linux-amd64.lock", record, resolution]
+    before = {path: path.read_bytes() for path in paths}
+    prepared = []
+    original = operations._prepare_manifest
+    def observe(*args, **kwargs):
+        result = original(*args, **kwargs)
+        prepared.append(result)
+        return result
+    monkeypatch.setattr(operations, "_prepare_manifest", observe)
+    with pytest.raises(ProjectConfigurationError, match="declined"):
+        operations.initialize_project(operations.InitializeRequest(directory=project, regenerate=True, interactive=False, answers=(
+            operations.ProvidedAnswer("authorize", "base-image", "no"),
+        )))
+    assert prepared and prepared[0][0] == "Migrated"
+    assert {path: path.read_bytes() for path in paths} == before

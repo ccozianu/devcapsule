@@ -6,8 +6,8 @@ says what each schema may contain and how a schema-1 file becomes schema 2:
 
 * :class:`ManifestV1` is the file as launchers before 0.3.0 rc4 wrote it.
   Its capabilities come in one of two forms, ``need`` (one list, the IDE
-  among the names) or ``required``/``optional`` as rc3 wrote them, both
-  beside a retired ``sdk-major`` table.  The root key ``workflow-type`` may
+  among the names) or ``required``/``optional`` as rc3 wrote them. Either
+  may stand beside a retired ``sdk-major`` table. The root key ``workflow-type`` may
   stand beside ``[workflow]``.  It has no environment declarations and no
   recommendations: those are schema-2 words, and a file that uses them says 2.
 * :class:`ManifestV2` is the file as the one writer, ``render_manifest``,
@@ -23,8 +23,8 @@ says what each schema may contain and how a schema-1 file becomes schema 2:
   ``project init --regenerate``; no other command rewrites a schema-1 file
   (R-CONFIG-001, decision 19 of the CLI UX order).
 
-Each class is strict about the other schema's words and tolerant of what
-neither schema names: unknown root tables and unknown keys under
+Apart from the carried-over ``workflow-type`` above, each class refuses the
+other schema's words and tolerates what neither schema names: unknown root tables and unknown keys under
 ``[capabilities]`` are carried as extensions, so an edit by this launcher
 never drops a newer owner's field.  The retired ``sdk-major`` table is
 tolerated on both, carried in memory so ``capability_notes`` can say it is
@@ -85,10 +85,15 @@ def _optional_table(document: Mapping[str, Any], key: str, source: object) -> di
 
 
 def _written_names(value: object, label: str) -> tuple[str, ...]:
-    """A capability list as written: validated like ``names``, in the file's order, without duplicates."""
+    """Validate without normalizing: ``document()`` must preserve the written list."""
     names(value, label)
     assert isinstance(value, list)  # names() admitted it
-    return tuple(dict.fromkeys(str(item) for item in value))
+    return tuple(value)
+
+
+def _present_fields(document: Mapping[str, Any]) -> frozenset[tuple[str, ...]]:
+    """Keep explicit empty fields distinct from absent fields during a read round trip."""
+    return frozenset((*((key,) for key in document), *(("capabilities", key) for key in table(document, "capabilities"))))
 
 
 def _fold_workflow_type(workflow: dict[str, Any] | None, workflow_type: object, source: object) -> dict[str, Any] | None:
@@ -117,7 +122,7 @@ def _refuse(source: object, found: str, belongs_to: int, says: int) -> ProjectCo
 
 @dataclass(frozen=True)
 class NeedForm:
-    """Schema 1's ``need`` list: every name is required, the IDE capability among them."""
+    """Schema 1's required ``need`` list, possibly with an IDE, and any optional names."""
 
     need: tuple[str, ...]
     optional: tuple[str, ...] = ()
@@ -154,6 +159,7 @@ class ManifestV1:
     retired: dict[str, Any] = field(default_factory=dict)
     capability_extensions: dict[str, Any] = field(default_factory=dict)
     extensions: dict[str, Any] = field(default_factory=dict)
+    _present: frozenset[tuple[str, ...]] = field(default_factory=frozenset, repr=False, compare=False)
 
     @classmethod
     def read(cls, document: Mapping[str, Any], source: object) -> ManifestV1:
@@ -174,9 +180,9 @@ class ManifestV1:
         if "need" in capabilities:
             form = NeedForm(_written_names(capabilities["need"], "capabilities.need"), optional)
         else:
-            form = RequiredForm(_written_names(capabilities.get("required", []), "capabilities.required"), optional)
-        for item in (*form.optional, *(form.need if isinstance(form, NeedForm) else form.required)):
-            requirement(item)
+            form = RequiredForm(_written_names(capabilities.get("required"), "capabilities.required"), optional)
+        required = form.need if isinstance(form, NeedForm) else form.required
+        CapabilityPolicy.read({"capabilities": {"required": list(required), "optional": list(form.optional)}})
         workflow_type = document.get("workflow-type")
         if workflow_type is not None and not isinstance(workflow_type, str):
             raise ProjectConfigurationError(f"{source}: workflow-type must be a string.")
@@ -194,6 +200,7 @@ class ManifestV1:
             retired={key: deepcopy(capabilities[key]) for key in (RETIRED_CAPABILITY_FIELD,) if key in capabilities},
             capability_extensions={key: deepcopy(value) for key, value in capabilities.items() if key not in _V1_CAPABILITIES},
             extensions={key: deepcopy(value) for key, value in document.items() if key not in _V1_ROOT},
+            _present=_present_fields(document),
         )
 
     def document(self) -> dict[str, Any]:
@@ -201,9 +208,9 @@ class ManifestV1:
         capabilities: dict[str, Any] = (
             {"need": list(self.form.need)} if isinstance(self.form, NeedForm) else {"required": list(self.form.required)}
         )
-        if self.form.optional:
+        if self.form.optional or ("capabilities", "optional") in self._present:
             capabilities["optional"] = list(self.form.optional)
-        if self.resolution:
+        if self.resolution or ("capabilities", "resolution") in self._present:
             capabilities["resolution"] = dict(self.resolution)
         capabilities.update(deepcopy(self.capability_extensions))
         capabilities.update(deepcopy(self.retired))
@@ -212,9 +219,9 @@ class ManifestV1:
             result["workflow-type"] = self.workflow_type
         result["project"] = deepcopy(self.project)
         result["capabilities"] = capabilities
-        if self.host:
+        if self.host or ("host",) in self._present:
             result["host"] = deepcopy(self.host)
-        if self.configuration:
+        if self.configuration or ("configuration",) in self._present:
             result["configuration"] = deepcopy(self.configuration)
         result.update(deepcopy(self.extensions))
         if self.workflow is not None:
@@ -226,12 +233,15 @@ class ManifestV1:
 class ManifestV2:
     """A manifest as the one writer writes it since 0.3.0 rc4.
 
-    ``required`` and ``optional`` are the requirement strings as written
-    (``NAME`` or ``NAME>=VERSION``), in the owner's order; :attr:`policy`
+    ``required`` and ``optional`` keep the strings in the owner's order.
+    Required entries allow ``NAME>=VERSION``; optional entries allow only
+    names. :attr:`policy`
     is their value.  ``reasons`` is ``[capabilities.reasons]``, ``resolution``
     the owner's provider choices.  ``environment`` is the ``[environment]``
     table as written, since an entry may carry a newer owner's field beside
-    its reason; :attr:`environment_policy` is its value.  ``retired``,
+    its reason; :attr:`environment_policy` is its value. ``recommendation_fields``
+    keeps the original spelling and all reasons; :attr:`recommendations`
+    exposes the validated values. ``retired``,
     ``capability_extensions`` and ``extensions`` are as on :class:`ManifestV1`.
     """
 
@@ -243,17 +253,18 @@ class ManifestV2:
     reasons: dict[str, str] = field(default_factory=dict)
     resolution: dict[str, str] = field(default_factory=dict)
     environment: dict[str, Any] = field(default_factory=dict)
-    recommendations: Recommendations = field(default_factory=Recommendations)
+    recommendation_fields: dict[str, Any] = field(default_factory=dict)
     host: dict[str, Any] = field(default_factory=dict)
     configuration: dict[str, Any] = field(default_factory=dict)
     workflow: dict[str, Any] | None = None
     retired: dict[str, Any] = field(default_factory=dict)
     capability_extensions: dict[str, Any] = field(default_factory=dict)
     extensions: dict[str, Any] = field(default_factory=dict)
+    _present: frozenset[tuple[str, ...]] = field(default_factory=frozenset, repr=False, compare=False)
 
     @classmethod
     def read(cls, document: Mapping[str, Any], source: object) -> ManifestV2:
-        """Admit a decoded schema-2 file, refusing schema-1 words by name."""
+        """Admit schema 2, refusing ``need`` and folding the carried-over workflow key."""
         validate_file_format(document, ConfigurationFileKind.manifest, source)
         if document[VERSION_KEY] != cls.version:
             raise ProjectConfigurationError(f"{source} is not a schema-{cls.version} manifest; it says {document[VERSION_KEY]!r}.")
@@ -266,7 +277,7 @@ class ManifestV2:
         try:
             reasons = capability_reasons(document)
             EnvironmentPolicy.read(document)
-            recommendations = Recommendations.read(document)
+            Recommendations.read(document)
         except ProjectConfigurationError as exc:
             raise ProjectConfigurationError(f"{source}: {exc}") from exc
         configuration = _optional_table(document, "configuration", source) or {}
@@ -278,13 +289,14 @@ class ManifestV2:
             reasons=reasons,
             resolution=resolution_recommendations(document),
             environment=_optional_table(document, "environment", source) or {},
-            recommendations=recommendations,
+            recommendation_fields=_optional_table(document, "recommendations", source) or {},
             host=_optional_table(document, "host", source) or {},
             configuration=configuration,
             workflow=_fold_workflow_type(_optional_table(document, "workflow", source), document.get("workflow-type"), source),
             retired={key: deepcopy(capabilities[key]) for key in (RETIRED_CAPABILITY_FIELD,) if key in capabilities},
             capability_extensions={key: deepcopy(value) for key, value in capabilities.items() if key not in _V2_CAPABILITIES},
             extensions={key: deepcopy(value) for key, value in document.items() if key not in _V2_ROOT | {"workflow-type"}},
+            _present=_present_fields(document),
         )
 
     @property
@@ -295,28 +307,29 @@ class ManifestV2:
     def environment_policy(self) -> EnvironmentPolicy:
         return EnvironmentPolicy.read({"environment": self.environment})
 
+    @property
+    def recommendations(self) -> Recommendations:
+        return Recommendations.read({"recommendations": self.recommendation_fields})
+
     def document(self) -> dict[str, Any]:
         """The schema-2 mapping this value stands for: the input of the one writer and of every reader."""
         capabilities: dict[str, Any] = {"required": list(self.required)}
-        if self.optional:
+        if self.optional or ("capabilities", "optional") in self._present:
             capabilities["optional"] = list(self.optional)
-        declared = {requirement(item)[0] for item in (*self.required, *self.optional)}
-        reasons = {name: reason for name, reason in self.reasons.items() if reason and name in declared}
-        if reasons:
-            capabilities["reasons"] = reasons
-        if self.resolution:
+        if self.reasons or ("capabilities", "reasons") in self._present:
+            capabilities["reasons"] = dict(self.reasons)
+        if self.resolution or ("capabilities", "resolution") in self._present:
             capabilities["resolution"] = dict(self.resolution)
         capabilities.update(deepcopy(self.capability_extensions))
         capabilities.update(deepcopy(self.retired))
         result: dict[str, Any] = {VERSION_KEY: self.version, "project": deepcopy(self.project), "capabilities": capabilities}
-        if self.environment:
+        if self.environment or ("environment",) in self._present:
             result["environment"] = deepcopy(self.environment)
-        recommendations = self.recommendations.document()
-        if recommendations:
-            result["recommendations"] = recommendations
-        if self.host:
+        if self.recommendation_fields or ("recommendations",) in self._present:
+            result["recommendations"] = deepcopy(self.recommendation_fields)
+        if self.host or ("host",) in self._present:
             result["host"] = deepcopy(self.host)
-        if self.configuration:
+        if self.configuration or ("configuration",) in self._present:
             result["configuration"] = deepcopy(self.configuration)
         result.update(deepcopy(self.extensions))
         if self.workflow is not None:
@@ -365,7 +378,7 @@ def upgrade(manifest: ManifestV1, *, ide: Callable[[str], str | None]) -> Manife
         listed = ", ".join(item for item, capability in required_ides.items() if capability is not None)
         raise ProjectConfigurationError(
             f"The schema-1 manifest requires two IDEs, {listed}; a project recommends one IDE and each developer chooses. "
-            "Keep one with 'devcapsule project config drop NAME' and regenerate again."
+            "The owner must remove one IDE requirement before migration; this launcher cannot edit this ambiguous manifest."
         )
     required = tuple(item for item, capability in required_ides.items() if capability is None)
     optional = tuple(item for item in form.optional if ide(requirement(item)[0]) is None)
@@ -375,7 +388,7 @@ def upgrade(manifest: ManifestV1, *, ide: Callable[[str], str | None]) -> Manife
         required=required,
         optional=optional,
         resolution=dict(manifest.resolution),
-        recommendations=Recommendations(ide=next(iter(chosen), None)),
+        recommendation_fields=Recommendations(ide=next(iter(chosen), None)).document(),
         host=deepcopy(manifest.host),
         configuration=deepcopy(manifest.configuration),
         workflow=workflow,
