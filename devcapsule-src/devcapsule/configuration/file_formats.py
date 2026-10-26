@@ -56,23 +56,20 @@ EVIDENCE_MATRIX_GENERATION = 27
 def legacy_lock(lock: Mapping[str, Any]) -> bool:
     """Whether ``lock`` is a record from before provider evidence, not a selection to filter.
 
-    A lock is filtered against the policy, and its capability baseline
-    fingerprinted, only when it records provider evidence and names an
-    embedded matrix generation of :data:`EVIDENCE_MATRIX_GENERATION` or
-    later.  Every other lock, one written by an older launcher, or a matrix
-    rendering without evidence, stays a record of what was selected, so a
-    project written for an older launcher keeps launching until its owner
-    regenerates the lock.  Both are read because a checkout's pins laid over
-    a legacy lock bring their own evidence with them, while the generation
-    they keep is the legacy lock's.
+    Missing evidence identifies old locks and bare matrix renderings. An
+    embedded generation before :data:`EVIDENCE_MATRIX_GENERATION` also
+    identifies a legacy lock: personal pins can add evidence during
+    composition, while retaining the shared lock's older generation.
+    An unrecognized version with evidence does not establish legacy status;
+    its required providers must still be checked.
     """
     if "capability-providers" not in lock:
         return True
     version = lock.get("resolution-matrix-version")
     if not isinstance(version, str) or not version.startswith("embedded-"):
-        return True
+        return False
     generation = version.removeprefix("embedded-")
-    return not generation.isdecimal() or int(generation) < EVIDENCE_MATRIX_GENERATION
+    return generation.isdecimal() and int(generation) < EVIDENCE_MATRIX_GENERATION
 
 
 def table(document: Mapping[str, Any], *path: str) -> Mapping[str, Any]:

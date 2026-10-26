@@ -201,6 +201,51 @@ def test_legacy_lock_is_not_re_resolved() -> None:
     assert actual == lock and actual is not lock and not warnings
 
 
+def test_personal_pins_do_not_make_a_composed_legacy_lock_current() -> None:
+    from devcapsule.configuration.capability_selection import compose_lock
+    from devcapsule.configuration.fingerprints import resolution_source_digests
+    from devcapsule.configuration.manifest import current_manifest
+    from tests.test_upgrade_recovery import FIXTURE
+    root = FIXTURE / "project/.devcapsule"
+    manifest = current_manifest(load_toml(root / "devcapsule.toml"), "fixture").document()
+    shared = load_toml(root / "devcapsule.linux-amd64.lock")
+    checkout = {"capabilities": {"selected": ["codex-agent"],
+                                "lock": MATRIX.resolve(["python-ide", "codex-agent"]).render_lock()}}
+    before = deepcopy((manifest, shared, checkout))
+    composed = compose_lock(manifest, shared, checkout)
+    assert composed["resolution-matrix-version"] == shared["resolution-matrix-version"]
+    assert composed["capability-providers"] == {"codex-agent": ["codex"]}
+    actual, warnings = usable_lock(CapabilityPolicy.read(manifest), composed, LocalCapabilities.read(checkout))
+    assert actual == composed and not warnings
+    assert "capability-baseline" not in resolution_source_digests(manifest, composed, checkout)
+    assert (manifest, shared, checkout) == before
+
+
+@pytest.mark.parametrize("version", ["vendor-v1", "embedded-next"])
+def test_unrecognized_matrix_version_cannot_hide_a_missing_requirement(version: str) -> None:
+    lock = generate_lock(CapabilityPolicy(("python",)), MATRIX)
+    lock["resolution-matrix-version"] = version
+    with pytest.raises(ProjectConfigurationError, match="Required capability 'browser-automation'.*playwright"):
+        usable_lock(CapabilityPolicy(("python", "browser-automation")), lock)
+
+
+@pytest.mark.parametrize("pinned", ["pycharm", "absent-ide"])
+def test_pinned_ide_is_kept_only_when_its_provider_is_present(pinned: str) -> None:
+    lock = generate_lock(CapabilityPolicy(("python",)), MATRIX)
+    lock["components"]["interactive-surface"] = pinned
+    actual, _ = usable_lock(CapabilityPolicy(("python",)), lock)
+    assert actual["components"] == {}
+
+
+def test_retaining_a_pinned_ide_does_not_waive_a_missing_requirement() -> None:
+    lock = generate_lock(CapabilityPolicy(("python", "python-ide")), MATRIX)
+    actual, _ = usable_lock(CapabilityPolicy(("python",)), lock)
+    assert actual["components"]["interactive-surface"] == "pycharm"
+    assert actual["components"]["pycharm"] == lock["components"]["pycharm"]
+    with pytest.raises(ProjectConfigurationError, match="Required capability 'browser-automation'.*playwright"):
+        usable_lock(CapabilityPolicy(("python", "browser-automation")), lock)
+
+
 def test_command_migration_and_personal_choices_preserve_ownership(project: Path) -> None:
     commands.configure(project, required=["python"], optional=["browser-automation"])
     shared = shared_bytes(project)

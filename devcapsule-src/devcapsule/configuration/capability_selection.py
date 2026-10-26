@@ -161,7 +161,7 @@ def compose_lock(manifest: Mapping[str, Any], shared: Mapping[str, Any],
     Otherwise the result is ``shared`` with the checkout's personal pins laid
     over it: exactly the providers of each locally selected capability, and
     the IDE selector with its materialization when a selected capability
-    supplies the IDE. A selected IDE that differs from the shared lock's
+    supplies the IDE. A selected IDE that conflicts with a required project
     IDE raises ProjectConfigurationError, as do missing or malformed pins,
     pins that disagree with a recorded provider choice, and
     an omission of something the project does not list as optional.
@@ -222,8 +222,8 @@ def compose_lock(manifest: Mapping[str, Any], shared: Mapping[str, Any],
                                 and matrix.canonical_name(selected_ide) == matrix.canonical_name(required_ide))
         chooses_ide_provider = any(matrix.is_ide(name) for name in local.providers)
         if changes_surface and required_ide and not selects_required_ide and not chooses_ide_provider:
-            # A legacy required surface is still mandatory until explicitly
-            # migrated by its project owner.
+            # An explicit schema-2 IDE requirement remains mandatory even
+            # though migrated schema-1 IDEs are only recommendations.
             raise ProjectConfigurationError("Local IDE conflicts with the project's required IDE; migrate the project declaration first.")
         lock["components"]["interactive-surface"] = surface
         lock["materialization"] = deepcopy(table(pins, "materialization"))
