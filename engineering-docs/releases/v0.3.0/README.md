@@ -1,6 +1,6 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-25. Stage: **candidate 7 published and verified as downloaded; the default base is the published recipe-11 base with the web console; the owner's test on the download next, then the diagnostics snapshot, image cleanup and C20**.
+Updated: 2026-10-26. Stage: **candidate 8 in preparation: the manifest's two schemas as classes and `init --regenerate` migrating to schema 2, the owner's gate of 2026-10-26; the pre-candidate merge into `main` is the owner's; then the diagnostics snapshot, image cleanup and C20**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Changelog since 0.2.15](changelog.md) ·
@@ -115,6 +115,14 @@ that is honest about what it skips.
   console on the published base. The published-base gate before the
   final tag is met by this candidate. A project's own constraint on its
   base is D-0015, proposed for V1, not for 0.3.0.
+- **Direction of 2026-10-26.** On finding that `init --regenerate` left the
+  AI Learning manifest at schema 1, the owner ruled that regeneration
+  migrates the manifest to schema 2 and that schema 1 and schema 2 are
+  represented explicitly, as classes, and made both a gate of the final
+  tag: the work order of 2026-10-26, implemented as PR #289 with Codex,
+  gpt-6-astra, as the review partner, merged at `9e4a2a8`. Candidate 8 is
+  cut on it. The owner's own regeneration of this repository's, the
+  website's and the samples' manifests follows the shipped candidate.
 - **Stopping points where the owner is consulted:** before each candidate
   tag; before the image-cleanup implementation; when a slice proves larger
   than the cycle tolerates; before the final tag. Scope changes go by the
@@ -568,6 +576,28 @@ How the candidate was prepared:
   17 passed, the web console session mypy clean over 9 files with 357
   tests passed; the documentation contract 189 pages, passed.
 - Not in rc7: the diagnostics snapshot, image cleanup, C20; the gaps the
+  candidate-5 changelog lists under *Not in candidate 5*.
+
+### RC8 — in preparation, 2026-10-26
+
+- Tag `v0.3.0-rc8` on the release branch's tip after the pre-candidate
+  merge (PR from the throwaway copy `4PR-9-release-0.3.0`, the owner's).
+- Carries, beyond rc7: the manifest's two schemas as classes (PR #289,
+  reviewed by PR #290, accepted without a round): `ManifestV1`,
+  `ManifestV2`, `read_manifest` and `upgrade` in one module, every
+  consumer reading schema 2; `project init --regenerate` writes a
+  schema-1 manifest as schema 2 with its leading comment block kept and
+  says so, a schema-2 manifest stays byte for byte, a plain `init` writes
+  neither; the IDE a schema-1 file required becomes the project's IDE
+  recommendation and each developer may choose another; the retired
+  SDK-major table and the root `workflow-type` are never written again;
+  legacy locks are recognized by their own evidence and matrix generation.
+- The release branch's tip after the owner's merge of PR #289 is
+  `9e4a2a8`, whose tree is the reviewed `f4d0566` plus the status entry.
+  Full gate on it from a separate worktree: mypy clean over 248 files, 2338 unit tests passed, 36 deselected, 1 xfailed, 1 xpassed, packaging integration
+  17 passed, the web console session mypy clean over 9 files with 357
+  tests passed; the documentation contract 189 pages, passed.
+- Not in rc8: the diagnostics snapshot, image cleanup, C20; the gaps the
   candidate-5 changelog lists under *Not in candidate 5*.
 
 ## Release Notes Preparation

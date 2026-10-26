@@ -284,6 +284,21 @@ begin the rewrite until project-management assigns it.
 
 ## Current State
 
+**2026-10-26: rc8 in preparation.** The owner merged PR #289; the
+release tip is `9e4a2a8`. Full `nox -s build` on it from a separate
+worktree: mypy clean over 248 files, 2338 unit tests passed, 36 deselected, 1 xfailed, 1 xpassed, packaging integration 17, console 357; the
+documentation contract 189 pages. The throwaway copy
+`4PR-9-release-0.3.0`, the release tip (this record's commit) plus the
+cherry-pick of `62fa063`, is the pull request for the owner's merge. On
+that merge, the rc7 steps with `rc8` in place of `rc7`: the ancestry
+check, the annotated tag on the tip, the release protocol from a detached
+checkout expecting `mainline`, the atomic push of branch and tag, the
+backend run, the download into `~/.cache/devcapsule-releases/v0.3.0-rc8`
+with checksum and version verified, the overview's rc8 entry and the
+changelog's candidate-8 line. The owner's gate of 2026-10-26 is met by
+this candidate; the diagnostics snapshot, image cleanup and C20 stay with
+the next; the documentation round before the final tag.
+
 **2026-10-26: the manifest's two schemas as classes, implemented; PR #289 ready.**
 The slice of the order of 2026-10-26, implemented by Claude Code, Claude
 Fable 5.1, with Codex, gpt-6-astra, as the review partner (PR #290,

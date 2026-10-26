@@ -6,7 +6,7 @@ new and what is fixed since 0.2.15. Records, workflow rules and the
 project's own housekeeping are left out on purpose. The adopter notes for
 the final release, `notes.md`, are written from this file.
 
-Candidate 7 was tagged 2026-10-25 at `73bbe53`; candidate 6 on 2026-10-25 at `2ed8ecf`; candidate 5 on 2026-10-25 at `03ed348`; candidate 4 on 2026-10-24 at `78a9c66`; candidate 3 on 2026-10-24 at `a22a215`; candidate 2 was tagged
+Candidate 8 is in preparation; candidate 7 was tagged 2026-10-25 at `73bbe53`; candidate 6 on 2026-10-25 at `2ed8ecf`; candidate 5 on 2026-10-25 at `03ed348`; candidate 4 on 2026-10-24 at `78a9c66`; candidate 3 on 2026-10-24 at `a22a215`; candidate 2 was tagged
 2026-10-22 at `e5b5a8b`, candidate 1 on 2026-10-19 at `7016cdd` and
 candidate 0 on 2026-10-18 at `53ebc17`.
 
@@ -258,6 +258,26 @@ on 2026-10-24.
   `init --less-pedantic` remains accepted. The
   [command reference](https://devcapsule.mycodespace.ai/docs/current/reference/cli/)
   lists each retained form and its behavior.
+
+## New in candidate 8
+
+- **`project init --regenerate` migrates the manifest.** A manifest
+  written in schema 1 is rewritten as schema 2 beside the regenerated
+  lock: `need` becomes `required`, the IDE it named becomes the project's
+  IDE recommendation, which every checkout without an IDE choice gets by
+  default and may change, the removed SDK-major table and the old
+  `workflow-type` key are dropped, and everything else is carried as it
+  was. The leading comment block of the file is kept; comments elsewhere
+  are not, and the report says so. A schema-2 manifest is left as it is.
+  No other command rewrites a schema-1 manifest; a plain `init` refuses to
+  append a recommendation to one and names `--regenerate` (2026-10-26).
+- A manifest that requires two IDEs cannot be migrated; the launcher says
+  so and the owner removes one by hand first.
+- Locks written by launchers before 0.3.0 keep running as records, as
+  before; locks of this cycle are checked against the project's
+  requirements as before.
+
+Candidate 8 carries candidate 5's gaps unchanged.
 
 ## New in candidate 7
 
