@@ -53,11 +53,22 @@ workstation-commands record awaiting the owner's choice of home.
    Code, Claude Fable 5.1, reviews; dispatched from this session on the
    owner's merge.
 
+## Settled later the same day
+
+- **The diagnostics snapshot and export command is in 0.3.0**, delivered
+  by PR #293 on `release-0.3.0` at `0514d50`, merged by the owner on
+  2026-10-27 after the Codex, gpt-6-astra review in PR #295 was accepted
+  without a round. It implements Deliverable 4 and the manual
+  browser-evidence contract of Deliverable 5 of the 2026-10-08 session
+  diagnostics order: `devcapsule project diagnose`, the bounded in-capsule
+  probe, the sanitized export. Two reviewer proposals stay with the owner,
+  as PR #293 lists them: a deadline budget across the runtime probes, and
+  a distinct schema value for an unlimited cgroup limit. All three
+  dogfooding slices the check found undelivered now have a ruling: C20
+  merged by PR #294, diagnostics by PR #293, cleanup out.
+
 ## Still open from the same check, for the owner
 
-- The diagnostics snapshot and export command, the last undelivered
-  dogfooding slice and part of the headline: in a further candidate, or
-  out by the reopen rule.
 - Who performs the documentation language review, which pages, in what
   order, and under which reviewer loop; the mail of 2026-10-24 in this
   workstream's intake.
