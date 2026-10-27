@@ -88,8 +88,10 @@ def read_manifest(root: Path) -> dict[str, Any]:
             require_version(version)
         if entry["status"] not in STATUSES:
             raise ValueError(f"versions.yaml: {version} has invalid status {entry['status']!r}")
-        if (version == "devel") != (entry["status"] == "development"):
-            raise ValueError(f"versions.yaml: development status belongs only to devel ({version})")
+        # The contract lets a listed candidate be ``development`` too; only
+        # ``devel`` must be, since it is the one entry that never releases.
+        if version == "devel" and entry["status"] != "development":
+            raise ValueError("versions.yaml: devel must have status development")
         if version == "devel" and entry["source"] != "main":
             raise ValueError("versions.yaml: devel source must be main")
         for key in ("note", "source-version"):
@@ -135,11 +137,29 @@ def promote(root: Path, version: str, holds: list[str]) -> list[str]:
     return moves + [f"{version}: added supported (docs-{version})", f"devel source-version: {version}"]
 
 
+# A template placeholder is angle-bracketed prose, wrapped across lines or
+# not, but never across a paragraph break; a URL autolink is not one.
+PLACEHOLDER = re.compile(r"<(?![A-Za-z][A-Za-z0-9+.-]*:)(?:[^<>\n]|\n(?!\n))*>")
+FENCED_BLOCK = re.compile(r"^(`{3,}|~{3,}).*?^\1[ \t]*$", re.MULTILINE | re.DOTALL)
+# A span opens with a run of backticks and closes with a run of the same length.
+CODE_SPAN = re.compile(r"(?P<fence>`+)(?:(?!(?P=fence)).)*?(?P=fence)(?!`)", re.DOTALL)
+
+
+def prose_of(markdown: str) -> str:
+    """The text outside fenced code blocks and code spans, where a placeholder would be.
+
+    Angle brackets inside code are commands as the adopter types them,
+    ``--path <checkout>`` in the 0.2.14 notes among them, never a template
+    placeholder.
+    """
+    return CODE_SPAN.sub("", FENCED_BLOCK.sub("", markdown))
+
+
 def notes(root: Path, version: str) -> str:
     require_version(version)
     path = root / f"engineering-docs/releases/v{version}/notes.md"
     text = path.read_text(encoding="utf-8")
-    if re.search(r"<[^>]*>", text):
+    if PLACEHOLDER.search(prose_of(text)):
         raise ValueError(f"{path}: contains a <...> placeholder")
     lines = text.splitlines(keepends=True)
     if lines and lines[0].strip() == "---":
