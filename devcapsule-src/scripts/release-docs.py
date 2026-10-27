@@ -137,8 +137,9 @@ def promote(root: Path, version: str, holds: list[str]) -> list[str]:
     return moves + [f"{version}: added supported (docs-{version})", f"devel source-version: {version}"]
 
 
-# A template placeholder is angle-bracketed prose; a URL autolink is not.
-PLACEHOLDER = re.compile(r"<(?![A-Za-z][A-Za-z0-9+.-]*:)[^<>\n]*>")
+# A template placeholder is angle-bracketed prose, wrapped across lines or
+# not, but never across a paragraph break; a URL autolink is not one.
+PLACEHOLDER = re.compile(r"<(?![A-Za-z][A-Za-z0-9+.-]*:)(?:[^<>\n]|\n(?!\n))*>")
 FENCED_BLOCK = re.compile(r"^(`{3,}|~{3,}).*?^\1[ \t]*$", re.MULTILINE | re.DOTALL)
 # A span opens with a run of backticks and closes with a run of the same length.
 CODE_SPAN = re.compile(r"(?P<fence>`+)(?:(?!(?P=fence)).)*?(?P=fence)(?!`)", re.DOTALL)

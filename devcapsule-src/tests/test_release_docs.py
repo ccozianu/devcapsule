@@ -351,6 +351,7 @@ def test_notes_accepts_angle_brackets_in_code_and_autolinks(checkout, capsys, bo
     "Download <the asset> from GitHub.\n",
     "```sh\nunclosed fence\n\n<the placeholder> outside\n",
     "A `span` then <the placeholder>.\n",
+    "# Release 0.3.0\n\n<Write the release summary\nand compatibility notes here>\n",
 ])
 def test_notes_refuses_placeholders_in_prose(checkout, capsys, body):
     write_notes(checkout, body)
@@ -364,3 +365,19 @@ def test_notes_accepts_the_0_2_14_notes_as_published(checkout):
     path.parent.mkdir(parents=True)
     path.write_bytes((REPOSITORY / "engineering-docs/releases/v0.2.14/notes.md").read_bytes())
     assert "<checkout>" in MODULE.notes(checkout, "0.2.14")
+
+
+def test_check_refuses_a_wrapped_placeholder_through_notes(promoted, capsys):
+    """Round 1 of PR294.1: a placeholder wrapped across lines was accepted once; never again."""
+    write_notes(promoted, "# Release 0.3.0\n\n<Write the release summary\nand compatibility notes here>\n")
+    errors = MODULE.check(promoted, "0.3.0")
+    assert len(errors) == 1 and "placeholder" in errors[0]
+    assert invoke(promoted, "check", "0.3.0") == 1
+    assert "placeholder" in capsys.readouterr().err
+
+
+def test_a_less_than_sign_before_a_later_paragraph_is_not_a_placeholder(checkout, capsys):
+    body = "Memory below 4 GiB is < the default.\n\nThe next paragraph ends with a word>\n"
+    write_notes(checkout, body)
+    assert invoke(checkout, "notes", "0.3.0") == 0
+    assert capsys.readouterr().out == body
