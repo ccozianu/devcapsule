@@ -524,6 +524,92 @@ def session_result_text(config: PycharmRunConfig, result: AttachedResult) -> str
     return "\n".join(lines)
 
 
+def _session_display_metadata(config: PycharmRunConfig) -> dict[str, object]:
+    if config.display_transport != CONTAINED_DISPLAY_TRANSPORT:
+        return {"transport": config.display_transport}
+    container_port = (
+        config.runtime_plan.display.port
+        if config.runtime_plan is not None and config.runtime_plan.display is not None
+        else CONTAINER_DISPLAY_PORT
+    )
+    return {
+        "transport": CONTAINED_DISPLAY_TRANSPORT,
+        "host-port": config.display_host_port,
+        "container-port": container_port,
+    }
+
+
+def _session_console_metadata(config: PycharmRunConfig) -> dict[str, object]:
+    if config.console_host_port is None:
+        return {"enabled": False}
+    container_port = (
+        config.runtime_plan.console.port
+        if config.runtime_plan is not None and config.runtime_plan.console is not None
+        else CONTAINER_CONSOLE_PORT
+    )
+    return {
+        "enabled": True,
+        "host-port": config.console_host_port,
+        "container-port": container_port,
+    }
+
+
+def _session_ide_logs(config: PycharmRunConfig) -> list[dict[str, str]]:
+    if not config.interactive_state_mounts:
+        if config.ide_log is None:
+            return []
+        return [{
+            "slot": "pycharm/log",
+            "family": "jetbrains",
+            "host-path": str(config.ide_log),
+            "container-path": "/ide-project-state/log",
+        }]
+    if config.runtime_plan is None:
+        return []
+    mounts = {name: (source, destination) for name, source, destination in config.interactive_state_mounts}
+    component = config.runtime_plan.component
+    configuration = component.configuration
+    if component.adapter == "jetbrains":
+        mapping = configuration.get("state_slot_mapping")
+        local_slot = mapping.get("log") if isinstance(mapping, dict) else None
+        if isinstance(local_slot, str):
+            slot_name = component.slot_name(local_slot)
+            if slot_name in mounts:
+                source, destination = mounts[slot_name]
+                return [{
+                    "slot": slot_name,
+                    "family": "jetbrains",
+                    "host-path": source,
+                    "container-path": destination,
+                }]
+    elif component.adapter == "vscode":
+        mapping = configuration.get("state_slot_mapping")
+        local_slot = mapping.get("user-data") if isinstance(mapping, dict) else None
+        if isinstance(local_slot, str):
+            slot_name = component.slot_name(local_slot)
+            if slot_name in mounts:
+                source, destination = mounts[slot_name]
+                return [{
+                    "slot": slot_name,
+                    "family": "vscode",
+                    "host-path": str(Path(source) / "logs"),
+                    "container-path": f"{destination.rstrip('/')}/logs",
+                }]
+    elif component.adapter == "eclipse":
+        local_slot = configuration.get("workspace_slot")
+        if isinstance(local_slot, str):
+            slot_name = component.slot_name(local_slot)
+            if slot_name in mounts:
+                source, destination = mounts[slot_name]
+                return [{
+                    "slot": slot_name,
+                    "family": "eclipse",
+                    "host-path": str(Path(source) / ".metadata"),
+                    "container-path": f"{destination.rstrip('/')}/.metadata",
+                }]
+    return []
+
+
 def begin_session_logs(config: PycharmRunConfig, env: Mapping[str, str]) -> None:
     """Open the launcher's log, write the session manifest, prune old sessions.
 
@@ -544,6 +630,10 @@ def begin_session_logs(config: PycharmRunConfig, env: Mapping[str, str]) -> None
             session_id=config.session_id, project=config.project, project_mount=config.project_mount,
             image=config.image, container_name=config.name, component=component,
             budget_bytes=config.log_budget_bytes,
+            network_mode=config.network_mode,
+            display=_session_display_metadata(config),
+            console=_session_console_metadata(config),
+            ide_logs=_session_ide_logs(config),
         ))
     except OSError as error:
         print(f"devcapsule launcher: cannot write the session manifest in {directory} ({error})", file=sys.stderr)

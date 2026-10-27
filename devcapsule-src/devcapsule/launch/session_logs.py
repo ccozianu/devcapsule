@@ -14,7 +14,7 @@ import json
 import os
 from pathlib import Path
 import time
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 from devcapsule import logs
 from devcapsule.build_info import BuildInfoError, current_build_info
@@ -45,6 +45,10 @@ def session_manifest(
     component: str,
     budget_bytes: int = logs.DEFAULT_BUDGET_BYTES,
     started_at: float | None = None,
+    network_mode: str | None = None,
+    display: Mapping[str, Any] | None = None,
+    console: Mapping[str, Any] | None = None,
+    ide_logs: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """What ties a session's logs to their inputs: identities and versions."""
 
@@ -53,7 +57,7 @@ def session_manifest(
         launcher = {"version": build.version, "source": build.source_revision, "mnemonic": build.build_mnemonic}
     except BuildInfoError as error:
         launcher = {"version": "unknown", "source": "", "mnemonic": "unknown", "error": str(error)}
-    return {
+    manifest: dict[str, Any] = {
         "format": 1,
         "session": session_id,
         "started-at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() if started_at is None else started_at)),
@@ -70,6 +74,15 @@ def session_manifest(
             "rotations": logs.ROTATIONS,
         },
     }
+    if network_mode is not None:
+        manifest["network-mode"] = network_mode
+    if display is not None:
+        manifest["display"] = dict(display)
+    if console is not None:
+        manifest["console"] = dict(console)
+    if ide_logs is not None:
+        manifest["ide-logs"] = [dict(entry) for entry in ide_logs]
+    return manifest
 
 
 def write_session_manifest(directory: Path, manifest: Mapping[str, Any]) -> Path:

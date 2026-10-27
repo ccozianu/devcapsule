@@ -197,6 +197,54 @@ class ProjectInfoCommand(Command):
         return 0
 
 
+class ProjectDiagnoseCommand(Command):
+    name = "diagnose"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.INSPECTS
+    help = "Capture a bounded session diagnostics snapshot and optional sanitized export bundle."
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "--session",
+            metavar="ID",
+            help="Session ID to inspect; defaults to the active session, else the newest ended session.",
+        )
+        parser.add_argument(
+            "--export",
+            nargs="?",
+            const="",
+            default=None,
+            metavar="PATH",
+            help="Write a mode-0600 sanitized .tar.gz archive (to PATH, or the current directory when omitted).",
+        )
+        parser.add_argument(
+            "--include-ide-logs",
+            action="store_true",
+            help="Include IDE-native logs in --export (excluded by default because they can contain project content).",
+        )
+        parser.add_argument("--json", dest="as_json", action="store_true", help=STABLE_JSON_HELP)
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        from devcapsule.diagnostics import diagnose_project, render_diagnosis
+
+        if arguments.include_ide_logs and arguments.export is None:
+            raise ProjectConfigurationError("--include-ide-logs requires --export.")
+        selected = _project_context(context)
+        export_requested = arguments.export is not None
+        export_path = Path(arguments.export) if arguments.export else None
+        snapshot = diagnose_project(
+            selected.start_path(),
+            runtime_fallback=selected.selected_path is None,
+            session_id=arguments.session,
+            export_path=export_path,
+            export_requested=export_requested,
+            include_ide_logs=arguments.include_ide_logs,
+        )
+        print(json.dumps(snapshot, indent=2, sort_keys=True) if arguments.as_json else render_diagnosis(snapshot))
+        return 0
+
+
 class ProjectListCommand(Command):
     name = "list"
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.INDEPENDENT
@@ -2528,6 +2576,7 @@ class ProjectCommand(Group):
     def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
         return {
             ProjectInfoCommand.name: ProjectInfoCommand,
+            ProjectDiagnoseCommand.name: ProjectDiagnoseCommand,
             ProjectListCommand.name: ProjectListCommand,
             ProjectInitCommand.name: ProjectInitCommand,
             CheckoutGroup.name: CheckoutGroup,

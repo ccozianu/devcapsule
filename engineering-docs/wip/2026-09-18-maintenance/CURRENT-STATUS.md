@@ -22,6 +22,68 @@ Own defects no open workstream covers and drive maintenance releases. This
 reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
 
+## Diagnostics snapshot and export — 2026-10-27
+
+Owner-directed work on `ws-maintenance/0.3.0-diagnostics-snapshot`, forked
+from `origin/release-0.3.0` (`5585e09d`), targeting `release-0.3.0`, with
+Codex (`gpt-6-astra`) as the review partner under topic 9.11. Recorded
+outcomes of console decision `2026-10-27-session-direction` before removing
+its state file: `next-slice = diagnose-slice` (Deliverable 4 and the manual
+browser-evidence contract of Deliverable 5 in
+[2026-10-08-persistent-session-diagnostics.md](../../work-orders/2026-10-08-persistent-session-diagnostics.md)),
+`checkout-alignment = clean-worktree` (keep `/workspace/301e4208ef81-ChatGPT_Codex`
+untouched on `ws-maintenance/e2e_videos-2` with its pre-existing `.devcapsule/`
+and `.idea/` edits; work in `/home/devcapsule/worktrees/diagnostics-snapshot`),
+and conditional item `workstation-cli-home` skipped as not applicable (#287
+already merged). Under topic 5.4.3, local `main` fast-forwarded cleanly to
+`origin/main` (`0\t219` commits, empty `git cherry main origin/main`, now
+`8afa5f6dfa0cef54e8649f008b5f3f26181bcf59`).
+
+Judgments and scope settled with the owner before implementation:
+1. CLI surface: `devcapsule project diagnose` (`CapsuleAccess.INSPECTS`),
+   supporting `--path <dir>`, `--session <id>` (defaults to the active running
+   session, or the latest ended session when none is running), `--json`
+   (`schema-version: 1`), `--export [PATH]` (atomic mode-`0600` `.tar.gz`),
+   and `--include-ide-logs` (requires `--export`; IDE-native logs `idea.log`,
+   VSCodium `logs/`, and Eclipse `.metadata/.log` are excluded by default
+   because they can contain source excerpts, while `snapshot.json` records
+   their paths, file counts, and byte sizes).
+2. Bounded stdlib-only probing: `devcapsule runtime diagnose-probe` scans
+   `/proc` (supervisor, `Xvnc`, `openbox`, `tint2`, parent `websockify`,
+   `novnc-worker` children, stopped `T` processes, `Z` zombies, and redacted
+   `argv`), reads cgroup v2 (`memory.current`, `memory.max`, `memory.peak`,
+   `memory.events` `oom`/`oom_kill`, `cpu.stat` throttling, `cpu.max`, `pids`),
+   inspects sockets/listeners, and runs 2-second monotonic probes labeled with
+   `User-Agent: devcapsule-diagnose/<version>` and `X-DevCapsule-Diagnostic: 1`
+   on `rfb.sock` (verifying the 12-byte `RFB 003.008\n` greeting), `/vnc.html`,
+   authenticated `/websockify` (WebSocket `101` upgrade plus the first RFB
+   greeting frame, reading `/run/devcapsule-display-token` in memory only),
+   and web console `/` (`X-DevCapsule-Token` in memory). Host collection runs
+   bounded `docker inspect` (3 s, extracting `Config.Env` variable names only,
+   never values, and degrading cleanly when `--rm` removed the container),
+   `docker exec` (5 s), and host-loopback HTTP probes (2 s).
+3. Redaction and honesty boundaries: scrubs `?token=`, URL-encoded `token%3D`,
+   `devcapsule-console-token` cookies, `Authorization`/`Cookie`/`Set-Cookie`/
+   `X-DevCapsule-Token` headers, secret CLI flags, inline secret assignments,
+   and saved checkout Docker environment values across `snapshot.json`,
+   `session.json`, `.log`, and `.log.<n>.gz` files; states explicitly that
+   arbitrary child output and IDE logs are not universally scrubbable; sets
+   `browser_evidence.collected = false` (`mode: "manual-devtools"`) and
+   documents manual DevTools capture in `docs/troubleshooting/diagnostics-and-logs.md`.
+4. Dogfood test-isolation fix included: isolated `runtime_configuration.CHANNEL_PATH`
+   in the synthetic in-capsule fixtures of `tests/test_checkout_commands.py`
+   and `tests/test_version_sets.py` so they do not read the outer rc8 capsule's
+   mounted `/run/devcapsule-configuration/listing.json`.
+
+Pre-review gate passed: `nox -s build` + `webconsole` (`mypy` clean on 254
+source files and 9 webconsole files; 2,347 unit tests passed, 37 deselected,
+2 xfailed; 17 packaging tests passed; `docs-contract` 189 pages passed; 357
+webconsole tests passed) plus real-container E2E fault-injection test
+`tests/e2e/test_session_diagnostics.py` (1 passed in 16.73 s: live healthy
+probes, `SIGSTOP` `Xvnc` hang proving `/vnc.html` 200 and socket accept are
+not mistaken for health, `SIGCONT` recovery, Ctrl+C exit 130 + `--rm`, and
+post-mortem mode-`0600` `.tar.gz` with zero token leakage).
+
 ## General saved Docker arguments — 2026-10-23
 
 The owner broadened PR #253 before merge, then requested the same reviewer
