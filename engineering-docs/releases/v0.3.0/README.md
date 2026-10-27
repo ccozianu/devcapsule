@@ -21,6 +21,18 @@ that is honest about what it skips.
 
 ## Scope And Owner Decisions
 
+- **C20, release documentation automation, 2026-10-27.** The owner approved
+  the release documentation work order on `main`. Codex, GPT-6 Astra,
+  implements it; Claude Code, Claude Fable 5.1, reviews it.
+  Before the last candidate, write `notes.md`, run `release-docs.py promote 0.3.0`,
+  commit both, push `docs-0.3.0` at that commit, and merge to `main`.
+  Validate and accept that candidate. Integrate its acceptance record.
+  Run `release-docs.py check 0.3.0`, then tag the accepted source.
+  The final job verifies the documentation, publishes the PEX with the
+  notes as its body, and dispatches the test website. The owner reads the
+  test site and promotes it to production. Both website modes refuse a
+  listed release without its published download.
+
 - **Cut now**, decided 2026-10-18 after the inventory of what the plan still
   had unimplemented: a candidate of what exists is worth validating, and
   the candidate cycle is the better place for the remaining launcher work,

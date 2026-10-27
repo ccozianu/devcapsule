@@ -284,6 +284,49 @@ begin the rewrite until project-management assigns it.
 
 ## Current State
 
+**2026-10-27: C20, release documentation automation, implemented; PR #294 ready.**
+The slice of the [work order of 2026-10-27](../../work-orders/2026-10-27-release-documentation-automation.md),
+ordered by project-management on the owner's direction and merged into
+`main` by PR #292, implemented by Codex, gpt-6-astra, with Claude Code,
+Claude Fable 5.1, as the review partner, dispatched from the
+project-management session on the owner's word. One helper,
+`devcapsule-src/scripts/release-docs.py`: `promote` applies the lifecycle
+on the release branch, `check` names every unmet obligation at the tag,
+`notes` prints the release body without its front matter, `published`
+refuses a listed version without a final download; PyYAML joins the
+development dependencies. The release workflow's final-tag path checks
+before it publishes, passes the notes as the body, and dispatches the
+test-site build after; the website workflow runs `published` in both
+modes. The `docs-<version>` rule, the contract's `source-version`
+wording, the runbook and the overview changed with it. The implementor
+found the order's ordering loose: the final tag's commit must equal the
+accepted candidate's, so the promotion, the notes and the `docs-X.Y.Z`
+push go before the last candidate, not merely before the final tag; the
+runbook says so. The review (PR #296, PR294.1, accepted after one round,
+merged at `7bb8883`) fixed two correctness defects: the placeholder rule
+refused the 0.2.14 notes as published, which carry `--path <checkout>` in
+code spans, so a placeholder is now angle-bracketed prose outside code
+and autolinks, wrapped across lines or not but never across a paragraph
+break, the round's correction; and the manifest reader refused a candidate
+listed as `development`, a shape R-DOCS-003 admits, which would have
+failed the website guard on a valid file. The reviewer's gate on the
+merged tip: mypy clean over 249 files, 2430 unit tests passed, 36
+deselected, one xfail and one xpass; packaging integration 17; the
+documentation contract 189 pages; the console mypy clean over 9 files,
+357 tests; the implementor's gate on the merged branch the same. No
+`actionlint` on the capsule: the two workflows were checked by reading,
+by `yaml.safe_load` and by `bash -n` on every run block; the final-only
+steps run for the first time at the final tag, before anything is public.
+Not proven: the content check on a promoted manifest, since `docs-0.3.0`
+does not exist yet; the pinned consumer's parser accepted the promoted
+file on its own. The 0.3.0 sequence the runbook now has: notes and
+`promote 0.3.0` on the release branch, the `docs-0.3.0` push at that
+commit, the merge to `main`, the last candidate, its acceptance, `check
+0.3.0`, the final tag; the owner reads the test site and promotes it.
+Next: the owner merges PR #294 into `release-0.3.0`; the slice rides the
+next candidate; the status line above and the changelog's next-candidate
+entry follow with it.
+
 **2026-10-26: rc8 tagged, published and verified.** The owner merged
 PR #291 at `8afa5f6`; `8d41fab` is an ancestor of `main`; `v0.3.0-rc8` on
 `8d41fab`, the candidate gate `mainline` with no unintegrated commits from
