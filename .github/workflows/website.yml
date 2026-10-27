@@ -41,6 +41,12 @@ jobs:
           # single-branch checkout resolves none of them.
           fetch-depth: 0
           fetch-tags: true
+      - name: Verify published documentation downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 -m pip install "$(sed -n '/^pyyaml==/p' devcapsule-src/dev-requirements.txt)"
+          python3 devcapsule-src/scripts/release-docs.py published
       - name: Fetch the documentation refs the manifest names
         shell: bash
         run: git fetch origin '+refs/heads/docs-*:refs/heads/docs-*'
