@@ -350,6 +350,7 @@ def runtime_project(project, tmp_path, monkeypatch):
     }))
     monkeypatch.setattr(runtime_configuration, "CONTEXT_PATH", context_path)
     monkeypatch.setattr(runtime_configuration, "CONFIGURATION_PATH", input_path.parent)
+    monkeypatch.setattr(runtime_configuration, "CHANNEL_PATH", tmp_path / "absent-channel")
     return inside
 
 

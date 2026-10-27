@@ -707,6 +707,7 @@ def runtime_view(s, monkeypatch, tmp_path):
     context.write_text(json.dumps(snapshot))
     monkeypatch.setattr(runtime_configuration, "CONTEXT_PATH", context)
     monkeypatch.setattr(runtime_configuration, "CONFIGURATION_PATH", s.record.parent)
+    monkeypatch.setattr(runtime_configuration, "CHANNEL_PATH", tmp_path / "absent-channel")
     monkeypatch.setenv("PROJECT_PATH", str(runtime_root))
     monkeypatch.setenv("DEVCAPSULE_CONTAINER_NAME", "runtime-fixture")
     return runtime_root, snapshot, context

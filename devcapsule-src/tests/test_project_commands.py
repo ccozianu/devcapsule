@@ -2493,6 +2493,7 @@ def test_every_project_leaf_declares_its_capsule_access() -> None:
     assert declared[("config", "show")] is CapsuleAccess.INSPECTS
     assert declared[("versions", "show")] is CapsuleAccess.INSPECTS
     assert declared[("info",)] is CapsuleAccess.INSPECTS
+    assert declared[("diagnose",)] is CapsuleAccess.INSPECTS
     assert declared[("run",)] is CapsuleAccess.MUTATES
     assert declared[("versions", "select")] is CapsuleAccess.MUTATES
     assert declared[("init",)] is CapsuleAccess.CREATES_HERE
