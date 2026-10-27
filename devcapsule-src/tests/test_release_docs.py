@@ -149,7 +149,7 @@ def test_malformed_yaml_refused_by_manifest_commands(checkout, monkeypatch, caps
     (lambda d: d["versions"].append(d["versions"][1].copy()), "duplicate version"),
     (lambda d: d["versions"].pop(0), "missing devel"),
     (lambda d: d["versions"][1].update(status="unknown"), "invalid status"),
-    (lambda d: d["versions"][1].update(status="development"), "development status"),
+    (lambda d: d["versions"][0].update(status="supported"), "devel must have status development"),
     (lambda d: d["versions"][0].update(source="branch"), "devel source"),
     (lambda d: d["versions"][1].update(source=""), "nonempty source"),
     (lambda d: d["versions"][1].update(note=[]), "nonempty note"),
@@ -302,3 +302,65 @@ def test_github_release_adapter(monkeypatch, code, stdout, stderr):
             MODULE.github_release("v0.3.0")
     else:
         assert MODULE.github_release("v0.3.0") == final_release()
+
+
+REPOSITORY = Path(__file__).parents[2]
+
+
+def test_listed_candidate_may_be_development(checkout, monkeypatch, capsys):
+    """The contract lets a candidate be listed as development; it has no download yet."""
+    data = copy.deepcopy(MANIFEST)
+    data["versions"].insert(1, {"version": "0.3.0", "source": "release-0.3.0", "status": "development"})
+    write_manifest(checkout, data)
+    seen = []
+    def release(tag):
+        seen.append(tag)
+        return final_release()
+    monkeypatch.setattr(MODULE, "github_release", release)
+    assert invoke(checkout, "published") == 0
+    assert seen == ["v0.2.15", "v0.2.14", "v0.2.12"]
+    assert invoke(checkout, "promote", "0.3.0") == 1
+    assert "already listed" in capsys.readouterr().err
+
+
+def test_promote_reads_the_repository_manifest_as_written(checkout):
+    """The real file, with its header comment and quoted versions, is admitted and promoted."""
+    (checkout / "docs/versions.yaml").write_bytes((REPOSITORY / "docs/versions.yaml").read_bytes())
+    moves = MODULE.promote(checkout, "0.3.0", [])
+    assert "current: 0.2.15 -> 0.3.0" in moves
+    data = MODULE.read_manifest(checkout)
+    assert data["current"] == "0.3.0"
+    assert data["versions"][0]["source-version"] == "0.3.0"
+    assert [entry["version"] for entry in data["versions"]][:2] == ["devel", "0.3.0"]
+
+
+@pytest.mark.parametrize("body", [
+    "Run `devcapsule project --path <checkout> config show`.\n",
+    "```sh\ndevcapsule project --path <checkout> run\n```\n",
+    "~~~\n<not a placeholder>\n~~~\n",
+    "See <https://devcapsule.mycodespace.ai/docs/current/>.\n",
+    "Use ``a `<b>` span``.\n",
+])
+def test_notes_accepts_angle_brackets_in_code_and_autolinks(checkout, capsys, body):
+    write_notes(checkout, body)
+    assert invoke(checkout, "notes", "0.3.0") == 0
+    assert capsys.readouterr().out == body
+
+
+@pytest.mark.parametrize("body", [
+    "Download <the asset> from GitHub.\n",
+    "```sh\nunclosed fence\n\n<the placeholder> outside\n",
+    "A `span` then <the placeholder>.\n",
+])
+def test_notes_refuses_placeholders_in_prose(checkout, capsys, body):
+    write_notes(checkout, body)
+    assert invoke(checkout, "notes", "0.3.0") == 1
+    assert "placeholder" in capsys.readouterr().err
+
+
+def test_notes_accepts_the_0_2_14_notes_as_published(checkout):
+    """The 0.2.14 notes carry ``--path <checkout>`` in code spans; a blanket rule refused them."""
+    path = checkout / "engineering-docs/releases/v0.2.14/notes.md"
+    path.parent.mkdir(parents=True)
+    path.write_bytes((REPOSITORY / "engineering-docs/releases/v0.2.14/notes.md").read_bytes())
+    assert "<checkout>" in MODULE.notes(checkout, "0.2.14")
