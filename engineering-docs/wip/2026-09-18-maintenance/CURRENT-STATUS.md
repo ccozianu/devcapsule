@@ -75,14 +75,64 @@ Judgments and scope settled with the owner before implementation:
    and `tests/test_version_sets.py` so they do not read the outer rc8 capsule's
    mounted `/run/devcapsule-configuration/listing.json`.
 
-Pre-review gate passed: `nox -s build` + `webconsole` (`mypy` clean on 254
-source files and 9 webconsole files; 2,347 unit tests passed, 37 deselected,
-2 xfailed; 17 packaging tests passed; `docs-contract` 189 pages passed; 357
-webconsole tests passed) plus real-container E2E fault-injection test
-`tests/e2e/test_session_diagnostics.py` (1 passed in 16.73 s: live healthy
+Pre-review gate passed on `c0bec50d`: `nox -s build` + `webconsole` (`mypy`
+clean on 254 source files and 9 webconsole files; 2,347 unit tests passed, 37
+deselected, 2 xfailed; 17 packaging tests passed; `docs-contract` 189 pages
+passed; 357 webconsole tests passed) plus real-container E2E fault-injection
+test `tests/e2e/test_session_diagnostics.py` (1 passed in 16.73 s: live healthy
 probes, `SIGSTOP` `Xvnc` hang proving `/vnc.html` 200 and socket accept are
 not mistaken for health, `SIGCONT` recovery, Ctrl+C exit 130 + `--rm`, and
-post-mortem mode-`0600` `.tar.gz` with zero token leakage).
+post-mortem mode-`0600` `.tar.gz` with zero token leakage). Opened
+[PR #293](https://github.com/ccozianu/devcapsule/pull/293) against
+`release-0.3.0` and committed the review brief at
+[brief-pr293-1.md](evidence/2026-10-27-diagnostics-snapshot/brief-pr293-1.md).
+
+Codex (`gpt-6-astra`) delivered
+[PR #295](https://github.com/ccozianu/devcapsule/pull/295) (`c190d1cf`),
+accepted without a round and merged into `ws-maintenance/0.3.0-diagnostics-snapshot`
+at `5cc52392`. The review added nine substantive hardenings and 33 new focused
+regression checks (42 total in `test_diagnostics.py` and
+`test_runtime_diagnose.py`):
+1. Extended `_redaction.py` and `_sanitize_plain_bytes` to cover bare `TOKEN`
+   keys, quoted inline values, `%`-bearing encoded tokens, and structured JSON
+   credential fields while keeping non-secret path keys and `token_gate_active`.
+2. Verified live container state across unfinished sessions from newest to
+   oldest so a newer crashed session cannot shadow an older live container.
+3. Replaced manifest text reads with a bounded 1 MiB `O_NOFOLLOW | O_NONBLOCK`
+   regular-file reader refusing FIFOs, symlinks, and oversized manifests.
+4. Added descriptor-pinned `_open_directory` traversal and `.absolute()` path
+   preservation so ancestor symlinks and post-discovery directory-to-symlink
+   swaps are refused on read.
+5. Unified snapshot and archive writes under `_private_output` (`dir_fd`-pinned
+   mode `0600` creation, atomic replacement, guaranteed scratch cleanup).
+6. Bounded IDE log discovery at `MAX_IDE_LOG_ENTRIES = 4096` via lazy
+   `os.scandir` and documented the limit in `docs/troubleshooting/diagnostics-and-logs.md`.
+7. Preserved buffered WebSocket bytes across split or coalesced TCP reads,
+   replied to Ping (`0x9`) with masked Pong (`0x8A`), and rejected malformed or
+   masked server frames.
+8. Anchored archive session identity to validated `session_dir.name` and
+   stripped `.` in `_safe_slot_dir`, closing tar-slip injection from a mutated
+   in-capsule `session.json`.
+9. Converted `OSError` failures in `ProjectDiagnoseCommand.run` into redacted
+   `DiagnosticsError` CLI errors (exit code 2).
+
+Reviewer proposals not implemented (for owner consideration on a future slice):
+1. Add an overall runtime-probe deadline budget that preserves partial probe
+   results when multiple sequential 2 s probes time out inside the 5 s outer
+   `docker exec` timeout.
+2. Distinguish unlimited cgroup v2 `"max"` values from unreadable cgroup limit
+   files in the snapshot schema (both currently serialize as `null`).
+3. Automatic browser-side console/network capture (outside this slice per
+   Deliverable 5's manual DevTools contract).
+
+Post-merge gate passed on `5cc52392`: `nox -s build` + `webconsole` (`mypy`
+clean on 254 source files and 9 webconsole files; 2,380 unit tests passed, 37
+deselected, 1 xfailed, 1 xpassed; 17 packaging tests passed; `docs-contract`
+189 pages including 17 aliases passed; 357 webconsole tests passed) and
+real-container E2E `tests/e2e/test_session_diagnostics.py` against the newly
+built `dist/devcapsule-local.pex` (1 passed in 21.15 s). Slice state:
+integrating; [PR #293](https://github.com/ccozianu/devcapsule/pull/293) is
+ready for the owner's merge into `release-0.3.0`.
 
 ## General saved Docker arguments — 2026-10-23
 
@@ -345,6 +395,19 @@ the release overview as a condition of the final tag. Maintenance does not
 begin the rewrite until project-management assigns it.
 
 ## Current State
+
+**2026-10-27: diagnostics snapshot and sanitized export ready for merge (#293).**
+Implemented `devcapsule project diagnose` and `devcapsule runtime diagnose-probe`
+on `ws-maintenance/0.3.0-diagnostics-snapshot` targeting `release-0.3.0`
+([PR #293](https://github.com/ccozianu/devcapsule/pull/293)), completing
+Deliverable 4 and the manual browser-evidence contract of Deliverable 5 in
+[2026-10-08-persistent-session-diagnostics.md](../../work-orders/2026-10-08-persistent-session-diagnostics.md).
+Codex (`gpt-6-astra`) review [PR #295](https://github.com/ccozianu/devcapsule/pull/295)
+(`c190d1cf`) was accepted without a round and merged at `5cc52392` (nine
+hardenings, 42 focused checks). Post-merge `nox -s build` + `webconsole` passed
+(`mypy` 254 + 9 files; 2,380 unit, 17 packaging, 189 docs pages, 357 webconsole)
+and real-container E2E `tests/e2e/test_session_diagnostics.py` passed (`21.15 s`).
+Awaiting the owner's merge of PR #293 into `release-0.3.0`.
 
 **2026-10-26: rc8 tagged, published and verified.** The owner merged
 PR #291 at `8afa5f6`; `8d41fab` is an ancestor of `main`; `v0.3.0-rc8` on
@@ -2727,6 +2790,30 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- Diagnostics snapshot and export slice, 2026-10-27:
+  [PR #293](https://github.com/ccozianu/devcapsule/pull/293)
+  (`ws-maintenance/0.3.0-diagnostics-snapshot` -> `release-0.3.0`) awaits the
+  owner's merge. Codex (`gpt-6-astra`) review
+  [PR #295](https://github.com/ccozianu/devcapsule/pull/295) (`c190d1cf`) is
+  accepted without a round and merged at `5cc52392`.
+- Weighed and unresolved, from PR #295 (PR293.1):
+  1. Overall runtime-probe deadline budget preserving partial results if
+     several 2 s probes time out sequentially inside the 5 s `docker exec` cap.
+  2. Separate cgroup v2 schema representation for `"max"` (unlimited) vs.
+     unreadable limit files (both currently `null`).
+  3. Automatic browser-side DevTools capture (outside this slice per
+     Deliverable 5).
+- External state preserved: implementation worktree
+  `/home/devcapsule/worktrees/diagnostics-snapshot` on
+  `ws-maintenance/0.3.0-diagnostics-snapshot`; primary mount
+  `/workspace/301e4208ef81-ChatGPT_Codex` left untouched on
+  `ws-maintenance/e2e_videos-2` with its pre-existing `.devcapsule/` and
+  `.idea/` edits; local `main` fast-forwarded to `origin/main` (`8afa5f6d`).
+- Deliberately not preserved: review worktree
+  `/home/devcapsule/worktrees/maintenance-review` and local branch
+  `ws-maintenance/0.3.0-diagnostics-snapshot-review` (removed after merging
+  PR #295); temporary gate/pytest directories under `/opt/devcapsule-gate/`.
+
 - Saved Docker arguments slice, 2026-10-23: PR #253 targets `release-0.3.0`;
   only the human merges it. Reviews #254 and #255 are accepted and merged
   into the slice; #255 took two revision rounds. No real credentials, full
@@ -3066,6 +3153,7 @@ Earlier open-thread history (read against the current scope above):
 
 ## Workstream Document Index
 
+- [PR #293 review-partner brief (PR293.1)](evidence/2026-10-27-diagnostics-snapshot/brief-pr293-1.md): brief for Codex (`gpt-6-astra`) on the session diagnostics snapshot and sanitized export slice.
 - [PR #236 review-partner brief (PR236.1)](evidence/2026-10-22-pr236-review-brief.md): brief for Claude Fable 5.1 on the E2E scenario video recorder and Eclipse Java debugger demo slice.
 - [Landing-page work order (`Why DevCapsule?`)](../../work-orders/2026-10-18-landing-page-why-devcapsule.md): Deliverables 1–4 completed and verified on `ws-maintenance/e2e_videos`.
 - [Stretch-goal hero video follow-up work order](../../work-orders/2026-10-19-eclipse-java-1brc-hero-video.md): Eclipse/Java 1BRC hero video stretch goal with reusable pipeline preamble and unblocking options.
