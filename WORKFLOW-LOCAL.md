@@ -52,7 +52,7 @@ source of the packaged one, not an installed copy. See *Exceptions*.
    *Documentation Is Part Of The Release* names the obligations. Documentation
    is published per [the content–website contract, version 1](engineering-docs/specifications/product/content-website-contract.md).
    `docs/versions.yaml` on `main` is the authored list of documented versions.
-   Promote it after every final tag.
+   Promote it on the release branch before the final tag and merge it to `main`.
 8. Merge the release branch into `main` through a throwaway copy. Create
    the copy at the release branch's tip, named `4PR-NNN-release-X.Y.Z`, for
    one pull request. NNN counts from 1 within the release. Commit nothing to
@@ -64,7 +64,11 @@ source of the packaged one, not an installed copy. See *Exceptions*.
 Owner grant of 2026-09-28, exercised by `project-management`.
 
 1. The project declares one ref kind of its own: `docs-<version>`.
-2. Fork a `docs-<version>` branch from the final tag `v<version>`.
+2. Fork a `docs-<version>` branch from the release branch at the promotion
+   commit, before the final tag. Push it with
+   `git push origin HEAD:refs/heads/docs-X.Y.Z` immediately after that commit.
+   Keep its `docs/` tree equal to the final tag's documentation.
+   The final-tag job verifies this equality.
 3. Commit only documentation changes to it: changes under `docs/` and nothing
    else.
 4. Never merge it anywhere. Never rebase it.
