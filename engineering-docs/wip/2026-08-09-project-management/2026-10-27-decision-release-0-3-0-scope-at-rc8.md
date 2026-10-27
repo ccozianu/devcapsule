@@ -1,0 +1,89 @@
+# Release 0.3.0: The Scope Rechecked At Candidate 8
+
+Date: 2026-10-27
+Decision: product owner, in the project-management session, after the
+agent reconciled candidate 8 against the scope decision of 2026-10-18 and
+the final-tag gates the release overview records.
+Status: accepted; the work is with `maintenance` on `release-0.3.0`.
+
+## The occasion
+
+On 2026-10-26 the owner ruled, in the maintenance session, that candidate
+8 becomes 0.3.0 unless a showstopper appears. On 2026-10-27 the owner
+asked project-management to check that ruling against what the 0.3.0 plan
+still carried. The check found three in-scope dogfooding slices in no
+candidate, the diagnostics snapshot, image and cache cleanup and C20; six
+fixed bug records not yet verified on a downloaded candidate; the
+release notes not written; the eleven user-docs proposals and the C17
+generic half still open with their owners paused; and the
+workstation-commands record awaiting the owner's choice of home.
+
+## Decisions
+
+1. **Image and cache cleanup leaves 0.3.0**, tentatively for 0.3.1, under
+   the reopen rule of the 2026-10-18 decision. The installed-IDE record's
+   two halves are now both out of 0.3.0 and go to the next planning
+   together.
+2. **Workstation-scoped commands stay in 0.3.0.** Their API shape is
+   designed with the owner in chat, later in this session or the next;
+   the implementation is a maintenance slice before the final tag. The
+   owner's assumption that the code exists and only the wiring moves was
+   checked: it holds for `default memory|cpus` and `trust withdraw`,
+   which read nothing from the project; it does not hold for `trust
+   accept`, whose channel, the vendor, the origins, the integrity method
+   and the terms, is derived from the project's lock. A project-less
+   acceptance needs a source for that definition, and that source is a
+   design choice of the API shape, not wiring. The project's view of its
+   channels, `trust list`, needs the project and may stay where it is.
+3. **VS Code joins 0.3.0** as a second provider of `frontend-ide`.
+   VSCodium stays the default. VS Code carries an acquisition contract,
+   Microsoft as vendor with its terms, so that the download comes from
+   Microsoft at the developer's request and is never redistributed by
+   us, and so that it is a trust channel under D-0011. The owner's words:
+   we cannot run much longer without supporting the most distributed IDE.
+   The slice is a maintenance slice for the next candidate; it is the
+   first IDE capability with two providers, which is where its risk sits.
+4. **C20 is scoped for 0.3.0 and ordered** as
+   [the work order of 2026-10-27](../../work-orders/2026-10-27-release-documentation-automation.md),
+   merged into `main` by PR #292: the helper `release-docs.py`, the
+   final-tag path of the release workflow that checks before it
+   publishes and dispatches the test-site build after, the website
+   workflow's guard against a version without a download, and the rule
+   changes they carry. The pair: Codex, gpt-6-astra, implements; Claude
+   Code, Claude Fable 5.1, reviews; dispatched from this session on the
+   owner's merge.
+
+## Still open from the same check, for the owner
+
+- The diagnostics snapshot and export command, the last undelivered
+  dogfooding slice and part of the headline: in a further candidate, or
+  out by the reopen rule.
+- Who performs the documentation language review, which pages, in what
+  order, and under which reviewer loop; the mail of 2026-10-24 in this
+  workstream's intake.
+- Whether the eleven user-docs proposals and the C17 generic half remain
+  gates of the final tag, given that `user-docs` and
+  `workflow-improvements` are paused.
+- Who verifies the six fixed bug records on the rc8 download, two of
+  them from inside a capsule, three with Docker.
+- Provider acceptance of the new agent pins on a downloaded candidate,
+  listed as awaiting the owner since rc3; not confirmed in the records.
+
+## What this changes in the records
+
+- The release overview's *Scope And Owner Decisions* gains the rulings
+  above; the bug table's installed-IDE row says both halves are out; the
+  workstation-commands row says the home is designed in chat and the
+  slice is in the cycle. `maintenance` writes these on the release branch.
+- The 2026-10-18 decision's list of in-scope slices is amended by this
+  record: cleanup out, VS Code and the workstation commands in, C20 as
+  ordered.
+- The content-contract mail of 2026-10-18 is closed by the C20 order,
+  which makes the `source-version` line on the `devel` entry the
+  documented practice.
+
+## Reopen if
+
+A further candidate shows VS Code or the workstation commands larger than
+the cycle tolerates, in which case either moves out by the owner's word
+and the overview says so.
