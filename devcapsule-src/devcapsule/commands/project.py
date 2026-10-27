@@ -233,14 +233,20 @@ class ProjectDiagnoseCommand(Command):
         selected = _project_context(context)
         export_requested = arguments.export is not None
         export_path = Path(arguments.export) if arguments.export else None
-        snapshot = diagnose_project(
-            selected.start_path(),
-            runtime_fallback=selected.selected_path is None,
-            session_id=arguments.session,
-            export_path=export_path,
-            export_requested=export_requested,
-            include_ide_logs=arguments.include_ide_logs,
-        )
+        try:
+            snapshot = diagnose_project(
+                selected.start_path(),
+                runtime_fallback=selected.selected_path is None,
+                session_id=arguments.session,
+                export_path=export_path,
+                export_requested=export_requested,
+                include_ide_logs=arguments.include_ide_logs,
+            )
+        except OSError as error:
+            from devcapsule._redaction import redact_text
+            from devcapsule.diagnostics import DiagnosticsError
+
+            raise DiagnosticsError(f"Cannot capture or export diagnostics: {redact_text(str(error))}") from error
         print(json.dumps(snapshot, indent=2, sort_keys=True) if arguments.as_json else render_diagnosis(snapshot))
         return 0
 

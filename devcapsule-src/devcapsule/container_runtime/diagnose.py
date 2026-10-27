@@ -310,30 +310,50 @@ def probe_http_get(
     return result
 
 
-def _read_ws_frame(sock: socket.socket, *, deadline: float, initial: bytes) -> tuple[int, bytes]:
-    header = _recv_exact(sock, 2, deadline=deadline, initial=initial)
-    cursor = initial[2:]
+def _read_ws_frame(sock: socket.socket, *, deadline: float, buffered: bytearray) -> tuple[int, bytes]:
+    """Read one frame, preserving bytes already received from later frames."""
+
+    def take(count: int) -> bytes:
+        initial = bytes(buffered[:count])
+        del buffered[:count]
+        return _recv_exact(sock, count, deadline=deadline, initial=initial)
+
+    _remaining_seconds(deadline)
+    header = take(2)
     opcode = header[0] & 0x0F
-    masked = bool(header[1] & 0x80)
+    if header[0] & 0x70 or header[1] & 0x80:
+        raise ValueError("reserved bits or masked server WebSocket frame")
     length = header[1] & 0x7F
+    if opcode >= 8 and (not header[0] & 0x80 or length > 125):
+        raise ValueError("invalid WebSocket control frame")
     if length == 126:
-        ext = _recv_exact(sock, 2, deadline=deadline, initial=cursor)
-        cursor = cursor[2:]
-        length = struct.unpack(">H", ext)[0]
+        length = struct.unpack(">H", take(2))[0]
     elif length == 127:
-        ext = _recv_exact(sock, 8, deadline=deadline, initial=cursor)
-        cursor = cursor[8:]
-        length = struct.unpack(">Q", ext)[0]
+        length = struct.unpack(">Q", take(8))[0]
     if length > _MAX_WS_FRAME_BYTES:
         raise ValueError(f"WebSocket frame length {length} exceeds diagnostic limit")
-    mask_key = b""
-    if masked:
-        mask_key = _recv_exact(sock, 4, deadline=deadline, initial=cursor)
-        cursor = cursor[4:]
-    payload = _recv_exact(sock, length, deadline=deadline, initial=cursor)
-    if masked:
-        payload = bytes(byte ^ mask_key[idx % 4] for idx, byte in enumerate(payload))
-    return opcode, payload
+    return opcode, take(length)
+
+
+def _read_ws_greeting(sock: socket.socket, *, deadline: float, initial: bytes) -> tuple[int, bytes]:
+    buffered = bytearray(initial)
+    greeting = bytearray()
+    while len(greeting) < 12:
+        opcode, payload = _read_ws_frame(sock, deadline=deadline, buffered=buffered)
+        if opcode == 0x9:
+            # Client pong frames must be masked, including an empty pong.
+            mask = os.urandom(4)
+            masked = bytes(byte ^ mask[index % 4] for index, byte in enumerate(payload))
+            _sendall_bounded(sock, bytes([0x8A, 0x80 | len(payload)]) + mask + masked, deadline=deadline)
+            continue
+        if opcode == 0xA:
+            continue
+        if opcode == 0x8:
+            return opcode, payload
+        if opcode not in (0x0, 0x1, 0x2):
+            raise ValueError(f"unexpected WebSocket opcode {opcode}")
+        greeting.extend(payload[:12 - len(greeting)])
+    return 0x2, bytes(greeting)
 
 
 def _send_ws_close_best_effort(sock: socket.socket, *, deadline: float) -> None:
@@ -428,7 +448,7 @@ def probe_websocket_rfb(
                     "duration_ms": round((time.monotonic() - started) * 1000, 1),
                 }
             upgraded = True
-            opcode, payload = _read_ws_frame(sock, deadline=deadline, initial=remainder)
+            opcode, payload = _read_ws_greeting(sock, deadline=deadline, initial=remainder)
             _send_ws_close_best_effort(sock, deadline=deadline)
     except TimeoutError:
         stage = (

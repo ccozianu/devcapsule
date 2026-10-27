@@ -166,7 +166,7 @@ probe) so a wedged display stack never stalls diagnosis or shutdown:
   `Xvnc` from a healthy server.
 - **Display HTTP and WebSocket-to-RFB bridge:** checks `GET /vnc.html` and
   performs an authenticated WebSocket upgrade on `/websockify` (reading the
-  capsule's display token in memory only) until the first WebSocket frame
+  capsule's display token in memory only) until WebSocket data
   delivers `Xvnc`'s RFB greeting. An HTTP `200` on `/vnc.html` alone does not
   count as a healthy desktop bridge.
 - **Host loopback vs. capsule network:** probes the published `127.0.0.1`
@@ -198,7 +198,9 @@ devcapsule project diagnose --export ./my-session.tar.gz --include-ide-logs
   **excluded by default** because they often contain project paths and source
   excerpts. `snapshot.json` records their locations, file counts, and byte
   sizes; pass `--include-ide-logs` with `--export` when IDE startup or UI
-  freezes are part of the problem.
+  freezes are part of the problem. Discovery visits at most 4,096 entries per
+  IDE log location and reports when it reaches that limit. Reads refuse symlinks
+  in the file path, including parent directories.
 - Redaction covers known token and credential formats only. Arbitrary child
   output and IDE logs can still contain secrets or proprietary code; inspect
   the archive before sharing it outside your machine.
