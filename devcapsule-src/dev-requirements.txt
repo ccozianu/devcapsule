@@ -95,8 +95,12 @@ python-discovery==1.4.3
     # via virtualenv
 python-on-whales==0.81.0
     # via devcapsule (pyproject.toml)
+pyyaml==6.0.3
+    # via devcapsule (pyproject.toml)
 requests==2.34.2
     # via genbadge
+types-pyyaml==6.0.12.20260906
+    # via devcapsule (pyproject.toml)
 typing-extensions==4.16.0
     # via
     #   mypy
