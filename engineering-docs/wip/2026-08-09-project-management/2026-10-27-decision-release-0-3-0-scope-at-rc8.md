@@ -66,6 +66,18 @@ workstation-commands record awaiting the owner's choice of home.
   a distinct schema value for an unlimited cgroup limit. All three
   dogfooding slices the check found undelivered now have a ruling: C20
   merged by PR #294, diagnostics by PR #293, cleanup out.
+- **The workstation commands' API shape is designed and ordered**, later
+  the same day, as
+  [the work order of 2026-10-27](../../work-orders/2026-10-27-configuration-home-and-the-home-commands.md):
+  one configuration home named by `DEVCAPSULE_CONFIG_HOME`, defaulting
+  to the XDG path as today; a `devcapsule home` group holding `trust
+  accept|withdraw|list`, `default` and `show`, with the three mutating
+  spellings deleted from `project config`; one `settings.toml` with a
+  schema integer and a `minimum-devcapsule` field, the first instance of
+  the owner's 2026-10-22 requirement; the word "workstation" removed.
+  The owner's reasoning, nothing the launcher depends on is global, after
+  Bracha's Newspeak, is recorded in the order. The same pair implements
+  and reviews.
 
 ## Still open from the same check, for the owner
 
