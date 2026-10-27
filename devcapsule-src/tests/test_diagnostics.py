@@ -304,7 +304,7 @@ def test_project_diagnose_export_redacts_logs_gz_excludes_ide_logs_by_default_an
     logs_dir.mkdir(parents=True)
     session_doc = {
         "schema-version": 1,
-        "session": logs_dir.name,
+        "session": "../manifest-escape",
         "started-at": "2026-10-27T12:30:00Z",
         "ended-at": "2026-10-27T12:35:00Z",
         "exit-code": 0,
@@ -368,6 +368,7 @@ def test_project_diagnose_export_redacts_logs_gz_excludes_ide_logs_by_default_an
     assert rc_ok == 0
     out_json = json.loads(capsys.readouterr().out)
     assert out_json["schema-version"] == 1
+    assert out_json["session"]["id"] == logs_dir.name
     assert out_json["browser_evidence"]["collected"] is False
     assert out_json["browser_evidence"]["mode"] == "manual-devtools"
     assert out_json["ide_native_logs"]["included_in_export"] is False
@@ -497,3 +498,183 @@ def test_diagnose_project_in_capsule_mode_runs_in_process_and_guards_other_sessi
     assert snap["context"] == "in-capsule"
     assert snap["session"]["id"] == "20261027-124000-live"
     assert snap["summary"]["state"] == "healthy"
+
+
+@pytest.mark.parametrize("text", [
+    'TOKEN=bare-value',
+    'APP_SECRET="quoted value with spaces"',
+    "APP_PASSWORD='quoted value with spaces'",
+    'path=websockify%3Ftoken%3Dprefix%2Fsecret-suffix',
+])
+def test_redaction_covers_full_credential_values(text: str) -> None:
+    from devcapsule._redaction import redact_text
+
+    result = redact_text(text)
+    assert result.endswith("<redacted>")
+    assert "value" not in result
+    assert "secret-suffix" not in result
+
+
+def test_structured_redaction_preserves_nonsecret_paths() -> None:
+    from devcapsule._redaction import redact_json_value
+
+    result = redact_json_value({
+        "TOKEN": "secret", "Authorization": "Bearer secret", "Cookie": "a=secret",
+        "DEVCAPSULE_TOKEN_FILE": "/run/token", "XAUTHORITY": "/tmp/xauth",
+        "APP_SECRET": "secret", "normal": "helpful error", "token_gate_active": True,
+    })
+    assert result == {
+        "TOKEN": "<redacted>", "Authorization": "<redacted>", "Cookie": "<redacted>",
+        "DEVCAPSULE_TOKEN_FILE": "/run/token", "XAUTHORITY": "/tmp/xauth",
+        "APP_SECRET": "<redacted>", "normal": "helpful error", "token_gate_active": True,
+    }
+
+
+@pytest.mark.parametrize("content", [b"[]", b"null", b"{", b"\xff"])
+def test_invalid_manifest_is_reported(tmp_path: Path, content: bytes) -> None:
+    from devcapsule.diagnostics import _read_session_manifest
+
+    (tmp_path / "session.json").write_bytes(content)
+    manifest, error = _read_session_manifest(tmp_path)
+    assert manifest == {}
+    assert error
+
+
+def test_manifest_fifo_and_oversize_are_refused(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from devcapsule import diagnostics
+
+    manifest = tmp_path / "session.json"
+    os.mkfifo(manifest)
+    assert "not a regular file" in str(diagnostics._read_session_manifest(tmp_path)[1])
+    manifest.unlink()
+    manifest.write_text('{"large": "' + 'x' * 64 + '"}')
+    monkeypatch.setattr(diagnostics, "MAX_SESSION_MANIFEST_BYTES", 32)
+    assert diagnostics._read_session_manifest(tmp_path) == ({}, "session.json exceeds diagnostic byte limit")
+
+
+def test_session_selection_checks_newest_container_before_older_live_session(tmp_path: Path) -> None:
+    for name, container in (("20261027-100000-old", "live"), ("20261027-110000-new", "gone")):
+        directory = tmp_path / name
+        directory.mkdir()
+        (directory / "session.json").write_text(json.dumps({"container": container}))
+    chosen, mode = select_session_directory(tmp_path, is_container_running=lambda name: name == "live")
+    assert chosen.name == "20261027-100000-old"
+    assert mode == "active"
+
+
+def test_ide_ancestor_symlink_and_entry_limit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from devcapsule import diagnostics
+
+    outside = tmp_path / "outside"
+    (outside / "logs").mkdir(parents=True)
+    (outside / "logs" / "idea.log").write_text("private host content")
+    link = tmp_path / "workspace"
+    link.symlink_to(outside, target_is_directory=True)
+    files, skipped = diagnostics._walk_ide_log_files(link / "logs", family="jetbrains")
+    assert files == []
+    assert skipped
+    for index in range(5):
+        (outside / "logs" / f"idea.log.{index}").write_text("log")
+    monkeypatch.setattr(diagnostics, "MAX_IDE_LOG_ENTRIES", 3)
+    files, skipped = diagnostics._walk_ide_log_files(outside / "logs", family="jetbrains")
+    assert len(files) <= 3
+    assert skipped[-1]["reason"] == "IDE log entry limit reached"
+
+
+def test_export_read_refuses_parent_replacement_with_symlink(tmp_path: Path) -> None:
+    from devcapsule import diagnostics
+
+    logs_dir = tmp_path / "logs"
+    logs_dir.mkdir()
+    (logs_dir / "idea.log").write_text("safe")
+    files, _ = diagnostics._walk_ide_log_files(logs_dir, family="jetbrains")
+    logs_dir.rename(tmp_path / "original")
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "idea.log").write_text("private")
+    logs_dir.symlink_to(outside, target_is_directory=True)
+    with pytest.raises(OSError):
+        diagnostics._sanitize_plain_bytes(files[0][0], max_bytes=1024, env_names=set())
+
+
+def test_private_output_cleans_failure_and_refuses_parent_symlink(tmp_path: Path) -> None:
+    from devcapsule import diagnostics
+
+    destination = tmp_path / "snapshot.json"
+    destination.write_bytes(b"old")
+    with pytest.raises(OSError, match="disk full"):
+        with diagnostics._private_output(destination) as handle:
+            handle.write(b"partial")
+            raise OSError("disk full")
+    assert destination.read_bytes() == b"old"
+    assert list(tmp_path.glob(".*.tmp")) == []
+    diagnostics._atomic_write_private_bytes(destination, b"new")
+    assert destination.read_bytes() == b"new"
+    assert stat.S_IMODE(destination.stat().st_mode) == 0o600
+    link = tmp_path / "link"
+    link.symlink_to(tmp_path, target_is_directory=True)
+    with pytest.raises(OSError):
+        diagnostics._atomic_write_private_bytes(link / "snapshot.json", b"leak")
+    assert destination.read_bytes() == b"new"
+
+
+def test_gzip_export_caps_expansion_and_rejects_truncated_stream(tmp_path: Path) -> None:
+    from devcapsule import diagnostics
+
+    source = tmp_path / "component.log.1.gz"
+    source.write_bytes(gzip.compress(b"TOKEN=secret\n" * 10000))
+    payload, size, truncated = diagnostics._sanitize_gzip_bytes(source, max_uncompressed_bytes=128, env_names=set())
+    plain = gzip.decompress(payload)
+    assert truncated
+    assert len(plain) == size < 512
+    assert b"secret" not in plain
+    source.write_bytes(gzip.compress(b"ordinary log")[:-4])
+    with pytest.raises(EOFError):
+        diagnostics._sanitize_gzip_bytes(source, max_uncompressed_bytes=128, env_names=set())
+
+
+def test_json_export_scrubs_structured_credentials(tmp_path: Path) -> None:
+    from devcapsule import diagnostics
+
+    source = tmp_path / "session.json"
+    source.write_text(json.dumps({"APP_API_KEY": "private-value", "normal": "visible"}))
+    payload, truncated = diagnostics._sanitize_plain_bytes(source, max_bytes=1024, env_names=set())
+    assert not truncated
+    assert json.loads(payload) == {"APP_API_KEY": "<redacted>", "normal": "visible"}
+
+
+def test_configured_environment_redaction_handles_quoted_values() -> None:
+    from devcapsule._redaction import redact_text
+
+    assert redact_text('CUSTOM="private value"', env_names={"CUSTOM"}) == 'CUSTOM=<redacted>'
+
+
+def test_diagnose_filesystem_error_is_a_cli_diagnostic(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    project = tmp_path / "project"
+    _init_project(project)
+    with patch("devcapsule.diagnostics.diagnose_project", side_effect=PermissionError("export parent is unwritable")):
+        result = cli.main(["project", "--path", str(project), "diagnose", "--export"])
+    assert result == 2
+    assert "Cannot capture or export diagnostics: export parent is unwritable" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("slot", [".", "..", "../../"])
+def test_archive_slot_cannot_traverse(slot: str) -> None:
+    from devcapsule.diagnostics import _safe_slot_dir
+
+    assert _safe_slot_dir(slot) not in {".", ".."}
+    assert "/" not in _safe_slot_dir(slot)
+
+
+def test_fallback_managed_path_preserves_links_for_refusal(tmp_path: Path) -> None:
+    from devcapsule import diagnostics
+
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    link = tmp_path / "log-slot"
+    link.symlink_to(outside, target_is_directory=True)
+    declaration: Any = SimpleNamespace()
+    with patch("devcapsule.diagnostics.managed_binding_path", return_value=link):
+        target = diagnostics._managed_slot_path(tmp_path, declaration, os.environ)
+    assert target == link
+    assert diagnostics._walk_ide_log_files(target, family="jetbrains")[1][0]["reason"] == "symlink refused"

@@ -7,19 +7,20 @@ evidence contract of Deliverable 5 in
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 import gzip
 import io
 import json
 import os
 from pathlib import Path
 import re
+import secrets
 import shutil
 import stat
 import subprocess
 import tarfile
-import tempfile
 import time
-from typing import Any, Callable, Iterable, Mapping
+from typing import Any, BinaryIO, Callable, Iterable, Iterator, Mapping
 import zlib
 
 from devcapsule import logs, runtime_configuration
@@ -59,6 +60,8 @@ SNAPSHOT_SCHEMA_VERSION = 1
 DEFAULT_DOCKER_INSPECT_TIMEOUT_SECONDS = 3.0
 DEFAULT_DOCKER_EXEC_TIMEOUT_SECONDS = 5.0
 MAX_EXPORT_UNCOMPRESSED_BYTES = 128 * 1024 * 1024
+MAX_IDE_LOG_ENTRIES = 4096
+MAX_SESSION_MANIFEST_BYTES = 1024 * 1024
 MAX_SINGLE_EXPORT_FILE_BYTES = 32 * 1024 * 1024
 _DECOMPRESS_CHUNK_BYTES = 64 * 1024
 _SESSION_ID_SAFE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
@@ -109,13 +112,50 @@ def _is_real_directory(path: Path) -> bool:
     return stat.S_ISDIR(info.st_mode)
 
 
+@contextmanager
+def _open_directory(path: Path) -> Iterator[int]:
+    """Pin a directory, refusing symlinks in every path component."""
+
+    absolute = Path(os.path.abspath(path))
+    fd = os.open(absolute.anchor, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        for part in absolute.parts[1:]:
+            child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+            os.close(fd)
+            fd = child
+        yield fd
+    finally:
+        os.close(fd)
+
+
+@contextmanager
+def _open_regular_file(path: Path) -> Iterator[BinaryIO]:
+    """Open a regular file without following links or blocking on a FIFO."""
+
+    with _open_directory(path.parent) as parent_fd:
+        fd = os.open(path.name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent_fd)
+    try:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            raise OSError(f"non-regular file refused: {path}")
+        handle = os.fdopen(fd, "rb")
+    except BaseException:
+        os.close(fd)
+        raise
+    with handle:
+        yield handle
+
+
 def _read_session_manifest(directory: Path) -> tuple[dict[str, Any], str | None]:
     manifest_path = directory / logs.SESSION_MANIFEST
     try:
         info = manifest_path.lstat()
         if not stat.S_ISREG(info.st_mode):
             return {}, f"{manifest_path} is not a regular file"
-        parsed = json.loads(manifest_path.read_text(encoding="utf-8"))
+        with _open_regular_file(manifest_path) as handle:
+            raw = handle.read(MAX_SESSION_MANIFEST_BYTES + 1)
+        if len(raw) > MAX_SESSION_MANIFEST_BYTES:
+            return {}, "session.json exceeds diagnostic byte limit"
+        parsed = json.loads(raw)
     except FileNotFoundError:
         return {}, "session.json is absent"
     except (OSError, ValueError) as error:
@@ -156,18 +196,18 @@ def select_session_directory(
         raise DiagnosticsError(
             f"No session logs found under {logs_root}; launch the project first with 'devcapsule project run'."
         )
-    active = [entry for entry in candidates if not logs.session_ended(entry, now=now)]
-    if active:
-        if active[-1] == candidates[-1] or is_container_running is None:
-            return active[-1], "active"
-        # An older session without ended-at may be a concurrent live run or a
-        # crashed launcher; prefer it over a newer ended session only if its
-        # container is still running.
-        for entry in reversed(active):
-            manifest_doc, _ = _read_session_manifest(entry)
-            container_name = str(manifest_doc.get("container") or "")
+    # Manifest readers used by retention can follow links and block on FIFOs.
+    # Diagnose uses its own bounded, no-follow reader and verifies live state.
+    for entry in reversed(candidates):
+        manifest_doc, _ = _read_session_manifest(entry)
+        if manifest_doc.get("ended-at"):
+            continue
+        container_name = str(manifest_doc.get("container") or "")
+        if is_container_running is not None:
             if container_name and is_container_running(container_name):
                 return entry, "active"
+        elif manifest_doc:
+            return entry, "active"
     return candidates[-1], "latest-ended"
 
 
@@ -564,7 +604,7 @@ def _managed_slot_path(
     env: Mapping[str, str],
 ) -> Path:
     if dict(env) == dict(os.environ):
-        return managed_binding_path(root, declaration).resolve()
+        return managed_binding_path(root, declaration).absolute()
     home = Path(env.get("HOME", "~")).expanduser()
     roots = {
         "durable": Path(env.get("XDG_DATA_HOME") or home / ".local" / "share"),
@@ -573,8 +613,8 @@ def _managed_slot_path(
     }
     namespace = roots[declaration.kind] / "devcapsule" / "projects" / "by-path" / project_namespace(root)
     if declaration.name == "home":
-        return (namespace / "home").resolve()
-    return (namespace / "components" / str(declaration.component_id) / str(declaration.slot_name)).resolve()
+        return (namespace / "home").absolute()
+    return (namespace / "components" / str(declaration.component_id) / str(declaration.slot_name)).absolute()
 
 
 def _fallback_host_ide_log_specs(
@@ -596,7 +636,7 @@ def _fallback_host_ide_log_specs(
     for name, declaration in sorted(declarations.items()):
         explicit = configured.get(name)
         backing = (
-            Path(str(explicit)).expanduser().resolve()
+            Path(str(explicit)).expanduser().absolute()
             if explicit is not None
             else _managed_slot_path(root, declaration, env)
         )
@@ -661,6 +701,8 @@ def _walk_ide_log_files(base: Path, *, family: str) -> tuple[list[tuple[Path, st
     eligible: list[tuple[Path, str, int]] = []
     skipped: list[dict[str, str]] = []
     try:
+        with _open_directory(base.parent):
+            pass
         root_info = base.lstat()
     except FileNotFoundError:
         return eligible, skipped
@@ -677,10 +719,21 @@ def _walk_ide_log_files(base: Path, *, family: str) -> tuple[list[tuple[Path, st
         return eligible, skipped
 
     stack: list[tuple[Path, Path]] = [(base, Path("."))]
+    visited = 0
     while stack:
         current, rel_prefix = stack.pop()
         try:
-            children = sorted(current.iterdir(), key=lambda item: item.name)
+            with _open_directory(current) as directory_fd:
+                # scandir is lazy; do not allocate an unbounded directory listing.
+                with os.scandir(directory_fd) as scan:
+                    children = []
+                    for item in scan:
+                        if visited >= MAX_IDE_LOG_ENTRIES:
+                            skipped.append({"path": str(base), "reason": "IDE log entry limit reached"})
+                            return sorted(eligible, key=lambda item: item[1]), skipped
+                        visited += 1
+                        children.append(current / item.name)
+                children.sort(key=lambda item: item.name)
         except OSError as error:
             skipped.append({"path": str(current), "reason": f"unreadable directory: {error}"})
             continue
@@ -877,40 +930,34 @@ def summarize_diagnosis(
     }
 
 
-def _atomic_write_private_bytes(destination: Path, data: bytes) -> None:
-    try:
-        existing = destination.lstat()
-    except FileNotFoundError:
-        existing = None
-    if existing is not None and stat.S_ISLNK(existing.st_mode):
-        raise DiagnosticsError(f"Refusing to write diagnostic output through symlink: {destination}")
+@contextmanager
+def _private_output(destination: Path) -> Iterator[BinaryIO]:
+    """Replace output atomically within a pinned directory; remove failed scratch."""
+
     destination.parent.mkdir(parents=True, exist_ok=True)
-    fd, temp_name = tempfile.mkstemp(
-        prefix=f".{destination.name}.",
-        suffix=".tmp",
-        dir=destination.parent,
-    )
-    temp_path = Path(temp_name)
-    try:
-        os.fchmod(fd, 0o600)
-        view = memoryview(data)
-        written_total = 0
-        while written_total < len(data):
-            written = os.write(fd, view[written_total:])
-            if written <= 0:
-                raise OSError("short write while saving diagnostic file")
-            written_total += written
-        os.close(fd)
-        fd = -1
-        os.replace(temp_path, destination)
-    except BaseException:
-        if fd >= 0:
+    with _open_directory(destination.parent) as parent_fd:
+        try:
+            existing = os.stat(destination.name, dir_fd=parent_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            existing = None
+        if existing is not None and not stat.S_ISREG(existing.st_mode):
+            raise DiagnosticsError(f"Refusing non-regular diagnostic output (including symlink): {destination}")
+        temp_name = f".{destination.name}.{secrets.token_hex(8)}.tmp"
+        fd = os.open(temp_name, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600, dir_fd=parent_fd)
+        try:
+            with os.fdopen(fd, "wb") as handle:
+                yield handle
+            os.replace(temp_name, destination.name, src_dir_fd=parent_fd, dst_dir_fd=parent_fd)
+        finally:
             try:
-                os.close(fd)
-            except OSError:
+                os.unlink(temp_name, dir_fd=parent_fd)
+            except FileNotFoundError:
                 pass
-        temp_path.unlink(missing_ok=True)
-        raise
+
+
+def _atomic_write_private_bytes(destination: Path, data: bytes) -> None:
+    with _private_output(destination) as handle:
+        handle.write(data)
 
 
 def _sanitize_plain_bytes(
@@ -922,7 +969,7 @@ def _sanitize_plain_bytes(
     truncated = False
     chunks: list[bytes] = []
     total = 0
-    with source_path.open("rb") as handle:
+    with _open_regular_file(source_path) as handle:
         while True:
             chunk = handle.read(min(_DECOMPRESS_CHUNK_BYTES, max_bytes - total + 1))
             if not chunk:
@@ -935,7 +982,15 @@ def _sanitize_plain_bytes(
             total += len(chunk)
     raw = b"".join(chunks)
     text = raw.decode("utf-8", errors="replace")
-    redacted = redact_text(text, env_names=env_names)
+    if source_path.suffix == ".json" and not truncated:
+        try:
+            document = json.loads(text)
+        except ValueError:
+            redacted = redact_text(text, env_names=env_names)
+        else:
+            redacted = json.dumps(redact_json_value(document, env_names=env_names), indent=2) + "\n"
+    else:
+        redacted = redact_text(text, env_names=env_names)
     if truncated:
         redacted += "\n[devcapsule diagnose: file truncated at export byte cap]\n"
     return redacted.encode("utf-8"), truncated
@@ -950,7 +1005,7 @@ def _sanitize_gzip_bytes(
     truncated = False
     chunks: list[bytes] = []
     total = 0
-    with gzip.open(source_path, "rb") as gz_in:
+    with _open_regular_file(source_path) as raw_in, gzip.GzipFile(fileobj=raw_in, mode="rb") as gz_in:
         while True:
             chunk = gz_in.read(min(_DECOMPRESS_CHUNK_BYTES, max_uncompressed_bytes - total + 1))
             if not chunk:
@@ -992,12 +1047,12 @@ def _resolve_export_destination(
 ) -> Path:
     default_name = f"devcapsule-diagnostics-{session_id}-{stamp}.tar.gz"
     if export_path is None:
-        return (Path.cwd() / default_name).resolve()
+        return Path.cwd() / default_name
     expanded = export_path.expanduser()
     try:
         info = expanded.lstat()
     except FileNotFoundError:
-        return expanded.resolve()
+        return expanded.absolute()
     if stat.S_ISLNK(info.st_mode):
         raise DiagnosticsError(f"Refusing to write export archive through symlink: {expanded}")
     if stat.S_ISDIR(info.st_mode):
@@ -1008,12 +1063,12 @@ def _resolve_export_destination(
                 raise DiagnosticsError(f"Refusing to write export archive through symlink: {candidate}")
         except FileNotFoundError:
             pass
-        return candidate.resolve()
-    return expanded.resolve()
+        return candidate.absolute()
+    return expanded.absolute()
 
 
 def _safe_slot_dir(slot: str) -> str:
-    return re.sub(r"[^A-Za-z0-9._-]+", "_", slot).strip("_") or "ide"
+    return re.sub(r"[^A-Za-z0-9._-]+", "_", slot).strip("_.") or "ide"
 
 
 def export_diagnostics_bundle(
@@ -1040,150 +1095,130 @@ def export_diagnostics_bundle(
 
     destination.parent.mkdir(parents=True, exist_ok=True)
     mtime = int(time.time() if now is None else now)
-    prefix = f"devcapsule-diagnostics-{session_id}"
+    prefix = f"devcapsule-diagnostics-{_validate_session_id(session_id)}"
     included_files: list[dict[str, Any]] = []
     skipped_files: list[dict[str, str]] = list(ide_skipped)
     budget_remaining = MAX_EXPORT_UNCOMPRESSED_BYTES
     bundle_truncated = False
 
-    fd, temp_name = tempfile.mkstemp(
-        prefix=f".{destination.name}.",
-        suffix=".tmp",
-        dir=destination.parent,
-    )
-    temp_path = Path(temp_name)
-    try:
-        os.fchmod(fd, 0o600)
-        with os.fdopen(fd, "wb") as raw_out:
-            fd = -1
-            with gzip.GzipFile(filename="", mode="wb", fileobj=raw_out, compresslevel=6, mtime=mtime) as gz_stream:
-                with tarfile.open(mode="w", fileobj=gz_stream) as archive:
-                    if session_dir is not None and _is_real_directory(session_dir):
+    with _private_output(destination) as raw_out:
+        with gzip.GzipFile(filename="", mode="wb", fileobj=raw_out, compresslevel=6, mtime=mtime) as gz_stream:
+            with tarfile.open(mode="w", fileobj=gz_stream) as archive:
+                if session_dir is not None and _is_real_directory(session_dir):
+                    try:
+                        dir_entries = sorted(session_dir.iterdir(), key=lambda item: item.name)
+                    except OSError as error:
+                        skipped_files.append({"path": str(session_dir), "reason": f"unreadable: {error}"})
+                        dir_entries = []
+
+                    for entry in dir_entries:
+                        if entry.name == current_snapshot_filename or entry.name.endswith(".tmp"):
+                            continue
                         try:
-                            dir_entries = sorted(session_dir.iterdir(), key=lambda item: item.name)
+                            info = entry.lstat()
                         except OSError as error:
-                            skipped_files.append({"path": str(session_dir), "reason": f"unreadable: {error}"})
-                            dir_entries = []
+                            skipped_files.append({"path": str(entry), "reason": f"lstat failed: {error}"})
+                            continue
+                        if stat.S_ISLNK(info.st_mode):
+                            skipped_files.append({"path": str(entry), "reason": "symlink refused"})
+                            continue
+                        if not stat.S_ISREG(info.st_mode):
+                            skipped_files.append({"path": str(entry), "reason": "non-regular file skipped"})
+                            continue
+                        if budget_remaining <= 0:
+                            bundle_truncated = True
+                            skipped_files.append({"path": str(entry), "reason": "export byte budget reached"})
+                            continue
 
-                        for entry in dir_entries:
-                            if entry.name == current_snapshot_filename or entry.name.endswith(".tmp"):
-                                continue
-                            try:
-                                info = entry.lstat()
-                            except OSError as error:
-                                skipped_files.append({"path": str(entry), "reason": f"lstat failed: {error}"})
-                                continue
-                            if stat.S_ISLNK(info.st_mode):
-                                skipped_files.append({"path": str(entry), "reason": "symlink refused"})
-                                continue
-                            if not stat.S_ISREG(info.st_mode):
-                                skipped_files.append({"path": str(entry), "reason": "non-regular file skipped"})
-                                continue
-                            if budget_remaining <= 0:
-                                bundle_truncated = True
-                                skipped_files.append({"path": str(entry), "reason": "export byte budget reached"})
-                                continue
+                        cap = min(MAX_SINGLE_EXPORT_FILE_BYTES, budget_remaining)
+                        try:
+                            if entry.name == logs.SESSION_MANIFEST:
+                                arcname = f"{prefix}/session.json"
+                                payload, file_trunc = _sanitize_plain_bytes(entry, max_bytes=cap, env_names=env_names)
+                                uncompressed_len = len(payload)
+                            elif entry.name.startswith("snapshot-") and entry.name.endswith(".json"):
+                                arcname = f"{prefix}/snapshots/{entry.name}"
+                                payload, file_trunc = _sanitize_plain_bytes(entry, max_bytes=cap, env_names=env_names)
+                                uncompressed_len = len(payload)
+                            elif entry.name.endswith(".gz"):
+                                arcname = f"{prefix}/logs/{entry.name}"
+                                payload, uncompressed_len, file_trunc = _sanitize_gzip_bytes(
+                                    entry, max_uncompressed_bytes=cap, env_names=env_names
+                                )
+                            else:
+                                arcname = f"{prefix}/logs/{entry.name}"
+                                payload, file_trunc = _sanitize_plain_bytes(entry, max_bytes=cap, env_names=env_names)
+                                uncompressed_len = len(payload)
+                        except (OSError, EOFError, zlib.error) as error:
+                            skipped_files.append({"path": str(entry), "reason": f"read failed: {error}"})
+                            continue
 
-                            cap = min(MAX_SINGLE_EXPORT_FILE_BYTES, budget_remaining)
-                            try:
-                                if entry.name == logs.SESSION_MANIFEST:
-                                    arcname = f"{prefix}/session.json"
-                                    payload, file_trunc = _sanitize_plain_bytes(entry, max_bytes=cap, env_names=env_names)
-                                    uncompressed_len = len(payload)
-                                elif entry.name.startswith("snapshot-") and entry.name.endswith(".json"):
-                                    arcname = f"{prefix}/snapshots/{entry.name}"
-                                    payload, file_trunc = _sanitize_plain_bytes(entry, max_bytes=cap, env_names=env_names)
-                                    uncompressed_len = len(payload)
-                                elif entry.name.endswith(".gz"):
-                                    arcname = f"{prefix}/logs/{entry.name}"
-                                    payload, uncompressed_len, file_trunc = _sanitize_gzip_bytes(
-                                        entry, max_uncompressed_bytes=cap, env_names=env_names
-                                    )
-                                else:
-                                    arcname = f"{prefix}/logs/{entry.name}"
-                                    payload, file_trunc = _sanitize_plain_bytes(entry, max_bytes=cap, env_names=env_names)
-                                    uncompressed_len = len(payload)
-                            except (OSError, EOFError, zlib.error) as error:
-                                skipped_files.append({"path": str(entry), "reason": f"read failed: {error}"})
-                                continue
+                        _add_tar_bytes(archive, arcname, payload, mtime=mtime)
+                        budget_remaining = max(0, budget_remaining - uncompressed_len)
+                        bundle_truncated = bundle_truncated or file_trunc
+                        included_files.append({
+                            "archive_path": arcname,
+                            "bytes": len(payload),
+                            "truncated": file_trunc,
+                        })
 
-                            _add_tar_bytes(archive, arcname, payload, mtime=mtime)
-                            budget_remaining = max(0, budget_remaining - uncompressed_len)
-                            bundle_truncated = bundle_truncated or file_trunc
-                            included_files.append({
-                                "archive_path": arcname,
-                                "bytes": len(payload),
-                                "truncated": file_trunc,
-                            })
+                if include_ide_logs:
+                    for slot, file_path, rel_name, _size in ide_files:
+                        if budget_remaining <= 0:
+                            bundle_truncated = True
+                            skipped_files.append({"path": str(file_path), "reason": "export byte budget reached"})
+                            continue
+                        try:
+                            check_info = file_path.lstat()
+                        except OSError as error:
+                            skipped_files.append({"path": str(file_path), "reason": f"lstat failed: {error}"})
+                            continue
+                        if stat.S_ISLNK(check_info.st_mode) or not stat.S_ISREG(check_info.st_mode):
+                            skipped_files.append({"path": str(file_path), "reason": "symlink or non-regular file refused"})
+                            continue
 
-                    if include_ide_logs:
-                        for slot, file_path, rel_name, _size in ide_files:
-                            if budget_remaining <= 0:
-                                bundle_truncated = True
-                                skipped_files.append({"path": str(file_path), "reason": "export byte budget reached"})
-                                continue
-                            try:
-                                check_info = file_path.lstat()
-                            except OSError as error:
-                                skipped_files.append({"path": str(file_path), "reason": f"lstat failed: {error}"})
-                                continue
-                            if stat.S_ISLNK(check_info.st_mode) or not stat.S_ISREG(check_info.st_mode):
-                                skipped_files.append({"path": str(file_path), "reason": "symlink or non-regular file refused"})
-                                continue
+                        cap = min(MAX_SINGLE_EXPORT_FILE_BYTES, budget_remaining)
+                        arcname = f"{prefix}/ide-logs/{_safe_slot_dir(slot)}/{rel_name}"
+                        try:
+                            if file_path.name.endswith(".gz"):
+                                payload, uncompressed_len, file_trunc = _sanitize_gzip_bytes(
+                                    file_path, max_uncompressed_bytes=cap, env_names=env_names
+                                )
+                            else:
+                                payload, file_trunc = _sanitize_plain_bytes(
+                                    file_path, max_bytes=cap, env_names=env_names
+                                )
+                                uncompressed_len = len(payload)
+                        except (OSError, EOFError, zlib.error) as error:
+                            skipped_files.append({"path": str(file_path), "reason": f"read failed: {error}"})
+                            continue
 
-                            cap = min(MAX_SINGLE_EXPORT_FILE_BYTES, budget_remaining)
-                            arcname = f"{prefix}/ide-logs/{_safe_slot_dir(slot)}/{rel_name}"
-                            try:
-                                if file_path.name.endswith(".gz"):
-                                    payload, uncompressed_len, file_trunc = _sanitize_gzip_bytes(
-                                        file_path, max_uncompressed_bytes=cap, env_names=env_names
-                                    )
-                                else:
-                                    payload, file_trunc = _sanitize_plain_bytes(
-                                        file_path, max_bytes=cap, env_names=env_names
-                                    )
-                                    uncompressed_len = len(payload)
-                            except (OSError, EOFError, zlib.error) as error:
-                                skipped_files.append({"path": str(file_path), "reason": f"read failed: {error}"})
-                                continue
+                        _add_tar_bytes(archive, arcname, payload, mtime=mtime)
+                        budget_remaining = max(0, budget_remaining - uncompressed_len)
+                        bundle_truncated = bundle_truncated or file_trunc
+                        included_files.append({
+                            "archive_path": arcname,
+                            "bytes": len(payload),
+                            "truncated": file_trunc,
+                        })
 
-                            _add_tar_bytes(archive, arcname, payload, mtime=mtime)
-                            budget_remaining = max(0, budget_remaining - uncompressed_len)
-                            bundle_truncated = bundle_truncated or file_trunc
-                            included_files.append({
-                                "archive_path": arcname,
-                                "bytes": len(payload),
-                                "truncated": file_trunc,
-                            })
-
-                    export_record_in_archive = {
-                        "archive_path": str(destination),
-                        "mode": "0600",
-                        "ide_logs_included": include_ide_logs,
-                        "truncated": bundle_truncated,
-                        "included_files": included_files,
-                        "skipped_files": skipped_files,
-                    }
-                    archive_snapshot = dict(snapshot)
-                    archive_snapshot["export"] = redact_json_value(
-                        export_record_in_archive,
-                        env_names=env_names,
-                    )
-                    snapshot_bytes = (
-                        json.dumps(archive_snapshot, indent=2, sort_keys=True) + "\n"
-                    ).encode("utf-8")
-                    _add_tar_bytes(archive, f"{prefix}/snapshot.json", snapshot_bytes, mtime=mtime)
-
-        os.chmod(temp_path, 0o600)
-        os.replace(temp_path, destination)
-    except BaseException:
-        if fd >= 0:
-            try:
-                os.close(fd)
-            except OSError:
-                pass
-        temp_path.unlink(missing_ok=True)
-        raise
+                export_record_in_archive = {
+                    "archive_path": str(destination),
+                    "mode": "0600",
+                    "ide_logs_included": include_ide_logs,
+                    "truncated": bundle_truncated,
+                    "included_files": included_files,
+                    "skipped_files": skipped_files,
+                }
+                archive_snapshot = dict(snapshot)
+                archive_snapshot["export"] = redact_json_value(
+                    export_record_in_archive,
+                    env_names=env_names,
+                )
+                snapshot_bytes = (
+                    json.dumps(archive_snapshot, indent=2, sort_keys=True) + "\n"
+                ).encode("utf-8")
+                _add_tar_bytes(archive, f"{prefix}/snapshot.json", snapshot_bytes, mtime=mtime)
 
     archive_size = destination.stat().st_size
     return redact_json_value(
@@ -1315,7 +1350,7 @@ def diagnose_project(
             is_container_running=_container_is_running,
         )
         manifest_doc, manifest_error = _read_session_manifest(session_dir)
-        effective_session_id = str(manifest_doc.get("session") or session_dir.name)
+        effective_session_id = _validate_session_id(session_dir.name)
         record = find_checkout_record(manifest, root, env)
         checkout_name = checkout_name_for(manifest, record) if record is not None else "default"
         project_summary = {

@@ -18,7 +18,7 @@ REDACTED = "<redacted>"
 
 _QUERY_TOKEN_RE = re.compile(r"([?&]token=)[^&\s\"'#<>]+", re.IGNORECASE)
 _ENCODED_QUERY_TOKEN_RE = re.compile(
-    r"(?<![A-Za-z0-9_-])((?:%3[fF]|%26)?token%3[dD])[^&\s\"'#<>%]+",
+    r"((?:(?:%3[fF]|%26)|(?<![A-Za-z0-9_-]))token%3[dD])[^&\s\"'#<>]+",
     re.IGNORECASE,
 )
 _CONSOLE_COOKIE_RE = re.compile(
@@ -55,11 +55,11 @@ _NON_SECRET_ENV_SUFFIXES = (
     "_URL",
 )
 _SECRET_ENV_NAME_RE = re.compile(
-    r"^(?!XAUTHORITY$)[A-Z_][A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|PASSWD|API_KEY|APIKEY|PRIVATE_KEY|CREDENTIAL)[A-Z0-9_]*$",
+    r"^(?!XAUTHORITY$)[A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|PASSWD|API_KEY|APIKEY|PRIVATE_KEY|CREDENTIAL)[A-Z0-9_]*$",
     re.IGNORECASE,
 )
 _INLINE_SECRET_ASSIGNMENT_RE = re.compile(
-    r"(?<![A-Za-z0-9_-])([A-Za-z_][A-Za-z0-9_]*(?:TOKEN|SECRET|PASSWORD|PASSWD|API_KEY|APIKEY|PRIVATE_KEY|CREDENTIAL)[A-Za-z0-9_]*)=([^\s\"'&;]+)",
+    r"(?<![A-Za-z0-9_-])([A-Za-z_][A-Za-z0-9_]*)=(\"[^\"]*\"|'[^']*'|[^\s\"'&;]+)",
     re.IGNORECASE,
 )
 _ENV_ASSIGNMENT_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)=(.*)$", re.DOTALL)
@@ -74,9 +74,9 @@ def is_sensitive_env_name(name: str, extra_names: set[str] | None = None) -> boo
     return _SECRET_ENV_NAME_RE.match(name) is not None
 
 
-def _replace_inline_assignment(match: re.Match[str]) -> str:
+def _replace_inline_assignment(match: re.Match[str], env_names: set[str] | None) -> str:
     key, value = match.group(1), match.group(2)
-    if value == REDACTED or not is_sensitive_env_name(key):
+    if value == REDACTED or not is_sensitive_env_name(key, env_names):
         return match.group(0)
     return f"{key}={REDACTED}"
 
@@ -100,13 +100,9 @@ def redact_text(
     result = _CONSOLE_COOKIE_RE.sub(rf"\1{REDACTED}", result)
     result = _AUTH_HEADER_RE.sub(rf"\1{REDACTED}", result)
     result = _SECRET_FLAG_INLINE_RE.sub(rf"\1{REDACTED}", result)
-    result = _INLINE_SECRET_ASSIGNMENT_RE.sub(_replace_inline_assignment, result)
-    if env_names:
-        for name in sorted(env_names, key=len, reverse=True):
-            if not name:
-                continue
-            pattern = re.compile(rf"(?<![A-Za-z0-9_-])({re.escape(name)}=)[^\s\"'&;]+")
-            result = pattern.sub(rf"\1{REDACTED}", result)
+    result = _INLINE_SECRET_ASSIGNMENT_RE.sub(
+        lambda match: _replace_inline_assignment(match, env_names), result
+    )
     return result
 
 
@@ -150,10 +146,15 @@ def redact_json_value(
 
     if isinstance(value, str):
         return redact_text(value, secrets_to_scrub=secrets_to_scrub, env_names=env_names)
-    if isinstance(value, Mapping_TYPES):
+    if isinstance(value, dict):
         return {
-            redact_text(str(key), secrets_to_scrub=secrets_to_scrub, env_names=env_names): redact_json_value(
-                item, secrets_to_scrub=secrets_to_scrub, env_names=env_names
+            redact_text(str(key), secrets_to_scrub=secrets_to_scrub, env_names=env_names): (
+                REDACTED
+                if isinstance(item, (str, list, tuple, dict)) and (
+                    is_sensitive_env_name(str(key), env_names)
+                    or str(key).lower() in {"authorization", "proxy-authorization", "cookie", "set-cookie", "x-devcapsule-token"}
+                )
+                else redact_json_value(item, secrets_to_scrub=secrets_to_scrub, env_names=env_names)
             )
             for key, item in value.items()
         }
@@ -163,6 +164,3 @@ def redact_json_value(
             for item in value
         ]
     return value
-
-
-Mapping_TYPES = (dict,)

@@ -516,3 +516,77 @@ def test_entrypoint_diagnose_probe_cli_round_trip_with_zero_token_leakage(
     assert payload["probes"]["display_http"]["healthy"] is True
     assert payload["probes"]["display_websocket_rfb"]["healthy"] is True
     assert payload["probes"]["console_http"]["healthy"] is True
+
+
+@pytest.mark.parametrize("length", [12, 126, 65536])
+def test_websocket_ping_and_split_frames_preserve_greeting(length: int) -> None:
+    def handler(conn: socket.socket) -> None:
+        _, headers = _read_http_request(conn)
+        payload = b"RFB 003.008\n" + b"x" * (length - 12)
+        frame_header = b"\x82" + (
+            bytes([length]) if length < 126 else
+            b"\x7e" + struct.pack(">H", length) if length < 65536 else
+            b"\x7f" + struct.pack(">Q", length)
+        )
+        # Upgrade, ping and an empty binary message share the same TCP write.
+        conn.sendall(_ws_upgrade_response(headers["sec-websocket-key"]) + b"\x89\x01p\x82\x00" + frame_header[:1])
+        conn.sendall(frame_header[1:] + payload)
+        conn.settimeout(1)
+        pong = conn.recv(7)
+        assert pong[:2] == b"\x8a\x81"
+
+    with _tcp_server(handler) as port:
+        result = probe_websocket_rfb("127.0.0.1", port, token="test-token", timeout=1)
+    assert result["healthy"] is True
+    assert result["rfb_greeting"] == "RFB 003.008"
+
+
+def test_http_dribble_uses_total_deadline() -> None:
+    def handler(conn: socket.socket) -> None:
+        _read_http_request(conn)
+        for byte in b"HTTP/1.1 200 OK\r\n\r\n":
+            conn.sendall(bytes([byte]))
+            time.sleep(0.03)
+
+    with _tcp_server(handler) as port:
+        started = time.monotonic()
+        result = probe_http_get("127.0.0.1", port, "/", timeout=0.12)
+        elapsed = time.monotonic() - started
+    assert result["timed_out"] is True
+    assert elapsed < 0.45
+
+
+def test_rfb_eof_and_refused_are_distinct() -> None:
+    with _unix_rfb_server(lambda conn: None) as path:
+        result = probe_rfb_unix(path, timeout=0.2)
+    assert result["status"] == "closed-before-greeting"
+    assert result["accepted"] is True
+    with tempfile.TemporaryDirectory(dir="/tmp") as directory:
+        path = Path(directory) / "rfb.sock"
+        with socket.socket(socket.AF_UNIX) as sock:
+            sock.bind(str(path))
+        result = probe_rfb_unix(path, timeout=0.2)
+    assert result["status"] == "connect-error"
+    assert result["accepted"] is False
+
+
+def test_proc_exit_and_parentheses_in_name(tmp_path: Path) -> None:
+    _write_proc_entry(tmp_path, pid=5, ppid=1, name="(Web Content)", state="S (sleeping)", argv=["browser"])
+    (tmp_path / "6").mkdir()  # Process exited before its status could be read.
+    (tmp_path / "5" / "cmdline").unlink()  # Process exited after status was read.
+    result = scan_processes(tmp_path, self_pid=99)
+    assert result["total_processes"] == 1
+    assert result["processes"][0]["name"] == "(Web Content)"
+    assert result["processes"][0]["argv"] == []
+
+
+@pytest.mark.parametrize("frame", [b"\xc2\x00", b"\x82\x80", b"\x09\x00", b"\x89\x7e", b"\x83\x00"])
+def test_websocket_rejects_invalid_frames(frame: bytes) -> None:
+    def handler(conn: socket.socket) -> None:
+        _, headers = _read_http_request(conn)
+        conn.sendall(_ws_upgrade_response(headers["sec-websocket-key"]) + frame)
+
+    with _tcp_server(handler) as port:
+        result = probe_websocket_rfb("127.0.0.1", port, token="test-token", timeout=0.3)
+    assert result["status"] == "websocket-error"
+    assert result["healthy"] is False
