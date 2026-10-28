@@ -27,8 +27,10 @@ The [configuration home](../configuration/home.md) holds their settings.
 | `trust withdraw CHANNEL` | Remove acceptance; report success if the channel was not accepted. |
 | `default memory\|cpus VALUE\|none` | Set a resource default for this home, or remove it with `none`. |
 
-Inside a capsule, `show` and `trust list` read the mounted settings.
-Commands that change those settings name the command to run outside.
+Inside a capsule, `show` and `trust list` read the launcher's settings,
+mounted read-only, until the capsule has settings of its own; the first
+write starts from those and creates the capsule's own, never changing the
+launcher's.
 
 ## `devcapsule project`
 

@@ -18,7 +18,8 @@ from devcapsule.configuration.authorization import review_authorizations
 from devcapsule.configuration.capability_commands import paths
 from devcapsule.configuration.file_formats import ProjectConfigurationError, render_toml
 from devcapsule.configuration.storage import checkout_record_paths, load_toml, load_trust, manifest_for, settings_path
-from devcapsule.configuration.trust import BASE_CHANNEL, Channel, HomeTrust, channels_for, render_trust
+from devcapsule.configuration.file_formats import render_toml
+from devcapsule.configuration.trust import BASE_CHANNEL, Channel, HomeTrust, channels_for
 
 CLAUDE_TERMS = "https://www.anthropic.com/legal/commercial-terms"
 
@@ -93,7 +94,7 @@ def test_channels_are_the_locks_base_and_vendor_products(project: Path) -> None:
 def test_the_record_round_trips_and_covers_only_what_was_accepted() -> None:
     channel = Channel("claude-code", "Anthropic", "Claude Code", ("downloads.example.test",), "sha", CLAUDE_TERMS)
     trust = HomeTrust().with_channel(channel)
-    reloaded = HomeTrust.read(tomllib.loads(render_trust(trust)))
+    reloaded = HomeTrust.read(tomllib.loads(render_toml(trust.document())))
     assert reloaded.covers(channel) and reloaded.channels["claude-code"]["accepted"]
     assert HomeTrust.read({"trust": trust.document()}).covers(channel)  # the merged home document
     moved = Channel("claude-code", "Anthropic", "Claude Code", ("downloads.example.test", "cdn.example.test"), "sha", CLAUDE_TERMS)
@@ -187,7 +188,7 @@ def test_a_real_run_launches_on_the_homes_trust_alone(project: Path, monkeypatch
 
 def test_acceptance_binds_integrity_and_preserves_previously_accepted_origins() -> None:
     channel = Channel("vendor", "Vendor", "Product", ("https://one.test", "https://two.test"), "SHA-256", "https://terms.test")
-    trust = HomeTrust.read(tomllib.loads(render_trust(HomeTrust().with_channel(channel))))
+    trust = HomeTrust.read(tomllib.loads(render_toml(HomeTrust().with_channel(channel).document())))
     assert not trust.covers(replace(channel, integrity="MD5"))
     assert not trust.covers(replace(channel, origins=()))
     assert not trust.covers(replace(channel, vendor="Another vendor"))

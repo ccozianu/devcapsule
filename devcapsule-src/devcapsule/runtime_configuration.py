@@ -247,12 +247,14 @@ def require_launcher(start: Path, arguments: Sequence[str]) -> None:
         )
 
 
-def require_home_launcher(arguments: Sequence[str]) -> None:
-    """Refuse writes to the capsule's mounted home; a different home is independent."""
+def mounted_settings_path(env: Mapping[str, str] | None = None) -> Path | None:
+    """The launcher's settings as this capsule sees them: None outside a capsule or under a named home.
+
+    The capsule's own home, its data, state and cache among them, stays in
+    its own XDG directories; a launcher run inside the capsule writes there.
+    Only the launcher's settings are mounted, read-only.
+    """
     from devcapsule.platforms import XdgHomes
-    homes = XdgHomes.from_environment()
-    if CONTEXT_PATH.is_file() and homes.config == HOME_PATH:
-        raise ProjectConfigurationError(
-            "This command needs launcher-owned configuration or state. Inside this capsule that "
-            "configuration is read-only. Run outside the capsule: " + shlex.join(["devcapsule", "home", *arguments])
-        )
+    if CONTEXT_PATH.is_file() and XdgHomes.from_environment(env).chosen_by != "DEVCAPSULE_CONFIG_HOME":
+        return HOME_PATH / "settings.toml"
+    return None

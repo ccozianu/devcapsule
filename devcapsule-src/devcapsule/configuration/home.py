@@ -20,7 +20,7 @@ from typing import Any, Mapping
 from .file_formats import ProjectConfigurationError, table
 from .values import LAUNCHER_VALUE_NAMES, normalize_launcher_value
 
-__all__ = ["HomeDefaults", "render_defaults"]
+__all__ = ["HomeDefaults"]
 
 
 
@@ -55,10 +55,3 @@ class HomeDefaults:
     def document(self) -> dict[str, Any]:
         return {"defaults": dict(sorted(self.values.items()))}
 
-
-def render_defaults(defaults: HomeDefaults) -> str:
-    lines = ["[defaults]"]
-    for name, value in sorted(defaults.values.items()):
-        rendered = str(value) if isinstance(value, int) else f'"{value}"'
-        lines.append(f"{name} = {rendered}")
-    return "\n".join(lines) + "\n"

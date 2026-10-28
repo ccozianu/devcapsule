@@ -31,12 +31,11 @@ from urllib.parse import urlparse
 from devcapsule.components.catalog import COMPONENTS
 from devcapsule.compat import CliError
 
-from .file_formats import ProjectConfigurationError, quote_toml, table
+from .file_formats import ProjectConfigurationError, table
 
-__all__ = ["BASE_CHANNEL", "BASE_REPOSITORY", "Channel", "TRUST_SCHEMA_VERSION", "HomeTrust",
-           "channels_for", "render_trust"]
+__all__ = ["BASE_CHANNEL", "BASE_REPOSITORY", "Channel", "HomeTrust", "base_channel", "channels_for",
+           "component_channel"]
 
-TRUST_SCHEMA_VERSION = 1
 BASE_CHANNEL = "devcapsule-base"
 BASE_REPOSITORY = "docker.io/mycodespaceai/devcapsule-base"
 BASE_ORIGIN = "https://devcapsule.mycodespace.ai"
@@ -209,17 +208,3 @@ class HomeTrust:
     def document(self) -> dict[str, Any]:
         return {"channels": {channel_id: dict(entry) for channel_id, entry in sorted(self.channels.items())}}
 
-
-def render_trust(trust: HomeTrust) -> str:
-    lines: list[str] = []
-    for channel_id, entry in sorted(trust.channels.items()):
-        lines.extend(["", f"[channels.{quote_toml(channel_id) if not channel_id.replace('-', 'a').replace('_', 'a').isalnum() else channel_id}]"])
-        lines.append(f"vendor = {quote_toml(entry['vendor'])}")
-        lines.append(f"product = {quote_toml(entry.get('product', ''))}")
-        lines.append("origins = [" + ", ".join(quote_toml(item) for item in entry["origins"]) + "]")
-        lines.append(f"integrity = {quote_toml(entry.get('integrity', ''))}")
-        if entry.get("terms-url"):
-            lines.append(f"terms-url = {quote_toml(entry['terms-url'])}")
-        if entry.get("accepted"):
-            lines.append(f"accepted = {quote_toml(entry['accepted'])}")
-    return "\n".join(lines) + "\n"

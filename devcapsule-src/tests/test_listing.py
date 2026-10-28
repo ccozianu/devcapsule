@@ -12,7 +12,7 @@ from devcapsule.configuration.capabilities import CapabilityPolicy
 from devcapsule.configuration.file_formats import render_toml
 from devcapsule.configuration.listing import assess_checkout
 from devcapsule.configuration.launcher_values import launcher_value_sources
-from devcapsule.configuration.home import HomeDefaults, render_defaults
+from devcapsule.configuration.home import HomeDefaults
 from devcapsule.configuration.file_formats import ProjectConfigurationError
 from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES
@@ -158,7 +158,7 @@ def test_render_and_document_carry_every_column() -> None:
 def test_home_defaults_validate_and_render() -> None:
     defaults = HomeDefaults.read({"defaults": {"memory": "4g", "cpus": 2}})
     assert defaults.values == {"memory": "4GiB", "cpus": 2}
-    assert tomllib.loads(render_defaults(defaults)) == {"defaults": {"cpus": 2, "memory": "4GiB"}}
+    assert tomllib.loads(render_toml(defaults.document())) == {"defaults": {"cpus": 2, "memory": "4GiB"}}
     assert defaults.with_value("cpus", None).values == {"memory": "4GiB"}
     with pytest.raises(ProjectConfigurationError, match="owns memory, cpus"):
         HomeDefaults.read({"defaults": {"swap": "1g"}})

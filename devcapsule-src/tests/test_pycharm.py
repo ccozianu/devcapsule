@@ -1354,7 +1354,7 @@ def test_launcher_mounts_live_configuration_directory_and_private_snapshot_read_
         args = build_docker_args(config, files, env)
         assert f"type=bind,src={records},dst={CONFIGURATION_PATH},ro" in args
         assert f"type=bind,src={home}/settings.toml,dst=/etc/devcapsule/home/settings.toml,ro" in args
-        assert "DEVCAPSULE_CONFIG_HOME=/etc/devcapsule/home" in args
+        assert not any("DEVCAPSULE_CONFIG_HOME" in arg for arg in args)
         assert not any(f"src={home}," in arg for arg in args)
         assert f"type=bind,src={files.launch_context_file},dst={CONTEXT_PATH},ro" in args
         assert not any("src=" + str(records / "devcapsule.checkout.toml") in arg for arg in args)
