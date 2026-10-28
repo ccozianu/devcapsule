@@ -115,7 +115,7 @@ Your checkout:
 
 | Command | Intent |
 |---|---|
-| `ide IDE` | Choose this checkout's IDE: `python-ide`, `frontend-ide`, `java-ide`, `eclipse-ide` or `dotnet-ide`. |
+| `ide IDE` | Choose this checkout's IDE: `python-ide`, `frontend-ide`, `vscode-ide`, `java-ide`, `eclipse-ide` or `dotnet-ide`. |
 | `add CAPABILITY` | Add a capability the project did not declare. |
 | `omit CAPABILITY` | Omit an offered capability or remove a personal addition. |
 | `restore CAPABILITY` | Restore an offered capability. |

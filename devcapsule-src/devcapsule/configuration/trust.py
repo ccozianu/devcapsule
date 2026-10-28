@@ -28,7 +28,7 @@ import re
 from typing import Any, Mapping
 from urllib.parse import urlparse
 
-from devcapsule.components.catalog import COMPONENTS
+from devcapsule.components.catalog import COMPONENTS, INTERACTIVE_SURFACES
 from devcapsule.compat import CliError
 
 from .file_formats import ProjectConfigurationError, table
@@ -115,11 +115,21 @@ def component_channel(component_id: str, metadata: Mapping[str, Any], platform: 
         return None
     origins: list[str] = []
     try:
-        for artifact in definition.locked_artifacts(metadata, platform):
-            url = urlparse(artifact.url)
-            if url.scheme != "https" or not url.hostname or url.username or url.password:
+        artifacts = definition.locked_artifacts(metadata, platform)
+        candidates = (
+            [(metadata.get("url"), metadata.get("sha256"))]
+            if component_id in INTERACTIVE_SURFACES and not artifacts
+            else [(artifact.url, artifact.sha256) for artifact in artifacts]
+        )
+        for raw_url, raw_sha256 in candidates:
+            if not isinstance(raw_url, str) or not isinstance(raw_sha256, str):
+                raise ValueError("missing artifact url or sha256")
+            url = urlparse(raw_url)
+            if (any(character.isspace() for character in raw_url)
+                    or url.scheme != "https" or not url.hostname
+                    or url.username is not None or url.password is not None):
                 raise ProjectConfigurationError(f"Channel {component_id!r} requires an HTTPS artifact origin without credentials.")
-            if re.fullmatch(r"[0-9a-fA-F]{64}", artifact.sha256) is None:
+            if re.fullmatch(r"[0-9a-fA-F]{64}", raw_sha256) is None:
                 raise ProjectConfigurationError(f"Channel {component_id!r} requires a pinned SHA-256 for every artifact.")
             origin = f"https://{url.hostname}" + (f":{url.port}" if url.port not in (None, 443) else "")
             if origin not in origins:

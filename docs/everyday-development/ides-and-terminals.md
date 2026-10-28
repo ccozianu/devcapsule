@@ -1,6 +1,6 @@
 ---
 description: The IDEs DevCapsule offers, the terminal inside them, and how the capsule's shell differs from your computer's.
-updated: 2026-10-24
+updated: 2026-10-28
 weight: 1
 ---
 # IDEs and terminals
@@ -12,10 +12,23 @@ as shown below.
 | Capability | IDE | Development tools |
 |---|---|---|
 | `python-ide` | PyCharm | Python from the base |
+| `frontend-ide` | VSCodium (default) or Visual Studio Code (`vscode`) | Node.js from the base |
+| `vscode-ide` | Visual Studio Code | Polyglot editor; combine with base or component toolchains |
 | `java-ide` | IntelliJ IDEA | Java and Maven from the base |
 | `eclipse-ide` | Eclipse IDE for Java Developers | Bundled Eclipse runtime; Java and Maven from the base |
-| `frontend-ide` | VSCodium | Node.js from the base |
 | `dotnet-ide` | JetBrains Rider | .NET SDK selected automatically |
+
+For Visual Studio Code on any project, run `devcapsule project config ide vscode`
+(or `vscode-ide`). On a `frontend-ide` checkout, `devcapsule project config use frontend-ide vscode`
+selects Microsoft's distribution instead of VSCodium. DevCapsule does not
+redistribute Visual Studio Code in its images. On the first launch that needs a
+pinned version, local materialization downloads the archive directly from
+Microsoft on your machine and verifies it by SHA-256. Trust the channel once per
+configuration home with `devcapsule home trust accept vscode`, or consent per
+checkout with `devcapsule project config authorize vscode-download true`. Both
+consent to downloading Visual Studio Code from Microsoft's HTTPS origin under
+[Microsoft's Visual Studio Code license terms](https://code.visualstudio.com/license);
+see [Vendor software and trust](../configuration/software-approvals.md).
 
 For Eclipse, run `devcapsule project init --require java --ide eclipse-ide`, then
 `devcapsule project run`. Open the printed desktop link. In Eclipse, choose

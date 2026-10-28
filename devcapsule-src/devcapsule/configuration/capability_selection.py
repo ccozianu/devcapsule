@@ -308,9 +308,17 @@ def usable_lock(policy: CapabilityPolicy, source: Mapping[str, Any],
     # when the project required its IDE stands for every checkout that chose
     # none, and a checkout's own choice already replaced the surface.
     pinned = components.get("interactive-surface")
-    for capability in matrix.ide_capabilities():
-        if pinned in matrix.providers(capability) and isinstance(components.get(pinned), dict):
-            keep.update(supply(capability))
+    if (isinstance(pinned, str) and isinstance(components.get(pinned), dict)
+            and any(pinned in matrix.providers(capability) for capability in matrix.ide_capabilities())):
+        closure = [pinned]
+        for name in closure:
+            definition = COMPONENTS.get(name)
+            if definition is not None:
+                closure.extend(item for item in definition.required_components() if item not in closure)
+        missing = [name for name in sorted(closure) if name not in COMPONENTS or not isinstance(components.get(name), dict)]
+        if missing:
+            raise ProjectConfigurationError("missing supported providers: " + ", ".join(missing))
+        keep.update(closure)
     check_minimums(policy, lock, matrix)
     for capability in policy.optional:
         if capability in local.without:

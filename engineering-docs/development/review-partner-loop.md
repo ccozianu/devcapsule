@@ -42,7 +42,11 @@ digraph loop {
 2. The implementor writes the brief, commits it under the workstream's
    `evidence/` directory, creates or resets the review worktree on
    `ws-<workstream>/<slice>-review`, and starts the review partner.
-3. The review partner opens PRn.1 against PRn's branch.
+3. The review partner opens PRn.1 against PRn's branch. While it runs, the
+   implementor tails its event stream and tells the human in chat when it
+   started, what it committed, when its gate ran and when it ended; the
+   human reads progress where the human is, not in a log (owner direction,
+   2026-10-28, after a print-mode run that was silent for 36 minutes).
 4. The implementor reads the diff, posts the assessment, merges or pushes
    back with a round brief. Three rounds at most.
 5. The implementor runs the full gate on PRn's branch, records it in PRn and
@@ -250,6 +254,16 @@ cd ~/worktrees/<workstream>-review && nohup setsid bash -c "antigravity --model 
 A round continues the most recent conversation in the worktree with `-c`
 before `-p`, the round brief on standard input the same way.
 
+Streaming forms, owner direction of 2026-10-28, to be proven at the next
+loop: print mode speaks only at the end, so the log is empty until the
+report and the implementor cannot tell waiting from a stall. Each engine
+streams one event per step instead: Antigravity
+`--output-format stream-json` before `-p`; Claude Code
+`-p --output-format stream-json --verbose`; Codex `exec --json`. Until a
+loop proves them, the signals of progress are the engine's own log, for
+Antigravity `~/.gemini/antigravity-cli/cli.log`, the review worktree's
+commits and nox environments, and the pull request list.
+
 Prepare the worktree once per slice:
 
 ```text
@@ -266,6 +280,7 @@ when the workstream pauses, and say so in its open threads.
 
 | Date | Workstream | Implementor | Review partner | Slices and reviews | Outcome |
 |---|---|---|---|---|---|
+| 2026-10-28 | maintenance, VS Code as an IDE surface (0.3.0) | Antigravity, Gemini 4 Argon (High) pair, then Claude Code, Claude Fable 5.1 pair | Antigravity, Gemini 4 Argon (High) pair | #301/#302 | accepted at `bd3c6ade` without a round, merged at `241e7b10`; the implementing session was cut by a power outage with the slice uncommitted and its smoke unfinished, and the second pair took it over, committed it, ran the recorded IDE smoke from a temporary clone inside a capsule and opened the PR; the reviewer found the lock's version, url and sha256 unchecked, an empty-credential or whitespace URL establishing a trust channel, the discovery accepting a hostless URL by prefix, and `config ide` reporting the recommendation rather than the composed lock; 2544 unit tests on the merged branch; print mode was silent for 36 minutes, which produced the owner's direction on streaming output and on relaying progress; the brief committed under the workstream's evidence |
 | 2026-10-28 | maintenance, the configuration home and the home commands (0.3.0) | Codex, gpt-6-astra pair | Claude Code, Claude Fable 5.1 pair | #299/#300 | accepted at `36bec84` without a round, merged at `e83c0881`; the implementor was dispatched from the project-management session with the work order as its brief and stopped twice on blockers, the evidence location and an undeclared dependency, both cleared from the dispatching side; the reviewer reproduced every launcher-owned write failing inside a capsule under the launcher's exported home and replaced the order's in-capsule refusal with a read of the mounted settings until the capsule has its own; 2515 unit tests on the merged branch; all briefs committed under the workstream's evidence |
 | 2026-10-27 | maintenance, session diagnostics snapshot and export | Antigravity, Gemini 4 Argon (High) pair | Codex, gpt-6-astra pair | #293/#295 | accepted at `c190d1cf` without a round and merged at `5cc52392`; nine hardenings (bare/quoted/`%`-encoded and structured JSON credential redaction, live container verification across unfinished sessions, bounded `O_NOFOLLOW`/`O_NONBLOCK` manifest and IDE log reads with a 4,096-entry cap, shared `dir_fd`-pinned mode-`0600` output helper, WebSocket Ping/split-frame greeting buffering, tar-slip session/slot path validation, and CLI `OSError` diagnostics) with 33 new focused regression checks (42 total); post-merge gate 2380 unit / 17 packaging / 357 webconsole, 189 docs pages, plus real-container E2E fault-injection check passed; three unimplemented proposals recorded in `maintenance` status; the brief committed under the workstream's evidence |
 | 2026-10-27 | maintenance, release documentation automation (C20 for 0.3.0) | Codex, gpt-6-astra pair | Claude Code, Claude Fable 5.1 pair | #294/#296 | accepted at `59d56c2` after one round, merged at `7bb8883`; the implementor was dispatched from the project-management session with the work order as its brief, and corrected the order's sequence from the final-tag protocol, promotion before the last candidate; the reviewer found the placeholder rule refusing the 0.2.14 notes as published and the manifest reader refusing a candidate listed as development, both proven against the repository's own files; the round was on a placeholder wrapped across lines, which the reviewer's first rule had let through; 2430 unit tests on the merged branch; both briefs committed under the workstream's evidence |

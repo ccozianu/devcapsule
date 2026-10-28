@@ -346,6 +346,12 @@ of `WORKFLOW.md`, in this checkout.
    - Antigravity: `antigravity --model <model> --dangerously-skip-permissions -p '<one-line instruction to follow the brief on standard input>' < <brief>`;
      the model flag goes before `-p`, which takes the prompt as its own argument. A round continues the
      same conversation with `-c` before `-p`.
+   Owner direction, 2026-10-28: every form adds the engine's streaming
+   output, so the log carries one event per step while the partner runs
+   and not only its final report: Antigravity `--output-format stream-json`,
+   Claude Code `--output-format stream-json --verbose`, Codex `--json`.
+   The first loop after this direction proves each form and records it in
+   the development document.
    Establish any other form with the human and record it here before use.
 5. The review partner uses the GitHub CLI as *GitHub Integration* says; the
    brief repeats the activation line. Label the assessment comment
@@ -358,6 +364,11 @@ of `WORKFLOW.md`, in this checkout.
    the loops run are in
    [the development document](engineering-docs/development/review-partner-loop.md).
    Keep it current with every loop.
+8. Owner direction, 2026-10-28. When two agents cooperate on a task, the
+   one connected to the human pushes progress to where the human reads,
+   the chat or the terminal of that session: at least when the partner
+   starts, at each commit or gate it makes, and when it ends. The
+   partner's own log is evidence, not a report.
 
 ## Commit Authorship
 

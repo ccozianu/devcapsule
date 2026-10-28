@@ -22,7 +22,7 @@ per-checkout consents also remain supported. See
 | `development-sudo` | `true`, `false` | The capsule user may elevate inside the container through a temporary, launcher-owned sudoers policy |
 | `host-browser` | `true`, `false` | `xdg-open` in the capsule may ask the host browser to open a URL |
 | `host-x11` | `true`, `false` | The host display session is bound into the capsule instead of the contained desktop; never recommended by a project; the contained desktop is the default |
-| `claude-code-download`, `antigravity-download` | `true`, `false` | Per-checkout consent to that vendor's agent when its channel is not trusted in this home; `false` denies it even when it is |
+| `vscode-download`, `claude-code-download`, `antigravity-download` | `true`, `false` | Per-checkout consent to that vendor's software when its channel is not trusted in this home; `false` denies it even when it is |
 
 `--all-recommended` previews every recommendation and authorizes all only on
 `y`. For host access, `project run --authorize NAME VALUE` applies to one launch.

@@ -459,7 +459,7 @@ def selection_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[s
     if not value.get("components", {}).get("interactive-surface"):
         raise ProjectConfigurationError(
             "Choose your IDE for this checkout: devcapsule project config ide IDE "
-            "(python-ide, frontend-ide, java-ide, eclipse-ide or dotnet-ide)."
+            "(python-ide, frontend-ide, vscode-ide, java-ide, eclipse-ide or dotnet-ide)."
         )
     build_node_registry(manifest, value)
     return path, composed, value

@@ -171,6 +171,16 @@ SURFACE_MATERIALIZATIONS: dict[str, SurfaceMaterialization] = {
         requires_variant=False,
         post_install=(),
     ),
+    "vscode": SurfaceMaterialization(
+        component_id="vscode",
+        family="vscode",
+        recipe_id="vscode-local-materialization",
+        recipe_version="2",
+        installation_path="/opt/vscode",
+        archive_probes=("code", "bin/code", "chrome-sandbox"),
+        requires_variant=False,
+        post_install=(),
+    ),
 }
 COMPONENT_TEMPLATE_PATH = "/etc/devcapsule/component-runtime-template.json"
 RUNTIME_PLAN_PATH = "/etc/devcapsule/runtime-plan.json"

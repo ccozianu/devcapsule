@@ -50,6 +50,7 @@ GOLDEN_NEEDS = {
     "codium-dotnet": ["frontend-ide", "dotnet"],
     "intellij-browser": ["java", "java-ide", "browser-automation"],
     "codium-node": ["node", "frontend-ide"],
+    "vscode-node": ["node", "vscode-ide"],
     "pycharm-full": [
         "python",
         "python-ide",
@@ -118,6 +119,7 @@ def test_capability_vocabulary_unions_every_satisfaction_source() -> None:
         "postgresql-client",
         "python",
         "python-ide",
+        "vscode-ide",
     )
 
 
@@ -216,6 +218,34 @@ def test_unknown_capability_lists_the_supported_vocabulary() -> None:
         MATRIX.resolve(["python-ide", "quantum-debugger"])
     assert "'quantum-debugger'" in str(failure.value)
     for name in MATRIX.capabilities():
+        assert name in str(failure.value)
+
+
+def test_canonical_name_resolves_sole_or_unique_provider_and_refuses_ambiguity() -> None:
+    assert MATRIX.canonical_name("vscode") == "vscode-ide"
+    assert MATRIX.canonical_name("codium") == "frontend-ide"
+    matrix = ResolutionMatrix(
+        platform=Platform.LINUX_AMD64,
+        matrix_version="test-1",
+        bases=(_BasePin("v1", "s1", {}, {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),),
+        components={
+            "a": (_ComponentPin("a", "1.0", {"version": "1.0"}),),
+            "b": (_ComponentPin("b", "1.0", {"version": "1.0"}),),
+            "shared": (_ComponentPin("shared", "1.0", {"version": "1.0"}),),
+        },
+        edges=(),
+        couplings=(),
+        capability_table={
+            "first-ide": Capability(("a", "shared"), ide=True),
+            "second-ide": Capability(("b", "shared"), ide=True),
+        },
+        materialization={"a": {"recipe": "r", "recipe-version": "1"}},
+    )
+    assert matrix.canonical_name("a") == "first-ide"
+    with pytest.raises(ResolutionError) as failure:
+        matrix.canonical_name("shared")
+    assert "'shared'" in str(failure.value)
+    for name in matrix.capabilities():
         assert name in str(failure.value)
 
 
