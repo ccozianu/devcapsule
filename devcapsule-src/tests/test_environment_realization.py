@@ -172,7 +172,7 @@ def test_realize_environment_reuses_or_builds_canonical_image(
 @pytest.mark.parametrize("local", [False, True])
 def test_realization_reads_trust_but_preserves_a_local_override(tmp_path: Path, monkeypatch, local: bool) -> None:
     from devcapsule.configuration.storage import write_settings
-    from devcapsule.configuration.trust import BASE_REPOSITORY, WorkstationTrust, channels_for
+    from devcapsule.configuration.trust import BASE_REPOSITORY, HomeTrust, channels_for
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
     identity = "sha256:" + "c" * 64
     override = ("local/base:mine", identity) if local else None
@@ -181,7 +181,7 @@ def test_realization_reads_trust_but_preserves_a_local_override(tmp_path: Path, 
     selected.lock["base"]["reference"] = BASE_REPOSITORY + "@sha256:" + "b" * 64
     if not local:
         selected.checkout.clear()
-    trust = WorkstationTrust()
+    trust = HomeTrust()
     for channel in channels_for(selected.lock).values():
         trust = trust.with_channel(channel)
     write_settings({"trust": trust.document()})

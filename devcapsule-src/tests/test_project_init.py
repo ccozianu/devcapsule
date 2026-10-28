@@ -1338,7 +1338,7 @@ def test_wrong_family_answer_fails_before_any_prompt_or_write(tmp_path: Path) ->
 def test_curated_host_authorization_is_admitted_before_the_recommendation_exists(
     tmp_path: Path,
 ) -> None:
-    """The curated network recommendation takes precedence over its workstation
+    """The curated network recommendation takes precedence over its home
     default, and the same invocation records consent to that recommendation."""
     project = tmp_path / "project"
     project.mkdir()

@@ -101,11 +101,11 @@ def test_set_memory_cpus_default_and_declared_values(project: Path, capsys, monk
     assert "Did you mean 'memory'?" in capsys.readouterr().err
     assert cli.main(["home", "default", "cpus", "2"]) == 0
     assert cli.main(["home", "default", "swap", "2"]) == 2
-    workstation = tomllib.loads((Path(os.environ["XDG_CONFIG_HOME"]) / "devcapsule" / "settings.toml").read_text())
-    assert workstation["defaults"] == {"cpus": 2}
+    home = tomllib.loads((Path(os.environ["XDG_CONFIG_HOME"]) / "devcapsule" / "settings.toml").read_text())
+    assert home["defaults"] == {"cpus": 2}
     assert run(project, "show") == 0
     out = capsys.readouterr().out
-    assert "workstation default" in out
+    assert "home default" in out
     assert cli.main(["home", "default", "cpus", "none"]) == 0
     assert tomllib.loads((Path(os.environ["XDG_CONFIG_HOME"]) / "devcapsule" / "settings.toml").read_text())["defaults"] == {}
 
@@ -233,16 +233,16 @@ def test_cpu_edit_preserves_legacy_memory_and_other_answers(project, value):
 
 
 @pytest.mark.parametrize("contents", ['defaults = "bad"', '[defaults]\ncpus = 0',
-                                      'devcapsule-workstation-schema-version = 99', '[defaults'])
-def test_malformed_workstation_is_refused_without_writes(project, tmp_path, capsys, contents):
-    from devcapsule.configuration.storage import workstation_path, load_workstation
+                                      'devcapsule-settings-schema-version = 99', '[defaults'])
+def test_malformed_home_is_refused_without_writes(project, tmp_path, capsys, contents):
+    from devcapsule.configuration.storage import settings_path, load_settings
     from devcapsule.configuration.file_formats import ProjectConfigurationError
-    path = workstation_path()
+    path = settings_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(contents)
     before = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
     with pytest.raises(ProjectConfigurationError):
-        load_workstation()
+        load_settings()
     for verb in ("show", "check"):
         assert run(project, verb) == 2
         assert str(path) in capsys.readouterr().err
@@ -411,7 +411,7 @@ def test_inspection_never_writes_in_registered_stale_or_unregistered_states(proj
     assert {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()} == before
 
 
-def test_workstation_default_requires_host_launcher(runtime_project, tmp_path, capsys, monkeypatch):
+def test_home_default_requires_host_launcher(runtime_project, tmp_path, capsys, monkeypatch):
     from devcapsule.configuration.storage import config_root
     monkeypatch.setattr("devcapsule.runtime_configuration.HOME_PATH", config_root())
     before = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}

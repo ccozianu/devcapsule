@@ -34,7 +34,7 @@ class Configuration:
     """
 
     def __init__(self, manifest: Mapping[str, Any], lock: Mapping[str, Any],
-                 checkout: Mapping[str, Any], workstation: Mapping[str, Any] | None = None) -> None:
+                 checkout: Mapping[str, Any], home: Mapping[str, Any] | None = None) -> None:
         # The manifest as given is the file's own schema; a checkpoint from
         # before scoped digests recorded its whole digest, kept for freshness.
         self._manifest = current_manifest(manifest, Path("manifest")).document()
@@ -44,7 +44,7 @@ class Configuration:
             self._source_digest = None
         self._lock = deepcopy(dict(lock))
         self._checkout = deepcopy(dict(checkout))
-        self._workstation = deepcopy(dict(workstation or {}))
+        self._home = deepcopy(dict(home or {}))
         validate_file_format(self._lock, ConfigurationFileKind.lock, "platform lock")
         validate_file_format(self._checkout, ConfigurationFileKind.checkout, "checkout")
         if "base" in self._lock:
@@ -57,7 +57,7 @@ class Configuration:
         LocalCapabilities.read(self._checkout).validate(policy)
         if policy.minimums and table(self._checkout, "authorization", "base-image").get("image-id"):
             raise ProjectConfigurationError("A local base override cannot establish the project's minimum-version guarantee; select the pinned project base.")
-        self._review = review_configuration(self._manifest, self._lock, self._checkout, self._workstation)
+        self._review = review_configuration(self._manifest, self._lock, self._checkout, self._home)
 
     def review(self) -> ConfigurationReview:
         return deepcopy(self._review)
@@ -74,11 +74,11 @@ class Configuration:
             )
         # require_ready is rendered by the file/CLI adapter with its actual path.
         return Resolution(tomllib.loads(render_resolution(
-            self._manifest, self._lock, self._checkout, self._review, self._workstation,
+            self._manifest, self._lock, self._checkout, self._review, self._home,
         )))
 
     def stale_inputs(self, resolution: Resolution) -> tuple[str, ...]:
-        return stale_resolution_inputs(self._manifest, self._lock, self._checkout, resolution.document(), self._workstation,
+        return stale_resolution_inputs(self._manifest, self._lock, self._checkout, resolution.document(), self._home,
                                        source_digest=self._source_digest)
 
     def accept(self, resolution: Resolution, *, force: bool = False) -> tuple[str, ...]:

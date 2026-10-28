@@ -1,4 +1,4 @@
-"""Host-side acquisition and workstation-local component materialization."""
+"""Host-side acquisition and home-local component materialization."""
 
 from __future__ import annotations
 

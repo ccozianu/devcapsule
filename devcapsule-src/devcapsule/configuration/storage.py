@@ -89,14 +89,6 @@ def settings_path(env: Mapping[str, str] | None = None) -> Path:
     return config_root(env) / "settings.toml"
 
 
-def workstation_path(env: Mapping[str, str] | None = None) -> Path:
-    return settings_path(env)
-
-
-def trust_path(env: Mapping[str, str] | None = None) -> Path:
-    return settings_path(env)
-
-
 def launcher_release() -> str:
     from importlib.metadata import version
     from packaging.version import Version
@@ -106,8 +98,8 @@ def launcher_release() -> str:
 def validate_settings(document: Mapping[str, Any], path: Path) -> None:
     """Check reader admission before the schema or the settings themselves."""
     from packaging.version import InvalidVersion, Version
-    from .workstation import WorkstationDefaults
-    from .trust import WorkstationTrust
+    from .home import HomeDefaults
+    from .trust import HomeTrust
     required = document.get("minimum-devcapsule")
     try:
         if not isinstance(required, str):
@@ -128,13 +120,13 @@ def validate_settings(document: Mapping[str, Any], path: Path) -> None:
     if type(schema) is not int or schema != 1:
         raise ProjectConfigurationError(f"{path}: unsupported schema version {schema!r}; this launcher reads 1.")
     try:
-        WorkstationDefaults.read(document)
-        WorkstationTrust.read(document)
+        HomeDefaults.read(document)
+        HomeTrust.read(document)
     except ProjectConfigurationError as exc:
         raise ProjectConfigurationError(f"{path}: {exc}") from exc
 
 
-def load_workstation(env: Mapping[str, str] | None = None) -> dict[str, Any]:
+def load_settings(env: Mapping[str, str] | None = None) -> dict[str, Any]:
     """Read the single settings document; a missing home is empty."""
     path = settings_path(env)
     if not path.exists():
@@ -145,7 +137,7 @@ def load_workstation(env: Mapping[str, str] | None = None) -> dict[str, Any]:
 
 
 def load_trust(env: Mapping[str, str] | None = None) -> dict[str, Any]:
-    return dict(table(load_workstation(env), "trust"))
+    return dict(table(load_settings(env), "trust"))
 
 
 def write_settings(document: Mapping[str, Any], env: Mapping[str, str] | None = None) -> Path:
@@ -155,7 +147,7 @@ def write_settings(document: Mapping[str, Any], env: Mapping[str, str] | None = 
     table use the last writer's value; this is not a transaction across launchers.
     """
     path = settings_path(env)
-    before = load_workstation(env)
+    before = load_settings(env)
     after = {**before, **document}
     after.setdefault("devcapsule-settings-schema-version", 1)
     after.setdefault("minimum-devcapsule", launcher_release())
@@ -166,10 +158,6 @@ def write_settings(document: Mapping[str, Any], env: Mapping[str, str] | None = 
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     atomic_write(path, render_toml(after))
     return path
-
-
-def write_workstation(document: Mapping[str, Any], env: Mapping[str, str] | None = None) -> Path:
-    return write_settings(document, env)
 
 
 def checkout_directory(manifest: Mapping[str, Any], env: Mapping[str, str] | None = None) -> Path:

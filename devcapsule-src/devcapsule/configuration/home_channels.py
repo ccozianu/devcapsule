@@ -12,4 +12,3 @@ def known_channels() -> dict[str, Channel]:
         if channel is not None:
             result[component_id] = channel
     return result
-

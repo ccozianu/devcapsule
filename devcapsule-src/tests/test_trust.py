@@ -1,4 +1,4 @@
-"""Workstation trust (D-0011): a vendor's channel accepted once per computer, for every project and version."""
+"""Home trust (D-0011): a vendor's channel accepted once per computer, for every project and version."""
 
 from __future__ import annotations
 
@@ -17,8 +17,8 @@ from devcapsule.compat import DecisionPending
 from devcapsule.configuration.authorization import review_authorizations
 from devcapsule.configuration.capability_commands import paths
 from devcapsule.configuration.file_formats import ProjectConfigurationError, render_toml
-from devcapsule.configuration.storage import checkout_record_paths, load_toml, load_trust, manifest_for, trust_path
-from devcapsule.configuration.trust import BASE_CHANNEL, Channel, WorkstationTrust, channels_for, render_trust
+from devcapsule.configuration.storage import checkout_record_paths, load_toml, load_trust, manifest_for, settings_path
+from devcapsule.configuration.trust import BASE_CHANNEL, Channel, HomeTrust, channels_for, render_trust
 
 CLAUDE_TERMS = "https://www.anthropic.com/legal/commercial-terms"
 
@@ -70,7 +70,7 @@ def reviews(root: Path) -> dict:
     _root, manifest = manifest_for(root)
     record = load_toml(checkout_record_paths(manifest, root)[0])
     return {item.name: item for item in review_authorizations(manifest, load_toml(lock_path(root)), record,
-                                                              WorkstationTrust.read(load_trust()))}
+                                                              HomeTrust.read(load_trust()))}
 
 
 def test_channels_are_the_locks_base_and_vendor_products(project: Path) -> None:
@@ -92,17 +92,17 @@ def test_channels_are_the_locks_base_and_vendor_products(project: Path) -> None:
 
 def test_the_record_round_trips_and_covers_only_what_was_accepted() -> None:
     channel = Channel("claude-code", "Anthropic", "Claude Code", ("downloads.example.test",), "sha", CLAUDE_TERMS)
-    trust = WorkstationTrust().with_channel(channel)
-    reloaded = WorkstationTrust.read(tomllib.loads(render_trust(trust)))
+    trust = HomeTrust().with_channel(channel)
+    reloaded = HomeTrust.read(tomllib.loads(render_trust(trust)))
     assert reloaded.covers(channel) and reloaded.channels["claude-code"]["accepted"]
-    assert WorkstationTrust.read({"trust": trust.document()}).covers(channel)  # the merged workstation document
+    assert HomeTrust.read({"trust": trust.document()}).covers(channel)  # the merged home document
     moved = Channel("claude-code", "Anthropic", "Claude Code", ("downloads.example.test", "cdn.example.test"), "sha", CLAUDE_TERMS)
     assert not reloaded.covers(moved)  # a new origin asks again
     assert not reloaded.covers(Channel("claude-code", "Anthropic", "Claude Code", channel.origins, "sha", "https://other/terms"))
     assert not reloaded.without("claude-code").channels
     assert reloaded.without("codex") == reloaded
     with pytest.raises(ProjectConfigurationError, match="must name its vendor"):
-        WorkstationTrust.read({"channels": {"x": {"origins": []}}})
+        HomeTrust.read({"channels": {"x": {"origins": []}}})
 
 
 def test_trust_list_accept_and_withdraw(project: Path, capsys) -> None:
@@ -110,13 +110,13 @@ def test_trust_list_accept_and_withdraw(project: Path, capsys) -> None:
     assert config(project, "check") == 3
     assert config(project, "trust", "list") == 0
     out = capsys.readouterr().out
-    assert "devcapsule-base" in out and "not yet" in out and str(trust_path()) in out
+    assert "devcapsule-base" in out and "not yet" in out and str(settings_path()) in out
     assert cli.main(["home", "trust", "accept", "devcapsule-base", "--yes"]) == 0
     out = capsys.readouterr().out
     assert "Trust DevCapsule to supply the base images" in out and "Recorded for this DevCapsule home" in out
-    assert load_toml(trust_path())["trust"]["channels"]["devcapsule-base"]["vendor"] == "DevCapsule"
+    assert load_toml(settings_path())["trust"]["channels"]["devcapsule-base"]["vendor"] == "DevCapsule"
     assert config(project, "show") == 0
-    assert "workstation trust (devcapsule-base)" in capsys.readouterr().out
+    assert "home trust (devcapsule-base)" in capsys.readouterr().out
     assert config(project, "check") == 0
     capsys.readouterr()
     assert config(project, "trust", "list", "--json") == 0
@@ -132,26 +132,26 @@ def test_trust_list_accept_and_withdraw(project: Path, capsys) -> None:
 def test_run_trust_flag_records_the_channel_before_the_questions(project: Path) -> None:
     with pytest.raises(DecisionPending, match="--trust devcapsule-base"):
         prepare_launch(project, RunFlags(ide="python-ide"), interactive=False)
-    assert not trust_path().exists()
+    assert not settings_path().exists()
     prepared = prepare_launch(project, RunFlags(ide="python-ide", trust=("devcapsule-base",)), interactive=False)
     assert prepared.selected.resolution["authorization"]["base-image"]["reference"].startswith("docker.io/mycodespaceai/devcapsule-base@")
-    assert "devcapsule-base" in load_toml(trust_path())["trust"]["channels"]
-    assert "Accepted the channel devcapsule-base for this workstation." in prepared.notes
+    assert "devcapsule-base" in load_toml(settings_path())["trust"]["channels"]
+    assert "Accepted the channel devcapsule-base for this home." in prepared.notes
     # Printing the command stages the acceptance for the plan and writes nothing.
     assert withdraw("devcapsule-base") == 0
     prepare_launch(project, RunFlags(ide="python-ide", trust=("devcapsule-base",)), print_only=True)
-    assert not WorkstationTrust.read(load_trust()).channels
+    assert not HomeTrust.read(load_trust()).channels
     # With another decision pending and no terminal, the flag's acceptance is staged with the other answers: nothing is written.
     with pytest.raises(DecisionPending, match="Nothing was written"):
         prepare_launch(project, RunFlags(trust=("devcapsule-base",)), interactive=False)  # the IDE is still unchosen
-    assert not WorkstationTrust.read(load_trust()).channels
+    assert not HomeTrust.read(load_trust()).channels
     # Declined at the prompt: nothing recorded, the launch is still pending.
     assert config(project, "ide", "python-ide") == 0
     prompts = io.StringIO()
     with pytest.raises(DecisionPending):
         prepare_launch(project, RunFlags(), interactive=True, input_stream=io.StringIO("n\n"), output_stream=prompts)
     assert "Not accepted. Accept later:" in prompts.getvalue()
-    assert not WorkstationTrust.read(load_trust()).channels
+    assert not HomeTrust.read(load_trust()).channels
 
 
 def test_a_trusted_vendor_covers_every_version_and_a_denial_still_wins(project: Path, capsys) -> None:
@@ -170,7 +170,7 @@ def test_a_trusted_vendor_covers_every_version_and_a_denial_still_wins(project: 
     assert "Anthropic" in capsys.readouterr().out
 
 
-def test_a_real_run_launches_on_the_workstations_trust_alone(project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_real_run_launches_on_the_homes_trust_alone(project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Every reader of the base selection takes the trust: the realization, the history, the plan."""
     from tests.test_upgrade_recovery import install_external_fakes, invoke
     launch = install_external_fakes(monkeypatch, [])
@@ -180,14 +180,14 @@ def test_a_real_run_launches_on_the_workstations_trust_alone(project: Path, monk
     assert launch.call_count == 1
     _root, manifest = manifest_for(project)
     assert "base-image" not in load_toml(checkout_record_paths(manifest, project)[0]).get("authorization", {})
-    assert "devcapsule-base" in load_toml(trust_path())["trust"]["channels"]
+    assert "devcapsule-base" in load_toml(settings_path())["trust"]["channels"]
     monkeypatch.setattr("sys.stdin.isatty", lambda: False)
     assert invoke(project, "run", "--no-update-check") == 0  # the second launch asks nothing
 
 
 def test_acceptance_binds_integrity_and_preserves_previously_accepted_origins() -> None:
     channel = Channel("vendor", "Vendor", "Product", ("https://one.test", "https://two.test"), "SHA-256", "https://terms.test")
-    trust = WorkstationTrust.read(tomllib.loads(render_trust(WorkstationTrust().with_channel(channel))))
+    trust = HomeTrust.read(tomllib.loads(render_trust(HomeTrust().with_channel(channel))))
     assert not trust.covers(replace(channel, integrity="MD5"))
     assert not trust.covers(replace(channel, origins=()))
     assert not trust.covers(replace(channel, vendor="Another vendor"))
@@ -200,7 +200,7 @@ def test_acceptance_binds_integrity_and_preserves_previously_accepted_origins() 
     assert not extended.with_channel(changed_terms).covers(channel)
     document = trust.document()
     del document["channels"]["vendor"]["integrity"]
-    assert not WorkstationTrust.read(document).covers(channel)
+    assert not HomeTrust.read(document).covers(channel)
 
 
 def test_changed_artifact_origin_asks_and_lists_the_previous_acceptance(project: Path, capsys) -> None:
@@ -226,7 +226,7 @@ def test_changed_artifact_origin_asks_and_lists_the_previous_acceptance(project:
 def test_unverifiable_lock_cannot_create_or_widen_acceptance(project: Path, broken: str, capsys) -> None:
     pin_claude_code(project, "1.0.0")
     assert accept(project, "claude-code") == 0
-    before = trust_path().read_bytes()
+    before = settings_path().read_bytes()
     lock = load_toml(lock_path(project))
     metadata = lock["components"]["claude-code"]
     artifact = metadata["artifacts"]["linux-amd64"]
@@ -242,7 +242,7 @@ def test_unverifiable_lock_cannot_create_or_widen_acceptance(project: Path, brok
     lock_path(project).write_text(render_toml(lock))
     assert accept(project, "claude-code") == 2
     assert "No channel 'claude-code'" in capsys.readouterr().err
-    assert trust_path().read_bytes() == before
+    assert settings_path().read_bytes() == before
 
 
 @pytest.mark.parametrize("via", ["flag", "terminal"])
@@ -332,12 +332,12 @@ def test_foreign_base_still_requires_checkout_consent(project: Path) -> None:
                                        '[channels.x]\nvendor = "X"\norigins = 4',
                                        '[channels.x]\nvendor = "X"\nintegrity = 7'])
 def test_corrupt_trust_is_reported_and_never_rewritten(project: Path, content: str, capsys) -> None:
-    trust_path().parent.mkdir(parents=True, exist_ok=True)
-    trust_path().write_text(content)
+    settings_path().parent.mkdir(parents=True, exist_ok=True)
+    settings_path().write_text(content)
     for arguments in (("trust", "list"), ("show",), ("check",), ("trust", "accept", BASE_CHANNEL), ("trust", "withdraw", BASE_CHANNEL)):
         assert config(project, *arguments) == 2
-        assert str(trust_path()) in capsys.readouterr().err
-        assert trust_path().read_text() == content
+        assert str(settings_path()) in capsys.readouterr().err
+        assert settings_path().read_text() == content
 
 
 @pytest.mark.parametrize("accepted", [False, True])
@@ -357,11 +357,11 @@ def test_inspection_and_pending_trust_leave_all_files_unchanged(project: Path, t
 def test_trust_write_is_private_atomic_and_keeps_previous_record_on_failure(project: Path, monkeypatch) -> None:
     from devcapsule.configuration.storage import write_settings
     assert accept(project, BASE_CHANNEL) == 0
-    before = trust_path().read_bytes()
+    before = settings_path().read_bytes()
     original = Path.replace
     replacements = []
     def fail_replace(source: Path, target: Path) -> Path:
-        if target == trust_path():
+        if target == settings_path():
             assert source.parent == target.parent and source != target
             assert source.stat().st_mode & 0o777 == 0o600
             assert target.read_bytes() == before
@@ -370,9 +370,9 @@ def test_trust_write_is_private_atomic_and_keeps_previous_record_on_failure(proj
         return original(source, target)
     monkeypatch.setattr(Path, "replace", fail_replace)
     with pytest.raises(OSError, match="replacement failed"):
-        write_settings({"trust": WorkstationTrust().document()})
+        write_settings({"trust": HomeTrust().document()})
     assert len(replacements) == 1 and not replacements[0].exists()
-    assert trust_path().read_bytes() == before
+    assert settings_path().read_bytes() == before
 
 
 def test_withdraw_keeps_saved_plan_and_running_session_but_blocks_next_launch(project: Path, monkeypatch) -> None:

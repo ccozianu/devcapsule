@@ -27,7 +27,7 @@ from devcapsule.configuration.authorization import (
     authorized_base_selection,
     review_authorizations,
 )
-from devcapsule.configuration.trust import WorkstationTrust
+from devcapsule.configuration.trust import HomeTrust
 from devcapsule.runtime_artifact import runtime_artifact
 from devcapsule.runtime_command import RuntimeCommand
 
@@ -63,7 +63,7 @@ def realize_environment(
     materialize: Materialize | None = None,
     report: Callable[[str], None] | None = None,
     prepare_base: Callable[[ImageDetails], None] | None = None,
-    trust: WorkstationTrust | None = None,
+    trust: HomeTrust | None = None,
 ) -> RealizedEnvironment:
     """Strictly reuse or materialize the canonical image for one resolved project."""
 
@@ -73,9 +73,9 @@ def realize_environment(
         if base_override != selected.lock.get("base", {}).get("reference"):
             raise CliError("A base override cannot establish the project's minimum-version guarantee; use its pinned compatible base.")
     locked = parse_locked_environment(selected.lock)
-    from devcapsule.configuration.storage import load_workstation
+    from devcapsule.configuration.storage import load_settings
     if trust is None:
-        trust = WorkstationTrust.read(load_workstation())
+        trust = HomeTrust.read(load_settings())
     reviews = review_authorizations(selected.manifest, selected.lock, selected.checkout, trust)
     problems = [
         item for item in reviews if item.problem is not None
@@ -265,7 +265,7 @@ def omit_unavailable_optional(selected: ResolvedProject, url: str) -> ResolvedPr
     lock, _ = usable_lock(policy, selected.lock, choice)
     checkout = deepcopy(selected.checkout)
     checkout.setdefault("capabilities", {})["without"] = list(choice.without)
-    from devcapsule.configuration.storage import load_workstation
-    configuration = Configuration(selected.manifest, lock, checkout, load_workstation())
+    from devcapsule.configuration.storage import load_settings
+    configuration = Configuration(selected.manifest, lock, checkout, load_settings())
     configuration.review().require_ready(selected.root)
     return replace(selected, lock=lock, checkout=checkout, resolution=configuration.resolve().document())

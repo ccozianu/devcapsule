@@ -6,8 +6,8 @@ import tomllib
 import pytest
 
 from devcapsule import cli, runtime_configuration
-from devcapsule.configuration.storage import load_workstation, settings_path
-from devcapsule.configuration.trust import channels_for, WorkstationTrust
+from devcapsule.configuration.storage import load_settings, settings_path
+from devcapsule.configuration.trust import channels_for, HomeTrust
 from devcapsule.configuration.home_channels import known_channels
 from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES
@@ -51,7 +51,7 @@ def test_setup_show_and_withdraw(home: Path, capsys) -> None:
     assert cli.main(["home", "trust", "withdraw", "claude-code"]) == 0
     assert "No acceptance recorded" in capsys.readouterr().out
     assert (settings_path().read_bytes(), settings_path().stat().st_mtime_ns) == before
-    assert load_workstation()["defaults"] == {"cpus": 4, "memory": "8GiB"}
+    assert load_settings()["defaults"] == {"cpus": 4, "memory": "8GiB"}
 
 
 def test_accept_confirmation_and_unknown_channel(home: Path, monkeypatch: pytest.MonkeyPatch, capsys) -> None:
@@ -68,7 +68,7 @@ def test_accept_confirmation_and_unknown_channel(home: Path, monkeypatch: pytest
     monkeypatch.setattr("sys.stdin", io.StringIO("y\n"))
     assert cli.main(["home", "trust", "accept", "claude-code"]) == 0
     assert "https://www.anthropic.com/legal/commercial-terms" in capsys.readouterr().out
-    assert "claude-code" in load_workstation()["trust"]["channels"]
+    assert "claude-code" in load_settings()["trust"]["channels"]
 
 
 def test_matrix_channel_equals_rendered_lock_and_saved_acceptance(home: Path) -> None:
@@ -77,19 +77,19 @@ def test_matrix_channel_equals_rendered_lock_and_saved_acceptance(home: Path) ->
     channel = channels_for(lock)["claude-code"]
     assert known_channels()["claude-code"] == channel
     assert cli.main(["home", "trust", "accept", "claude-code", "--yes"]) == 0
-    assert WorkstationTrust.read(load_workstation()).covers(channel)
+    assert HomeTrust.read(load_settings()).covers(channel)
 
 
 def test_default_replace_remove_and_invalid_values(home: Path) -> None:
     assert cli.main(["home", "default", "cpus", "2"]) == 0
     assert cli.main(["home", "default", "cpus", "4"]) == 0
-    assert load_workstation()["defaults"]["cpus"] == 4
+    assert load_settings()["defaults"]["cpus"] == 4
     before = settings_path().read_bytes()
     for name, value in (("cpus", "0"), ("memory", "bad"), ("other", "2")):
         assert cli.main(["home", "default", name, value]) == 2
         assert settings_path().read_bytes() == before
     assert cli.main(["home", "default", "cpus", "none"]) == 0
-    assert load_workstation()["defaults"] == {}
+    assert load_settings()["defaults"] == {}
 
 
 @pytest.mark.parametrize("arguments", [["default", "cpus", "2"], ["trust", "accept", "devcapsule-base"],
@@ -141,3 +141,23 @@ def test_malformed_settings_stop_run_before_project_discovery(home: Path, conten
     assert cli.main(["project", "run", "--print-command"]) == 2
     assert str(path) in capsys.readouterr().err
     assert list(home.iterdir()) == [path] and path.read_text() == content
+
+
+@pytest.mark.parametrize("folder", ["devcapsule", "tests", "docs"])
+def test_replaced_scope_word_is_absent(folder: str) -> None:
+    package = Path(__file__).resolve().parents[1]
+    root = package.parent / "docs" if folder == "docs" else package / folder
+    forbidden = "work" + "station"
+    failures = []
+    for path in root.rglob("*"):
+        if not path.is_file() or "__pycache__" in path.parts or ".pytest_cache" in path.parts:
+            continue
+        if path.is_relative_to(package / "tests" / "resources" / "compat"):
+            continue
+        try:
+            text = path.read_text()
+        except UnicodeError:
+            continue
+        if forbidden in text.lower():
+            failures.append(str(path.relative_to(root)))
+    assert failures == []

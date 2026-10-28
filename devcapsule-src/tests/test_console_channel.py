@@ -416,11 +416,11 @@ def test_confirmed_console_request_is_used_this_launch_and_not_overwritten(proje
     assert deferred_requests(record_path(project)) == []
 
 
-def test_forgetting_vendor_denial_requires_confirmation_despite_workstation_trust(project, tmp_path):
+def test_forgetting_vendor_denial_requires_confirmation_despite_home_trust(project, tmp_path):
     from devcapsule.configuration.authorization import review_authorizations
     from devcapsule.configuration.file_formats import render_toml
     from devcapsule.configuration.storage import load_trust
-    from devcapsule.configuration.trust import WorkstationTrust
+    from devcapsule.configuration.trust import HomeTrust
     manifest = load_toml(paths(project)[0])
     lock_path = project / ".devcapsule" / "devcapsule.linux-amd64.lock"
     lock = load_toml(lock_path)
@@ -432,7 +432,7 @@ def test_forgetting_vendor_denial_requires_confirmation_despite_workstation_trus
     lock_path.write_text(render_toml(lock))
     def reviews(root):
         return {item.name: item for item in review_authorizations(
-            manifest, lock, load_toml(record_path(root)), WorkstationTrust.read(load_trust()))}
+            manifest, lock, load_toml(record_path(root)), HomeTrust.read(load_trust()))}
     from tests.test_trust import accept
     assert accept(project, "claude-code") == 0
     assert config(project, "authorize", "claude-code-download", "false") == 0

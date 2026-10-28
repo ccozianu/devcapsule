@@ -1,8 +1,8 @@
-"""The workstation's trust record: vendors and channels accepted once, per user, for every project.
+"""The home's trust record: vendors and channels accepted once, per user, for every project.
 
 D-0011 (2026-10-01), as the owner refined it for 0.3.0 rc4 (answer 3 of
 the CLI UX redesign work order): the user accepts a vendor's terms and
-trusts its channel once per workstation, "in all its versions and
+trusts its channel once per home, "in all its versions and
 incarnations", not per project, checkout or version. A channel is a vendor,
 an origin and an integrity method: DevCapsule's own base images from
 ``docker.io/mycodespaceai/devcapsule-base``, content-addressed by the
@@ -33,7 +33,7 @@ from devcapsule.compat import CliError
 
 from .file_formats import ProjectConfigurationError, quote_toml, table
 
-__all__ = ["BASE_CHANNEL", "BASE_REPOSITORY", "Channel", "TRUST_SCHEMA_VERSION", "WorkstationTrust",
+__all__ = ["BASE_CHANNEL", "BASE_REPOSITORY", "Channel", "TRUST_SCHEMA_VERSION", "HomeTrust",
            "channels_for", "render_trust"]
 
 TRUST_SCHEMA_VERSION = 1
@@ -44,7 +44,7 @@ BASE_ORIGIN = "https://devcapsule.mycodespace.ai"
 
 @dataclass(frozen=True)
 class Channel:
-    """One vendor product and the way it reaches this workstation, as the lock names it."""
+    """One vendor product and the way it reaches this home, as the lock names it."""
 
     id: str
     vendor: str
@@ -143,22 +143,22 @@ def component_channel(component_id: str, metadata: Mapping[str, Any], platform: 
 
 
 @dataclass(frozen=True)
-class WorkstationTrust:
-    """The channels this workstation's user has accepted, by channel id."""
+class HomeTrust:
+    """The channels this home's user has accepted, by channel id."""
 
     channels: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     @classmethod
-    def read(cls, document: Mapping[str, Any]) -> WorkstationTrust:
-        """Read ``trust.toml``'s mapping, or the ``trust`` table of the merged workstation document."""
+    def read(cls, document: Mapping[str, Any]) -> HomeTrust:
+        """Read ``trust.toml``'s mapping, or the ``trust`` table of the merged home document."""
         source = document.get("trust", document) if "trust" in document else document
         if not isinstance(source, Mapping):
-            raise ProjectConfigurationError("The workstation trust record must be a table.")
+            raise ProjectConfigurationError("The home trust record must be a table.")
         channels = table(source, "channels")
         result: dict[str, dict[str, Any]] = {}
         for channel_id, entry in channels.items():
             if not isinstance(channel_id, str) or not channel_id or not isinstance(entry, dict):
-                raise ProjectConfigurationError("The workstation trust record's channels must be tables keyed by channel id.")
+                raise ProjectConfigurationError("The home trust record's channels must be tables keyed by channel id.")
             vendor = entry.get("vendor")
             origins = entry.get("origins", [])
             if not isinstance(vendor, str) or not vendor:
@@ -185,7 +185,7 @@ class WorkstationTrust:
             return False
         return bool(channel.origins) and set(channel.origins) <= set(entry["origins"])
 
-    def with_channel(self, channel: Channel, *, accepted_at: datetime | None = None) -> WorkstationTrust:
+    def with_channel(self, channel: Channel, *, accepted_at: datetime | None = None) -> HomeTrust:
         if self.covers(channel):
             return self
         moment = (accepted_at or datetime.now(timezone.utc)).replace(microsecond=0).isoformat()
@@ -197,20 +197,20 @@ class WorkstationTrust:
             origins.update(previous["origins"])
         channels[channel.id] = {"vendor": channel.vendor, "origins": sorted(origins), "integrity": channel.integrity,
                                "terms-url": channel.terms_url, "product": channel.product, "accepted": moment}
-        return WorkstationTrust(channels)
+        return HomeTrust(channels)
 
-    def without(self, channel_id: str) -> WorkstationTrust:
+    def without(self, channel_id: str) -> HomeTrust:
         if channel_id not in self.channels:
             return self
         channels = dict(self.channels)
         del channels[channel_id]
-        return WorkstationTrust(channels)
+        return HomeTrust(channels)
 
     def document(self) -> dict[str, Any]:
         return {"channels": {channel_id: dict(entry) for channel_id, entry in sorted(self.channels.items())}}
 
 
-def render_trust(trust: WorkstationTrust) -> str:
+def render_trust(trust: HomeTrust) -> str:
     lines: list[str] = []
     for channel_id, entry in sorted(trust.channels.items()):
         lines.extend(["", f"[channels.{quote_toml(channel_id) if not channel_id.replace('-', 'a').replace('_', 'a').isalnum() else channel_id}]"])

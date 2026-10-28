@@ -334,7 +334,7 @@ def test_built_pex_authors_shared_policy_and_keeps_personal_selection_local(
     chosen = invoke("config", "add", "codex-agent")
     assert chosen.returncode == 0, chosen.stderr
     assert {path.name: path.read_bytes() for path in directory.iterdir()} == shared
-    # The base channel is a workstation decision since 0.3.0 rc4: until it is
+    # The base channel is a home decision since 0.3.0 rc4: until it is
     # trusted, or the base consented to per checkout, 'check' reports it as
     # pending with status 3. The trust record lives under the isolated
     # XDG_CONFIG_HOME above, so accepting it here touches nothing shared.

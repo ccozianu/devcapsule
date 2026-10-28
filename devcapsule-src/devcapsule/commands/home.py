@@ -6,17 +6,17 @@ from typing import Mapping
 
 from devcapsule.commands.framework import Command, Group
 from devcapsule.configuration.file_formats import ProjectConfigurationError
-from devcapsule.configuration.storage import load_workstation, write_settings
-from devcapsule.configuration.trust import WorkstationTrust
+from devcapsule.configuration.storage import load_settings, write_settings
+from devcapsule.configuration.trust import HomeTrust
 from devcapsule.configuration.home_channels import known_channels
-from devcapsule.configuration.workstation import WorkstationDefaults
+from devcapsule.configuration.home import HomeDefaults
 from devcapsule.configuration.values import LAUNCHER_VALUE_NAMES
 from devcapsule.platforms import XdgHomes
 from devcapsule.runtime_configuration import require_home_launcher
 
 
 def _print_channels(document: Mapping) -> None:
-    trust = WorkstationTrust.read(document)
+    trust = HomeTrust.read(document)
     for channel_id, entry in sorted(trust.channels.items()):
         print(f"{channel_id}: {entry['vendor']} — {entry['product']}; "
               f"from {', '.join(entry['origins'])}; accepted {entry['accepted']}")
@@ -30,13 +30,13 @@ class HomeShowCommand(Command):
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        document = load_workstation()
+        document = load_settings()
         homes = XdgHomes.from_environment()
         print(f"DevCapsule home: {homes.config}")
         print(f"Chosen by: {homes.chosen_by}")
         for name in ("devcapsule-settings-schema-version", "minimum-devcapsule"):
             print(f"{name}: {document.get(name, '(not recorded)')}")
-        defaults = WorkstationDefaults.read(document).values
+        defaults = HomeDefaults.read(document).values
         print("Defaults: " + (", ".join(f"{name} = {value}" for name, value in sorted(defaults.items())) or "none"))
         _print_channels(document)
         return 0
@@ -48,7 +48,7 @@ class HomeTrustListCommand(Command):
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        _print_channels(load_workstation())
+        _print_channels(load_settings())
         return 0
 
 
@@ -63,7 +63,7 @@ class HomeTrustAcceptCommand(Command):
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        document = load_workstation()
+        document = load_settings()
         require_home_launcher(["trust", "accept", arguments.channel])
         channels = known_channels()
         channel = channels.get(arguments.channel)
@@ -80,7 +80,7 @@ class HomeTrustAcceptCommand(Command):
             if answer not in {"y", "yes"}:
                 print("Not accepted.")
                 return 0
-        trust = WorkstationTrust.read(document).with_channel(channel)
+        trust = HomeTrust.read(document).with_channel(channel)
         path = write_settings({"trust": trust.document()})
         print(f"Recorded for this DevCapsule home: {path}")
         return 0
@@ -96,9 +96,9 @@ class HomeTrustWithdrawCommand(Command):
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        document = load_workstation()
+        document = load_settings()
         require_home_launcher(["trust", "withdraw", arguments.channel])
-        trust = WorkstationTrust.read(document)
+        trust = HomeTrust.read(document)
         if arguments.channel not in trust.channels:
             print(f"No acceptance recorded for {arguments.channel} in this home.")
             return 0
@@ -118,12 +118,12 @@ class HomeDefaultCommand(Command):
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        document = load_workstation()
+        document = load_settings()
         require_home_launcher(["default", arguments.name, arguments.value])
         if arguments.name not in LAUNCHER_VALUE_NAMES:
             raise ProjectConfigurationError("This home has defaults for memory and cpus only.")
         removing = arguments.value.strip().lower() == "none"
-        defaults = WorkstationDefaults.read(document).with_value(arguments.name, None if removing else arguments.value)
+        defaults = HomeDefaults.read(document).with_value(arguments.name, None if removing else arguments.value)
         path = write_settings(defaults.document())
         print(f"Removed the home default for {arguments.name}." if removing else
               f"Home default {arguments.name} = {defaults.values[arguments.name]}.")

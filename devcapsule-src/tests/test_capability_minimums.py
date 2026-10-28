@@ -16,8 +16,8 @@ from devcapsule.configuration.capabilities import CapabilityPolicy, LocalCapabil
 from devcapsule.configuration.capability_selection import compose_lock, generate_lock, usable_lock
 from devcapsule.configuration.derivation import load_state
 from devcapsule.configuration.file_formats import ProjectConfigurationError, canonical_digest, render_toml
-from devcapsule.configuration.storage import checkout_record_paths, load_toml, recommendation_lock_for, trust_path
-from devcapsule.configuration.trust import WorkstationTrust, channels_for
+from devcapsule.configuration.storage import checkout_record_paths, load_toml, recommendation_lock_for, settings_path
+from devcapsule.configuration.trust import HomeTrust, channels_for
 from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import Capability, MATRICES, ResolutionMatrix, _BasePin, _ComponentPin, _VerifiedEdge
 
@@ -229,7 +229,7 @@ ide = "frontend-ide"
         "checkout": {"path": str(project)},
         "capabilities": {"selected": ["claude-code-agent", "codex-agent", "frontend-ide"], "without": [], "lock": pins_text},
     }))
-    trust_path().write_text('''devcapsule-settings-schema-version = 1
+    settings_path().write_text('''devcapsule-settings-schema-version = 1
 minimum-devcapsule = "0.3.0"
 [trust.channels.devcapsule-base]
 vendor = "DevCapsule"
@@ -243,7 +243,7 @@ integrity = "the SHA-256 the launcher pins"
 terms-url = "https://www.anthropic.com/legal/commercial-terms"
 accepted = "2026-10-24T10:00:00+00:00"
 ''')
-    trusted = WorkstationTrust.read(load_toml(trust_path()))
+    trusted = HomeTrust.read(load_toml(settings_path()))
     assert all(trusted.covers(channel) for channel in channels_for(pins).values())
     before = snapshot(tmp_path)
     loaded = recommendation_lock_for(project, manifest)[1]

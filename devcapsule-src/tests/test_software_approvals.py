@@ -237,7 +237,7 @@ def test_run_with_other_pending_decisions_refuses_as_before(checkout, monkeypatc
     assert invoke(project, "run", "--no-update-check") == 3
     captured = capsys.readouterr()
     assert "Approve all of them?" not in captured.out
-    # The download's channel is the workstation's question (D-0011), named by its channel.
+    # The download's channel is the home's question (D-0011), named by its channel.
     assert "antigravity-cli" in captured.err and "Nothing was written" in captured.err
     assert "--trust antigravity-cli" in captured.err
     assert run_until_prepared(project) == 3
