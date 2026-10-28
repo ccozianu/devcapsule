@@ -67,10 +67,15 @@ Released clients before this feature did not create those records.
 
 ## Inside a capsule
 
-The capsule receives the settings file read-only. `home show` and
-`home trust list` read that view. Mutating commands name the command to run
-outside the capsule. Set `DEVCAPSULE_CONFIG_HOME` to a different writable
-directory when you need a separate home for nested use.
+The capsule receives the launcher's settings file read-only. While the
+capsule has no settings of its own, `home show` and `home trust list` read
+that view, and `home show` says so. The capsule's own home, with its data,
+state and cache, stays in the capsule's XDG directories: the first write
+inside the capsule starts from the launcher's settings and creates the
+capsule's own there, never changing the launcher's, and from then on the
+capsule reads its own. That is the home a launcher run inside the capsule
+uses. Set `DEVCAPSULE_CONFIG_HOME` inside the capsule
+when you want that home somewhere else.
 
 [Vendor software and trust](software-approvals.md) explains channel acceptance.
 [Resource limits](resource-limits.md) explains how defaults interact with project

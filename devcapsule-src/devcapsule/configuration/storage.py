@@ -86,7 +86,25 @@ def config_root(env: Mapping[str, str] | None = None) -> Path:
 
 
 def settings_path(env: Mapping[str, str] | None = None) -> Path:
+    """This home's settings file, the one a write goes to."""
     return config_root(env) / "settings.toml"
+
+
+def settings_source(env: Mapping[str, str] | None = None) -> Path:
+    """The settings file a read takes.
+
+    Inside a capsule the launcher's settings arrive as a read-only mount. A
+    capsule that has no settings of its own and names no home reads that
+    mount, so that what it trusts and defaults to is what launched it; once
+    it writes its own, or names a home, that home is the whole truth, as it
+    is for a launcher the capsule runs.
+    """
+    from devcapsule.runtime_configuration import mounted_settings_path
+    own = settings_path(env)
+    if own.exists():
+        return own
+    mounted = mounted_settings_path(env)
+    return mounted if mounted is not None and mounted.exists() else own
 
 
 def launcher_release() -> str:
@@ -134,7 +152,7 @@ def validate_settings(document: Mapping[str, Any], path: Path) -> None:
 
 def load_settings(env: Mapping[str, str] | None = None) -> dict[str, Any]:
     """Read the single settings document; a missing home is empty."""
-    path = settings_path(env)
+    path = settings_source(env)
     if not path.exists():
         return {}
     document = load_toml(path)

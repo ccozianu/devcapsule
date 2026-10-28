@@ -1417,7 +1417,6 @@ def build_docker_args(
         home = config.launch_configuration.document.get("configuration-home")
         if home:
             from devcapsule.runtime_configuration import HOME_PATH
-            args.extend(["--env", f"DEVCAPSULE_CONFIG_HOME={HOME_PATH}"])
             settings = Path(str(home)) / "settings.toml"
             if settings.is_file():
                 args.extend(["--mount", f"type=bind,src={settings},dst={HOME_PATH}/settings.toml,ro"])

@@ -6,10 +6,10 @@ import tomllib
 import pytest
 
 from devcapsule import cli, runtime_configuration
-from devcapsule.configuration.storage import load_settings, settings_path
+from devcapsule.configuration.storage import load_settings, settings_path, settings_source
 from devcapsule.configuration.trust import channels_for, HomeTrust
 from devcapsule.configuration.home_channels import known_channels
-from devcapsule.platforms import Platform
+from devcapsule.platforms import Platform, XdgHomes
 from devcapsule.resolution_matrix import MATRICES
 
 
@@ -114,25 +114,49 @@ def test_default_replace_remove_and_invalid_values(home: Path) -> None:
     assert load_settings()["defaults"] == {}
 
 
-@pytest.mark.parametrize("arguments", [["default", "cpus", "2"], ["trust", "accept", "devcapsule-base"],
-                                       ["trust", "withdraw", "devcapsule-base"]])
-def test_capsule_reads_and_refuses_mutation(home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys, arguments: list[str]) -> None:
+def test_capsule_reads_the_mounted_settings_until_it_writes_its_own(home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys) -> None:
+    """A capsule reads the launcher's settings from the mount; its own home, data, state and cache stay its own."""
     assert cli.main(["home", "default", "cpus", "4"]) == 0
+    assert cli.main(["home", "trust", "accept", "devcapsule-base", "--yes"]) == 0
+    capsys.readouterr()
+    mounted = tmp_path / "mounted"
+    mounted.mkdir()
+    (mounted / "settings.toml").write_bytes(settings_path().read_bytes())
+    monkeypatch.delenv("DEVCAPSULE_CONFIG_HOME")
+    monkeypatch.setenv("HOME", str(tmp_path / "capsule-home"))
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
     context = tmp_path / "context.json"
     context.write_text('{"format": 1}')
     monkeypatch.setattr(runtime_configuration, "CONTEXT_PATH", context)
-    monkeypatch.setattr(runtime_configuration, "HOME_PATH", home)
-    before = settings_path().read_bytes()
+    monkeypatch.setattr(runtime_configuration, "HOME_PATH", mounted)
+    before = (mounted / "settings.toml").read_bytes()
+    own = tmp_path / "capsule-home" / ".config" / "devcapsule" / "settings.toml"
+    assert settings_path() == own and settings_source() == mounted / "settings.toml"
+    state = XdgHomes.from_environment().state
+    assert state.is_relative_to(tmp_path) and not state.is_relative_to(mounted)
     assert cli.main(["home", "show"]) == 0
+    output = capsys.readouterr().out
+    assert f"DevCapsule home: {own.parent}" in output and f"mounted read-only: {mounted / 'settings.toml'}" in output
+    assert "cpus = 4" in output and "devcapsule-base" in output
     assert cli.main(["home", "trust", "list"]) == 0
-    assert cli.main(["home", *arguments]) == 2
-    error = capsys.readouterr().err
-    assert "configuration is read-only" in error
-    assert "devcapsule home " + " ".join(arguments) in error
-    assert settings_path().read_bytes() == before
-    monkeypatch.setenv("DEVCAPSULE_CONFIG_HOME", str(tmp_path / "nested"))
+    assert "devcapsule-base" in capsys.readouterr().out
+    # A write inside the capsule starts from the launcher's settings, creates the
+    # capsule's own home and never touches the mount; reads take the own from then on.
     assert cli.main(["home", "default", "cpus", "2"]) == 0
-    assert (home / "settings.toml").read_bytes() == before
+    assert own.is_file() and (mounted / "settings.toml").read_bytes() == before
+    assert settings_source() == own
+    capsys.readouterr()
+    assert cli.main(["home", "show"]) == 0
+    output = capsys.readouterr().out
+    assert "cpus = 2" in output and "mounted read-only" not in output and "devcapsule-base" in output
+    assert cli.main(["home", "trust", "withdraw", "devcapsule-base"]) == 0
+    assert "devcapsule-base" not in load_settings().get("trust", {}).get("channels", {})
+    assert (mounted / "settings.toml").read_bytes() == before
+    # A home the capsule names is its own, mount or no mount.
+    monkeypatch.setenv("DEVCAPSULE_CONFIG_HOME", str(tmp_path / "nested"))
+    assert settings_source() == tmp_path / "nested" / "settings.toml"
+    assert cli.main(["home", "trust", "list"]) == 0
+    assert "No accepted channels" in capsys.readouterr().out
 
 
 @pytest.mark.parametrize("arguments", [["default", "cpus", "2"], ["trust", "accept", "devcapsule-base"],

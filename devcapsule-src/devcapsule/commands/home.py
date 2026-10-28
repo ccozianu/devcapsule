@@ -6,13 +6,12 @@ from typing import Mapping
 
 from devcapsule.commands.framework import Command, Group
 from devcapsule.configuration.file_formats import ProjectConfigurationError
-from devcapsule.configuration.storage import load_settings, write_settings
+from devcapsule.configuration.storage import load_settings, settings_path, settings_source, write_settings
 from devcapsule.configuration.trust import HomeTrust
 from devcapsule.configuration.home_channels import known_channels
 from devcapsule.configuration.home import HomeDefaults
 from devcapsule.configuration.values import LAUNCHER_VALUE_NAMES
 from devcapsule.platforms import XdgHomes
-from devcapsule.runtime_configuration import require_home_launcher
 
 
 def _print_channels(document: Mapping) -> None:
@@ -34,6 +33,10 @@ class HomeShowCommand(Command):
         homes = XdgHomes.from_environment()
         print(f"DevCapsule home: {homes.config}")
         print(f"Chosen by: {homes.chosen_by}")
+        source = settings_source()
+        if source != settings_path():
+            print(f"Settings read from the launcher of this capsule, mounted read-only: {source}")
+            print("This home has no settings of its own yet; a write creates them here and takes over.")
         for name in ("devcapsule-settings-schema-version", "minimum-devcapsule"):
             print(f"{name}: {document.get(name, '(not recorded)')}")
         defaults = HomeDefaults.read(document).values
@@ -64,12 +67,11 @@ class HomeTrustAcceptCommand(Command):
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
         document = load_settings()
-        require_home_launcher(["trust", "accept", arguments.channel])
         channels = known_channels()
         channel = channels.get(arguments.channel)
         if channel is None:
             raise ProjectConfigurationError(f"Unknown channel {arguments.channel!r}; known channels: {', '.join(sorted(channels))}.")
-        print(channel.statement(XdgHomes.from_environment().config))
+        print(channel.statement(settings_path().parent))
         if channel.note:
             print(channel.note)
         if not arguments.yes:
@@ -97,7 +99,6 @@ class HomeTrustWithdrawCommand(Command):
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
         document = load_settings()
-        require_home_launcher(["trust", "withdraw", arguments.channel])
         trust = HomeTrust.read(document)
         if arguments.channel not in trust.channels:
             print(f"No acceptance recorded for {arguments.channel} in this home.")
@@ -119,7 +120,6 @@ class HomeDefaultCommand(Command):
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
         document = load_settings()
-        require_home_launcher(["default", arguments.name, arguments.value])
         if arguments.name not in LAUNCHER_VALUE_NAMES:
             raise ProjectConfigurationError("This home has defaults for memory and cpus only.")
         removing = arguments.value.strip().lower() == "none"

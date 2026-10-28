@@ -411,10 +411,18 @@ def test_inspection_never_writes_in_registered_stale_or_unregistered_states(proj
     assert {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()} == before
 
 
-def test_home_default_requires_host_launcher(runtime_project, tmp_path, capsys, monkeypatch):
-    from devcapsule.configuration.storage import config_root
-    monkeypatch.setattr("devcapsule.runtime_configuration.HOME_PATH", config_root())
-    before = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
-    assert cli.main(["home", "default", "cpus", "2"]) == 2
-    assert "Run outside the capsule" in capsys.readouterr().err
-    assert {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()} == before
+def test_home_default_in_a_capsule_writes_the_capsule_s_own_home_not_the_mount(runtime_project, tmp_path, capsys, monkeypatch):
+    """A capsule's write creates the capsule's own settings; the launcher's mounted file is never touched."""
+    from devcapsule.configuration.storage import load_settings, settings_path, settings_source
+    mounted = tmp_path / "mounted"
+    mounted.mkdir()
+    (mounted / "settings.toml").write_text(
+        'devcapsule-settings-schema-version = 1\nminimum-devcapsule = "0.3.0"\n\n[defaults]\ncpus = 8\n')
+    monkeypatch.setattr("devcapsule.runtime_configuration.HOME_PATH", mounted)
+    assert not settings_path().exists() and settings_source() == mounted / "settings.toml"
+    assert load_settings()["defaults"] == {"cpus": 8}
+    before = (mounted / "settings.toml").read_bytes()
+    assert cli.main(["home", "default", "cpus", "2"]) == 0
+    assert f"Home settings: {settings_path()}" in capsys.readouterr().out
+    assert (mounted / "settings.toml").read_bytes() == before
+    assert settings_source() == settings_path() and load_settings()["defaults"] == {"cpus": 2}
