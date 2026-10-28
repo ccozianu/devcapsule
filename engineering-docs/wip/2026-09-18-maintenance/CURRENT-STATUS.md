@@ -396,6 +396,64 @@ begin the rewrite until project-management assigns it.
 
 ## Current State
 
+**2026-10-28: VS Code as an IDE surface implemented, smoked and reviewed; PR #301 ready.**
+Item 3 of [the scope decision of 2026-10-27](../2026-08-09-project-management/2026-10-27-decision-release-0-3-0-scope-at-rc8.md),
+on `main`: Visual Studio Code joins 0.3.0 as a second provider of
+`frontend-ide`, VSCodium the default, acquired on the developer's machine
+from Microsoft under the `vscode-download` authorization and a D-0011 trust
+channel, never redistributed. Implemented by Antigravity, Gemini 4 Argon
+(High), in a session a power outage cut before its smoke finished, with the
+slice uncommitted; taken over by Claude Code, Claude Fable 5.1, on the
+owner's word, committed in two commits, pushed as `ws-maintenance/0.3.0-vscode`
+from the release tip `9e78dce1`, and opened as
+[PR #301](https://github.com/ccozianu/devcapsule/pull/301) into
+`release-0.3.0`. The slice: the `vscode` component with Microsoft's
+acquisition contract and the vscode-family runtime template at `/opt/vscode`;
+pin 1.143.1 from the stable feed with url and sha256, matrix `embedded-29`,
+`frontend-ide: (codium, vscode)` and `vscode-ide: (vscode)`; `canonical_name`
+accepts a component named by one capability among several providers; the
+usable lock keeps the pinned surface's closure and refuses a missing provider
+by name; a surface without per-file artifacts establishes its channel from
+the lock's own url and sha256; discovery from Microsoft's stable update
+feed; the IDE lists and the docs. The second pair added the per-checkout
+consent a surface's launch needs to the IDE smoke, since the smoke runs
+non-interactively against an empty home and the launcher stops at
+`vscode-download` otherwise. Recorded IDE smoke, run inside this capsule
+from a temporary clone of the branch at `d74666ff`
+(`~/worktrees/vscode-e2e-tmp`) with the executable built from it, on the
+recommended v0.3.0-rc6 base: `nox -s ide-smoke -- --display --surface
+vscode` passed in 87.5 s, Visual Studio Code downloaded from Microsoft and
+verified, the formation built, the desktop and the console answered, an X11
+window of class `code code` titled `… - Visual Studio Code` owned the
+display, 645 distinct colours; the same for `codium` passed in 18.2 s. The
+recording, the screenshot, the facts and the redacted launcher log are under
+[evidence/2026-10-28-vscode](evidence/2026-10-28-vscode/README.md); the
+matrix's verified edge says what that run proved and that no relaunch or
+persistence check has run. The review (PR #302, PR301.1, Antigravity, Gemini
+4 Argon (High), accepted without a round, merged at `241e7b10`) found the
+lock's version, url and sha256 unchecked by `locked_artifacts`; an
+empty-credential or whitespace URL establishing a trust channel, since
+`urlparse` reports an empty username as `""`; the discovery accepting a
+hostless or credentialed URL by prefix; `config ide` reporting the
+recommendation table rather than the composed lock it had written; a
+docstring contradicting the wrapped VS Code tarball; and the IDE lists in
+two orders, with no statement of when the download happens, both fixed.
+Gate on the merged tip `241e7b10`: mypy clean over 261 files and 9 console
+files, 2544 unit tests passed, 38 deselected, one xfail and one xpass,
+packaging 17, the documentation contract 190 pages including 17 aliases
+(the website submodule initialized in the worktree for it), the console
+357; log `/opt/devcapsule-gate/2026-10-28-vscode-merged-build.log`. The
+review partner's print mode was silent for 36 minutes, with progress visible
+only in the engine's own log and the worktree; the owner directed the
+streaming forms and the relay rule, recorded in `WORKFLOW-LOCAL.md` items 4
+and 8 and in the loop document, and a work order in three layers sent to
+project-management as
+`2026-10-28-maintenance-agent-run-supervision.md` (coordination `b04131ea`).
+Judgments for the owner in PR #301: the `vscode-ide` capability beside the
+provider form the order named; the closure generalization in `usable_lock`;
+the channel fallback for surfaces without artifacts. Awaiting the owner's
+merge of PR #301 into `release-0.3.0`; the next candidate carries it, and
+the changelog's next-candidate entry follows at the cut.
 **2026-10-28: the configuration home and the home commands implemented; PR #299 ready.**
 The slice of the [work order of 2026-10-27](../../work-orders/2026-10-27-configuration-home-and-the-home-commands.md),
 designed by the owner in the project-management session and ordered
@@ -2272,6 +2330,16 @@ Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
 
+Gate on `ws-maintenance/0.3.0-vscode` after merging review PR #302
+(`241e7b10`, 2026-10-28, PR #301): `nox -s build` passed end to end: version
+copies agree at `0.3.0`; syntax; mypy clean over 261 files; `2544 passed,
+38 deselected, 1 xfailed, 1 xpassed`; CLI smoke; local and clean PEX built
+and smoked; packaging integration 17; the documentation contract 190 pages
+including 17 aliases; web console mypy clean over 9 files and 357 passed.
+Logs `/opt/devcapsule-gate/2026-10-28-vscode-merged-build.log` and
+`-docs-contract.log`. The recorded IDE smoke of `vscode` and `codium` from
+the temporary clone is under `evidence/2026-10-28-vscode/`.
+
 Gate on `ws-maintenance/e2e_videos-2` after merging review PR #241 (`e17065e`,
 2026-10-22, PR #236): `nox -s build` passed end to end: version copies agree at
 `0.3.1.dev0`; syntax; `mypy` clean over 216 source files; `1649 passed, 35
@@ -2869,6 +2937,34 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- VS Code slice, 2026-10-28:
+  [PR #301](https://github.com/ccozianu/devcapsule/pull/301)
+  (`ws-maintenance/0.3.0-vscode` -> `release-0.3.0`) awaits the owner's
+  merge; the review [PR #302](https://github.com/ccozianu/devcapsule/pull/302)
+  is accepted without a round and merged at `241e7b10`.
+- Awaiting the owner: the `vscode-ide` capability beside the provider form
+  (judgment 1 of PR #301); whether the generic half of the relay rule goes
+  to the definition, topic 9.11, through project-management.
+- Weighed and unresolved, from PR #302 (PR301.1): the denial remediation
+  text in `configuration/authorization.py` names a raw TOML key instead of
+  `project config authorize vscode-download true`; `config recommend
+  frontend-ide none` leaves a hand-written `codium = "vscode"` alias in
+  place. Both predate the slice.
+- Not run: a relaunch or persistence check of VS Code's user data and
+  extensions; the recursive dogfood lifecycle session, which exercises the
+  PyCharm dogfood lock and not VS Code.
+- External state preserved: the implementation worktree
+  `/home/devcapsule/worktrees/vscode-ide` on `ws-maintenance/0.3.0-vscode`;
+  the temporary clone `/home/devcapsule/worktrees/vscode-e2e-tmp` with the
+  raw smoke evidence under `devcapsule-src/dist/e2e-evidence/ide-smoke/`,
+  removable; the recording also at `~/e2e-videos/`; the review worktree
+  `/home/devcapsule/worktrees/maintenance-review` on
+  `ws-maintenance/0.3.0-vscode-review`, reusable by a reset; the primary
+  mount `/workspace/301e4208ef81-ChatGPT_Codex` untouched on
+  `ws-maintenance/e2e_videos-2`.
+- Deliberately not preserved: the session scratchpad with the Antigravity
+  log and the gate scratch under `/opt/devcapsule-gate`, on the overlay.
+
 - Diagnostics snapshot and export slice, 2026-10-27:
   [PR #293](https://github.com/ccozianu/devcapsule/pull/293)
   (`ws-maintenance/0.3.0-diagnostics-snapshot` -> `release-0.3.0`) awaits the
@@ -3232,6 +3328,7 @@ Earlier open-thread history (read against the current scope above):
 
 ## Workstream Document Index
 
+- [VS Code smoke evidence](evidence/2026-10-28-vscode/README.md): the recorded IDE smoke of the `vscode` surface, 2026-10-28, and the PR301.1 brief for Antigravity, Gemini 4 Argon (High).
 - [PR #293 review-partner brief (PR293.1)](evidence/2026-10-27-diagnostics-snapshot/brief-pr293-1.md): brief for Codex (`gpt-6-astra`) on the session diagnostics snapshot and sanitized export slice.
 - [PR #236 review-partner brief (PR236.1)](evidence/2026-10-22-pr236-review-brief.md): brief for Claude Fable 5.1 on the E2E scenario video recorder and Eclipse Java debugger demo slice.
 - [Landing-page work order (`Why DevCapsule?`)](../../work-orders/2026-10-18-landing-page-why-devcapsule.md): Deliverables 1–4 completed and verified on `ws-maintenance/e2e_videos`.
