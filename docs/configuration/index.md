@@ -1,7 +1,7 @@
 ---
-description: The project, checkout and workstation records that define a DevCapsule launch.
+description: The project, checkout and home records that define a DevCapsule launch.
 weight: 1
-updated: 2026-10-25
+updated: 2026-10-28
 ---
 # Configuration
 
@@ -18,8 +18,9 @@ Your **checkout record** stays on your computer. It holds your IDE choice,
 added and omitted capabilities, provider choices, and host-access answers.
 It also holds your local component pins. A second checkout has its own record.
 
-Your **workstation records** apply across projects under your user account.
-They hold default resource limits and the vendor channels you trust.
+Your **configuration home** holds `settings.toml`, with default resource
+limits and the vendor channels you trust. These apply across projects
+launched from that home.
 Trust permits acquisition through a channel; it grants no host access.
 
 `devcapsule project run` reads these records and derives the launch each
@@ -29,6 +30,8 @@ missing decisions before it starts the container. The IDE owns the
 container's lifetime and can use the capsule's display.
 
 ## Details
+
+- [The configuration home](home.md): select its directory and inspect its settings.
 
 - [Project versus personal](project-versus-personal.md): where each choice lives.
 - [Capabilities](capabilities.md): requirements, minimums, resolutions and your choices.

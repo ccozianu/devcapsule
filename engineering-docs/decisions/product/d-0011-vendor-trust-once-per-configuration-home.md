@@ -1,6 +1,6 @@
 ---
 id: D-0011
-title: Vendor Terms And Trust Are Given Once Per Workstation, Bound To A Verified Channel
+title: Vendor Terms And Trust Are Given Once Per Configuration Home, Bound To A Verified Channel
 status: accepted
 date-proposed: 2026-10-01
 date-decided: 2026-10-01
@@ -10,7 +10,7 @@ supersedes: the per-checkout acquisition authorization of D-0010 and D-0001, ide
 superseded-by:
 ---
 
-# D-0011: Vendor Terms And Trust Are Given Once Per Workstation, Bound To A Verified Channel
+# D-0011: Vendor Terms And Trust Are Given Once Per Configuration Home, Bound To A Verified Channel
 
 ## Context
 
@@ -49,7 +49,7 @@ Cost: none of the integrated vendors signs the artifacts DevCapsule
 acquires in a way the launcher could verify today. Waiting for signatures
 means keeping option A indefinitely.
 
-### Option C: one workstation-level statement per vendor product, provenance tested by channel
+### Option C: one home-level statement per vendor product, provenance tested by channel
 
 Cost: a new record under the launcher's config root and a rule for what
 re-opens it; older clients keep their own behaviour. The trust statement is
@@ -57,7 +57,7 @@ only as honest as the channel definition, which must be stated to the user.
 
 ## Decision
 
-1. **Vendor terms are accepted once per vendor product per user.** Not per
+1. **Vendor terms are accepted once per vendor product per DevCapsule home, in its `settings.toml`.** Not per
    project, not per checkout, not per version. The acceptance is re-asked
    only when the terms are known to have changed, which today means the
    component's `terms_url` changed.
@@ -65,15 +65,13 @@ only as honest as the channel definition, which must be stated to the user.
    a vendor, an origin and an integrity method: `registry.npmjs.org` with
    the registry's SHA-512 integrity for npm packages; the vendor origin
    named by the component's discovery with the resolution matrix's pinned
-   SHA-256 for the others. The user approves a channel once, per user.
+   SHA-256 for the others. The user approves a channel once per DevCapsule home.
    Anything resolved through that channel with integrity verified is
    approved without a prompt. Anything that leaves the channel asks, and
    asks loudly: a local file, a mirror, an origin change, an integrity
    method weaker than the one approved. That last prompt must never become
    routine.
-3. **The record is per workstation, under the launcher's config root**
-   (`$XDG_CONFIG_HOME/devcapsule`, beside the `projects/` checkout
-   records), in the owner's words: "I trust this vendor, and I agree for
+3. **The record is per DevCapsule home, in its `settings.toml`**, in the owner's words: "I trust this vendor, and I agree for
    DevCapsule to download this software, in all its versions and
    incarnations, on my behalf." One statement covers the terms and the
    provenance for that vendor product. The record is the user's, never the
@@ -92,17 +90,17 @@ is to be said in the prompt in one sentence: trusting `@anthropic-ai` on
 `registry.npmjs.org` is trusting the registry operator and Anthropic's
 publishing credentials, not Anthropic's source.
 
-Asking once per workstation matches where the obligation sits. The user,
-not the project, accepts the vendor's terms; a second project on the same
-machine adds nothing to that acceptance.
+Asking once per configuration home matches where the obligation sits. The user,
+not the project, accepts the vendor's terms; a second project launched from the same
+home adds nothing to that acceptance.
 
 ## Consequences
 
 - The per-checkout `acquisition` authorization nodes of D-0001 and D-0010
   are superseded as the place consent lives. Older clients keep reading the
-  checkout record. A newer client that finds a workstation acceptance stops
+  checkout record. A newer client that finds a configuration home acceptance stops
   asking, and nothing migrates, so R-COMPAT-001 holds without an exception.
-- Inside a capsule the workstation record is on the host. It rides the
+- Inside a capsule the configuration home record is on the host. It rides the
   existing read-only configuration mount, which ties this to the in-capsule
   project-command fix targeted at 0.2.16 (bug record of 2026-09-24).
 - The Antigravity channel's origin is a bare Cloud Run hostname, not a
@@ -114,8 +112,8 @@ machine adds nothing to that acceptance.
   approval carries over unchanged. Whether any integrated CLI publishes
   them is to be verified, not assumed.
 - R-UPGRADE-001's "acquisition consent ... remain enforced" stays true and
-  gains a precise meaning: enforced per vendor product per user through the
-  workstation record, with the channel as the provenance test. The
+  gains a precise meaning: enforced per vendor product per home through the
+  settings record, with the channel as the provenance test. The
   requirement's refinement and the fate of the remaining questions, what
   stays a question at all (host access as the visible decision, the
   recommended base asking nothing, upgrades as scheduling plus disclosure),
@@ -133,7 +131,7 @@ published to. That is a channel in this record's sense. Vendor:
 DevCapsule. Origin: the site, naming `github.com/ccozianu/devcapsule` and
 `docker.io/mycodespaceai/devcapsule-base`. Integrity: the digest the
 launcher's resolution matrix pins, so every pull is content-addressed.
-Trusted once per workstation like any vendor; a base from another
+Trusted once per configuration home like any vendor; a base from another
 registry, or a local image the user built, is a departure from the channel
 and asks.
 
@@ -155,3 +153,12 @@ A vendor begins signing the artifacts DevCapsule acquires in a verifiable
 way, which would let the channel's integrity method carry the signature; a
 channel compromise shows the origin-and-integrity test insufficient for a
 vendor the users trust; or a vendor's terms demand per-version acceptance.
+
+
+## Amendment, 2026-10-28: the caller selects the home
+
+The configuration-home work order of 2026-10-27 changes the acceptance scope.
+`DEVCAPSULE_CONFIG_HOME` names the home; its `settings.toml` holds defaults
+and accepted channels. The default home remains the XDG configuration directory.
+The `home trust` commands act on it without a project. The channel test and
+per-checkout denials remain as decided above.

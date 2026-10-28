@@ -1,11 +1,11 @@
 ---
-description: Which choices belong to the project and travel in Git, which are yours and stay on your computer, which are your computer's, and what happens when the project changes.
+description: Which choices belong to the project and travel in Git, which are yours and stay on your computer, which belong to your configuration home, and what happens when the project changes.
 weight: 2
-updated: 2026-10-25
+updated: 2026-10-28
 ---
 # Project versus personal
 
-The project, your checkout and your workstation each hold part of the
+The project, your checkout and your home each hold part of the
 configuration. [Configuration](index.md) introduces these three records.
 
 ## The project, in Git
@@ -43,15 +43,15 @@ A host-access recommendation asks for your decision. `run` shows the project's
 reason and the access it would grant. You can allow it once, save an allowance
 or denial, or defer it. `config forget NAME` removes your saved answer.
 
-## Your workstation
+## Your configuration home
 
-Workstation records apply to every project under your user account.
-`config default memory 8GiB` and `config default cpus 4` set resource defaults.
+The home's settings apply to every project launched from it.
+`home default memory 8GiB` and `home default cpus 4` set resource defaults.
 A project recommendation or checkout value overrides those defaults.
-The file is `$XDG_CONFIG_HOME/devcapsule/workstation.toml`, normally
-`~/.config/devcapsule/workstation.toml`.
+The file is `settings.toml` in the [configuration home](home.md).
+Set `DEVCAPSULE_CONFIG_HOME` to select a different home.
 
-The **trust record** holds accepted vendor channels. A coding-agent capability
+The same file's **trust table** holds accepted vendor channels. A coding-agent capability
 uses the same acquisition rules as other capabilities. Its component owns
 its terms, consent, sign-in and persistent directories.
 [Vendor software and trust](software-approvals.md) explains channel acceptance.
@@ -154,14 +154,14 @@ Inside the capsule, `devcapsule project config show` reports the same view.
 The launcher validates console requests with the corresponding CLI command.
 It can record IDE choices, values, environment variables with a literal
 value, denials and removed bindings.
-It can also withdraw workstation trust or clear saved Docker arguments.
+It can also withdraw home trust or clear saved Docker arguments.
 The console accepts `add`, `omit`, `restore` and `use` for capability choices.
 The launcher applies valid requests to the next launch. Adding a vendor
 capability leaves its consent decision for that launch.
 
 Authorization grants, trust acceptance, bindings, replacement Docker
 arguments, forgotten answers and host-variable bindings need confirmation
-on the host: a forgotten denial can restore workstation trust, and a host
+on the host: a forgotten denial can restore home trust, and a host
 binding exposes a variable. Inspect them with:
 
 ```bash
@@ -173,5 +173,5 @@ devcapsule project config console discard ID
 Replace `ID` with a listed request ID. Apply or discard each request as appropriate.
 An interactive `run` also offers these choices. A noninteractive run keeps
 unconfirmed requests pending and continues without applying them.
-The console cannot edit the shared manifest or set workstation resource defaults.
+The console cannot edit the shared manifest or set home resource defaults.
 No request reconfigures the running capsule.

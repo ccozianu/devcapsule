@@ -80,7 +80,7 @@ access.
 | `host-x11` | `true`, `false`; never recommended by a project; the contained desktop is the default, and a base without one asks for your explicit consent |
 | `base-image` | `default` or the exact digest currently pinned by the lock; a local image tag or ID selects a local base |
 
-Workstation trust can cover vendor downloads and DevCapsule's published bases.
+Home trust can cover vendor downloads and DevCapsule's published bases.
 Per-checkout consents remain supported. See
 [Vendor software and trust](../configuration/software-approvals.md). What
 each access opens is on [The boundary](the-boundary.md); the full node list

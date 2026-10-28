@@ -385,6 +385,10 @@ class ResolutionMatrix:
                               for pin in self._components.get(component, ()))
         raise ResolutionError(f"No provider supplies {capability} {minimum or ''} or newer; catalog supplies {available or 'none'}.")
 
+    def component_pins(self) -> dict[str, Mapping[str, Any]]:
+        """The latest embedded table for each component on this platform."""
+        return {name: pins[-1].lock_table for name, pins in self._components.items() if pins}
+
     def component_closure(self, capability: str, minimum: str | None = None,
                           lock: Mapping[str, Any] | None = None, *,
                           choice: str | None = None, recommended: str | None = None) -> tuple[str, ...]:

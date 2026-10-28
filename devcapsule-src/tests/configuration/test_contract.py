@@ -1,3 +1,4 @@
+from devcapsule import cli
 
 from tests.launch_preparation import run_until_prepared
 """Configuration lifecycle proof obligations, independent of branch coverage.
@@ -400,12 +401,12 @@ def test_config_list_is_data_only_and_show_carries_the_review(checkout, capsys):
     replace_answers(project, record, {name: value for name, value in table.items() if name != 'base-image'})
     assert invoke(project, 'config', 'show') == 0
     shown = capsys.readouterr().out
-    assert 'Pending decisions:' in shown and 'config trust accept devcapsule-base' in shown
+    assert 'Pending decisions:' in shown and 'home trust accept devcapsule-base' in shown
     assert invoke(project, 'config', 'check') == 3
 
 
-def test_workstation_defaults_stale_only_the_workstation_input(checkout):
-    from devcapsule.configuration.storage import load_workstation
+def test_home_defaults_stale_only_the_home_input(checkout):
+    from devcapsule.configuration.storage import load_settings
     from devcapsule.configuration.execution import ExecutionConfiguration
     project, record, resolution = checkout
     # This fixture contains a plan written by the released 0.2.11 launcher,
@@ -415,17 +416,17 @@ def test_workstation_defaults_stale_only_the_workstation_input(checkout):
     digest = manifest_source_digest(project)
     lock = load_toml(project / '.devcapsule/devcapsule.linux-amd64.lock')
     local, previous = load_toml(record), load_toml(resolution)
-    assert previous['sources']['workstation-config'] == 'absent'
-    assert stale_resolution_inputs(manifest, lock, local, previous, load_workstation(), source_digest=digest) == ()
-    assert invoke(project, 'config', 'default', 'cpus', '2') == 0
-    assert stale_resolution_inputs(manifest, lock, local, previous, load_workstation(), source_digest=digest) == ('workstation-config',)
+    assert previous['sources'].get('home-config', 'absent') == 'absent'
+    assert stale_resolution_inputs(manifest, lock, local, previous, load_settings(), source_digest=digest) == ()
+    assert cli.main(['home', 'default', 'cpus', '2']) == 0
+    assert stale_resolution_inputs(manifest, lock, local, previous, load_settings(), source_digest=digest) == ('home-config',)
     assert run_until_prepared(project) == 0
     current = ExecutionConfiguration.load(project).project.resolution
     assert current['runtime']['cpus'] == 2
-    assert invoke(project, 'config', 'default', 'cpus', '3') == 0
-    assert stale_resolution_inputs(manifest, lock, load_toml(record), current, load_workstation()) == ('workstation-config',)
-    assert invoke(project, 'config', 'default', 'cpus', 'none') == 0
-    assert stale_resolution_inputs(manifest, lock, local, previous, load_workstation(), source_digest=digest) == ()
+    assert cli.main(['home', 'default', 'cpus', '3']) == 0
+    assert stale_resolution_inputs(manifest, lock, load_toml(record), current, load_settings()) == ('home-config',)
+    assert cli.main(['home', 'default', 'cpus', 'none']) == 0
+    assert stale_resolution_inputs(manifest, lock, local, previous, load_settings(), source_digest=digest) == ()
 
 
 def test_old_base_listing_reports_host_x11_without_changing_consent(checkout, capsys):

@@ -1,14 +1,14 @@
 ---
 description: "Every configuration node a checkout can carry, its values, and which command records it: authorizations, declared values and bindings."
 weight: 1
-updated: 2026-10-24
+updated: 2026-10-28
 ---
 # Configuration nodes
 
 Every recorded choice in a checkout is a node with one name. `project config
 show` prints them with the value the next launch uses and its source; the
 commands below record them. All are yours, per checkout, outside the
-repository. Workstation trust can cover published bases and vendor downloads;
+repository. Home trust can cover published bases and vendor downloads;
 per-checkout consents also remain supported. See
 [Vendor software and trust](../configuration/software-approvals.md).
 
@@ -22,7 +22,7 @@ per-checkout consents also remain supported. See
 | `development-sudo` | `true`, `false` | The capsule user may elevate inside the container through a temporary, launcher-owned sudoers policy |
 | `host-browser` | `true`, `false` | `xdg-open` in the capsule may ask the host browser to open a URL |
 | `host-x11` | `true`, `false` | The host display session is bound into the capsule instead of the contained desktop; never recommended by a project; the contained desktop is the default |
-| `claude-code-download`, `antigravity-download` | `true`, `false` | Per-checkout consent to that vendor's agent when its channel is not trusted on this computer; `false` denies it even when it is |
+| `claude-code-download`, `antigravity-download` | `true`, `false` | Per-checkout consent to that vendor's agent when its channel is not trusted in this home; `false` denies it even when it is |
 
 `--all-recommended` previews every recommendation and authorizes all only on
 `y`. For host access, `project run --authorize NAME VALUE` applies to one launch.
@@ -37,7 +37,7 @@ software you consented to per checkout.
 are the ones the project declares in its manifest, validated against the
 declared type: `string`, `integer`, `boolean` or `memory-size`. `default`
 forgets your answer and follows the project's recommendation and the
-workstation's default again. Values with runtime effects today:
+home's default again. Values with runtime effects today:
 
 | Node | Effect |
 |---|---|

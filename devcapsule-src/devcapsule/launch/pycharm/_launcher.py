@@ -710,17 +710,19 @@ def host_backed_runtime_environment(env: Mapping[str, str]) -> dict[str, str]:
     would arrive empty. Move the staging directory somewhere backed by a mount.
     """
 
+    from devcapsule.platforms import XdgHomes
     runtime_env = dict(env)
+    homes = XdgHomes.from_environment(env)
+    if homes.chosen_by == "DEVCAPSULE_CONFIG_HOME":
+        runtime_env["XDG_RUNTIME_DIR"] = str(homes.state / "runtime")
+        Path(runtime_env["XDG_RUNTIME_DIR"]).mkdir(mode=0o700, parents=True, exist_ok=True)
     if not requires_translation(runtime_env):
         return runtime_env
     container = current_container(runtime_env)
     existing = runtime_env.get("XDG_RUNTIME_DIR")
     if existing and is_host_backed(Path(existing), container):
         return runtime_env
-    data_home = runtime_env.get("XDG_DATA_HOME") or str(
-        Path(runtime_env.get("HOME", "~")).expanduser() / ".local/share"
-    )
-    staging = Path(data_home) / "devcapsule" / "launch-staging"
+    staging = homes.data / "launch-staging"
     try:
         staging.mkdir(parents=True, exist_ok=True)
         staging.chmod(0o700)
@@ -770,9 +772,10 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
             and key not in {"DEVCAPSULE_HOME_DIR", "IMAGE", "DOCKER_MODE", "DOCKER_IN_DOCKER",
                             "GITHUB_TOKEN_FILE", "GITHUB_TOKEN_ENV", "GITHUB_USER"}
         }
-    base_data_dir = Path(
-        env.get("XDG_DATA_HOME") or str(Path(env.get("HOME", "~")).expanduser() / ".local/share")
-    ) / "pycharm-docker"
+    from devcapsule.platforms import XdgHomes
+    homes = XdgHomes.from_environment(env)
+    base_data_dir = (homes.data / "pycharm-docker" if homes.chosen_by == "DEVCAPSULE_CONFIG_HOME"
+                     else homes.data.parent / "pycharm-docker")
     profile = options.profile or env.get("DOCKER4IDES_PYCHARM_PROFILE", "")
     host_user = current_host_user()
 
@@ -864,18 +867,11 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
     global_settings = runtime_plan.global_settings
     project_state = runtime_plan.project_state
 
-    xdg_data_home = Path(
-        env.get("XDG_DATA_HOME") or str(Path(env.get("HOME", "~")).expanduser() / ".local/share")
-    ).expanduser()
-    xdg_state_home = Path(
-        env.get("XDG_STATE_HOME") or str(Path(env.get("HOME", "~")).expanduser() / ".local/state")
-    ).expanduser()
-    xdg_cache_home = Path(
-        env.get("XDG_CACHE_HOME") or str(Path(env.get("HOME", "~")).expanduser() / ".cache")
-    ).expanduser()
-    data_namespace = xdg_data_home / "devcapsule" / "projects" / "by-path" / runtime_plan.project_id
-    state_namespace = xdg_state_home / "devcapsule" / "projects" / "by-path" / runtime_plan.project_id
-    cache_namespace = xdg_cache_home / "devcapsule" / "projects" / "by-path" / runtime_plan.project_id
+    from devcapsule.platforms import XdgHomes
+    homes = XdgHomes.from_environment(env)
+    data_namespace = homes.data / "projects" / "by-path" / runtime_plan.project_id
+    state_namespace = homes.state / "projects" / "by-path" / runtime_plan.project_id
+    cache_namespace = homes.cache / "projects" / "by-path" / runtime_plan.project_id
 
     legacy_global_settings = (
         options.global_settings is not None
@@ -1418,6 +1414,12 @@ def build_docker_args(
             "--mount", f"type=bind,src={config.launch_configuration.directory},dst={CONFIGURATION_PATH},ro",
             "--mount", f"type=bind,src={files.launch_context_file},dst={CONTEXT_PATH},ro",
         ])
+        home = config.launch_configuration.document.get("configuration-home")
+        if home:
+            from devcapsule.runtime_configuration import HOME_PATH
+            settings = Path(str(home)) / "settings.toml"
+            if settings.is_file():
+                args.extend(["--mount", f"type=bind,src={settings},dst={HOME_PATH}/settings.toml,ro"])
         if files.configuration_directory is not None:
             args.extend(["--mount", f"type=bind,src={files.configuration_directory},dst={CHANNEL_PATH}"])
     if config.git_user_name:

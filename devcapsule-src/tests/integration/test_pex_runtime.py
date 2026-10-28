@@ -334,13 +334,14 @@ def test_built_pex_authors_shared_policy_and_keeps_personal_selection_local(
     chosen = invoke("config", "add", "codex-agent")
     assert chosen.returncode == 0, chosen.stderr
     assert {path.name: path.read_bytes() for path in directory.iterdir()} == shared
-    # The base channel is a workstation decision since 0.3.0 rc4: until it is
+    # The base channel is a home decision since 0.3.0 rc4: until it is
     # trusted, or the base consented to per checkout, 'check' reports it as
     # pending with status 3. The trust record lives under the isolated
     # XDG_CONFIG_HOME above, so accepting it here touches nothing shared.
     pending = invoke("config", "check")
     assert pending.returncode == 3 and "trust accept devcapsule-base" in pending.stderr, pending.stdout
-    trusted = invoke("config", "trust", "accept", "devcapsule-base")
+    trusted = subprocess.run([str(built_pex), "home", "trust", "accept", "devcapsule-base", "--yes"],
+                             cwd=tmp_path, env=environment, text=True, capture_output=True, check=False)
     assert trusted.returncode == 0, trusted.stderr
     checked = invoke("config", "check")
     assert checked.returncode == 0 and "contract valid" in checked.stdout, checked.stderr

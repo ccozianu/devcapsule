@@ -2,7 +2,7 @@
 
 Answer 1 of the CLI UX redesign work order of 2026-10-24 and its principle
 3: ``project run`` is the first-contact command and the return-to-work
-command. It reads the project's manifest and lock, the workstation's
+command. It reads the project's manifest and lock, the home's
 defaults and the checkout's record, derives the plan, asks only what it
 cannot derive, and launches. Nothing derived is the user's to refresh:
 the generated resolution is written here, every time, as the launch's own
@@ -39,7 +39,7 @@ from .file_formats import ProjectConfigurationError, canonical_digest, render_ch
 from .listing import Listing, assess_checkout
 from .model import Configuration
 from .manifest_document import Recommendations
-from .trust import WorkstationTrust
+from .trust import HomeTrust
 from .storage import (
     ResolvedProject,
     atomic_write,
@@ -47,7 +47,7 @@ from .storage import (
     find_checkout_record,
     load_checkout,
     load_toml,
-    load_workstation,
+    load_settings, config_root,
     named_checkout_record_paths,
     recommendation_lock_for,
     resolved_record_path,
@@ -111,7 +111,7 @@ class CheckoutState:
         self.matrix = MATRICES[Platform.current()]
         self.surfaces = {name: self.matrix.resolve_provider(name) or name for name in self.matrix.ide_capabilities()}
         self.lock_path, self.shared_lock = recommendation_lock_for(root, manifest)
-        self.workstation = load_workstation()
+        self.home = load_settings()
         record = find_checkout_record(manifest, root)
         self.input_path: Path | None = record
         self.checkout: dict[str, Any] = load_checkout(record, manifest, root) if record is not None else tomllib.loads(
@@ -149,7 +149,7 @@ class CheckoutState:
         lock = self.composed_lock(document)
         reference = document.get("authorization", {}).get("base-image", {}).get("reference") or lock.get("base", {}).get("reference")
         try:
-            selection = authorized_base_selection(lock, document, required=False, trust=WorkstationTrust.read(self.workstation))
+            selection = authorized_base_selection(lock, document, required=False, trust=HomeTrust.read(self.home))
         except ProjectConfigurationError:
             selection = None  # The listing reports an invalid or stale selection below.
         if selection is not None:
@@ -159,7 +159,7 @@ class CheckoutState:
         providers = inspection_providers(self.manifest, lock, document)
         listing = assess_checkout(
             self.manifest, self.shared_lock, lock, document,
-            workstation=self.workstation, saved_environment=self.saved_environment,
+            home_path=config_root(), home=self.home, saved_environment=self.saved_environment,
             surfaces=self.surfaces, project=self.root, registered=self.registered,
             access_lock=access_lock, capability_versions=versions,
             capability_providers=providers,
@@ -245,10 +245,10 @@ def derive_plan(state: CheckoutState, checkout: Mapping[str, Any] | None = None,
         ) from exc
     if not lock.get("components", {}).get("interactive-surface"):
         raise ProjectConfigurationError("Choose your IDE for this checkout: devcapsule project config ide IDE.")
-    configuration = Configuration(state.manifest, lock, document, state.workstation)
+    configuration = Configuration(state.manifest, lock, document, state.home)
     configuration.review().require_ready(state.root)
     resolution = configuration.resolve()
-    trust = WorkstationTrust.read(state.workstation)
+    trust = HomeTrust.read(state.home)
     base_selection = authorized_base_selection(lock, document, trust=trust) if "base" in lock else None
     if base_selection is not None and base_selection.local_image_identity is not None:
         # Looked up through the operations adapter, the one seam the launch

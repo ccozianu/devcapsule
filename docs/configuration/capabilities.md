@@ -1,7 +1,7 @@
 ---
 description: Require or offer capabilities, set a minimum, recommend a provider, and choose what this checkout uses.
 weight: 25
-updated: 2026-10-26
+updated: 2026-10-28
 ---
 # Capabilities and components
 
@@ -146,7 +146,7 @@ devcapsule project run --ide frontend-ide --with codex-agent
 
 `--with` can repeat. `--use CAPABILITY=COMPONENT` chooses a provider for one
 launch when alternatives exist. Add `--save` to record these choices.
-Channel acceptance through `--trust` belongs to the workstation and persists
+Channel acceptance through `--trust` belongs to the home and persists
 without `--save` after the required review succeeds.
 
 ## Inspect and recover

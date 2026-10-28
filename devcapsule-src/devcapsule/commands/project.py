@@ -134,7 +134,7 @@ from devcapsule.configuration.storage import (
     find_checkout_record,
     load_checkout,
     load_resolution,
-    load_workstation,
+    load_settings,
     lock_for,
     manifest_for,
     named_checkout_record_paths,
@@ -258,7 +258,7 @@ class ProjectListCommand(Command):
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        # Without a supplied runtime context this is still the workstation's
+        # Without a supplied runtime context this is still the home's
         # registry enumeration, including in older/nested launcher capsules.
         runtime_context = (runtime_configuration.for_project(_project_context(context).start_path())
                            if runtime_configuration.CONTEXT_PATH.is_file() else None)
@@ -385,7 +385,7 @@ def _init_selection(arguments: argparse.Namespace) -> tuple[tuple[str, ...], tup
 class CheckoutRegisterCommand(Command):
     name = "register"
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    help = "Register this checkout under a distinct workstation-owned name."
+    help = "Register this checkout under a distinct home-owned name."
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
@@ -617,7 +617,7 @@ class CheckoutDocuments:
     checkout: dict[str, Any]
     input_path: Path | None
     resolution_path: Path | None
-    workstation: dict[str, Any]
+    home: dict[str, Any]
     saved_environment: dict[str, str | None]
 
     @property
@@ -650,7 +650,7 @@ class CheckoutDocuments:
             from devcapsule.configuration.capability_selection import effective_lock
             selected = effective_lock(self.manifest, self.composed_lock, self.checkout, warn=False)
             from devcapsule.configuration.storage import manifest_source_digest
-            stale = stale_resolution_inputs(self.manifest, selected, self.checkout, resolved, self.workstation,
+            stale = stale_resolution_inputs(self.manifest, selected, self.checkout, resolved, self.home,
                                             source_digest=manifest_source_digest(self.root))
         except ProjectConfigurationError as exc:
             return f"unreadable ({exc})"
@@ -691,12 +691,12 @@ def _load_checkout_documents(context: object | None) -> CheckoutDocuments | runt
     if record is not None:
         saved = read_environment(arguments_path(record))
     return CheckoutDocuments(root, manifest, root / ".devcapsule" / "devcapsule.toml", shared, lock_path, composed,
-                             checkout, input_path, resolution_path, load_workstation(), saved)
+                             checkout, input_path, resolution_path, load_settings(), saved)
 
 
 def _assess(documents: CheckoutDocuments) -> Listing:
     from devcapsule.configuration.authorization import authorized_base_selection
-    from devcapsule.configuration.trust import WorkstationTrust
+    from devcapsule.configuration.trust import HomeTrust
     from devcapsule.platforms import Platform
     from devcapsule.resolution_matrix import MATRICES, known_base_image
     matrix = MATRICES[Platform.current()]
@@ -706,7 +706,7 @@ def _assess(documents: CheckoutDocuments) -> Listing:
     base_reference = base_reference or documents.composed_lock.get("base", {}).get("reference")
     try:
         selection = authorized_base_selection(documents.composed_lock, documents.checkout, required=False,
-                                              trust=WorkstationTrust.read(documents.workstation))
+                                              trust=HomeTrust.read(documents.home))
     except ProjectConfigurationError:
         selection = None  # The listing reports an invalid or stale selection below.
     if selection is not None:
@@ -718,7 +718,7 @@ def _assess(documents: CheckoutDocuments) -> Listing:
     providers = inspection_providers(documents.manifest, documents.composed_lock, documents.checkout)
     listing = assess_checkout(
         documents.manifest, documents.shared_lock, documents.composed_lock, documents.checkout,
-        workstation=documents.workstation, saved_environment=documents.saved_environment,
+        home_path=config_root(), home=documents.home, saved_environment=documents.saved_environment,
         surfaces=surfaces, project=documents.root, registered=documents.registered,
         access_lock=access_lock, capability_versions=versions,
         capability_providers=providers,
@@ -807,7 +807,7 @@ def _set_value(record: CheckoutRecord, manifest: dict[str, Any], name: str, valu
     ``memory`` and ``cpus`` are the launcher's and need no declaration; a
     declared value is validated against its declaration; ``default`` forgets
     the checkout's answer so the value follows the project and the
-    workstation again (answer 13 of the work order); ``none`` keeps an
+    home again (answer 13 of the work order); ``none`` keeps an
     optional declared value out of the capsule.
     """
     keyword = value.strip().lower()
@@ -824,7 +824,7 @@ def _set_value(record: CheckoutRecord, manifest: dict[str, Any], name: str, valu
             for alias in aliases:
                 record.values.pop(alias, None)
                 record.omitted_values.discard(alias)
-            return f"Forgot {name} for this checkout; it follows the project's recommendation, then the workstation default."
+            return f"Forgot {name} for this checkout; it follows the project's recommendation, then the home default."
         if keyword == "none":
             raise ProjectConfigurationError(f"{name} has no 'none'; 'default' forgets your answer, or set a value.")
         record.set_value(name, normalize_launcher_value(name, value))
@@ -861,7 +861,7 @@ class ConfigSetCommand(Command):
     name = "set"
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
     help = ("Set a value for this checkout: memory (6GiB, 6g), cpus (4), or a value the project declares. "
-            "'default' forgets your answer and follows the project and the workstation again.")
+            "'default' forgets your answer and follows the project and the home again.")
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
@@ -876,38 +876,6 @@ class ConfigSetCommand(Command):
         record.write()
         print(f"Checkout record: {record.input_path}")
         print("The next 'devcapsule project run' uses it.")
-        return 0
-
-
-class ConfigDefaultCommand(Command):
-    name = "default"
-    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    help = ("Set this workstation's default for memory or cpus, used by every project here unless the "
-            "project recommends or the checkout sets another; 'none' removes it.")
-
-    @classmethod
-    def configure(cls, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument("node_name", metavar="NAME", help="memory or cpus.")
-        parser.add_argument("value", metavar="VALUE", help="The default, or 'none'.")
-
-    @classmethod
-    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        from devcapsule.configuration.storage import load_workstation as load, write_workstation
-        from devcapsule.configuration.workstation import WorkstationDefaults
-        name = arguments.node_name
-        if name not in LAUNCHER_VALUE_NAMES:
-            raise ProjectConfigurationError(
-                f"The workstation has defaults for {', '.join(LAUNCHER_VALUE_NAMES)} only; {name!r} is not one of them."
-            )
-        defaults = WorkstationDefaults.read(load())
-        removing = arguments.value.strip().lower() == "none"
-        changed = defaults.with_value(name, None if removing else arguments.value)
-        path = write_workstation(changed.document())
-        if removing:
-            print(f"Removed the workstation default for {name}.")
-        else:
-            print(f"Workstation default {name} = {changed.values[name]}, for every project on this computer.")
-        print(f"Workstation configuration: {path}")
         return 0
 
 
@@ -1257,7 +1225,7 @@ ConfigUnsetCommand = _retired_command("unset", "config set NAME default', 'confi
 class ConfigTrustListCommand(Command):
     name = "list"
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.INSPECTS
-    help = "The channels this project's software comes through and whether this workstation trusts each."
+    help = "The channels this project's software comes through and whether this home trusts each."
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
@@ -1266,11 +1234,11 @@ class ConfigTrustListCommand(Command):
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
         from devcapsule.configuration.derivation import load_state
-        from devcapsule.configuration.storage import load_trust, trust_path
-        from devcapsule.configuration.trust import WorkstationTrust, channels_for
+        from devcapsule.configuration.storage import load_trust, settings_path
+        from devcapsule.configuration.trust import HomeTrust, channels_for
         root, manifest = manifest_for(_project_context(context).start_path())
         lock = load_state(root, manifest).composed_lock()
-        trust = WorkstationTrust.read(load_trust())
+        trust = HomeTrust.read(load_trust())
         channels = channels_for(lock)
         rows: list[dict[str, Any]] = [
             {"channel": channel.id, "vendor": channel.vendor, "product": channel.product,
@@ -1283,10 +1251,10 @@ class ConfigTrustListCommand(Command):
                              "terms-url": entry["terms-url"], "integrity": entry["integrity"], "accepted": entry,
                              "trusted": bool(entry["integrity"]), "note": "not used by this checkout"})
         if arguments.as_json:
-            print(json.dumps({"schema-version": 1, "path": str(trust_path()), "channels": rows}, indent=2, sort_keys=True))
+            print(json.dumps({"schema-version": 1, "path": str(settings_path()), "channels": rows}, indent=2, sort_keys=True))
             return 0
-        print(f"Trust record: {trust_path()}")
-        print("Scope: this OS user account on this computer, across all projects. Shared accounts share this trust.")
+        print(f"Trust record: {settings_path()}")
+        print(f"Scope: this DevCapsule home, {config_root()}. Anyone who uses this home uses this acceptance.")
         for row in rows:
             state = "trusted" if row["trusted"] else ("not covered" if row["accepted"] else "not yet")
             origins = ", ".join(str(item) for item in row["origins"]) or "the lock"
@@ -1299,48 +1267,6 @@ class ConfigTrustListCommand(Command):
                       f"integrity {entry['integrity'] or 'not recorded'}; terms {entry['terms-url'] or 'none'}")
             if row["note"]:
                 print(f"{'':<18} {row['note']}")
-        return 0
-
-
-class ConfigTrustAcceptCommand(Command):
-    name = "accept"
-    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    help = "Accept a channel once for this workstation: every version of that vendor's product, for every project here."
-
-    @classmethod
-    def configure(cls, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument("channel", metavar="CHANNEL", help="devcapsule-base, claude-code, antigravity-cli, as 'trust list' names them.")
-
-    @classmethod
-    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        from devcapsule.commands._run_flow import accept_channel, project_channel
-        root, manifest = manifest_for(_project_context(context).start_path())
-        channel = project_channel(root, manifest, arguments.channel)
-        path = accept_channel(root, manifest, arguments.channel)
-        print(channel.statement())
-        if channel.note:
-            print(channel.note)
-        print(f"Recorded for this workstation: {path}")
-        return 0
-
-
-class ConfigTrustWithdrawCommand(Command):
-    name = "withdraw"
-    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    help = "Withdraw this account's channel trust for future launches; separate checkout consents remain valid."
-
-    @classmethod
-    def configure(cls, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument("channel", metavar="CHANNEL")
-
-    @classmethod
-    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        from devcapsule.configuration.storage import load_trust, write_trust
-        from devcapsule.configuration.trust import WorkstationTrust
-        trust = WorkstationTrust.read(load_trust()).without(arguments.channel)
-        path = write_trust(trust.document())
-        print(f"Withdrew {arguments.channel} for this workstation: {path}")
-        print("Running capsules and saved plans are unchanged. The next launch reviews consent again; separate checkout consents remain valid.")
         return 0
 
 
@@ -1428,11 +1354,11 @@ class ConfigConsoleGroup(Group):
 
 class ConfigTrustGroup(Group):
     name = "trust"
-    help = "What this workstation trusts, once per vendor and channel (D-0011): list, accept, withdraw."
+    help = "Whether this home trusts the channels used by this project."
 
     @classmethod
     def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
-        return {"list": ConfigTrustListCommand, "accept": ConfigTrustAcceptCommand, "withdraw": ConfigTrustWithdrawCommand}
+        return {"list": ConfigTrustListCommand}
 
 
 class ConfigUnbindCommand(Command):
@@ -1564,8 +1490,8 @@ class ConfigAuthorizeCommand(Command):
                 "identity, and stays valid while the lock recommends that image."
             )
             if local_base_identity is None:
-                print("DevCapsule's published bases are trusted once for the whole workstation instead: "
-                      "'devcapsule project config trust accept devcapsule-base'.")
+                print("DevCapsule's published bases are trusted once for the whole home instead: "
+                      "'devcapsule home trust accept devcapsule-base'.")
         print("The next 'devcapsule project run' uses it.")
         return 0
 
@@ -1919,7 +1845,6 @@ class ConfigGroup(Group):
             ConfigAgentGroup.name: ConfigAgentGroup,
             ConfigToolGroup.name: ConfigToolGroup,
             ConfigSetCommand.name: ConfigSetCommand,
-            ConfigDefaultCommand.name: ConfigDefaultCommand,
             ConfigAuthorizeCommand.name: ConfigAuthorizeCommand,
             ConfigDenyCommand.name: ConfigDenyCommand,
             ConfigForgetCommand.name: ConfigForgetCommand,
@@ -2151,7 +2076,7 @@ class ProjectRunCommand(Command):
     name = "run"
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
     help = (
-        "Run the project: derive the plan from the project, this workstation and this checkout, "
+        "Run the project: derive the plan from the project, this home and this checkout, "
         "ask for unresolved choices and consent, and launch. Configuration flags apply to this launch only; "
         "--save records IDE, capability, provider, memory, CPU, environment and host-access answers. Everything after '--' is handed "
         "verbatim to 'docker run', except the options the launcher composes (--network, --memory, "
@@ -2172,7 +2097,7 @@ class ProjectRunCommand(Command):
         parser.add_argument("--env", action="append", default=[], metavar="NAME[=VALUE]",
                             help="An environment variable for this launch: NAME=VALUE, or NAME taken from the host.")
         parser.add_argument("--trust", action="append", default=[], metavar="CHANNEL",
-                            help="Accept a channel for this user account across projects; saved when all required answers are complete. Repeatable; see config trust list.")
+                            help="Accept a channel for this home across projects; saved when all required answers are complete. Repeatable; see config trust list.")
         parser.add_argument("--save", action="store_true", help="Save configuration flags after all required answers are complete, before launching.")
         parser.add_argument("--unverified", action="store_true", dest="allow_unverified", help=argparse.SUPPRESS)
         parser.add_argument(
@@ -2247,7 +2172,7 @@ class ProjectRunCommand(Command):
             prepared.selected = prepare_launch(start, again, interactive=False).selected
         selected = prepared.selected
         review = review_configuration(selected.manifest, selected.lock, selected.checkout,
-                                      prepared.workstation if command_report is not None else load_workstation())
+                                      prepared.home if command_report is not None else load_settings())
         root, manifest, lock = selected.root, selected.manifest, selected.lock
         input_path, output_path = selected.checkout_path, selected.resolution_path
         checkout, resolved = selected.checkout, selected.resolution
@@ -2297,9 +2222,9 @@ class ProjectRunCommand(Command):
             while True:
                 try:
                     if command_report is not None and flags.trust:
-                        from devcapsule.configuration.trust import WorkstationTrust
+                        from devcapsule.configuration.trust import HomeTrust
                         realized = realize_environment(selected, report=print, prepare_base=prepare_display,
-                                                       trust=WorkstationTrust.read(prepared.workstation))
+                                                       trust=HomeTrust.read(prepared.home))
                     else:
                         realized = realize_environment(selected, report=print, prepare_base=prepare_display)
                     break
@@ -2311,7 +2236,7 @@ class ProjectRunCommand(Command):
                     print(f"Warning: optional tools {', '.join(sorted(omitted))} unavailable: {exc}; continuing without those enhancements.", file=sys.stderr)
                     selected = smaller
                     lock, checkout, resolved = selected.lock, selected.checkout, selected.resolution
-                    review = review_configuration(manifest, lock, checkout, load_workstation())
+                    review = review_configuration(manifest, lock, checkout, load_settings())
                     authorizations = review.resolved_authorizations()
                     degraded_download = True
             image = realized.image.reference
@@ -2630,7 +2555,7 @@ def _authorize_all_recommended(
     declarations: dict[str, AuthorizationDeclaration],
 ) -> int:
     # Bulk authorization covers what the project and lock actually recommend;
-    # workstation-capability defaults are individual decisions and must never
+    # home-capability defaults are individual decisions and must never
     # ride along in an "authorize everything recommended" stroke.
     declarations = {
         name: declaration
