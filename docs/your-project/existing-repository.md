@@ -4,7 +4,7 @@ role: your-project
 aliases:
   - /docs/guides/your-project/
 weight: 1
-updated: 2026-10-24
+updated: 2026-10-28
 ---
 # An existing repository
 
@@ -48,6 +48,7 @@ Choose one IDE and initialize from the project root:
 | Work you want to do | Initialize with |
 |---|---|
 | JavaScript or TypeScript, VSCodium | `~/.local/bin/devcapsule project init --require node --ide frontend-ide` |
+| Any language, Visual Studio Code | `~/.local/bin/devcapsule project init --require node --ide vscode-ide` |
 | Python, PyCharm | `~/.local/bin/devcapsule project init --require python --ide python-ide` |
 | Java, IntelliJ IDEA | `~/.local/bin/devcapsule project init --require java --ide java-ide` |
 
