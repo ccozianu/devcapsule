@@ -125,7 +125,9 @@ def component_channel(component_id: str, metadata: Mapping[str, Any], platform: 
             if not isinstance(raw_url, str) or not isinstance(raw_sha256, str):
                 raise ValueError("missing artifact url or sha256")
             url = urlparse(raw_url)
-            if url.scheme != "https" or not url.hostname or url.username or url.password:
+            if (any(character.isspace() for character in raw_url)
+                    or url.scheme != "https" or not url.hostname
+                    or url.username is not None or url.password is not None):
                 raise ProjectConfigurationError(f"Channel {component_id!r} requires an HTTPS artifact origin without credentials.")
             if re.fullmatch(r"[0-9a-fA-F]{64}", raw_sha256) is None:
                 raise ProjectConfigurationError(f"Channel {component_id!r} requires a pinned SHA-256 for every artifact.")

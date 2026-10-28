@@ -78,6 +78,9 @@ class VscodeComponent(ComponentDefinition):
             raise CliError(
                 f"components.vscode.terms-url must be {VSCODE_TERMS_URL!r}."
             )
+        _string(metadata.get("version"), "components.vscode.version")
+        _string(metadata.get("url"), "components.vscode.url")
+        _string(metadata.get("sha256"), "components.vscode.sha256")
         # Interactive surfaces materialize as a whole installation directory
         # under /opt/vscode via SURFACE_MATERIALIZATIONS, not per-file artifacts.
         return ()
@@ -181,6 +184,12 @@ def _slot(
     }
     if home_overlay:
         value["home_overlay"] = True
+    return value
+
+
+def _string(value: object, field: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise CliError(f"{field} must be a non-empty string.")
     return value
 
 

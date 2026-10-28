@@ -560,11 +560,11 @@ def test_channel_records_capability_choices_and_preserves_vendor_consent(project
     assert send("000005-use", "use", "frontend-ide", "vscode")["status"] == "recorded"
     assert LocalCapabilities.read(load_toml(record_path(project))).providers == {"frontend-ide": "vscode"}
     # Single-provider capabilities still refuse `use` through the same command path.
-    expected_status, expected_text = run_config(
-        project, ["use", "python-ide", "pycharm"])
-    assert expected_status == 2 and "choice" in expected_text
-    refused = send("000006-use", "use", "python-ide", "pycharm")
-    assert refused["status"] == "refused" and expected_text.strip() in refused["text"]
+    for index, (capability, component) in enumerate((("python-ide", "pycharm"), ("vscode-ide", "vscode")), start=6):
+        expected_status, expected_text = run_config(project, ["use", capability, component])
+        assert expected_status == 2 and "choice" in expected_text
+        refused = send(f"00000{index}-use", "use", capability, component)
+        assert refused["status"] == "refused" and expected_text.strip() in refused["text"]
     capsys.readouterr()
     assert config(project, "show", "--json") == 0
     listing = json.loads(capsys.readouterr().out)
