@@ -135,11 +135,6 @@ class WorkstationTrust:
         source = document.get("trust", document) if "trust" in document else document
         if not isinstance(source, Mapping):
             raise ProjectConfigurationError("The workstation trust record must be a table.")
-        version = source.get("devcapsule-trust-schema-version", TRUST_SCHEMA_VERSION)
-        if type(version) is not int or version != TRUST_SCHEMA_VERSION:
-            raise ProjectConfigurationError(
-                f"The workstation trust record has an unsupported schema version {version!r}; this launcher reads {TRUST_SCHEMA_VERSION}."
-            )
         channels = table(source, "channels")
         result: dict[str, dict[str, Any]] = {}
         for channel_id, entry in channels.items():
@@ -193,12 +188,11 @@ class WorkstationTrust:
         return WorkstationTrust(channels)
 
     def document(self) -> dict[str, Any]:
-        return {"devcapsule-trust-schema-version": TRUST_SCHEMA_VERSION,
-                "channels": {channel_id: dict(entry) for channel_id, entry in sorted(self.channels.items())}}
+        return {"channels": {channel_id: dict(entry) for channel_id, entry in sorted(self.channels.items())}}
 
 
 def render_trust(trust: WorkstationTrust) -> str:
-    lines = [f"devcapsule-trust-schema-version = {TRUST_SCHEMA_VERSION}"]
+    lines: list[str] = []
     for channel_id, entry in sorted(trust.channels.items()):
         lines.extend(["", f"[channels.{quote_toml(channel_id) if not channel_id.replace('-', 'a').replace('_', 'a').isalnum() else channel_id}]"])
         lines.append(f"vendor = {quote_toml(entry['vendor'])}")

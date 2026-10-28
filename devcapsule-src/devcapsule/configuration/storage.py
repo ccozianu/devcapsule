@@ -85,66 +85,94 @@ def config_root(env: Mapping[str, str] | None = None) -> Path:
     return XdgHomes.from_environment(env).config
 
 
+def settings_path(env: Mapping[str, str] | None = None) -> Path:
+    return config_root(env) / "settings.toml"
+
+
 def workstation_path(env: Mapping[str, str] | None = None) -> Path:
-    """Where this workstation keeps its own defaults: ``$XDG_CONFIG_HOME/devcapsule/workstation.toml``."""
-    return config_root(env) / "workstation.toml"
+    return settings_path(env)
 
 
 def trust_path(env: Mapping[str, str] | None = None) -> Path:
-    """Where this workstation keeps the channels its user trusts: ``$XDG_CONFIG_HOME/devcapsule/trust.toml``."""
-    return config_root(env) / "trust.toml"
+    return settings_path(env)
 
 
-def load_trust(env: Mapping[str, str] | None = None) -> dict[str, Any]:
-    """The workstation's trust record, validated; empty when the file does not exist."""
+def launcher_release() -> str:
+    from importlib.metadata import version
+    from packaging.version import Version
+    return Version(version("devcapsule")).base_version
+
+
+def validate_settings(document: Mapping[str, Any], path: Path) -> None:
+    """Check reader admission before the schema or the settings themselves."""
+    from packaging.version import InvalidVersion, Version
+    from .workstation import WorkstationDefaults
     from .trust import WorkstationTrust
-    path = trust_path(env)
-    if not path.is_file():
-        return {}
-    document = load_toml(path)
+    required = document.get("minimum-devcapsule")
     try:
+        if not isinstance(required, str):
+            raise ValueError("minimum-devcapsule must be a release version string")
+        minimum = Version(required)
+        if minimum.is_prerelease or minimum.is_postrelease or minimum.local:
+            raise ValueError("minimum-devcapsule must be a release version string")
+    except (InvalidVersion, ValueError) as exc:
+        raise ProjectConfigurationError(f"{path}: {exc}") from exc
+    own = launcher_release()
+    if Version(own) < minimum:
+        raise ProjectConfigurationError(
+            f"DevCapsule home {path.parent} requires DevCapsule {required}; this launcher is {own}. "
+            "Get the release at https://github.com/ccozianu/devcapsule/releases."
+        )
+    schema = document.get("devcapsule-settings-schema-version")
+    if type(schema) is not int or schema != 1:
+        raise ProjectConfigurationError(f"{path}: unsupported schema version {schema!r}; this launcher reads 1.")
+    try:
+        WorkstationDefaults.read(document)
         WorkstationTrust.read(document)
     except ProjectConfigurationError as exc:
         raise ProjectConfigurationError(f"{path}: {exc}") from exc
-    return document
-
-
-def write_trust(document: Mapping[str, Any], env: Mapping[str, str] | None = None) -> Path:
-    """Write the workstation's trust record atomically; return its path."""
-    from .trust import WorkstationTrust, render_trust
-    path = trust_path(env)
-    atomic_write(path, render_trust(WorkstationTrust.read(document)))
-    return path
 
 
 def load_workstation(env: Mapping[str, str] | None = None) -> dict[str, Any]:
-    """The workstation's configuration document, validated; empty when no file exists.
-
-    The defaults come from ``workstation.toml``; the trust record of
-    ``trust.toml`` rides along under ``trust`` so one document carries what
-    the review needs of the workstation.
-    """
-    from .workstation import WorkstationDefaults
-    path = workstation_path(env)
-    document: dict[str, Any] = {}
-    if path.is_file():
-        document = load_toml(path)
-        try:
-            WorkstationDefaults.read(document)
-        except ProjectConfigurationError as exc:
-            raise ProjectConfigurationError(f"{path}: {exc}") from exc
-    trust = load_trust(env)
-    if trust:
-        document = {**document, "trust": trust}
+    """Read the single settings document; a missing home is empty."""
+    path = settings_path(env)
+    if not path.exists():
+        return {}
+    document = load_toml(path)
+    validate_settings(document, path)
     return document
 
 
-def write_workstation(document: Mapping[str, Any], env: Mapping[str, str] | None = None) -> Path:
-    """Write the workstation's configuration document atomically; return its path."""
-    from .workstation import WorkstationDefaults, render_workstation
-    path = workstation_path(env)
-    atomic_write(path, render_workstation(WorkstationDefaults.read(document)))
+def load_trust(env: Mapping[str, str] | None = None) -> dict[str, Any]:
+    return dict(table(load_workstation(env), "trust"))
+
+
+def write_settings(document: Mapping[str, Any], env: Mapping[str, str] | None = None) -> Path:
+    """Merge changed tables, retain headers, and replace only changed content.
+
+    Atomic replacement prevents partial reads. Concurrent updates of the same
+    table use the last writer's value; this is not a transaction across launchers.
+    """
+    path = settings_path(env)
+    before = load_workstation(env)
+    after = {**before, **document}
+    after.setdefault("devcapsule-settings-schema-version", 1)
+    after.setdefault("minimum-devcapsule", launcher_release())
+    validate_settings(after, path)
+    # A no-op keeps comments, spelling, permissions and timestamps intact.
+    if all(before.get(key, {}) == after.get(key, {}) for key in set(before) | set(after)):
+        return path
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    atomic_write(path, render_toml(after))
     return path
+
+
+def write_trust(document: Mapping[str, Any], env: Mapping[str, str] | None = None) -> Path:
+    return write_settings({"trust": dict(document)}, env)
+
+
+def write_workstation(document: Mapping[str, Any], env: Mapping[str, str] | None = None) -> Path:
+    return write_settings(document, env)
 
 
 def checkout_directory(manifest: Mapping[str, Any], env: Mapping[str, str] | None = None) -> Path:

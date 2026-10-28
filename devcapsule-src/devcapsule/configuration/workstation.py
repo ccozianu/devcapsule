@@ -33,12 +33,6 @@ class WorkstationDefaults:
 
     @classmethod
     def read(cls, document: Mapping[str, Any]) -> WorkstationDefaults:
-        version = document.get("devcapsule-workstation-schema-version", WORKSTATION_SCHEMA_VERSION)
-        if type(version) is not int or version != WORKSTATION_SCHEMA_VERSION:
-            raise ProjectConfigurationError(
-                f"The workstation configuration has an unsupported schema version {version!r}; "
-                f"this launcher reads version {WORKSTATION_SCHEMA_VERSION}."
-            )
         defaults = table(document, "defaults")
         unknown = sorted(set(defaults) - set(LAUNCHER_VALUE_NAMES))
         if unknown:
@@ -60,12 +54,11 @@ class WorkstationDefaults:
         return WorkstationDefaults(values)
 
     def document(self) -> dict[str, Any]:
-        return {"devcapsule-workstation-schema-version": WORKSTATION_SCHEMA_VERSION,
-                "defaults": dict(sorted(self.values.items()))}
+        return {"defaults": dict(sorted(self.values.items()))}
 
 
 def render_workstation(defaults: WorkstationDefaults) -> str:
-    lines = [f"devcapsule-workstation-schema-version = {WORKSTATION_SCHEMA_VERSION}", "", "[defaults]"]
+    lines = ["[defaults]"]
     for name, value in sorted(defaults.values.items()):
         rendered = str(value) if isinstance(value, int) else f'"{value}"'
         lines.append(f"{name} = {rendered}")
