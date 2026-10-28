@@ -6,7 +6,7 @@ Start date: 2026-09-18
 
 State: active 2026-10-24; releasing 0.3.0: rc3 tagged, published and verified as downloaded, carrying software approvals at launch, the saved Docker arguments and the regenerated lock, the owner's test of them on the download next; rc2's two C10 records closed, the network node's check still open; rc2 was prepared with the network node and C10 merged into the release branch, each with its review-partner loop settled; the pre-candidate merge then the tag on the owner's word; forced configuration, the diagnostics snapshot and the schema-version slice move to rc4 with image cleanup and C20; the base is published in the promotion; C17 stays a gate in both halves
 
-Definition read: WORKFLOW.md@5c89396f2200, WORKFLOW-LOCAL.md@31819cc43359
+Definition read: WORKFLOW.md@5c89396f2200, WORKFLOW-LOCAL.md@b500a24f0736
 
 Integration target: `main`
 
