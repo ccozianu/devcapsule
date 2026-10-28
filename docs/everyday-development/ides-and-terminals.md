@@ -1,6 +1,6 @@
 ---
 description: The IDEs DevCapsule offers, the terminal inside them, and how the capsule's shell differs from your computer's.
-updated: 2026-10-24
+updated: 2026-10-28
 weight: 1
 ---
 # IDEs and terminals
@@ -14,8 +14,16 @@ as shown below.
 | `python-ide` | PyCharm | Python from the base |
 | `java-ide` | IntelliJ IDEA | Java and Maven from the base |
 | `eclipse-ide` | Eclipse IDE for Java Developers | Bundled Eclipse runtime; Java and Maven from the base |
-| `frontend-ide` | VSCodium | Node.js from the base |
+| `frontend-ide` | VSCodium (default) or Visual Studio Code (`vscode`) | Node.js from the base |
+| `vscode-ide` | Visual Studio Code | Polyglot editor; combine with base or component toolchains |
 | `dotnet-ide` | JetBrains Rider | .NET SDK selected automatically |
+
+For Visual Studio Code on any project, run `devcapsule project config ide vscode`
+(or `vscode-ide`). On a `frontend-ide` checkout, `devcapsule project config use frontend-ide vscode`
+selects Microsoft's distribution instead of VSCodium. Visual Studio Code is
+downloaded directly from Microsoft on your machine and verified by SHA-256;
+accept its channel once per configuration home with
+`devcapsule home trust accept vscode`, or consent per checkout.
 
 For Eclipse, run `devcapsule project init --require java --ide eclipse-ide`, then
 `devcapsule project run`. Open the printed desktop link. In Eclipse, choose

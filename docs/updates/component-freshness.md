@@ -41,6 +41,7 @@ publish component lifecycle information.
 |---|---|---|
 | PyCharm | [JetBrains release JSON](https://data.services.jetbrains.com/products/releases?code=PY&latest=true&type=release) | Latest release and platform download/checksum links; no general support or security verdict. |
 | VSCodium | [GitHub latest-release JSON](https://api.github.com/repos/VSCodium/vscodium/releases/latest) | Stable, non-draft release with the expected platform archive. |
+| Visual Studio Code | [Microsoft stable update JSON](https://update.code.visualstudio.com/api/update/linux-x64/stable/latest) | Latest stable `tar.gz` release URL and SHA-256 checksum for the platform. |
 | Codex | [npm package metadata](https://registry.npmjs.org/@openai%2fcodex) | `latest`, exact versions and vendor deprecation. A changed `latest` tag is a candidate, not necessarily a numerically newer version. Absence means unlisted, not that installed software cannot run. |
 | Claude Code | [Vendor latest-version pointer](https://downloads.claude.ai/claude-code-releases/latest) and that version's `manifest.json` | The `latest` channel and a platform artifact; not the separate stable channel. |
 | Antigravity CLI | [Vendor platform updater manifest](https://antigravity-cli-auto-updater-974169037036.us-central1.run.app/manifests/linux_amd64.json) | The platform manifest's version and download metadata. |

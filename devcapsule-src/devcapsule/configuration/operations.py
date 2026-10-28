@@ -340,7 +340,7 @@ class InitializeReport:
         else:
             lines.append(
                 "Project initialized. Choose your IDE with 'devcapsule project config ide IDE' "
-                "(python-ide, frontend-ide, java-ide, eclipse-ide or dotnet-ide), then 'devcapsule project run'."
+                "(python-ide, frontend-ide, vscode-ide, java-ide, eclipse-ide or dotnet-ide), then 'devcapsule project run'."
             )
         return "\n".join(lines)
 

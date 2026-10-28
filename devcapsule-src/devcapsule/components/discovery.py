@@ -146,6 +146,22 @@ class CodiumDiscovery(VendorDiscovery):
         return _available(self.source, current, latest)
 
 
+class VscodeDiscovery(VendorDiscovery):
+    source = "https://update.code.visualstudio.com/api/update/"
+
+    def _check(self, current: str, platform: str) -> ChannelReport:
+        arch = "linux-x64" if platform == "linux-amd64" else "linux-arm64"
+        source = f"{self.source}{arch}/stable/latest"
+        release = read_json(source)
+        url = release.get("url")
+        sha256 = release.get("sha256hash")
+        if (not isinstance(url, str) or not url.startswith("https://") or not url.endswith(".tar.gz")
+                or not isinstance(sha256, str) or re.fullmatch(r"[0-9a-fA-F]{64}", sha256) is None):
+            raise ValueError("platform archive/checksum missing")
+        latest = exact_version(release["productVersion"])
+        return _available(source, current, latest)
+
+
 class ClaudeDiscovery(VendorDiscovery):
     source = "https://downloads.claude.ai/claude-code-releases/latest"
 

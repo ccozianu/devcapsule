@@ -50,6 +50,7 @@ GOLDEN_NEEDS = {
     "codium-dotnet": ["frontend-ide", "dotnet"],
     "intellij-browser": ["java", "java-ide", "browser-automation"],
     "codium-node": ["node", "frontend-ide"],
+    "vscode-node": ["node", "vscode-ide"],
     "pycharm-full": [
         "python",
         "python-ide",
@@ -118,6 +119,7 @@ def test_capability_vocabulary_unions_every_satisfaction_source() -> None:
         "postgresql-client",
         "python",
         "python-ide",
+        "vscode-ide",
     )
 
 

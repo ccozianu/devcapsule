@@ -26,6 +26,7 @@ Set `DEVCAPSULE_CONFIG_HOME` to keep these together:
 export DEVCAPSULE_CONFIG_HOME="$HOME/devcapsule-homes/learning"
 devcapsule home show
 devcapsule home trust accept devcapsule-base --yes
+devcapsule home trust accept vscode --yes
 devcapsule home trust accept claude-code --yes
 devcapsule home default memory 8GiB
 devcapsule home default cpus 4

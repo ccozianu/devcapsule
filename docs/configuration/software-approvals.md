@@ -50,7 +50,7 @@ Google owns it.
 ```
 
 `project config trust list` shows the channels this checkout's software comes through,
-`devcapsule-base`, `claude-code`, `antigravity-cli`, with their origins and
+`devcapsule-base`, `vscode`, `claude-code`, `antigravity-cli`, with their origins and
 integrity method, and previously accepted channels. A channel accepted under
 other origins or terms is listed as not covered, with what was accepted.
 Both text and JSON output give the trust record's path.

@@ -131,9 +131,9 @@ A required capability cannot be omitted. An omitted offer keeps its local
 version pin; a required dependency remains installed.
 
 `config use CAPABILITY COMPONENT` chooses a provider when the catalog lists
-several. `config use CAPABILITY default` removes your choice. The launcher
+several (for example, `config use frontend-ide vscode` or `codium`). `config use CAPABILITY default` removes your choice. The launcher
 then follows the project's recommendation, or the catalog's first eligible
-provider. The current catalog has one provider per capability, so `use`
+provider. When a capability has only one provider, `use`
 reports that no choice exists. A provider must meet the project's minimum.
 
 Your choices and local pins stay in the checkout record. The

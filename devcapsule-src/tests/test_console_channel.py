@@ -556,14 +556,18 @@ def test_channel_records_capability_choices_and_preserves_vendor_consent(project
     assert "browser-automation" in LocalCapabilities.read(load_toml(record_path(project))).without
     assert send("000003-restore", "restore", "browser-automation")["status"] == "recorded"
     assert "browser-automation" not in LocalCapabilities.read(load_toml(record_path(project))).without
-    # The current catalog has no alternatives. This refusal comes from the command.
+    assert send("000004-ide", "ide", "frontend-ide")["status"] == "recorded"
+    assert send("000005-use", "use", "frontend-ide", "vscode")["status"] == "recorded"
+    assert LocalCapabilities.read(load_toml(record_path(project))).providers == {"frontend-ide": "vscode"}
+    # Single-provider capabilities still refuse `use` through the same command path.
     expected_status, expected_text = run_config(
-        project, ["use", "frontend-ide", "codium"])
+        project, ["use", "python-ide", "pycharm"])
     assert expected_status == 2 and "choice" in expected_text
-    refused = send("000004-use", "use", "frontend-ide", "codium")
+    refused = send("000006-use", "use", "python-ide", "pycharm")
     assert refused["status"] == "refused" and expected_text.strip() in refused["text"]
     capsys.readouterr()
     assert config(project, "show", "--json") == 0
     listing = json.loads(capsys.readouterr().out)
     assert any(row["name"] == "claude-code-download" and row["pending"] for row in listing["rows"])
+    assert any(row["name"] == "vscode-download" and row["pending"] for row in listing["rows"])
     assert deferred_requests(record_path(project)) == []
