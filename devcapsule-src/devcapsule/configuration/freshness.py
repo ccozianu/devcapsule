@@ -58,5 +58,5 @@ def stale_resolution_inputs(
             accepted_manifest.add(legacy_digest)
     return tuple(
         name for name, digest in expected.items()
-        if (actual.get(name) not in accepted_manifest if name == "manifest" else actual.get(name) != digest)
+        if (actual.get(name) not in accepted_manifest if name == "manifest" else actual.get(name, "absent" if name.endswith("-config") else None) != digest)
     )

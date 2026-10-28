@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import sys
 from dataclasses import replace
 from pathlib import Path
 import tomllib
@@ -35,6 +36,21 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 def config(root: Path, *arguments: str) -> int:
     return cli.main(["project", "--path", str(root), "config", *arguments])
 
+
+
+def accept(root: Path, channel: str) -> int:
+    """Seed the project channel for tests of lock-specific acceptance."""
+    from devcapsule.commands._run_flow import accept_channel
+    try:
+        accept_channel(root, manifest_for(root)[1], channel)
+    except ProjectConfigurationError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    return 0
+
+
+def withdraw(channel: str) -> int:
+    return cli.main(["home", "trust", "withdraw", channel])
 
 def lock_path(root: Path) -> Path:
     return root / ".devcapsule" / "devcapsule.linux-amd64.lock"
@@ -84,10 +100,7 @@ def test_the_record_round_trips_and_covers_only_what_was_accepted() -> None:
     assert not reloaded.covers(moved)  # a new origin asks again
     assert not reloaded.covers(Channel("claude-code", "Anthropic", "Claude Code", channel.origins, "sha", "https://other/terms"))
     assert not reloaded.without("claude-code").channels
-    with pytest.raises(ProjectConfigurationError, match="No trust is recorded"):
-        reloaded.without("codex")
-    with pytest.raises(ProjectConfigurationError, match="unsupported schema version"):
-        WorkstationTrust.read({"devcapsule-trust-schema-version": 2})
+    assert reloaded.without("codex") == reloaded
     with pytest.raises(ProjectConfigurationError, match="must name its vendor"):
         WorkstationTrust.read({"channels": {"x": {"origins": []}}})
 
@@ -98,10 +111,10 @@ def test_trust_list_accept_and_withdraw(project: Path, capsys) -> None:
     assert config(project, "trust", "list") == 0
     out = capsys.readouterr().out
     assert "devcapsule-base" in out and "not yet" in out and str(trust_path()) in out
-    assert config(project, "trust", "accept", "devcapsule-base") == 0
+    assert cli.main(["home", "trust", "accept", "devcapsule-base", "--yes"]) == 0
     out = capsys.readouterr().out
-    assert "Trust DevCapsule to supply the base images" in out and "Recorded for this workstation" in out
-    assert load_toml(trust_path())["channels"]["devcapsule-base"]["vendor"] == "DevCapsule"
+    assert "Trust DevCapsule to supply the base images" in out and "Recorded for this DevCapsule home" in out
+    assert load_toml(trust_path())["trust"]["channels"]["devcapsule-base"]["vendor"] == "DevCapsule"
     assert config(project, "show") == 0
     assert "workstation trust (devcapsule-base)" in capsys.readouterr().out
     assert config(project, "check") == 0
@@ -109,10 +122,10 @@ def test_trust_list_accept_and_withdraw(project: Path, capsys) -> None:
     assert config(project, "trust", "list", "--json") == 0
     listed = json.loads(capsys.readouterr().out)
     assert [(row["channel"], row["trusted"]) for row in listed["channels"]] == [("devcapsule-base", True)]
-    assert config(project, "trust", "withdraw", "devcapsule-base") == 0
+    assert withdraw("devcapsule-base") == 0
     assert config(project, "check") == 3
-    assert config(project, "trust", "withdraw", "devcapsule-base") == 2
-    assert config(project, "trust", "accept", "codex") == 2
+    assert withdraw("devcapsule-base") == 0
+    assert accept(project, "codex") == 2
     assert "its channels: devcapsule-base" in capsys.readouterr().err
 
 
@@ -122,10 +135,10 @@ def test_run_trust_flag_records_the_channel_before_the_questions(project: Path) 
     assert not trust_path().exists()
     prepared = prepare_launch(project, RunFlags(ide="python-ide", trust=("devcapsule-base",)), interactive=False)
     assert prepared.selected.resolution["authorization"]["base-image"]["reference"].startswith("docker.io/mycodespaceai/devcapsule-base@")
-    assert "devcapsule-base" in load_toml(trust_path())["channels"]
+    assert "devcapsule-base" in load_toml(trust_path())["trust"]["channels"]
     assert "Accepted the channel devcapsule-base for this workstation." in prepared.notes
     # Printing the command stages the acceptance for the plan and writes nothing.
-    assert config(project, "trust", "withdraw", "devcapsule-base") == 0
+    assert withdraw("devcapsule-base") == 0
     prepare_launch(project, RunFlags(ide="python-ide", trust=("devcapsule-base",)), print_only=True)
     assert not WorkstationTrust.read(load_trust()).channels
     # With another decision pending and no terminal, the flag's acceptance is staged with the other answers: nothing is written.
@@ -144,7 +157,7 @@ def test_run_trust_flag_records_the_channel_before_the_questions(project: Path) 
 def test_a_trusted_vendor_covers_every_version_and_a_denial_still_wins(project: Path, capsys) -> None:
     pin_claude_code(project, "1.0.0")
     assert reviews(project)["claude-code-download"].status == "missing-required"
-    assert config(project, "trust", "accept", "claude-code") == 0
+    assert accept(project, "claude-code") == 0
     review = reviews(project)["claude-code-download"]
     assert (review.status, review.trusted_channel, review.problem) == ("trusted", "claude-code", None)
     pin_claude_code(project, "1.1.0")  # the software-approval question of D-0012 does not arise
@@ -167,7 +180,7 @@ def test_a_real_run_launches_on_the_workstations_trust_alone(project: Path, monk
     assert launch.call_count == 1
     _root, manifest = manifest_for(project)
     assert "base-image" not in load_toml(checkout_record_paths(manifest, project)[0]).get("authorization", {})
-    assert "devcapsule-base" in load_toml(trust_path())["channels"]
+    assert "devcapsule-base" in load_toml(trust_path())["trust"]["channels"]
     monkeypatch.setattr("sys.stdin.isatty", lambda: False)
     assert invoke(project, "run", "--no-update-check") == 0  # the second launch asks nothing
 
@@ -192,7 +205,7 @@ def test_acceptance_binds_integrity_and_preserves_previously_accepted_origins() 
 
 def test_changed_artifact_origin_asks_and_lists_the_previous_acceptance(project: Path, capsys) -> None:
     pin_claude_code(project, "1.0.0")
-    assert config(project, "trust", "accept", "claude-code") == 0
+    assert accept(project, "claude-code") == 0
     lock = load_toml(lock_path(project))
     lock["components"]["claude-code"]["artifacts"]["linux-amd64"]["url"] = "https://mirror.example.test/claude"
     lock_path(project).write_text(render_toml(lock))
@@ -202,8 +215,8 @@ def test_changed_artifact_origin_asks_and_lists_the_previous_acceptance(project:
     text = capsys.readouterr().out
     assert "not covered" in text and "https://mirror.example.test" in text
     assert "Accepted origins: https://downloads.example.test" in text
-    assert "SHA-256" in text and "Shared accounts share this trust" in text
-    assert config(project, "trust", "accept", "claude-code") == 0
+    assert "SHA-256" in text and "Anyone who uses this home uses this acceptance" in text
+    assert accept(project, "claude-code") == 0
     assert reviews(project)["claude-code-download"].status == "trusted"
     pin_claude_code(project, "1.1.0")
     assert reviews(project)["claude-code-download"].status == "trusted"
@@ -212,7 +225,7 @@ def test_changed_artifact_origin_asks_and_lists_the_previous_acceptance(project:
 @pytest.mark.parametrize("broken", ["http", "file", "credentials", "digest", "artifacts", "terms"])
 def test_unverifiable_lock_cannot_create_or_widen_acceptance(project: Path, broken: str, capsys) -> None:
     pin_claude_code(project, "1.0.0")
-    assert config(project, "trust", "accept", "claude-code") == 0
+    assert accept(project, "claude-code") == 0
     before = trust_path().read_bytes()
     lock = load_toml(lock_path(project))
     metadata = lock["components"]["claude-code"]
@@ -227,17 +240,17 @@ def test_unverifiable_lock_cannot_create_or_widen_acceptance(project: Path, brok
     else:
         del metadata["artifacts"]
     lock_path(project).write_text(render_toml(lock))
-    assert config(project, "trust", "accept", "claude-code") == 2
+    assert accept(project, "claude-code") == 2
     assert "No channel 'claude-code'" in capsys.readouterr().err
     assert trust_path().read_bytes() == before
 
 
-@pytest.mark.parametrize("via", ["command", "flag", "terminal"])
+@pytest.mark.parametrize("via", ["flag", "terminal"])
 def test_acceptance_uses_the_checkout_version_set_not_the_shared_lock(project: Path, via: str, capsys) -> None:
     from devcapsule.configuration.derivation import load_state
     from devcapsule.configuration.file_formats import canonical_digest
     assert config(project, "ide", "python-ide") == 0
-    assert config(project, "trust", "accept", BASE_CHANNEL) == 0
+    assert accept(project, BASE_CHANNEL) == 0
     pin_claude_code(project, "1.0.0")
     _, manifest = manifest_for(project)
     manifest["capabilities"]["required"].append("claude-code-agent")
@@ -254,11 +267,7 @@ def test_acceptance_uses_the_checkout_version_set_not_the_shared_lock(project: P
     listed = json.loads(capsys.readouterr().out)
     channel = next(row for row in listed["channels"] if row["channel"] == "claude-code")
     assert channel["origins"] == ["https://selected.example.test"]
-    if via == "command":
-        assert config(project, "trust", "accept", "claude-code") == 0
-        flags, interactive = RunFlags(), False
-    else:
-        flags, interactive = RunFlags(trust=("claude-code",) if via == "flag" else ()), via == "terminal"
+    flags, interactive = RunFlags(trust=("claude-code",) if via == "flag" else ()), via == "terminal"
     output = io.StringIO()
     prepared = prepare_launch(project, flags, interactive=interactive, input_stream=io.StringIO("y\n"), output_stream=output)
     assert prepared.selected.resolution["authorization"]["claude-code-download"] is True
@@ -272,7 +281,7 @@ def test_trusted_base_replaces_old_published_consent_through_realization(project
     from tests.test_upgrade_recovery import OLD_BASE, install_external_fakes, invoke
     assert config(project, "ide", "python-ide") == 0
     assert config(project, "authorize", "base-image", "default") == 0
-    assert config(project, "trust", "accept", BASE_CHANNEL) == 0
+    assert accept(project, BASE_CHANNEL) == 0
     _, manifest = manifest_for(project)
     input_path, output_path = checkout_record_paths(manifest, project)
     record = load_toml(input_path)
@@ -293,7 +302,7 @@ def test_trusted_base_replaces_old_published_consent_through_realization(project
 @pytest.mark.parametrize("value", [False, "false", "none", "invalid"])
 def test_trust_never_overrides_a_normalized_denial_or_invalid_answer(project: Path, value: bool | str) -> None:
     pin_claude_code(project, "1.0.0")
-    assert config(project, "trust", "accept", "claude-code") == 0
+    assert accept(project, "claude-code") == 0
     assert config(project, "authorize", "claude-code-download", "true") == 0
     _, manifest = manifest_for(project)
     input_path, _ = checkout_record_paths(manifest, project)
@@ -307,7 +316,7 @@ def test_trust_never_overrides_a_normalized_denial_or_invalid_answer(project: Pa
 
 def test_foreign_base_still_requires_checkout_consent(project: Path) -> None:
     assert config(project, "drop", "node") == 0
-    assert config(project, "trust", "accept", BASE_CHANNEL) == 0
+    assert accept(project, BASE_CHANNEL) == 0
     lock = load_toml(lock_path(project))
     lock["base"]["reference"] = "registry.example.test/base@sha256:" + "b" * 64
     lock_path(project).write_text(render_toml(lock))
@@ -335,7 +344,7 @@ def test_corrupt_trust_is_reported_and_never_rewritten(project: Path, content: s
 def test_inspection_and_pending_trust_leave_all_files_unchanged(project: Path, tmp_path: Path, accepted: bool) -> None:
     from tests.test_run_flow import snapshot
     if accepted:
-        assert config(project, "trust", "accept", BASE_CHANNEL) == 0
+        assert accept(project, BASE_CHANNEL) == 0
     before = snapshot(tmp_path)
     assert config(project, "trust", "list") == 0
     assert config(project, "show") == 0
@@ -346,8 +355,8 @@ def test_inspection_and_pending_trust_leave_all_files_unchanged(project: Path, t
 
 
 def test_trust_write_is_private_atomic_and_keeps_previous_record_on_failure(project: Path, monkeypatch) -> None:
-    from devcapsule.configuration.storage import write_trust
-    assert config(project, "trust", "accept", BASE_CHANNEL) == 0
+    from devcapsule.configuration.storage import write_settings
+    assert accept(project, BASE_CHANNEL) == 0
     before = trust_path().read_bytes()
     original = Path.replace
     replacements = []
@@ -361,7 +370,7 @@ def test_trust_write_is_private_atomic_and_keeps_previous_record_on_failure(proj
         return original(source, target)
     monkeypatch.setattr(Path, "replace", fail_replace)
     with pytest.raises(OSError, match="replacement failed"):
-        write_trust(WorkstationTrust().document())
+        write_settings({"trust": WorkstationTrust().document()})
     assert len(replacements) == 1 and not replacements[0].exists()
     assert trust_path().read_bytes() == before
 
@@ -372,7 +381,7 @@ def test_withdraw_keeps_saved_plan_and_running_session_but_blocks_next_launch(pr
     prepared = prepare_launch(project, RunFlags(trust=(BASE_CHANNEL,)), interactive=False)
     before = prepared.selected.resolution_path.read_bytes()
     launch = install_external_fakes(monkeypatch, [])
-    assert config(project, "trust", "withdraw", BASE_CHANNEL) == 0
+    assert withdraw(BASE_CHANNEL) == 0
     assert launch.call_count == 0 and prepared.selected.resolution_path.read_bytes() == before
     monkeypatch.setattr("sys.stdin.isatty", lambda: False)
     assert invoke(project, "run", "--no-update-check") == 3
@@ -398,7 +407,7 @@ def test_legacy_reader_without_trust_still_requires_its_checkout_consent(project
 def test_trusted_channel_does_not_replace_local_image_in_the_plan(project: Path, monkeypatch) -> None:
     from tests.test_environment_realization import base_image
     assert config(project, "ide", "python-ide") == 0
-    assert config(project, "trust", "accept", BASE_CHANNEL) == 0
+    assert accept(project, BASE_CHANNEL) == 0
     _, manifest = manifest_for(project)
     input_path, _ = checkout_record_paths(manifest, project)
     record = load_toml(input_path)
@@ -429,7 +438,7 @@ def test_terminal_acceptance_stays_staged_if_a_later_answer_is_missing(project: 
     with pytest.raises(DecisionPending, match="nothing was written"):
         prepare_launch(project, RunFlags(), interactive=True, input_stream=io.StringIO("y\n"), output_stream=output)
     assert "Trust will be saved when all required answers are complete" in output.getvalue()
-    assert "this OS user account" in output.getvalue()
+    assert "this DevCapsule home" in output.getvalue()
     assert snapshot(tmp_path) == before
 
 

@@ -340,7 +340,8 @@ def test_built_pex_authors_shared_policy_and_keeps_personal_selection_local(
     # XDG_CONFIG_HOME above, so accepting it here touches nothing shared.
     pending = invoke("config", "check")
     assert pending.returncode == 3 and "trust accept devcapsule-base" in pending.stderr, pending.stdout
-    trusted = invoke("config", "trust", "accept", "devcapsule-base")
+    trusted = subprocess.run([str(built_pex), "home", "trust", "accept", "devcapsule-base", "--yes"],
+                             cwd=tmp_path, env=environment, text=True, capture_output=True, check=False)
     assert trusted.returncode == 0, trusted.stderr
     checked = invoke("config", "check")
     assert checked.returncode == 0 and "contract valid" in checked.stdout, checked.stderr

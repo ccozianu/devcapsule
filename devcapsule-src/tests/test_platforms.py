@@ -82,7 +82,7 @@ def test_named_configuration_home(value: str, tmp_path: Path, monkeypatch: pytes
 
 
 def test_notifications_keep_named_state_directory_no_follow(tmp_path: Path) -> None:
-    from devcapsule.notifications import store_in_environment
+    from devcapsule.notifications import NotificationError, store_in_environment
     root = tmp_path / "chosen"
     root.mkdir()
     elsewhere = tmp_path / "elsewhere"
@@ -90,3 +90,5 @@ def test_notifications_keep_named_state_directory_no_follow(tmp_path: Path) -> N
     (root / "state").symlink_to(elsewhere, target_is_directory=True)
     store = store_in_environment({"DEVCAPSULE_CONFIG_HOME": str(root)})
     assert store.directory == root / "state" / "notifications"
+    with pytest.raises(NotificationError):
+        store.list()

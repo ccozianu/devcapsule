@@ -79,7 +79,8 @@ def test_a_bumped_approved_download_is_a_software_approval(checkout) -> None:
 def test_trusted_vendor_suppresses_the_version_approval_offer(checkout, monkeypatch) -> None:
     project, record, _ = checkout
     approved_then_bumped(project, record)
-    assert invoke(project, "config", "trust", "accept", "claude-code") == 0
+    from tests.test_trust import accept
+    assert accept(project, "claude-code") == 0
     _, manifest = manifest_for(project)
     assert offer.pending_for(project, manifest) == ()
     monkeypatch.setattr(offer, "confirmation_key", lambda: pytest.fail("trusted vendor asked again"))

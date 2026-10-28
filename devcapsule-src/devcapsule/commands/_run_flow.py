@@ -39,7 +39,7 @@ from devcapsule.configuration.file_formats import ProjectConfigurationError, ren
 from devcapsule.configuration.manifest_document import Recommendations
 from devcapsule.configuration.listing import Decision
 from devcapsule.configuration.operations import CheckoutRecord, apply_configuration_answers, ProvidedAnswer
-from devcapsule.configuration.storage import ResolvedProject, atomic_write, checkout_name_for, manifest_for, write_trust
+from devcapsule.configuration.storage import ResolvedProject, atomic_write, checkout_name_for, manifest_for, write_settings
 from devcapsule.configuration.trust import Channel, WorkstationTrust, channels_for
 from devcapsule.configuration.values import legacy_memory_names, memory_size_bytes, normalize_launcher_value
 
@@ -202,7 +202,7 @@ def prepare_launch(
             update_environment(arguments_path(input_path), name, saved_value, from_host=saved_value is None)
         atomic_write(selected.resolution_path, render_toml(selected.resolution))
         if accepted:
-            write_trust(WorkstationTrust.read(state.workstation).document())
+            write_settings({"trust": WorkstationTrust.read(state.workstation).document()})
             notes.extend(f"Accepted the channel {channel_id} for this workstation." for channel_id in accepted)
         if flags.save:
             notes.insert(0, "Recorded the flags given for this checkout.")
@@ -279,7 +279,7 @@ def accept_channel(root: Path, manifest: dict[str, Any], channel_id: str) -> Pat
     """Record the user's acceptance of one channel for this workstation now; return the record's path."""
     from devcapsule.configuration.storage import load_trust
     channel = project_channel(root, manifest, channel_id)
-    return write_trust(WorkstationTrust.read(load_trust()).with_channel(channel).document())
+    return write_settings({"trust": WorkstationTrust.read(load_trust()).with_channel(channel).document()})
 
 
 def _stage_trust(state: CheckoutState, checkout: Mapping[str, Any], channel_id: str, accepted: list[str]) -> None:
@@ -379,11 +379,11 @@ def _settle(
         output.write(f"{decision.description}\n")
         if decision.reason:
             output.write(f"  {decision.reason}\n")
-        answer = _ask(output, reader, "Accept for this user account on this computer? [y/N]: ").lower()
+        answer = _ask(output, reader, "Accept for this DevCapsule home? [y/N]: ").lower()
         if answer in {"y", "yes"}:
             _stage_trust(state, checkout, decision.name, accepted)
             output.write(f"Accepted for this review. Trust will be saved when all required answers are complete. "
-                         f"Withdraw: devcapsule project --path {root} config trust withdraw {decision.name}\n")
+                         f"Withdraw: devcapsule home trust withdraw {decision.name}\n")
         else:
             output.write(f"Not accepted. Accept later: {decision.command}\n")
             raise DecisionPending(_render_pending([decision], root))

@@ -187,6 +187,7 @@ def assess_checkout(
     surfaces: Mapping[str, str],
     project: Path | None = None,
     registered: bool = True,
+    home_path: Path | None = None,
     base_display: str | None = None,
     access_lock: Mapping[str, Any] | None = None,
     capability_versions: Mapping[str, str | None] | None = None,
@@ -216,7 +217,7 @@ def assess_checkout(
             if capability_providers and row.name in capability_providers else row for row in rows]
     rows.extend(_launcher_value_rows(manifest, checkout, workstation, project))
     rows.extend(_access_rows(manifest, composed_lock if access_lock is None else access_lock,
-                             checkout, project, base_display, workstation))
+                             checkout, project, base_display, workstation, home_path))
     rows.extend(_environment_rows(manifest, saved_environment or {}, project))
     has_surface = bool(table(composed_lock, "components").get("interactive-surface"))
     if has_surface:
@@ -306,6 +307,7 @@ def _launcher_value_rows(
 def _access_rows(
     manifest: Mapping[str, Any], lock: Mapping[str, Any], checkout: Mapping[str, Any], project: Path | None,
     base_display: str | None, workstation: Mapping[str, Any] | None = None,
+    home_path: Path | None = None,
 ) -> list[ListingRow]:
     try:
         trust = WorkstationTrust.read(workstation or {})
@@ -395,8 +397,8 @@ def _access_rows(
             # D-0011: one acceptance per channel per workstation, instead of a
             # per-checkout consent.
             pending = f"trust {channel.vendor}'s channel once for this workstation"
-            command = _command(project, "trust", "accept", channel.id)
-            decision = Decision("trust", channel.id, channel.statement(), command, reason=channel.note, value=name)
+            command = f"devcapsule home trust accept {channel.id}"
+            decision = Decision("trust", channel.id, channel.statement(home_path), command, reason=channel.note, value=name)
         elif review.problem is not None:
             pending = review.problem
             value = "default" if name == "base-image" else "true"

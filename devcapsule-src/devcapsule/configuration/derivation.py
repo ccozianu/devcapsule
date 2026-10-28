@@ -47,7 +47,7 @@ from .storage import (
     find_checkout_record,
     load_checkout,
     load_toml,
-    load_workstation,
+    load_workstation, config_root,
     named_checkout_record_paths,
     recommendation_lock_for,
     resolved_record_path,
@@ -159,7 +159,7 @@ class CheckoutState:
         providers = inspection_providers(self.manifest, lock, document)
         listing = assess_checkout(
             self.manifest, self.shared_lock, lock, document,
-            workstation=self.workstation, saved_environment=self.saved_environment,
+            home_path=config_root(), workstation=self.workstation, saved_environment=self.saved_environment,
             surfaces=self.surfaces, project=self.root, registered=self.registered,
             access_lock=access_lock, capability_versions=versions,
             capability_providers=providers,

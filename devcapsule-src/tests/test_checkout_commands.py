@@ -99,15 +99,15 @@ def test_set_memory_cpus_default_and_declared_values(project: Path, capsys, monk
     assert run(project, "set", "memory", "none") == 2
     assert run(project, "set", "memroy", "1g") == 2
     assert "Did you mean 'memory'?" in capsys.readouterr().err
-    assert run(project, "default", "cpus", "2") == 0
-    assert run(project, "default", "swap", "2") == 2
-    workstation = tomllib.loads((Path(os.environ["XDG_CONFIG_HOME"]) / "devcapsule" / "workstation.toml").read_text())
+    assert cli.main(["home", "default", "cpus", "2"]) == 0
+    assert cli.main(["home", "default", "swap", "2"]) == 2
+    workstation = tomllib.loads((Path(os.environ["XDG_CONFIG_HOME"]) / "devcapsule" / "settings.toml").read_text())
     assert workstation["defaults"] == {"cpus": 2}
     assert run(project, "show") == 0
     out = capsys.readouterr().out
     assert "workstation default" in out
-    assert run(project, "default", "cpus", "none") == 0
-    assert tomllib.loads((Path(os.environ["XDG_CONFIG_HOME"]) / "devcapsule" / "workstation.toml").read_text())["defaults"] == {}
+    assert cli.main(["home", "default", "cpus", "none"]) == 0
+    assert tomllib.loads((Path(os.environ["XDG_CONFIG_HOME"]) / "devcapsule" / "settings.toml").read_text())["defaults"] == {}
 
 
 def test_legacy_memory_name_redirects_to_memory(project: Path, capsys) -> None:
@@ -193,7 +193,7 @@ def test_every_config_leaf_is_listed_or_hidden_with_its_replacement() -> None:
     from devcapsule.commands.framework import render_command_listing
     from devcapsule.commands.project import ConfigGroup
     listing = render_command_listing(ConfigGroup.subcommands())
-    for visible in ("show", "check", "ide", "add", "omit", "restore", "use", "set", "default", "authorize", "deny", "forget", "bind",
+    for visible in ("show", "check", "ide", "add", "omit", "restore", "use", "set", "authorize", "deny", "forget", "bind",
                     "unbind", "env", "docker-args", "require", "offer", "drop", "recommend"):
         assert f"  {visible} " in listing, visible
     for hidden in ("set-env", "list-env", "unset-env", "set-extra-docker-args", "capabilities", "need", "unset", "agent", "tool", "list"):
@@ -411,8 +411,10 @@ def test_inspection_never_writes_in_registered_stale_or_unregistered_states(proj
     assert {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()} == before
 
 
-def test_workstation_default_requires_host_launcher(runtime_project, tmp_path, capsys):
+def test_workstation_default_requires_host_launcher(runtime_project, tmp_path, capsys, monkeypatch):
+    from devcapsule.configuration.storage import config_root
+    monkeypatch.setattr("devcapsule.runtime_configuration.HOME_PATH", config_root())
     before = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
-    assert run(runtime_project, "default", "cpus", "2") == 2
+    assert cli.main(["home", "default", "cpus", "2"]) == 2
     assert "Run outside the capsule" in capsys.readouterr().err
     assert {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()} == before

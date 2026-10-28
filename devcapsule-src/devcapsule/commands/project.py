@@ -718,7 +718,7 @@ def _assess(documents: CheckoutDocuments) -> Listing:
     providers = inspection_providers(documents.manifest, documents.composed_lock, documents.checkout)
     listing = assess_checkout(
         documents.manifest, documents.shared_lock, documents.composed_lock, documents.checkout,
-        workstation=documents.workstation, saved_environment=documents.saved_environment,
+        home_path=config_root(), workstation=documents.workstation, saved_environment=documents.saved_environment,
         surfaces=surfaces, project=documents.root, registered=documents.registered,
         access_lock=access_lock, capability_versions=versions,
         capability_providers=providers,
@@ -876,38 +876,6 @@ class ConfigSetCommand(Command):
         record.write()
         print(f"Checkout record: {record.input_path}")
         print("The next 'devcapsule project run' uses it.")
-        return 0
-
-
-class ConfigDefaultCommand(Command):
-    name = "default"
-    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    help = ("Set this workstation's default for memory or cpus, used by every project here unless the "
-            "project recommends or the checkout sets another; 'none' removes it.")
-
-    @classmethod
-    def configure(cls, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument("node_name", metavar="NAME", help="memory or cpus.")
-        parser.add_argument("value", metavar="VALUE", help="The default, or 'none'.")
-
-    @classmethod
-    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        from devcapsule.configuration.storage import load_workstation as load, write_workstation
-        from devcapsule.configuration.workstation import WorkstationDefaults
-        name = arguments.node_name
-        if name not in LAUNCHER_VALUE_NAMES:
-            raise ProjectConfigurationError(
-                f"The workstation has defaults for {', '.join(LAUNCHER_VALUE_NAMES)} only; {name!r} is not one of them."
-            )
-        defaults = WorkstationDefaults.read(load())
-        removing = arguments.value.strip().lower() == "none"
-        changed = defaults.with_value(name, None if removing else arguments.value)
-        path = write_workstation(changed.document())
-        if removing:
-            print(f"Removed the workstation default for {name}.")
-        else:
-            print(f"Workstation default {name} = {changed.values[name]}, for every project on this computer.")
-        print(f"Workstation configuration: {path}")
         return 0
 
 
@@ -1257,7 +1225,7 @@ ConfigUnsetCommand = _retired_command("unset", "config set NAME default', 'confi
 class ConfigTrustListCommand(Command):
     name = "list"
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.INSPECTS
-    help = "The channels this project's software comes through and whether this workstation trusts each."
+    help = "The channels this project's software comes through and whether this home trusts each."
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
@@ -1286,7 +1254,7 @@ class ConfigTrustListCommand(Command):
             print(json.dumps({"schema-version": 1, "path": str(trust_path()), "channels": rows}, indent=2, sort_keys=True))
             return 0
         print(f"Trust record: {trust_path()}")
-        print("Scope: this OS user account on this computer, across all projects. Shared accounts share this trust.")
+        print(f"Scope: this DevCapsule home, {config_root()}. Anyone who uses this home uses this acceptance.")
         for row in rows:
             state = "trusted" if row["trusted"] else ("not covered" if row["accepted"] else "not yet")
             origins = ", ".join(str(item) for item in row["origins"]) or "the lock"
@@ -1299,48 +1267,6 @@ class ConfigTrustListCommand(Command):
                       f"integrity {entry['integrity'] or 'not recorded'}; terms {entry['terms-url'] or 'none'}")
             if row["note"]:
                 print(f"{'':<18} {row['note']}")
-        return 0
-
-
-class ConfigTrustAcceptCommand(Command):
-    name = "accept"
-    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    help = "Accept a channel once for this workstation: every version of that vendor's product, for every project here."
-
-    @classmethod
-    def configure(cls, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument("channel", metavar="CHANNEL", help="devcapsule-base, claude-code, antigravity-cli, as 'trust list' names them.")
-
-    @classmethod
-    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        from devcapsule.commands._run_flow import accept_channel, project_channel
-        root, manifest = manifest_for(_project_context(context).start_path())
-        channel = project_channel(root, manifest, arguments.channel)
-        path = accept_channel(root, manifest, arguments.channel)
-        print(channel.statement())
-        if channel.note:
-            print(channel.note)
-        print(f"Recorded for this workstation: {path}")
-        return 0
-
-
-class ConfigTrustWithdrawCommand(Command):
-    name = "withdraw"
-    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.MUTATES
-    help = "Withdraw this account's channel trust for future launches; separate checkout consents remain valid."
-
-    @classmethod
-    def configure(cls, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument("channel", metavar="CHANNEL")
-
-    @classmethod
-    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        from devcapsule.configuration.storage import load_trust, write_trust
-        from devcapsule.configuration.trust import WorkstationTrust
-        trust = WorkstationTrust.read(load_trust()).without(arguments.channel)
-        path = write_trust(trust.document())
-        print(f"Withdrew {arguments.channel} for this workstation: {path}")
-        print("Running capsules and saved plans are unchanged. The next launch reviews consent again; separate checkout consents remain valid.")
         return 0
 
 
@@ -1428,11 +1354,11 @@ class ConfigConsoleGroup(Group):
 
 class ConfigTrustGroup(Group):
     name = "trust"
-    help = "What this workstation trusts, once per vendor and channel (D-0011): list, accept, withdraw."
+    help = "Whether this home trusts the channels used by this project."
 
     @classmethod
     def subcommands(cls) -> Mapping[str, type[Command] | type[Group]]:
-        return {"list": ConfigTrustListCommand, "accept": ConfigTrustAcceptCommand, "withdraw": ConfigTrustWithdrawCommand}
+        return {"list": ConfigTrustListCommand}
 
 
 class ConfigUnbindCommand(Command):
@@ -1565,7 +1491,7 @@ class ConfigAuthorizeCommand(Command):
             )
             if local_base_identity is None:
                 print("DevCapsule's published bases are trusted once for the whole workstation instead: "
-                      "'devcapsule project config trust accept devcapsule-base'.")
+                      "'devcapsule home trust accept devcapsule-base'.")
         print("The next 'devcapsule project run' uses it.")
         return 0
 
@@ -1919,7 +1845,6 @@ class ConfigGroup(Group):
             ConfigAgentGroup.name: ConfigAgentGroup,
             ConfigToolGroup.name: ConfigToolGroup,
             ConfigSetCommand.name: ConfigSetCommand,
-            ConfigDefaultCommand.name: ConfigDefaultCommand,
             ConfigAuthorizeCommand.name: ConfigAuthorizeCommand,
             ConfigDenyCommand.name: ConfigDenyCommand,
             ConfigForgetCommand.name: ConfigForgetCommand,

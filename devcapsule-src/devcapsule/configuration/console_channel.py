@@ -110,7 +110,7 @@ def classify(arguments: Sequence[str]) -> tuple[Disposition, str]:
     if verb in READ_ONLY_VERBS or pair in READ_ONLY_SUBVERBS:
         return Disposition.REFUSE, f"config {verb} is read-only; the console shows what it reports"
     if verb == "default":
-        return Disposition.REFUSE, "config default sets a workstation default; run it on the host"
+        return Disposition.REFUSE, "home default sets a home default; run it on the host"
     if verb in {"require", "offer", "drop", "recommend", "promote", "capabilities", "need"}:
         return Disposition.REFUSE, f"config {verb} edits the project's shared files; run it on the host, in the project"
     return Disposition.REFUSE, f"config {verb!r} is not a request the launcher takes from the console"

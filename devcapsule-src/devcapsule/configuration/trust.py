@@ -23,6 +23,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 import re
 from typing import Any, Mapping
 from urllib.parse import urlparse
@@ -55,13 +56,24 @@ class Channel:
     authorization: str = ""
     note: str = ""
 
-    def statement(self) -> str:
+    def statement(self, home: Path | None = None) -> str:
         """The product, channel boundary, terms and account scope the user accepts."""
+        location = f", `{home}`" if home is not None else ""
         origins = ", ".join(self.origins)
         terms = f" Accept the terms at {self.terms_url}." if self.terms_url else ""
         return (f"Trust {self.vendor} to supply {self.product} from {origins}, verified by {self.integrity}."
-                f"{terms} This covers every version and every project for this OS user account on this computer. "
-                "Anyone sharing this account uses this acceptance. Changed terms or a different channel require another decision.")
+                f"{terms} This covers every version and every project launched from this DevCapsule home{location}. "
+                "Anyone who uses this home uses this acceptance. Changed terms or a different channel require another decision.")
+
+
+def base_channel() -> Channel:
+    """The published base channel needs no project pin."""
+    return Channel(
+        BASE_CHANNEL, "DevCapsule", "the base images", (BASE_REPOSITORY, BASE_ORIGIN),
+        "the SHA-256 digest the launcher pins", authorization="base-image",
+        note=("A launcher you downloaded already carries these digests; this makes the trust explicit. "
+              "You trust the ccozianu/devcapsule GitHub account and the mycodespaceai Docker Hub account."),
+    )
 
 
 def channels_for(lock: Mapping[str, Any]) -> dict[str, Channel]:
@@ -78,12 +90,7 @@ def channels_for(lock: Mapping[str, Any]) -> dict[str, Channel]:
     reference = base.get("reference") if isinstance(base, dict) else None
     if (isinstance(reference, str) and reference.partition("@")[0] == BASE_REPOSITORY
             and re.fullmatch(r"sha256:[0-9a-f]{64}", reference.partition("@")[2])):
-        channels[BASE_CHANNEL] = Channel(
-            BASE_CHANNEL, "DevCapsule", "the base images", (BASE_REPOSITORY, BASE_ORIGIN),
-            "the SHA-256 digest the launcher pins", authorization="base-image",
-            note=("A launcher you downloaded already carries these digests; this makes the trust explicit. "
-                  "You trust the ccozianu/devcapsule GitHub account and the mycodespaceai Docker Hub account."),
-        )
+        channels[BASE_CHANNEL] = base_channel()
     components = lock.get("components", {})
     platform = str(lock.get("platform", ""))
     if not isinstance(components, dict):
@@ -92,35 +99,47 @@ def channels_for(lock: Mapping[str, Any]) -> dict[str, Channel]:
         definition = COMPONENTS.get(component_id) if isinstance(component_id, str) else None
         if definition is None or not isinstance(metadata, dict):
             continue
-        contract = definition.acquisition()
-        if contract is None:
-            continue
-        origins: list[str] = []
-        try:
-            for artifact in definition.locked_artifacts(metadata, platform):
-                url = urlparse(artifact.url)
-                if url.scheme != "https" or not url.hostname or url.username or url.password:
-                    raise ProjectConfigurationError(f"Channel {component_id!r} requires an HTTPS artifact origin without credentials.")
-                if re.fullmatch(r"[0-9a-fA-F]{64}", artifact.sha256) is None:
-                    raise ProjectConfigurationError(f"Channel {component_id!r} requires a pinned SHA-256 for every artifact.")
-                origin = f"https://{url.hostname}" + (f":{url.port}" if url.port not in (None, 443) else "")
-                if origin not in origins:
-                    origins.append(origin)
-        except (CliError, ValueError):
-            # The lock's validation reports the malformed artifact. It must
-            # never become an empty channel that an existing acceptance covers.
-            continue
-        if not origins:
-            continue
-        note = ""
-        if component_id == "antigravity-cli":
-            note = ("Trust applies to the named deployment and its publishing credentials; "
-                    "the lock's URL alone does not prove Google owns it.")
-        channels[str(component_id)] = Channel(
-            str(component_id), contract.vendor, contract.display_name, tuple(origins),
-            "the SHA-256 the launcher pins", contract.terms_url, contract.authorization, note,
-        )
+        channel = component_channel(component_id, metadata, platform)
+        if channel is not None:
+            channels[component_id] = channel
+
     return channels
+
+
+def component_channel(component_id: str, metadata: Mapping[str, Any], platform: str) -> Channel | None:
+    """One contract and pinned artifact table, shared by locks and the matrix."""
+    definition = COMPONENTS.get(component_id)
+    if definition is None:
+        return None
+    contract = definition.acquisition()
+    if contract is None:
+        return None
+    origins: list[str] = []
+    try:
+        for artifact in definition.locked_artifacts(metadata, platform):
+            url = urlparse(artifact.url)
+            if url.scheme != "https" or not url.hostname or url.username or url.password:
+                raise ProjectConfigurationError(f"Channel {component_id!r} requires an HTTPS artifact origin without credentials.")
+            if re.fullmatch(r"[0-9a-fA-F]{64}", artifact.sha256) is None:
+                raise ProjectConfigurationError(f"Channel {component_id!r} requires a pinned SHA-256 for every artifact.")
+            origin = f"https://{url.hostname}" + (f":{url.port}" if url.port not in (None, 443) else "")
+            if origin not in origins:
+                origins.append(origin)
+    except (CliError, ValueError):
+        # The lock's validation reports the malformed artifact. It must
+        # never become an empty channel that an existing acceptance covers.
+        return None
+    if not origins:
+        return None
+    note = ""
+    if component_id == "antigravity-cli":
+        note = ("Trust applies to the named deployment and its publishing credentials; "
+                "the lock's URL alone does not prove Google owns it.")
+    return Channel(
+        str(component_id), contract.vendor, contract.display_name, tuple(origins),
+        "the SHA-256 the launcher pins", contract.terms_url, contract.authorization, note,
+    )
+
 
 
 @dataclass(frozen=True)
@@ -153,7 +172,7 @@ class WorkstationTrust:
             if not isinstance(integrity, str):
                 raise ProjectConfigurationError(f"Trust channel {channel_id!r} integrity must be a string.")
             result[channel_id] = {"vendor": vendor, "origins": list(origins), "terms-url": terms,
-                                  "integrity": integrity, "accepted": str(entry.get("accepted", ""))}
+                                  "integrity": integrity, "product": str(entry.get("product", "")), "accepted": str(entry.get("accepted", ""))}
         return cls(result)
 
     def covers(self, channel: Channel) -> bool:
@@ -177,12 +196,12 @@ class WorkstationTrust:
                 and previous.get("integrity") == channel.integrity):
             origins.update(previous["origins"])
         channels[channel.id] = {"vendor": channel.vendor, "origins": sorted(origins), "integrity": channel.integrity,
-                               "terms-url": channel.terms_url, "accepted": moment}
+                               "terms-url": channel.terms_url, "product": channel.product, "accepted": moment}
         return WorkstationTrust(channels)
 
     def without(self, channel_id: str) -> WorkstationTrust:
         if channel_id not in self.channels:
-            raise ProjectConfigurationError(f"No trust is recorded for {channel_id!r} on this workstation.")
+            return self
         channels = dict(self.channels)
         del channels[channel_id]
         return WorkstationTrust(channels)
@@ -196,6 +215,7 @@ def render_trust(trust: WorkstationTrust) -> str:
     for channel_id, entry in sorted(trust.channels.items()):
         lines.extend(["", f"[channels.{quote_toml(channel_id) if not channel_id.replace('-', 'a').replace('_', 'a').isalnum() else channel_id}]"])
         lines.append(f"vendor = {quote_toml(entry['vendor'])}")
+        lines.append(f"product = {quote_toml(entry.get('product', ''))}")
         lines.append("origins = [" + ", ".join(quote_toml(item) for item in entry["origins"]) + "]")
         lines.append(f"integrity = {quote_toml(entry.get('integrity', ''))}")
         if entry.get("terms-url"):

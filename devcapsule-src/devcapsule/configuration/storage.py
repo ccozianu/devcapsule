@@ -117,8 +117,9 @@ def validate_settings(document: Mapping[str, Any], path: Path) -> None:
             raise ValueError("minimum-devcapsule must be a release version string")
     except (InvalidVersion, ValueError) as exc:
         raise ProjectConfigurationError(f"{path}: {exc}") from exc
-    own = launcher_release()
-    if Version(own) < minimum:
+    from importlib.metadata import version
+    own = version("devcapsule")
+    if Version(launcher_release()) < minimum:
         raise ProjectConfigurationError(
             f"DevCapsule home {path.parent} requires DevCapsule {required}; this launcher is {own}. "
             "Get the release at https://github.com/ccozianu/devcapsule/releases."
@@ -165,10 +166,6 @@ def write_settings(document: Mapping[str, Any], env: Mapping[str, str] | None = 
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     atomic_write(path, render_toml(after))
     return path
-
-
-def write_trust(document: Mapping[str, Any], env: Mapping[str, str] | None = None) -> Path:
-    return write_settings({"trust": dict(document)}, env)
 
 
 def write_workstation(document: Mapping[str, Any], env: Mapping[str, str] | None = None) -> Path:
@@ -329,6 +326,9 @@ def registered_checkouts(env: Mapping[str, str] | None = None) -> tuple[Register
 
 
 def atomic_write(path: Path, content: str, mode: int = 0o600) -> None:
+    root = config_root()
+    if path.is_relative_to(root):
+        root.mkdir(mode=0o700, parents=True, exist_ok=True)
     path.parent.mkdir(parents=True, exist_ok=True)
     # The staging file is private from creation, not merely after the bytes
     # have been written. A failed write/replace keeps the previous checkpoint.

@@ -158,15 +158,12 @@ def test_render_and_document_carry_every_column() -> None:
 def test_workstation_defaults_validate_and_render() -> None:
     defaults = WorkstationDefaults.read({"defaults": {"memory": "4g", "cpus": 2}})
     assert defaults.values == {"memory": "4GiB", "cpus": 2}
-    assert tomllib.loads(render_workstation(defaults)) == {"devcapsule-workstation-schema-version": 1,
-                                                           "defaults": {"cpus": 2, "memory": "4GiB"}}
+    assert tomllib.loads(render_workstation(defaults)) == {"defaults": {"cpus": 2, "memory": "4GiB"}}
     assert defaults.with_value("cpus", None).values == {"memory": "4GiB"}
     with pytest.raises(ProjectConfigurationError, match="owns memory, cpus"):
         WorkstationDefaults.read({"defaults": {"swap": "1g"}})
     with pytest.raises(ProjectConfigurationError, match="positive integer"):
         WorkstationDefaults.read({"defaults": {"cpus": 0}})
-    with pytest.raises(ProjectConfigurationError, match="schema version"):
-        WorkstationDefaults.read({"devcapsule-workstation-schema-version": 2})
 
 
 @pytest.mark.parametrize("source,checkout,recommended,defaults,expected", [

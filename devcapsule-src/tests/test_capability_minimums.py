@@ -229,13 +229,14 @@ ide = "frontend-ide"
         "checkout": {"path": str(project)},
         "capabilities": {"selected": ["claude-code-agent", "codex-agent", "frontend-ide"], "without": [], "lock": pins_text},
     }))
-    trust_path().write_text('''devcapsule-trust-schema-version = 1
-[channels.devcapsule-base]
+    trust_path().write_text('''devcapsule-settings-schema-version = 1
+minimum-devcapsule = "0.3.0"
+[trust.channels.devcapsule-base]
 vendor = "DevCapsule"
 origins = ["docker.io/mycodespaceai/devcapsule-base", "https://devcapsule.mycodespace.ai"]
 integrity = "the SHA-256 digest the launcher pins"
 accepted = "2026-10-24T10:00:00+00:00"
-[channels.claude-code]
+[trust.channels.claude-code]
 vendor = "Anthropic"
 origins = ["https://downloads.claude.ai"]
 integrity = "the SHA-256 the launcher pins"

@@ -19,6 +19,8 @@ from devcapsule.configuration.file_formats import ConfigurationFileKind, Project
 from devcapsule.configuration.storage import ResolvedProject, checkout_name_for, checkout_record_name, discover_project, load_toml, manifest_for, recommendation_lock_for
 
 
+HOME_PATH = Path("/etc/devcapsule/home")
+
 CONTEXT_PATH = Path("/etc/devcapsule/launch-context.json")
 CONFIGURATION_PATH = Path("/etc/devcapsule/checkout")
 CHANNEL_PATH = Path("/run/devcapsule-configuration")
@@ -70,9 +72,11 @@ class LaunchConfiguration:
     def capture(cls, selected: ResolvedProject, identity: str, listing: dict[str, Any] | None = None) -> LaunchConfiguration:
         from devcapsule.project_information import configured_information
 
+        from devcapsule.configuration.storage import config_root
         checkout_name = checkout_name_for(selected.manifest, selected.checkout_path)
         return cls(selected.checkout_path.parent, {
             "format": 1, "project": deepcopy(selected.manifest["project"]),
+            "configuration-home": str(config_root().resolve()),
             "launcher-root": str(selected.root),
             "runtime-root": selected.resolution["runtime"]["project-mount"],
             "checkout-file": selected.checkout_path.name,
@@ -240,4 +244,15 @@ def require_launcher(start: Path, arguments: Sequence[str]) -> None:
         raise ProjectConfigurationError(
             "This command needs launcher-owned configuration or state. Inside this capsule that "
             "configuration is read-only. Run outside the capsule: " + context.launcher_command(arguments)
+        )
+
+
+def require_home_launcher(arguments: Sequence[str]) -> None:
+    """Refuse writes to the capsule's mounted home; a different home is independent."""
+    from devcapsule.platforms import XdgHomes
+    homes = XdgHomes.from_environment()
+    if CONTEXT_PATH.is_file() and homes.config == HOME_PATH:
+        raise ProjectConfigurationError(
+            "This command needs launcher-owned configuration or state. Inside this capsule that "
+            "configuration is read-only. Run outside the capsule: " + shlex.join(["devcapsule", "home", *arguments])
         )

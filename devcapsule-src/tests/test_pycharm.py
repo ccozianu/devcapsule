@@ -1334,6 +1334,10 @@ def test_launcher_mounts_live_configuration_directory_and_private_snapshot_read_
     records.mkdir()
     document = {"format": 1, "launcher-root": str(project), "runtime-root": "/workspace/project",
                 "checkout-file": "devcapsule.checkout.toml", "running": {"identity": "captured-at-launch"}}
+    home = tmp_path / "chosen-home"
+    home.mkdir()
+    (home / "settings.toml").write_text('minimum-devcapsule = "0.3.0"\ndevcapsule-settings-schema-version = 1\n')
+    document["configuration-home"] = str(home)
     env = base_env(tmp_path)
     env["XDG_RUNTIME_DIR"] = str(tmp_path / "runtime")
     config = build_run_config(PycharmRunOptions(
@@ -1349,6 +1353,9 @@ def test_launcher_mounts_live_configuration_directory_and_private_snapshot_read_
         assert json.loads(files.launch_context_file.read_text()) == document
         args = build_docker_args(config, files, env)
         assert f"type=bind,src={records},dst={CONFIGURATION_PATH},ro" in args
+        assert f"type=bind,src={home}/settings.toml,dst=/etc/devcapsule/home/settings.toml,ro" in args
+        assert "DEVCAPSULE_CONFIG_HOME=/etc/devcapsule/home" in args
+        assert not any(f"src={home}," in arg for arg in args)
         assert f"type=bind,src={files.launch_context_file},dst={CONTEXT_PATH},ro" in args
         assert not any("src=" + str(records / "devcapsule.checkout.toml") in arg for arg in args)
         # The console's channel: a private directory, mounted writable, with the launch listing when run computed one.

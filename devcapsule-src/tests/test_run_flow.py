@@ -94,8 +94,8 @@ def test_a_second_checkout_is_registered_under_its_directory_name(project: Path,
     prompts = io.StringIO()
     prepared = prepare_launch(second, RunFlags(ide="python-ide", authorize=()), interactive=True,
                               input_stream=io.StringIO("y\n"), output_stream=prompts)
-    assert "Accept for this user account on this computer?" in prompts.getvalue()
-    assert load_toml(trust_path())["channels"]["devcapsule-base"]["vendor"]
+    assert "Accept for this DevCapsule home?" in prompts.getvalue()
+    assert load_toml(trust_path())["trust"]["channels"]["devcapsule-base"]["vendor"]
     names = {item.checkout_name: item.checkout_path for item in registered_checkouts()}
     assert names == {"default": project.resolve(), "second-copy": second.resolve()}
     assert prepared.selected.checkout_path.name == "second-copy.checkout.toml"
@@ -121,7 +121,7 @@ def test_interactive_questions_record_answers_where_the_config_family_would(proj
     assert "network" not in saved["authorization"]
     assert prepared.host_overrides == {"network": "host"}
     assert "base-image" not in saved.get("authorization", {})  # the channel is trusted for the workstation, not consented per checkout
-    assert "devcapsule-base" in load_toml(trust_path())["channels"]
+    assert "devcapsule-base" in load_toml(trust_path())["trust"]["channels"]
     assert read_arguments(arguments_path(checkout_record_paths(load_toml(paths(project)[0]), project)[0])) == [
         "--env", "POSTGRES_HOST=db.example.org"]
     assert prepared.selected.resolution["runtime"]["component"] == "codium"

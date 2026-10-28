@@ -13,7 +13,7 @@ of DevCapsule's.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 import os
 from pathlib import Path
@@ -77,6 +77,7 @@ class XdgHomes:
     data: Path
     state: Path
     cache: Path
+    chosen_by: str = field(default="default", compare=False)
 
     @classmethod
     def from_environment(cls, env: Mapping[str, str] | None = None) -> XdgHomes:
@@ -84,7 +85,7 @@ class XdgHomes:
         named = values.get("DEVCAPSULE_CONFIG_HOME")
         if named:
             root = Path(named).expanduser().resolve()
-            return cls(root, root / "data", root / "state", root / "cache")
+            return cls(root, root / "data", root / "state", root / "cache", "DEVCAPSULE_CONFIG_HOME")
         home = Path(values.get("HOME", "~")).expanduser()
 
         def scoped(variable: str, *default: str) -> Path:
@@ -95,4 +96,5 @@ class XdgHomes:
             data=scoped("XDG_DATA_HOME", ".local", "share"),
             state=scoped("XDG_STATE_HOME", ".local", "state"),
             cache=scoped("XDG_CACHE_HOME", ".cache"),
+            chosen_by="XDG_CONFIG_HOME" if values.get("XDG_CONFIG_HOME") else "default",
         )
