@@ -3,12 +3,12 @@ description: What an update check can and cannot establish, where the freshness 
 aliases:
   - /docs/guides/component-freshness/
 weight: 3
-updated: 2026-09-28
+updated: 2026-10-28
 ---
 # How DevCapsule checks component freshness
 
 This describes the implementation shipped in {{tag}}. It checks vendor metadata
-for six curated components and offers maintained guidance when those checks
+for curated components and offers maintained guidance when those checks
 fail. The operational improvements described at the end are intended for V1;
 they are not guarantees of the current service.
 

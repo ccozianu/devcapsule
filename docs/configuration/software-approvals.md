@@ -7,8 +7,8 @@ updated: 2026-10-28
 
 Some of the software a capsule contains is downloaded from its vendor under
 that vendor's terms. DevCapsule does not redistribute those downloads.
-Coding agents are capabilities; their components declare their own channels
-and consent requirements. DevCapsule's own base images come from its published
+Visual Studio Code and coding agents declare their own channels and consent
+requirements. DevCapsule's own base images come from its published
 repository, content-addressed by the digest the lock pins.
 When a launch lacks matching consent, DevCapsule can ask you to trust a
 **channel**. The statement names its vendor, origins, integrity method and
