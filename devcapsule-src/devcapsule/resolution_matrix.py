@@ -1372,8 +1372,10 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
             "vscode",
             "1.143.1",
             _BASE_FAMILY_UBUNTU_24_04,
-            "contained-display X11 window and persistent user-data/extensions "
-            "relaunch smoke passed 2026-10-28 on v0.3.0-rc6 base",
+            "IDE smoke 2026-10-28 from a capsule on the v0.3.0-rc6 base: the "
+            "desktop answered, a 'code' X11 window titled 'Visual Studio Code' "
+            "owned the display, the recorded desktop kept (maintenance evidence "
+            "2026-10-28-vscode); no relaunch or persistence check yet",
         ),
         _VerifiedEdge(
             "codex",
