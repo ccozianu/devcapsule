@@ -81,6 +81,10 @@ class XdgHomes:
     @classmethod
     def from_environment(cls, env: Mapping[str, str] | None = None) -> XdgHomes:
         values = os.environ if env is None else env
+        named = values.get("DEVCAPSULE_CONFIG_HOME")
+        if named:
+            root = Path(named).expanduser().resolve()
+            return cls(root, root / "data", root / "state", root / "cache")
         home = Path(values.get("HOME", "~")).expanduser()
 
         def scoped(variable: str, *default: str) -> Path:
