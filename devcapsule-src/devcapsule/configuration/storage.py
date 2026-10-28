@@ -320,9 +320,6 @@ def registered_checkouts(env: Mapping[str, str] | None = None) -> tuple[Register
 
 
 def atomic_write(path: Path, content: str, mode: int = 0o600) -> None:
-    root = config_root()
-    if path.is_relative_to(root):
-        root.mkdir(mode=0o700, parents=True, exist_ok=True)
     path.parent.mkdir(parents=True, exist_ok=True)
     # The staging file is private from creation, not merely after the bytes
     # have been written. A failed write/replace keeps the previous checkpoint.
