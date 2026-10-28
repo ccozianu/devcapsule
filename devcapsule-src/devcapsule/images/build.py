@@ -405,8 +405,8 @@ def extract_resource_tree(package: str, destination: Path) -> None:
 def normalize_archive_directory(source: Path, destination: Path) -> Path:
     """Return the installation root of an unpacked archive.
 
-    JetBrains archives wrap everything in one top-level directory; VS
-    Code-family archives are flat, with the installation at the archive root.
+    JetBrains and Visual Studio Code archives wrap everything in one top-level
+    directory; VSCodium archives are flat, with the installation at the root.
     """
 
     extract_root = destination / "extract"

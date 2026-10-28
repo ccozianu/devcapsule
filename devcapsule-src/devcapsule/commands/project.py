@@ -1682,13 +1682,14 @@ class ConfigIdeCommand(Command):
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        from devcapsule.configuration.capabilities import resolution_recommendations
+        from devcapsule.configuration.derivation import load_state
         root, manifest, current, surfaces = _local_selection(context)
         ide = _capability_name(arguments.ide, surfaces, "IDE")
         selected = tuple(sorted({*(name for name in current.selected if name not in surfaces), ide}))
         providers = {name: value for name, value in current.providers.items() if name not in surfaces or name == ide}
         _replace_selection(root, selected, None, arguments.allow_unverified, providers)
-        provider = providers.get(ide) or resolution_recommendations(manifest).get(ide) or surfaces[ide]
+        composed = load_state(root, manifest).composed_lock()
+        provider = composed.get("components", {}).get("interactive-surface") or surfaces[ide]
         print(f"Your IDE for this checkout: {ide} ({provider}).")
         print("The next 'devcapsule project run' uses it.")
         return 0
@@ -2090,7 +2091,7 @@ class ProjectRunCommand(Command):
 
     @classmethod
     def configure(cls, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument("--ide", metavar="IDE", help="The IDE for this launch: python-ide, frontend-ide, vscode-ide, java-ide, eclipse-ide, dotnet-ide.")
+        parser.add_argument("--ide", metavar="IDE", help="The IDE for this launch: python-ide, frontend-ide, vscode-ide, java-ide, eclipse-ide or dotnet-ide.")
         parser.add_argument("--with", dest="with_capabilities", action="append", default=[], metavar="CAPABILITY", help="Add a capability for this launch; repeatable.")
         parser.add_argument("--use", action="append", default=[], metavar="CAPABILITY=COMPONENT", help="Choose a provider for this launch; repeatable.")
         _retired_option(parser, "--agent", "devcapsule project run --with CAPABILITY")
