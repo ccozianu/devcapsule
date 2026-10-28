@@ -78,6 +78,12 @@ workstation-commands record awaiting the owner's choice of home.
   The owner's reasoning, nothing the launcher depends on is global, after
   Bracha's Newspeak, is recorded in the order. The same pair implements
   and reviews.
+  Implemented on 2026-10-28 as PR #299 to `release-0.3.0`, reviewed in
+  PR #300 (accepted without a round, merged at `e83c0881`); awaiting the
+  owner's merge. One rule of the order changed under review and is
+  listed for the owner in the pull request: inside a capsule the home
+  commands write the capsule's own home instead of refusing, because the
+  capsule's own state must stay writable for a launcher run inside it.
 
 ## Still open from the same check, for the owner
 
