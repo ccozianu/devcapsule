@@ -15,7 +15,7 @@ so what ``run`` asks is exactly what ``config check`` reports. The IDE, a
 required environment variable, a consent, an invalid host answer,
 a required value and a required secret block the
 launch until answered; so does a vendor's or DevCapsule's channel the
-home has not accepted yet (D-0011, once per computer); a host access
+home has not accepted yet (D-0011, once per home); a host access
 the project recommends and the developer never answered is asked, and "not
 now" launches with the secure default; so is a widening the console asked
 for during an earlier run, kept until applied or discarded here.
@@ -336,7 +336,7 @@ def _settle(
         output.write("IDE selected. Answers will be recorded when the review is complete.\n")
     elif decision.kind == "env":
         output.write(f"The project needs {decision.name}" + (f": {decision.reason}" if decision.reason else "") + "\n")
-        value = _hidden(output, reader, f"{decision.name} [hidden, kept on this computer]: ")
+        value = _hidden(output, reader, f"{decision.name} [hidden, kept in this home]: ")
         validate_value(value)
         environment[decision.name] = value
         state.saved_environment[decision.name] = value

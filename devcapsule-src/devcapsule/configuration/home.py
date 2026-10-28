@@ -2,8 +2,8 @@
 
 The CLI UX redesign work order of 2026-10-24, answer 6: the launcher owns
 the container's memory limit and CPU count. Each has a home default,
-set once with ``config default NAME VALUE`` and kept in
-``$XDG_CONFIG_HOME/devcapsule/settings.toml``; a project may recommend a
+set once with ``home default NAME VALUE`` and kept in
+the configuration home's ``settings.toml``; a project may recommend a
 value, and a checkout may set its own. The precedence is the checkout's
 answer, then the project's recommendation, then the home default,
 then no limit at all.

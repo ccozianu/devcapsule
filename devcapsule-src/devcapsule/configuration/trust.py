@@ -1,4 +1,4 @@
-"""The home's trust record: vendors and channels accepted once, per user, for every project.
+"""The home's trust record: vendors and channels accepted once per configuration home, for every project.
 
 D-0011 (2026-10-01), as the owner refined it for 0.3.0 rc4 (answer 3 of
 the CLI UX redesign work order): the user accepts a vendor's terms and
@@ -11,7 +11,7 @@ artifacts name, verified by the pinned SHA-256. Anything resolved through
 an accepted channel is approved without a question; anything that leaves
 it asks: a local image, a different origin, changed terms.
 
-The record lives under the launcher's config root, ``trust.toml``, beside
+The record lives under the launcher's config root, in ``settings.toml`` under ``trust``, beside
 the checkout records; it is the user's, never the project's. Older clients
 never read it and keep their per-checkout consents, which remain honored.
 
@@ -150,7 +150,7 @@ class HomeTrust:
 
     @classmethod
     def read(cls, document: Mapping[str, Any]) -> HomeTrust:
-        """Read ``trust.toml``'s mapping, or the ``trust`` table of the merged home document."""
+        """Read a trust table, or the ``trust`` table of the settings document."""
         source = document.get("trust", document) if "trust" in document else document
         if not isinstance(source, Mapping):
             raise ProjectConfigurationError("The home trust record must be a table.")

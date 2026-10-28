@@ -1,7 +1,7 @@
 ---
 description: The command tree of the devcapsule launcher, with one line of intent per command, as the executable prints it.
 weight: 1
-updated: 2026-10-26
+updated: 2026-10-28
 ---
 # Command reference
 
@@ -14,15 +14,31 @@ put the path before the subcommand: `devcapsule project --path PROJECT config sh
 Inside a capsule, supported inspection commands use the capsule's view.
 Commands that need host state name the launcher command to run outside.
 
+## `devcapsule home`
+
+These commands run from any directory. They need no project or `--path`.
+The [configuration home](../configuration/home.md) holds their settings.
+
+| Command | Intent |
+|---|---|
+| `show` | Show the home's path and source, format and minimum reader, defaults and accepted channels. |
+| `trust list` | List this home's accepted channels, with vendors, products, origins and acceptance dates. |
+| `trust accept CHANNEL [--yes]` | Show the channel and terms, then ask for acceptance; `--yes` skips the question. |
+| `trust withdraw CHANNEL` | Remove acceptance; report success if the channel was not accepted. |
+| `default memory\|cpus VALUE\|none` | Set a resource default for this home, or remove it with `none`. |
+
+Inside a capsule, `show` and `trust list` read the mounted settings.
+Commands that change those settings name the command to run outside.
+
 ## `devcapsule project`
 
 | Command | Intent |
 |---|---|
 | `init` | Initialize the project: the manifest with what it requires and offers, the platform lock, your checkout record with your IDE and capabilities. |
-| `run` | Derive the plan from the project, this workstation and this checkout, ask what nobody else can answer, and launch. |
+| `run` | Derive the plan from the project, this home and this checkout, ask what nobody else can answer, and launch. |
 | `config` | This checkout's choices and the project's contract: show what the next launch uses, change one thing, check. |
 | `info` | Show project software, environment and persistent storage without changing state. |
-| `list` | List the checkouts registered on this computer. |
+| `list` | List the checkouts registered in this home. |
 | `checkout` | This local checkout: register its name, its notifications, its decisions. |
 | `state` | Inspect and adopt checkout-scoped persistent state. |
 | `versions` | Inspect, try and recover checkout-local component version sets. |
@@ -56,7 +72,7 @@ devcapsule project run [--ide IDE] [--with CAPABILITY]... [--use CAPABILITY=COMP
 
 IDE, capability, provider, memory, CPU, environment and host-access flags apply to one launch.
 `--save` records those answers after the required review and plan validation
-succeed. `--trust` accepts a channel for this workstation without needing
+succeed. `--trust` accepts a channel for this home without needing
 `--save`. A missing required answer prevents that acceptance from being saved.
 `--set` supports only memory and CPUs, including a declared memory alias.
 Use `config set` to record other declared values.
@@ -114,13 +130,6 @@ Your checkout:
 | `bind NAME PROVIDER:VALUE`, `unbind NAME` | Bind a declared state directory or secret input to your own provider, and return it to the managed default. |
 | `console apply\|discard ID` | Run a console request as its command, or forget it. |
 
-Your computer:
-
-| Command | Intent |
-|---|---|
-| `default memory\|cpus VALUE\|none` | This workstation's default limit, for every project here unless the project recommends or the checkout sets another. |
-| `trust accept\|withdraw CHANNEL` | Accept a vendor's or DevCapsule's channel once, every version, every project; or withdraw it. |
-
 The project's, for its owners (they write schema 2):
 
 | Command | Intent |
@@ -154,7 +163,7 @@ Each command below follows `devcapsule project`.
 | Command | Intent |
 |---|---|
 | `info [--json]` | Inspect the project's environment and persistent storage. |
-| `list` | List registered checkouts on this workstation. |
+| `list` | List registered checkouts in this home. |
 | `checkout register NAME` | Give an unregistered checkout a name; it does not rename a registered checkout. |
 | `checkout notifications list` | List checkout notifications. |
 | `checkout notifications post` | Post a notification to the checkout. |
@@ -188,7 +197,7 @@ nothing, and name their replacement in one line. Update scripts to use that
 replacement. `config capabilities --recover` remains available to repair an
 interrupted manifest/lock edit.
 
-## Workstation and development commands
+## Home and development commands
 
 Each command below follows `devcapsule`.
 
