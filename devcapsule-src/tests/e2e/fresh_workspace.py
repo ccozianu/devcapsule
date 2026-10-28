@@ -148,7 +148,7 @@ class FreshWorkspace:
         for name, value in record.get("configuration", {}).get("values", {}).items():
             answers[name] = value
             self.run("config", "set", name, _spell(value))
-        self.run("config", "resolve")
+        self.run("config", "check")
         self.record_state("stage-5-resolved", source_revision=self.revision, answers=answers)
         return answers
 

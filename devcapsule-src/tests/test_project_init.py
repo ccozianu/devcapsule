@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from tests.launch_preparation import run_until_prepared
+
 import io
+import argparse
 import os
 from pathlib import Path
 import tomllib
@@ -12,6 +15,7 @@ import pytest
 import shutil
 
 from devcapsule import cli
+from devcapsule.commands.project import ProjectInitCommand, _init_selection
 from devcapsule.elicitation import ElicitationIncomplete
 from devcapsule.configuration.operations import (
     InitializeRequest,
@@ -43,8 +47,7 @@ def matrix_without_antigravity_validation() -> ResolutionMatrix:
             edge for edge in real._verified.values() if edge.component_id != "antigravity-cli"
         ),
         couplings=real._couplings,
-        surface_capabilities=real._surface_capabilities,
-        ancillary_capabilities=real._ancillary_capabilities,
+        capability_table=real._capability_table,
         materialization=real._materialization,
     )
 
@@ -80,7 +83,110 @@ def matrix_base_reference() -> str:
     return str(matrix_reference_lock()["base"]["reference"])
 
 
-def test_noninteractive_init_reaches_the_full_postcondition(tmp_path: Path, capsys) -> None:
+
+
+@pytest.mark.parametrize("flags,message", [
+    (["--offer", "python=3"], "Unsupported requirement form"),
+    (["--require", "python", "--offer", "python"], "both required and optional"),
+])
+def test_init_refuses_invalid_tool_scope_before_writes(tmp_path: Path, monkeypatch, capsys, flags, message) -> None:
+    for key, value in isolated_env(tmp_path).items():
+        monkeypatch.setenv(key, value)
+    project = tmp_path / "project"
+    project.mkdir()
+    assert cli.main(["project", "--path", str(project), "init", "--creator", "owner@example.test", *flags]) == 2
+    assert message in capsys.readouterr().err
+    assert not (project / ".devcapsule").exists()
+    assert not list((tmp_path / "config").rglob("*.toml"))
+
+
+def test_init_bad_mount_is_refused_before_writes(tmp_path: Path, monkeypatch) -> None:
+    for key, value in isolated_env(tmp_path).items():
+        monkeypatch.setenv(key, value)
+    project = tmp_path / "project"
+    project.mkdir()
+    assert cli.main([*full_init_command(project), "--project-mount", "relative/path"]) == 2
+    assert not (project / ".devcapsule").exists()
+    assert not list((tmp_path / "config").rglob("*.toml"))
+
+
+def test_explicit_no_ide_keeps_its_normalization(tmp_path: Path, monkeypatch) -> None:
+    for key, value in isolated_env(tmp_path).items():
+        monkeypatch.setenv(key, value)
+    project = tmp_path / "project"
+    project.mkdir()
+    assert cli.main(["project", "--path", str(project), "init", "--creator", "owner@example.test",
+                     "--ide", " NONE ", "--require", "none"]) == 0
+    assert read_toml(project / ".devcapsule/devcapsule.toml")["capabilities"] == {"required": []}
+    records = list((tmp_path / "config").rglob("devcapsule.checkout.toml"))
+    assert len(records) == 1
+    assert "capabilities" not in read_toml(records[0])
+    assert not records[0].with_name("devcapsule.resolved.toml").exists()
+
+
+def test_init_refuses_a_pending_capability_transaction_before_writes(tmp_path: Path, monkeypatch) -> None:
+    for key, value in isolated_env(tmp_path).items():
+        monkeypatch.setenv(key, value)
+    project = tmp_path / "project"
+    journal = project / ".devcapsule/.capability-transaction.toml"
+    journal.parent.mkdir(parents=True)
+    journal.write_text("# unfinished edit\n")
+    with pytest.raises(ProjectConfigurationError, match="Interrupted configuration edit"):
+        initialize_project(InitializeRequest(directory=project, creator="owner@example.test", interactive=False))
+    assert list(journal.parent.iterdir()) == [journal]
+    assert journal.read_text() == "# unfinished edit\n"
+    assert not list((tmp_path / "config").rglob("*.toml"))
+
+
+def test_legacy_manifest_ide_prevents_a_second_ide_question(tmp_path: Path, monkeypatch) -> None:
+    for key, value in isolated_env(tmp_path).items():
+        monkeypatch.setenv(key, value)
+    project = tmp_path / "project"
+    manifest_path = project / ".devcapsule/devcapsule.toml"
+    manifest_path.parent.mkdir(parents=True)
+    original = '''# Keep this note.
+devcapsule-schema-version = 1
+[project]
+name = "Project"
+slug = "project"
+creator = "mailto:owner@example.test"
+mount = "/workspace/project"
+[capabilities]
+need = ["python", "python-ide"]
+'''
+    manifest_path.write_text(original)
+    prompts = io.StringIO()
+    report = initialize_project(
+        InitializeRequest(directory=project, interactive=True,
+                          answers=(ProvidedAnswer("authorize", "base-image", "default"),)),
+        input_stream=io.StringIO(""), output_stream=prompts,
+    )
+    assert prompts.getvalue() == ""
+    assert report.resolve is not None
+    assert read_toml(report.resolve.resolution_path)["runtime"]["component"] == "pycharm"
+    assert manifest_path.read_text() == original
+
+
+def test_batch_failure_keeps_an_existing_manifest_and_lock(tmp_path: Path, monkeypatch) -> None:
+    for key, value in isolated_env(tmp_path).items():
+        monkeypatch.setenv(key, value)
+    project = tmp_path / "project"
+    project.mkdir()
+    assert cli.main(["project", "--path", str(project), "init", "--creator", "owner@example.test"]) == 0
+    before = {path: path.read_bytes() for path in tmp_path.rglob("*.toml")}
+    lock = project / ".devcapsule/devcapsule.linux-amd64.lock"
+    lock_before = lock.read_bytes()
+    with pytest.raises(ElicitationIncomplete, match="base-image"):
+        initialize_project(InitializeRequest(
+            directory=project, ide="pycharm", regenerate=True, interactive=False,
+            answers=(ProvidedAnswer("authorize", "network", "host", justification="dev servers"),),
+        ))
+    assert {path: path.read_bytes() for path in tmp_path.rglob("*.toml")} == before
+    assert lock.read_bytes() == lock_before
+
+
+@pytest.mark.parametrize("ide", ["python-ide", "pycharm"])
+def test_noninteractive_init_reaches_the_full_postcondition(tmp_path: Path, capsys, ide: str) -> None:
     project = tmp_path / "fresh-project"
     project.mkdir()
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
@@ -91,10 +197,10 @@ def test_noninteractive_init_reaches_the_full_postcondition(tmp_path: Path, caps
                     "--path",
                     str(project),
                     "init",
-                    "--need",
+                    "--require",
                     "python",
-                    "--need",
-                    "python-ide",
+                    "--ide",
+                    ide,
                     "--creator",
                     "https://github.com/example",
                     "--authorize",
@@ -113,7 +219,8 @@ def test_noninteractive_init_reaches_the_full_postcondition(tmp_path: Path, caps
             "creator": "https://github.com/example",
             "mount": "/workspace/fresh-project",
         }
-        assert manifest["capabilities"]["need"] == ["python", "python-ide"]
+        assert manifest["capabilities"]["required"] == ["python"]
+        assert manifest["devcapsule-schema-version"] == 2
         assert "host" not in manifest
 
         lock = read_toml(project / ".devcapsule" / "devcapsule.linux-amd64.lock")
@@ -142,9 +249,9 @@ def full_init_command(project: Path) -> list[str]:
         "--path",
         str(project),
         "init",
-        "--need",
+        "--require",
         "python",
-        "--need",
+        "--ide",
         "python-ide",
         "--creator",
         "https://github.com/example",
@@ -183,7 +290,7 @@ def test_repeated_init_without_answers_still_refuses(tmp_path: Path, capsys) -> 
         assert "already fully initialized" in capsys.readouterr().err
 
 
-def test_config_need_grows_the_project_and_preserves_authored_content(
+def test_require_tool_grows_the_project_and_keeps_the_leading_comment(
     tmp_path: Path, capsys
 ) -> None:
     project = tmp_path / "fresh-project"
@@ -192,70 +299,31 @@ def test_config_need_grows_the_project_and_preserves_authored_content(
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
         assert cli.main(full_init_command(project)) == 0
         manifest_path.write_text(
-            manifest_path.read_text(encoding="utf-8") + "# authored comment\n",
+            "# authored note at the head\n" + manifest_path.read_text(encoding="utf-8"),
             encoding="utf-8",
         )
         capsys.readouterr()
 
-        # Growing the need regenerates the lock, which stales the base
-        # authorization by design; the carrier answers it in the same command.
-        assert (
-            cli.main(
-                [
-                    "project",
-                    "--path",
-                    str(project),
-                    "config",
-                    "need",
-                    "postgresql-client",
-                    "--authorize",
-                    "base-image",
-                    "default",
-                ]
-            )
-            == 0
-        )
+        assert cli.main(["project", "--path", str(project), "config", "require", "postgresql-client"]) == 0
         output = capsys.readouterr().out
-        # The need verb reports what it changed, not an initialization.
-        assert "Need: added postgresql-client → postgresql-client python python-ide" in output
-        assert "Lock: regenerated " in output
-        assert "Answered for this checkout: base-image." in output
-        assert "Ready; 'devcapsule project run' starts it." in output
-        assert "Project initialized" not in output
-
-        # Asking for a capability the project already needs converges: the
-        # manifest is not rewritten, the lock is byte-identical, and every
-        # authorization stands from the record rather than being re-granted.
-        capsys.readouterr()
-        assert (
-            cli.main(
-                ["project", "--path", str(project), "config", "need", "postgresql-client"]
-            )
-            == 0
-        )
-        output = capsys.readouterr().out
-        assert "Need: unchanged — already in capabilities.need" in output
-        assert "Lock: unchanged (base " in output
-        assert "Standing from the existing checkout record: base-image." in output
-        assert "Answered for this checkout" not in output
+        assert "Required postgresql-client; the manifest and the lock are updated." in output
+        assert "Required: python postgresql-client" in output
+        # The owner's own checkout is re-derived so 'project run' works at once.
+        assert "Resolved " in output
 
         manifest_text = manifest_path.read_text(encoding="utf-8")
-        assert 'need = ["postgresql-client", "python", "python-ide"]' in manifest_text
-        assert "# authored comment" in manifest_text
+        assert manifest_text.startswith("# authored note at the head\n")
+        assert 'required = ["python", "postgresql-client"]' in manifest_text
         lock = read_toml(project / ".devcapsule" / "devcapsule.linux-amd64.lock")
         assert lock["components"]["postgresql-client"]["delivery-policy"] == "base-image"
+        assert "interactive-surface" not in lock["components"]
 
-        # Re-adding converges without new answers: nothing changed, the
-        # standing fresh authorization satisfies the gate.
-        assert (
-            cli.main(
-                ["project", "--path", str(project), "config", "need", "postgresql-client"]
-            )
-            == 0
-        )
+        # Requiring it again converges: the same declaration, nothing new.
+        assert cli.main(["project", "--path", str(project), "config", "require", "postgresql-client"]) == 0
+        assert 'required = ["python", "postgresql-client"]' in manifest_path.read_text(encoding="utf-8")
 
 
-def test_config_need_rejects_unresolvable_growth_without_touching_the_manifest(
+def test_require_tool_refuses_personal_and_unknown_names_without_touching_the_manifest(
     tmp_path: Path, capsys
 ) -> None:
     project = tmp_path / "fresh-project"
@@ -266,71 +334,31 @@ def test_config_need_rejects_unresolvable_growth_without_touching_the_manifest(
         before = manifest_path.read_text(encoding="utf-8")
         capsys.readouterr()
 
-        # A second interactive surface can never resolve; authored content
-        # stays exactly as it was.
-        assert (
-            cli.main(["project", "--path", str(project), "config", "need", "frontend-ide"])
-            == 2
-        )
-        assert "exactly one interactive surface" in capsys.readouterr().err
+        assert cli.main(["project", "--path", str(project), "config", "require", "frontend-ide"]) == 2
+        assert "each developer's" in capsys.readouterr().err
         assert manifest_path.read_text(encoding="utf-8") == before
 
-        assert (
-            cli.main(["project", "--path", str(project), "config", "need", "quantum-debugger"])
-            == 2
-        )
-        assert "does not know 'quantum-debugger'" in capsys.readouterr().err
+        assert cli.main(["project", "--path", str(project), "config", "require", "quantum-debugger"]) == 2
+        assert "Unknown tool 'quantum-debugger'" in capsys.readouterr().err
         assert manifest_path.read_text(encoding="utf-8") == before
 
 
-def test_config_need_elicits_new_acquisition_gates(tmp_path: Path, capsys) -> None:
+def test_a_selected_agent_brings_its_own_acquisition_gate(tmp_path: Path, capsys) -> None:
     project = tmp_path / "fresh-project"
     project.mkdir()
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
         assert cli.main(full_init_command(project)) == 0
         capsys.readouterr()
 
-        # The added agent brings its own acquisition gate; noninteractively
-        # it batch-fails naming the exact carrier...
-        assert (
-            cli.main(
-                [
-                    "project",
-                    "--path",
-                    str(project),
-                    "config",
-                    "need",
-                    "claude-code-agent",
-                    "--authorize",
-                    "base-image",
-                    "default",
-                ]
-            )
-            == 2
-        )
-        assert "--authorize claude-code-download" in capsys.readouterr().err
+        # The agent is the developer's; resolving without its vendor's channel names the channel (D-0011).
+        assert cli.main(["project", "--path", str(project), "config", "add", "claude-code-agent"]) == 0
+        assert run_until_prepared(project) == 3
+        assert "config trust accept claude-code" in capsys.readouterr().err
 
-        # ...and completes when the carrier answers it.
-        assert (
-            cli.main(
-                [
-                    "project",
-                    "--path",
-                    str(project),
-                    "config",
-                    "need",
-                    "claude-code-agent",
-                    "--authorize",
-                    "base-image",
-                    "default",
-                    "--authorize",
-                    "claude-code-download",
-                    "true",
-                ]
-            )
-            == 0
-        )
-        lock = read_toml(project / ".devcapsule" / "devcapsule.linux-amd64.lock")
+        assert cli.main(["project", "--path", str(project), "config", "authorize", "claude-code-download", "true"]) == 0
+        assert run_until_prepared(project) == 0
+        from devcapsule.configuration.storage import lock_for
+        lock = lock_for(project, read_toml(project / ".devcapsule" / "devcapsule.toml"))[1]
         assert lock["components"]["claude-code"]["version"]
 
 
@@ -371,7 +399,7 @@ def test_missing_base_authorization_batch_fails_with_the_exact_remedy(
                     "--path",
                     str(project),
                     "init",
-                    "--need",
+                    "--ide",
                     "python-ide",
                     "--creator",
                     "dev@example.test",
@@ -384,6 +412,8 @@ def test_missing_base_authorization_batch_fails_with_the_exact_remedy(
     # The silent no-recommendation decision: unflagged intent questions do not
     # appear in the failure and record no recommendation.
     assert "docker-daemon" not in message
+    assert not (project / ".devcapsule").exists()
+    assert not list((tmp_path / "config").rglob("*.toml"))
 
 
 def test_missing_creator_fails_before_writing_any_artifact(tmp_path: Path, capsys) -> None:
@@ -391,7 +421,7 @@ def test_missing_creator_fails_before_writing_any_artifact(tmp_path: Path, capsy
     project.mkdir()
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
         assert (
-            cli.main(["project", "--path", str(project), "init", "--need", "python-ide"])
+            cli.main(["project", "--path", str(project), "init", "--ide", "python-ide"])
             == 2
         )
     assert "--creator CREATOR" in capsys.readouterr().err
@@ -409,7 +439,7 @@ def test_email_creator_is_normalized_to_mailto(tmp_path: Path) -> None:
                     "--path",
                     str(project),
                     "init",
-                    "--need",
+                    "--ide",
                     "python-ide",
                     "--creator",
                     "dev@example.test",
@@ -437,7 +467,7 @@ def test_recommendation_answer_authors_manifest_and_owner_authorization(
                     "--path",
                     str(project),
                     "init",
-                    "--need",
+                    "--ide",
                     "python-ide",
                     "--creator",
                     "https://github.com/example",
@@ -477,7 +507,7 @@ def test_recommendation_without_justification_batch_fails(tmp_path: Path, capsys
                     "--path",
                     str(project),
                     "init",
-                    "--need",
+                    "--ide",
                     "python-ide",
                     "--creator",
                     "https://github.com/example",
@@ -547,8 +577,7 @@ def test_fully_initialized_project_fails_loudly_naming_regenerate(
         "--path",
         str(project),
         "init",
-        "--need",
-        "python-ide",
+        "--ide", "python-ide",
         "--creator",
         "https://github.com/example",
         "--authorize",
@@ -576,7 +605,7 @@ def test_init_denial_changes_checkout_without_rewriting_recommendation(tmp_path:
                     "--path",
                     str(project),
                     "init",
-                    "--need",
+                    "--ide",
                     "python-ide",
                     "--creator",
                     "https://github.com/example",
@@ -618,10 +647,10 @@ def test_interactive_init_prompts_in_the_settled_order(tmp_path: Path) -> None:
     project = tmp_path / "interactive-project"
     project.mkdir()
     prompts = io.StringIO()
-    # creator; need; default agent (no); four recommendations (Enter = none);
+    # creator; require; ide; default agent (no); four recommendations (Enter = none);
     # base (Enter = yes).
     answers = io.StringIO(
-        "https://github.com/example\npython python-ide\nno\n\n\n\n\n\n"
+        "https://github.com/example\npython\npython-ide\nno\n\n\n\n\n\n"
     )
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
         report = initialize_project(
@@ -631,7 +660,8 @@ def test_interactive_init_prompts_in_the_settled_order(tmp_path: Path) -> None:
         )
     transcript = prompts.getvalue()
     assert "Project creator" in transcript
-    assert "Capabilities the project needs" in transcript
+    assert "Capabilities the project requires" in transcript
+    assert "Your IDE for this checkout" in transcript
     assert "default agent component (antigravity-agent)" in transcript
     assert "[none]" in transcript
     assert "[default]" in transcript
@@ -643,7 +673,8 @@ def test_interactive_init_prompts_in_the_settled_order(tmp_path: Path) -> None:
     assert report.answered == ("base-image",)
     assert report.carried == ()
     assert report.recommended == ()
-    assert report.capabilities == ("python", "python-ide")
+    assert report.required == ("python",)
+    assert report.ide == "python-ide"
 
 
 def local_base_details(reference: str, identity: str):
@@ -663,50 +694,9 @@ def local_base_details(reference: str, identity: str):
     )
 
 
-def test_init_records_a_local_base_selection_with_less_pedantic(
-    tmp_path: Path, capsys
-) -> None:
-    """The 2026-09-03 ruling: a maintainer names their just-built base by tag;
-    --less-pedantic records the daemon-inspected selection without the
-    consent solicitation."""
-
-    project = tmp_path / "project"
-    project.mkdir()
-    selection = "mycodespaceai/devcapsule-base:v0.2.9-test"
-    identity = f"sha256:{'d' * 64}"
-    with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
-        with patch(
-            "devcapsule.configuration.operations.required_local_image",
-            return_value=local_base_details(selection, identity),
-        ) as inspect_local:
-            assert (
-                cli.main(
-                    [
-                        "project",
-                        "--path",
-                        str(project),
-                        "init",
-                        "--need",
-                        "python-ide",
-                        "--creator",
-                        "https://github.com/example",
-                        "--authorize",
-                        "base-image",
-                        selection,
-                        "--less-pedantic",
-                    ]
-                )
-                == 0
-            )
-        assert inspect_local.call_args_list[0].args == (selection,)
-        records = list((tmp_path / "config").rglob("devcapsule.checkout.toml"))
-        assert len(records) == 1
-        authorization = read_toml(records[0])["authorization"]["base-image"]
-        assert authorization["reference"] == selection
-        assert authorization["image-id"] == identity
 
 
-def test_init_base_selection_without_less_pedantic_batch_fails(
+def test_init_local_base_selection_needs_interactive_confirmation(
     tmp_path: Path, capsys
 ) -> None:
     project = tmp_path / "project"
@@ -724,8 +714,7 @@ def test_init_base_selection_without_less_pedantic_batch_fails(
                         "--path",
                         str(project),
                         "init",
-                        "--need",
-                        "python-ide",
+                        "--ide", "python-ide",
                         "--creator",
                         "https://github.com/example",
                         "--authorize",
@@ -737,7 +726,7 @@ def test_init_base_selection_without_less_pedantic_batch_fails(
             )
     message = capsys.readouterr().err
     assert "base-image (confirmation)" in message
-    assert "--less-pedantic" in message
+    assert "config authorize base-image" in message
 
 
 def test_init_base_selection_solicits_informed_consent_interactively(
@@ -748,9 +737,9 @@ def test_init_base_selection_solicits_informed_consent_interactively(
     selection = "mycodespaceai/devcapsule-base:v0.2.9-test"
     identity = f"sha256:{'d' * 64}"
     prompts = io.StringIO()
-    # creator; need; default agent (no); four recommendations (Enter = none);
+    # creator; require (none); ide; default agent (no); four recommendations (Enter = none);
     # consent (Enter = yes).
-    answers = io.StringIO("https://github.com/example\npython-ide\nno\n\n\n\n\n\n")
+    answers = io.StringIO("https://github.com/example\n\npython-ide\nno\n\n\n\n\n\n")
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
         with patch(
             "devcapsule.configuration.operations.required_local_image",
@@ -784,7 +773,7 @@ def test_init_base_selection_consent_can_be_declined(tmp_path: Path) -> None:
     project = tmp_path / "project"
     project.mkdir()
     selection = "mycodespaceai/devcapsule-base:v0.2.9-test"
-    answers = io.StringIO("https://github.com/example\npython-ide\nno\n\n\n\n\nno\n")
+    answers = io.StringIO("https://github.com/example\n\npython-ide\nno\n\n\n\n\nno\n")
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
         with patch(
             "devcapsule.configuration.operations.required_local_image",
@@ -819,7 +808,7 @@ def test_init_base_answer_that_is_neither_answer_nor_reference_is_explained(
                     "--path",
                     str(project),
                     "init",
-                    "--need",
+                    "--ide",
                     "python-ide",
                     "--creator",
                     "https://github.com/example",
@@ -851,7 +840,7 @@ def test_yes_is_not_an_authorization_value(tmp_path: Path, capsys) -> None:
                     "--path",
                     str(project),
                     "init",
-                    "--need",
+                    "--ide",
                     "python-ide",
                     "--creator",
                     "https://github.com/example",
@@ -904,7 +893,7 @@ def test_init_base_answer_none_is_refused_as_mandatory(tmp_path: Path, capsys) -
                     "--path",
                     str(project),
                     "init",
-                    "--need",
+                    "--ide",
                     "python-ide",
                     "--creator",
                     "https://github.com/example",
@@ -932,9 +921,8 @@ def test_init_unverified_resolves_past_the_matrix_with_a_gentle_warning(
         "--path",
         str(project),
         "init",
-        "--need",
-        "python-ide",
-        "--need",
+        "--ide", "python-ide",
+        "--require",
         "antigravity-agent",
         "--creator",
         "https://github.com/example",
@@ -950,19 +938,16 @@ def test_init_unverified_resolves_past_the_matrix_with_a_gentle_warning(
         # exists, and the strict form discloses the gap and the experiment.
         assert cli.main(need) == 2
         refusal = capsys.readouterr().err
-        assert "Not yet validated: antigravity-cli 1.4.2 on base v0.2.12-rc5." in refusal
+        assert "Not yet validated: antigravity-cli 1.4.2 on base v0.3.0-rc6." in refusal
         assert "Run it as an experiment with --unverified" in refusal
 
         assert cli.main([*need, "--unverified"]) == 0
         warning = capsys.readouterr().err
-        assert "Running as an experiment. Not yet validated: antigravity-cli 1.4.2 on base v0.2.12-rc5." in warning
+        assert "Running as an experiment. Not yet validated: antigravity-cli 1.4.2 on base v0.3.0-rc6." in warning
 
+    # The required capability records its unvalidated combination in the shared lock.
     lock = read_toml(project / ".devcapsule" / "devcapsule.linux-amd64.lock")
     assert "antigravity-cli" in lock["unverified-combinations"]
-    lock_text = (project / ".devcapsule" / "devcapsule.linux-amd64.lock").read_text(
-        encoding="utf-8"
-    )
-    assert "# WARNING" in lock_text
 
 
 def test_init_refuses_a_published_non_recommended_digest(tmp_path: Path, capsys) -> None:
@@ -977,14 +962,13 @@ def test_init_refuses_a_published_non_recommended_digest(tmp_path: Path, capsys)
                     "--path",
                     str(project),
                     "init",
-                    "--need",
+                    "--ide",
                     "python-ide",
                     "--creator",
                     "https://github.com/example",
                     "--authorize",
                     "base-image",
                     foreign,
-                    "--less-pedantic",
                 ]
             )
             == 2
@@ -995,7 +979,7 @@ def test_init_refuses_a_published_non_recommended_digest(tmp_path: Path, capsys)
 def test_interactive_decline_of_the_base_is_a_clean_failure(tmp_path: Path) -> None:
     project = tmp_path / "project"
     project.mkdir()
-    answers = io.StringIO("https://github.com/example\npython-ide\nno\n\n\n\n\nno\n")
+    answers = io.StringIO("https://github.com/example\n\npython-ide\nno\n\n\n\n\nno\n")
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
         with pytest.raises(ProjectConfigurationError, match="declined"):
             initialize_project(
@@ -1013,9 +997,9 @@ def test_claude_capability_requires_the_acquisition_answer(tmp_path: Path, capsy
         "--path",
         str(project),
         "init",
-        "--need",
+        "--ide",
         "python-ide",
-        "--need",
+        "--offer",
         "claude-code-agent",
         "--creator",
         "https://github.com/example",
@@ -1046,11 +1030,11 @@ def test_antigravity_capability_requires_the_acquisition_answer(
         "--path",
         str(project),
         "init",
-        "--need",
+        "--require",
         "node",
-        "--need",
+        "--ide",
         "frontend-ide",
-        "--need",
+        "--offer",
         "antigravity-agent",
         "--creator",
         "https://github.com/example",
@@ -1067,12 +1051,13 @@ def test_antigravity_capability_requires_the_acquisition_answer(
         config_root = tmp_path / "config" / "devcapsule" / "projects"
         record = read_toml(next(config_root.rglob("devcapsule.checkout.toml")))
         assert record["authorization"]["antigravity-download"]["value"] is True
-        lock = read_toml(project / ".devcapsule" / "devcapsule.linux-amd64.lock")
+        from devcapsule.configuration.storage import lock_for
+        lock = lock_for(project, read_toml(project / ".devcapsule" / "devcapsule.toml"))[1]
         assert lock["components"]["antigravity-cli"]["version"] == "1.4.2"
 
 
 def test_noninteractive_need_without_an_agent_stays_explicit(tmp_path: Path) -> None:
-    """A noninteractive ``--need`` list is authored content; the default agent
+    """A noninteractive requirement list is authored content; the default agent
     joins only through its own flag or the interactive question."""
 
     project = tmp_path / "project"
@@ -1085,9 +1070,9 @@ def test_noninteractive_need_without_an_agent_stays_explicit(tmp_path: Path) -> 
                     "--path",
                     str(project),
                     "init",
-                    "--need",
+                    "--require",
                     "node",
-                    "--need",
+                    "--ide",
                     "frontend-ide",
                     "--creator",
                     "https://github.com/example",
@@ -1099,7 +1084,9 @@ def test_noninteractive_need_without_an_agent_stays_explicit(tmp_path: Path) -> 
             == 0
         )
     manifest = read_toml(project / ".devcapsule" / "devcapsule.toml")
-    assert manifest["capabilities"]["need"] == ["frontend-ide", "node"]
+    assert manifest["capabilities"]["required"] == ["node"]
+    record = read_toml(next((tmp_path / "config").rglob("devcapsule.checkout.toml")))
+    assert record["capabilities"]["selected"] == ["frontend-ide"]
 
 
 def test_interactive_init_offers_the_default_agent(tmp_path: Path) -> None:
@@ -1108,10 +1095,10 @@ def test_interactive_init_offers_the_default_agent(tmp_path: Path) -> None:
     project = tmp_path / "interactive-project"
     project.mkdir()
     prompts = io.StringIO()
-    # creator; need; default agent (Enter = yes); four recommendations
+    # creator; require; ide; default agent (Enter = yes); four recommendations
     # (Enter = none); base (Enter = yes); antigravity acquisition (Enter = yes).
     answers = io.StringIO(
-        "https://github.com/example\nnode frontend-ide\n\n\n\n\n\n\n\n"
+        "https://github.com/example\nnode\nfrontend-ide\n\n\n\n\n\n\n\n"
     )
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
         report = initialize_project(
@@ -1120,10 +1107,11 @@ def test_interactive_init_offers_the_default_agent(tmp_path: Path) -> None:
             output_stream=prompts,
         )
     assert "default agent component (antigravity-agent)" in prompts.getvalue()
-    assert report.capabilities == ("antigravity-agent", "frontend-ide", "node")
+    assert report.required == ("node",)
+    assert (report.ide, report.agents) == ("frontend-ide", ("antigravity-agent",))
     assert "antigravity-download" in report.answered
     manifest = read_toml(project / ".devcapsule" / "devcapsule.toml")
-    assert manifest["capabilities"]["need"] == ["antigravity-agent", "frontend-ide", "node"]
+    assert manifest["capabilities"]["required"] == ["node"]
 
 
 def test_interactive_default_agent_decline_keeps_the_need(tmp_path: Path) -> None:
@@ -1132,14 +1120,15 @@ def test_interactive_default_agent_decline_keeps_the_need(tmp_path: Path) -> Non
     prompts = io.StringIO()
     # creator; need; default agent (no); four recommendations; base (Enter =
     # yes) — and no acquisition question follows.
-    answers = io.StringIO("https://github.com/example\nnode frontend-ide\nno\n\n\n\n\n\n")
+    answers = io.StringIO("https://github.com/example\nnode\nfrontend-ide\nno\n\n\n\n\n\n")
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False):
         report = initialize_project(
             InitializeRequest(directory=project, interactive=True),
             input_stream=answers,
             output_stream=prompts,
         )
-    assert report.capabilities == ("frontend-ide", "node")
+    assert report.required == ("node",)
+    assert report.agents == ()
     assert "antigravity-download" not in report.answered
     assert "antigravity" not in str(read_toml(project / ".devcapsule" / "devcapsule.toml"))
 
@@ -1152,7 +1141,7 @@ def test_default_agent_is_not_offered_where_it_cannot_resolve(tmp_path: Path) ->
     project = tmp_path / "interactive-project"
     project.mkdir()
     prompts = io.StringIO()
-    answers = io.StringIO("https://github.com/example\npython python-ide\n\n\n\n\n\n")
+    answers = io.StringIO("https://github.com/example\npython\npython-ide\n\n\n\n\n\n")
     with patch.dict(os.environ, isolated_env(tmp_path), clear=False), sparse_matrix():
         report = initialize_project(
             InitializeRequest(directory=project, interactive=True),
@@ -1160,7 +1149,7 @@ def test_default_agent_is_not_offered_where_it_cannot_resolve(tmp_path: Path) ->
             output_stream=prompts,
         )
     assert "default agent" not in prompts.getvalue()
-    assert report.capabilities == ("python", "python-ide")
+    assert report.required == ("python",)
 
 
 def test_unknown_authorize_answer_is_reported_not_ignored(tmp_path: Path, capsys) -> None:
@@ -1174,7 +1163,7 @@ def test_unknown_authorize_answer_is_reported_not_ignored(tmp_path: Path, capsys
                     "--path",
                     str(project),
                     "init",
-                    "--need",
+                    "--ide",
                     "python-ide",
                     "--creator",
                     "https://github.com/example",
@@ -1201,7 +1190,7 @@ def test_set_and_bind_extras_are_applied_through_the_registry(tmp_path: Path) ->
         initialize_project(
             InitializeRequest(
                 directory=project,
-                need=("python-ide",),
+                ide="python-ide",
                 creator="https://github.com/example",
                 answers=(
                     ProvidedAnswer("authorize", "base-image", "default"),
@@ -1224,49 +1213,36 @@ def test_operation_batch_failure_is_an_elicitation_incomplete(tmp_path: Path) ->
         with pytest.raises(ElicitationIncomplete):
             initialize_project(
                 InitializeRequest(
-                    directory=project, need=("python-ide",), interactive=False
+                    directory=project, ide="python-ide", interactive=False
                 )
             )
 
 
-def test_config_need_offers_and_accepts_the_experiment_lever(tmp_path: Path, capsys) -> None:
+def test_local_selection_offers_and_accepts_the_experiment_lever(tmp_path: Path, capsys) -> None:
     """The refusal's remedy must be reachable from the command that printed
-    it (owner ruling 2026-09-06): `config need` takes --unverified too."""
+    it (owner ruling 2026-09-06): the selection command takes --unverified too."""
 
     project = tmp_path / "fresh-project"
     project.mkdir()
-    grow = [
-        "project",
-        "--path",
-        str(project),
-        "config",
-        "need",
-        "antigravity-agent",
-        "--authorize",
-        "base-image",
-        "default",
-        "--authorize",
-        "antigravity-download",
-        "true",
-    ]
-    with patch.dict(os.environ, isolated_env(tmp_path), clear=False), sparse_matrix():
+    select = ["project", "--path", str(project), "config", "add", "antigravity-agent"]
+    with patch.dict(os.environ, isolated_env(tmp_path), clear=False), sparse_matrix(), patch(
+        "devcapsule.configuration.capability_commands.MATRICES",
+        {Platform.LINUX_AMD64: matrix_without_antigravity_validation()},
+    ):
         assert cli.main(full_init_command(project)) == 0
         capsys.readouterr()
 
-        assert cli.main(grow) == 2
+        assert cli.main(select) == 2
         refusal = capsys.readouterr().err
-        assert "Not yet validated: antigravity-cli 1.4.2 on base v0.2.12-rc5." in refusal
-        assert "Run it as an experiment with --unverified" in refusal
+        assert "Not yet validated: antigravity-cli 1.4.2 on base v0.3.0-rc6." in refusal
+        assert "--unverified" in refusal
         manifest = read_toml(project / ".devcapsule" / "devcapsule.toml")
-        assert manifest["capabilities"]["need"] == ["python", "python-ide"]
+        assert manifest["capabilities"]["required"] == ["python"]
 
-        assert cli.main([*grow, "--unverified"]) == 0
-        warning = capsys.readouterr().err
-        assert "Running as an experiment. Not yet validated: antigravity-cli 1.4.2" in warning
-        manifest = read_toml(project / ".devcapsule" / "devcapsule.toml")
-        assert manifest["capabilities"]["need"] == ["antigravity-agent", "python", "python-ide"]
-        lock = read_toml(project / ".devcapsule" / "devcapsule.linux-amd64.lock")
-        assert lock["unverified-combinations"] == "antigravity-cli 1.4.2 on base v0.2.12-rc5"
+        assert cli.main([*select, "--unverified"]) == 0
+        record = read_toml(next((tmp_path / "config").rglob("devcapsule.checkout.toml")))
+        assert record["capabilities"]["selected"] == ["antigravity-agent", "python-ide"]
+        assert "antigravity-cli" in record["capabilities"]["lock"]
 
 
 def test_init_report_shows_recommendation_values_and_how_each_node_was_settled(
@@ -1317,7 +1293,7 @@ def test_undeclared_authorize_name_fails_before_any_prompt_or_write(tmp_path: Pa
             initialize_project(
                 InitializeRequest(
                     directory=project,
-                    need=("python", "python-ide", "antigravity-agent"),
+                    require=("python",), ide="python-ide", agents=("antigravity-agent",),
                     creator="https://github.com/example",
                     answers=(
                         ProvidedAnswer("authorize", "base-image", "default"),
@@ -1347,7 +1323,7 @@ def test_wrong_family_answer_fails_before_any_prompt_or_write(tmp_path: Path) ->
             initialize_project(
                 InitializeRequest(
                     directory=project,
-                    need=("python-ide", "antigravity-agent"),
+                    require=("python",), ide="python-ide", agents=("antigravity-agent",),
                     creator="https://github.com/example",
                     answers=(ProvidedAnswer("set", "docker-daemon", "host-socket"),),
                     interactive=True,
@@ -1371,7 +1347,7 @@ def test_curated_host_authorization_is_admitted_before_the_recommendation_exists
             cli.main(
                 [
                     "project", "--path", str(project), "init",
-                    "--need", "python-ide", "--creator", "https://github.com/example",
+                    "--ide", "python-ide", "--creator", "https://github.com/example",
                     "--authorize", "network", "host", "Host-bound development services.",
                     "--authorize", "base-image", "default",
                 ]
@@ -1382,3 +1358,56 @@ def test_curated_host_authorization_is_admitted_before_the_recommendation_exists
         assert manifest["host"]["network"]["mode"]["recommended"]["value"] == "host"
         record = read_toml(next((tmp_path / "config").rglob("devcapsule.checkout.toml")))
         assert record["authorization"]["network"]["value"] == "host"
+
+
+@pytest.mark.parametrize("requirement", ["java>=21", "playwright>=1.21"])
+def test_init_and_owner_command_share_requirement_grammar(tmp_path, monkeypatch, requirement):
+    for key, value in isolated_env(tmp_path).items():
+        monkeypatch.setenv(key, value)
+    direct, edited = tmp_path / "direct", tmp_path / "edited"
+    direct.mkdir()
+    edited.mkdir()
+    for root, flags in [(direct, ["--require", requirement]), (edited, [])]:
+        assert cli.main(["project", "--path", str(root), "init", "--creator", "mailto:owner@example.test", *flags]) == 0
+    assert cli.main(["project", "--path", str(edited), "config", "require", requirement]) == 0
+    direct_manifest = read_toml(direct / ".devcapsule/devcapsule.toml")
+    edited_manifest = read_toml(edited / ".devcapsule/devcapsule.toml")
+    assert direct_manifest["capabilities"] == edited_manifest["capabilities"]
+    assert direct_manifest["capabilities"]["required"] == [requirement]
+    assert cli.main(["project", "--path", str(direct), "init"]) == 0
+    assert read_toml(direct / ".devcapsule/devcapsule.toml")["capabilities"] == direct_manifest["capabilities"]
+
+
+@pytest.mark.parametrize("flags", [
+    ["--require", "python>=3.14"], ["--require", "java<25"],
+    ["--require", "java>=21,<25"], ["--require", "java>=21,"],
+    ["--require", "java python"], ["--offer", "java>=21"],
+    ["--with", "no-such-capability"], ["--with", "frontend-ide"],
+])
+def test_init_refuses_invalid_capability_arguments_without_writes(tmp_path, monkeypatch, flags):
+    for key, value in isolated_env(tmp_path).items():
+        monkeypatch.setenv(key, value)
+    root = tmp_path / "project"
+    root.mkdir()
+    assert cli.main(["project", "--path", str(root), "init", "--creator", "mailto:owner@example.test", *flags]) == 2
+    assert not (root / ".devcapsule").exists()
+    assert not list((tmp_path / "config").rglob("*.toml"))
+
+
+@pytest.mark.parametrize("ide", [None, "java-ide"])
+def test_init_with_repeats_and_keeps_additions_private(tmp_path, monkeypatch, ide):
+    from devcapsule.configuration.capabilities import LocalCapabilities
+    from devcapsule.configuration.storage import checkout_record_paths
+    for key, value in isolated_env(tmp_path).items():
+        monkeypatch.setenv(key, value)
+    root = tmp_path / "project"
+    root.mkdir()
+    assert cli.main(["project", "--path", str(root), "init", "--creator", "mailto:owner@example.test",
+                     "--require", "java>=21", "--with", "codex-agent", "--with", "browser-automation",
+                     *(["--ide", ide, "--authorize", "base-image", "default"] if ide else [])]) == 0
+    manifest = read_toml(root / ".devcapsule/devcapsule.toml")
+    assert manifest["capabilities"] == {"required": ["java>=21"]}
+    record, _ = checkout_record_paths(manifest, root)
+    assert set(LocalCapabilities.read(read_toml(record)).selected) == ({"codex-agent", "browser-automation"} | ({ide} if ide else set()))
+    lock = read_toml(root / f".devcapsule/devcapsule.{Platform.current()}.lock")
+    assert "codex" not in lock["components"] and "playwright" not in lock["components"]

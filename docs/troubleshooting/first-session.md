@@ -10,7 +10,7 @@ updated: 2026-09-28
 | Docker connection, permission or Buildx error | Recheck the three [prerequisite commands](../getting-started/install.md#check-your-computer) in the same terminal. On Windows, check [WSL integration](../platforms/windows-wsl2.md). |
 | `unknown configuration name`, with a suggestion | You mistyped an option to `init`; nothing was written. Run it again with the suggested name. |
 | `already fully initialized` | Initialization succeeded earlier. Use `project run`. |
-| `Local resolution is stale`, or missing | From the project folder, `~/.local/bin/devcapsule project config resolve`, then `project run`. If it names pending decisions, see [Project versus personal](../configuration/project-versus-personal.md#when-the-project-changes). |
+| The launch stops with status 3 and a list of decisions | Answer each with the flag or command the list names, or run again at a terminal and answer there; see [Project versus personal](../configuration/project-versus-personal.md#when-the-project-changes). |
 | Download or build failure | Check the reported URL, your connection and free disk space, then retry `project run`. Keep the exact error if you ask for help. |
 | No browser tab | Open the full printed URL yourself, on the computer running Docker. |
 | Escape leaves fullscreen instead of reaching the editor | You used the desktop sidebar's fullscreen button. Use the browser's own fullscreen; see [Clipboard, keys and browser](../everyday-development/clipboard-and-browser.md). |

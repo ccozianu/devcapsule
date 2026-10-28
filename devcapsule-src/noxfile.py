@@ -183,8 +183,8 @@ def run_smoke(session: nox.Session) -> None:
     session.run("python", "-m", "devcapsule", "pycharm", "run", "--help", success_codes=[2])
     session.run("python", "-m", "devcapsule", "project", "--help")
     session.run("python", "-m", "devcapsule", "project", "list", "--help")
-    session.run("python", "-m", "devcapsule", "project", "config", "list", "--help")
-    session.run("python", "-m", "devcapsule", "project", "config", "resolve", "--help")
+    session.run("python", "-m", "devcapsule", "project", "config", "show", "--help")
+    session.run("python", "-m", "devcapsule", "project", "run", "--help")
     session.run("python", "-m", "devcapsule", "project", "config", "set", "--help")
     session.run("python", "-m", "devcapsule", "project", "config", "bind", "--help")
     session.run("python", "-m", "devcapsule", "project", "config", "authorize", "--help")
@@ -252,8 +252,8 @@ def smoke_pex(session: nox.Session, path: Path = TEST_PEX_PATH) -> None:
     session.run(str(path), "pycharm", "run", "--help", success_codes=[2], external=True)
     session.run(str(path), "project", "--help", external=True)
     session.run(str(path), "project", "list", "--help", external=True)
-    session.run(str(path), "project", "config", "list", "--help", external=True)
-    session.run(str(path), "project", "config", "resolve", "--help", external=True)
+    session.run(str(path), "project", "config", "show", "--help", external=True)
+    session.run(str(path), "project", "run", "--help", external=True)
     session.run(str(path), "project", "config", "set", "--help", external=True)
     session.run(str(path), "project", "config", "bind", "--help", external=True)
     session.run(str(path), "project", "config", "authorize", "--help", external=True)
@@ -283,6 +283,11 @@ def run_webconsole_checks(session: nox.Session) -> None:
     """
     session.install("--require-hashes", "-r", str(WEBCONSOLE_ROOT / "requirements-dev.txt"))
     session.install("-e", str(WEBCONSOLE_ROOT), "--no-deps")
+    # The launcher too, with its one runtime dependency, which its command
+    # tree imports: the console's contract tests check every command it runs
+    # and every verb it forwards against the launcher's own parser and channel
+    # tables, so a retirement on one side fails here before it reaches a capsule.
+    session.install("-e", str(PROJECT_ROOT))
     session.run("python", "-m", "mypy", "--config-file", str(WEBCONSOLE_ROOT / "pyproject.toml"),
                 str(WEBCONSOLE_ROOT / "devcapsule_webconsole"))
     session.run("python", "-m", "pytest", str(WEBCONSOLE_ROOT / "tests"))

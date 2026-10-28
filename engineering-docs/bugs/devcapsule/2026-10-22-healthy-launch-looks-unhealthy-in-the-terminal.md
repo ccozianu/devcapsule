@@ -1,5 +1,5 @@
 ---
-status: fixed
+status: closed
 severity: minor
 target: 0.3.0
 owner: maintenance
@@ -64,3 +64,10 @@ output; the files hold it.
 The unit tests pass on a 0.3.0 candidate and the fresh-workspace launch
 shows the terminal as expected. Reopen if a component's output reaches the
 terminal while its file is being written.
+
+## Closed, 2026-10-23
+
+Verified by the owner on the downloaded `v0.3.0-rc2`: the terminal
+carried the launcher's and the supervisor's lines and the result with the
+log paths, and none of the IDE's output; the check worked as expected.
+The owner's word of 2026-10-23 closes the record.

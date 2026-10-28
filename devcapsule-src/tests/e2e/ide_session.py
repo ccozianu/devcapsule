@@ -39,7 +39,7 @@ class IdeSurface:
     name: str
     """The component name, used for the project slug and the evidence directory."""
     needs: tuple[str, ...]
-    """The capabilities ``project init --need`` is given to select this surface."""
+    """The capabilities and IDE used to initialize the smoke project."""
     window_class: str
     """A case-insensitive fragment of the IDE's X11 ``WM_CLASS``."""
     ready_timeout: float
@@ -166,16 +166,24 @@ def initialize_project(executable: Path, surface: IdeSurface, workspace: Path, e
     built_base = os.environ.get("DEVCAPSULE_E2E_BASE_IMAGE")
     init = subprocess.run(
         [str(executable), "project", "init",
-         *(flag for need in surface.needs for flag in ("--need", need)),
+         *(flag for need in surface.needs for flag in ("--ide" if need.endswith("-ide") else "--require", need)),
          "--creator", CREATOR, "--slug", slug,
-         "--authorize", "base-image", built_base or "default",
+         "--authorize", "base-image", "default",
          "--authorize", "network", "host", "Local graphical smoke requires host networking.",
-         "--less-pedantic", *(["--unverified"] if built_base else [])],
+         *(["--unverified"] if built_base else [])],
         cwd=workspace, env=environment, text=True, capture_output=True, stdin=subprocess.DEVNULL,
         check=False, timeout=300.0,
     )
     (evidence / "init.log").write_text(init.stdout + init.stderr, encoding="utf-8")
     assert init.returncode == 0, f"project init failed for {surface.name}:\n{init.stdout}\n{init.stderr}"
+    if built_base:
+        selected = subprocess.run(
+            [str(executable), "project", "config", "authorize", "base-image", built_base],
+            cwd=workspace, env=environment, text=True, capture_output=True, stdin=subprocess.DEVNULL,
+            check=False, timeout=300.0,
+        )
+        (evidence / "select-base.log").write_text(selected.stdout + selected.stderr, encoding="utf-8")
+        assert selected.returncode == 0, selected.stderr
 
 
 def stop_session(facts: SessionFacts) -> None:

@@ -26,6 +26,13 @@ class ProjectConfigurationError(CliError):
     """An actionable project configuration failure."""
 
 
+# The manifest schema versions this launcher reads. Each is a class in
+# ``manifest_schemas``, which also holds the migration from 1 to 2: a
+# version-1 file is read as it is, upgraded in memory, and written as
+# version 2 only by an owner's edit or ``project init --regenerate``.
+MANIFEST_SCHEMA_VERSIONS = (1, 2)
+
+
 class ConfigurationFileKind(Enum):
     """A configuration file's purpose and the field declaring its format version.
 
@@ -36,6 +43,33 @@ class ConfigurationFileKind(Enum):
     lock = "devcapsule-lock-format-version"
     checkout = "devcapsule-checkout-schema-version"
     resolution = "devcapsule-resolved-schema-version"
+
+
+# The first embedded matrix generation whose locks record provider evidence,
+# the ``capability-providers`` table: added on 2026-10-06 at embedded-26,
+# which no release carried (0.2.15 shipped embedded-22, 0.3.0 rc0 shipped
+# embedded-27), so every released lock before 27 lacks it and every released
+# lock from 27 on has it.
+EVIDENCE_MATRIX_GENERATION = 27
+
+
+def legacy_lock(lock: Mapping[str, Any]) -> bool:
+    """Whether ``lock`` is a record from before provider evidence, not a selection to filter.
+
+    Missing evidence identifies old locks and bare matrix renderings. An
+    embedded generation before :data:`EVIDENCE_MATRIX_GENERATION` also
+    identifies a legacy lock: personal pins can add evidence during
+    composition, while retaining the shared lock's older generation.
+    An unrecognized version with evidence does not establish legacy status;
+    its required providers must still be checked.
+    """
+    if "capability-providers" not in lock:
+        return True
+    version = lock.get("resolution-matrix-version")
+    if not isinstance(version, str) or not version.startswith("embedded-"):
+        return False
+    generation = version.removeprefix("embedded-")
+    return generation.isdecimal() and int(generation) < EVIDENCE_MATRIX_GENERATION
 
 
 def table(document: Mapping[str, Any], *path: str) -> Mapping[str, Any]:
@@ -58,7 +92,8 @@ def validate_file_format(document: Mapping[str, Any], file_kind: ConfigurationFi
 
     ``file_kind`` selects the expected format; ``source`` identifies the input
     in error messages, usually by path. Raise ProjectConfigurationError for an
-    unsupported version or malformed structure. Only version 1 is supported.
+    unsupported version or malformed structure. Manifests may be version 1 or
+    2; every other file kind is version 1.
 
     Checkout records also reject unknown fields and check any embedded version
     lock. Saved plans require string source hashes and a supported hash scope.
@@ -67,13 +102,18 @@ def validate_file_format(document: Mapping[str, Any], file_kind: ConfigurationFi
     This function leaves the input unchanged.
     """
     version = document.get(file_kind.value)
-    if type(version) is not int or version != 1:
+    supported = MANIFEST_SCHEMA_VERSIONS if file_kind is ConfigurationFileKind.manifest else (1,)
+    if type(version) is not int or version not in supported:
+        accepted = " or ".join(str(item) for item in supported)
         raise ProjectConfigurationError(
             f"{source} has an unsupported {file_kind.name} schema version: {version!r}; "
-            f"requires {file_kind.value} = 1. The file has not been converted."
+            f"requires {file_kind.value} = {accepted}. The file has not been converted."
         )
     paths = {
-        ConfigurationFileKind.manifest: ("project", "capabilities", "configuration.values", "host"),
+        ConfigurationFileKind.manifest: (
+            "project", "capabilities", "configuration.values", "host",
+            "environment.required", "environment.optional", "recommendations",
+        ),
         ConfigurationFileKind.lock: ("components", "base", "materialization", "image"),
         ConfigurationFileKind.checkout: (
             "project", "checkout", "configuration.values", "configuration.bindings.host-directory",
@@ -174,7 +214,8 @@ def canonical_digest(value: Mapping[str, Any]) -> str:
 
 def quote_toml(value: str) -> str:
     """Return a quoted TOML string, escaping quotes and control characters."""
-    return json.dumps(value, ensure_ascii=False)
+    # JSON permits DEL literally; TOML basic strings require it escaped.
+    return json.dumps(value, ensure_ascii=False).replace("\x7f", "\\u007f")
 
 
 def render_toml_scalar(value: ConfigurationScalar) -> str:

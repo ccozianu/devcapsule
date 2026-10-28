@@ -1,0 +1,13 @@
+WEBVTT
+
+00:00.000 --> 00:08.000
+PyCharm opens inside a nested child DevCapsule desktop over noVNC and loads the workspace.
+
+00:08.000 --> 00:14.000
+Open PyCharm's integrated Terminal (Alt+F12) and run devcapsule project diagnose in in-capsule mode.
+
+00:14.000 --> 00:21.500
+Open File -> Open... from the main menu, jump to the project directory, and select capsule-diagnose-report.txt.
+
+00:21.500 --> 00:29.250
+Inspect the live in-capsule diagnostic report and the outer launcher's host-diagnose-snapshot.json side by side in PyCharm's editor.

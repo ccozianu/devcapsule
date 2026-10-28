@@ -266,6 +266,10 @@ when the workstream pauses, and say so in its open threads.
 
 | Date | Workstream | Implementor | Review partner | Slices and reviews | Outcome |
 |---|---|---|---|---|---|
+| 2026-10-26 | maintenance, the manifest's two schemas as classes | Claude Code, Claude Fable 5.1 pair | Codex, gpt-6-astra pair | #289/#290 | accepted at `94d2108` without a round; the reviewer made schema admission lossless (explicit empty fields, duplicates and reasons kept so `manifest_for` reproduces the file), validated the schema-1 policy before migration, refused a plain `init` write to a schema-1 file, tightened the legacy-lock rule for evidenced locks with unrecognized generations, and corrected a remedy the order had named but admission made unreachable; 2338 unit tests on the merged branch; the brief committed under the workstream's evidence |
+| 2026-10-24 | project-management, the CLI UX redesign work order | Claude Fable 5.1 pair | Codex, gpt-6-astra pair | #258/#259 | the first loop on a document rather than code; accepted at `30ecdca` after one round; the reviewer reproduced 23 catalogued deficiencies with 67 CLI invocations and no container, overturned two of the draft's claims and added two reproduced gaps and thirteen owner questions; the round was on review notes written into the user-facing part, moved to the decisions part; the briefs committed under the workstream's evidence |
+| 2026-10-23 | maintenance, general saved Docker arguments | GPT-6 Codex | Claude Code, Claude Fable 5.1 | #253/#255 | accepted at `af39c59` after two rounds; persistent session-log masking, conservative refusal of ambiguous environment edits, overlapping candidate masking, attached launcher-owned short flags; 319 independent focused tests; reviewer gate 1769 unit / 17 packaging / 293 webconsole, 188 docs pages; separate environment spellings documented, no GPU execution |
+| 2026-10-23 | maintenance, checkout environment for 0.3.0 | GPT-6 Codex | Claude Code, Claude Fable 5.1 | #253/#254 | accepted at `65bed97` without a round; record lookup without recovery, early validation, file diagnostics, idempotent removal and coverage; review gate 1745 unit / 17 packaging / 293 webconsole, 188 docs pages; host-mounted scratch broke an unrelated unmountable-path test, tmpfs scratch passed; keep gate logs outside pytest basetemp |
 | 2026-10-09 to 2026-10-10 | capsule-webconsole | Claude Fable 5.1 pair | Codex, gpt-6-astra pair | #184/#185, #186/#187, #188/#189, #190/#191, #192/#193, #194/#195, #196/#197, #199/#200, #201/#202, #203/#204, #205/#206 | every review merged; one round on #185 and one on #200; stacked branches kept consistent by merging, after a GitHub rebase of a base had broken the stack once |
 | 2026-10-11 | maintenance, session diagnostics | Claude Fable 5.1 pair | Codex, gpt-6-astra pair | #207/#208; #209/#210, #211, #212 | #208 merged without a round with five real gaps; #210's proposals became a design change; #212 used the third round; the owner changed the design once between rounds and the loop absorbed it |
 | 2026-10-12 | maintenance | | | | the process record sent to the trading-research sample project's `project-management` as an intake item; it is the source of the lessons below |
@@ -293,5 +297,9 @@ scratchpads and are gone; their structure is the template above. From
   reasons; both go into the record.
 - A rebase of a stacked branch's base rewrites history the branches above
   it carry; merge commits keep a stack consistent.
+- A document has readers the way a module has callers. When the slice is a
+  document, the brief names each part's reader; a reviewer that writes its
+  notes into a part addressed to the user has changed that part's reader,
+  and the round is spent moving the notes to where the decider reads them.
 - A round took twenty to forty minutes of wall time, most of it the
   reviewer's own gate. Three rounds were enough every time.

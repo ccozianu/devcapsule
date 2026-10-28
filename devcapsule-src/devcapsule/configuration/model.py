@@ -18,9 +18,9 @@ from typing import Any, Mapping
 from devcapsule.components.catalog import INTERACTIVE_SURFACES
 
 from .authorization import locked_base_reference
-from .file_formats import ConfigurationFileKind, ProjectConfigurationError, validate_file_format, table
+from .file_formats import ConfigurationFileKind, ProjectConfigurationError, canonical_digest, validate_file_format, table
 from .freshness import stale_resolution_inputs
-from .manifest import validate_manifest
+from .manifest import current_manifest
 from .resolution import Resolution, render_resolution
 from .review import ConfigurationReview, review_configuration
 
@@ -34,11 +34,17 @@ class Configuration:
     """
 
     def __init__(self, manifest: Mapping[str, Any], lock: Mapping[str, Any],
-                 checkout: Mapping[str, Any]) -> None:
-        self._manifest = deepcopy(dict(manifest))
+                 checkout: Mapping[str, Any], workstation: Mapping[str, Any] | None = None) -> None:
+        # The manifest as given is the file's own schema; a checkpoint from
+        # before scoped digests recorded its whole digest, kept for freshness.
+        self._manifest = current_manifest(manifest, Path("manifest")).document()
+        try:
+            self._source_digest: str | None = canonical_digest(dict(manifest))
+        except ProjectConfigurationError:
+            self._source_digest = None
         self._lock = deepcopy(dict(lock))
         self._checkout = deepcopy(dict(checkout))
-        validate_manifest(self._manifest, Path("manifest"))
+        self._workstation = deepcopy(dict(workstation or {}))
         validate_file_format(self._lock, ConfigurationFileKind.lock, "platform lock")
         validate_file_format(self._checkout, ConfigurationFileKind.checkout, "checkout")
         if "base" in self._lock:
@@ -49,9 +55,9 @@ class Configuration:
         from .capabilities import CapabilityPolicy, LocalCapabilities
         policy = CapabilityPolicy.read(self._manifest)
         LocalCapabilities.read(self._checkout).validate(policy)
-        if policy.sdk_major and table(self._checkout, "authorization", "base-image").get("image-id"):
-            raise ProjectConfigurationError("A local base override cannot establish the project's SDK-major guarantee; select the pinned project base.")
-        self._review = review_configuration(self._manifest, self._lock, self._checkout)
+        if policy.minimums and table(self._checkout, "authorization", "base-image").get("image-id"):
+            raise ProjectConfigurationError("A local base override cannot establish the project's minimum-version guarantee; select the pinned project base.")
+        self._review = review_configuration(self._manifest, self._lock, self._checkout, self._workstation)
 
     def review(self) -> ConfigurationReview:
         return deepcopy(self._review)
@@ -63,16 +69,17 @@ class Configuration:
         has_formation = "base" in self._lock and "materialization" in self._lock
         if component not in INTERACTIVE_SURFACES or (not image and not has_formation):
             raise ProjectConfigurationError(
-                "Choose a local IDE with 'devcapsule project config capabilities --local python-ide' "
-                "(or another IDE capability); a known interactive surface and image/formation are required."
+                "Choose your IDE for this checkout with 'devcapsule project config ide IDE'; "
+                "a known interactive surface and image/formation are required."
             )
         # require_ready is rendered by the file/CLI adapter with its actual path.
         return Resolution(tomllib.loads(render_resolution(
-            self._manifest, self._lock, self._checkout, self._review,
+            self._manifest, self._lock, self._checkout, self._review, self._workstation,
         )))
 
     def stale_inputs(self, resolution: Resolution) -> tuple[str, ...]:
-        return stale_resolution_inputs(self._manifest, self._lock, self._checkout, resolution.document())
+        return stale_resolution_inputs(self._manifest, self._lock, self._checkout, resolution.document(), self._workstation,
+                                       source_digest=self._source_digest)
 
     def accept(self, resolution: Resolution, *, force: bool = False) -> tuple[str, ...]:
         """Admit a saved plan. Force waives freshness only, never validity.
@@ -84,14 +91,14 @@ class Configuration:
         stale = self.stale_inputs(resolution)
         if stale and not force:
             raise ProjectConfigurationError(
-                f"Local resolution is stale ({', '.join(stale)}); run 'devcapsule project config resolve'."
+                f"Local resolution is stale ({', '.join(stale)}); run 'devcapsule project run'."
             )
         if not self._review.ready:
             raise ProjectConfigurationError("Cannot consume an incomplete configuration review.")
         if resolution.component != self._lock["components"]["interactive-surface"]:
-            raise ProjectConfigurationError("Resolved surface differs from the lock; run 'devcapsule project config resolve'.")
+            raise ProjectConfigurationError("Resolved surface differs from the lock; run 'devcapsule project run'.")
         if not stale and not resolution.same_meaning_as(self.resolve()):
             raise ProjectConfigurationError(
-                "Generated resolution does not match its inputs; run 'devcapsule project config resolve'."
+                "Generated resolution does not match its inputs; run 'devcapsule project run'."
             )
         return stale

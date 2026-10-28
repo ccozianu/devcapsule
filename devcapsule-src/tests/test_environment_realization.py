@@ -169,6 +169,43 @@ def test_realize_environment_reuses_or_builds_canonical_image(
     assert materialize.call_args.kwargs["build"] is build
 
 
+@pytest.mark.parametrize("local", [False, True])
+def test_realization_reads_trust_but_preserves_a_local_override(tmp_path: Path, monkeypatch, local: bool) -> None:
+    from devcapsule.configuration.storage import write_trust
+    from devcapsule.configuration.trust import BASE_REPOSITORY, WorkstationTrust, channels_for
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    identity = "sha256:" + "c" * 64
+    override = ("local/base:mine", identity) if local else None
+    selected = resolved_project(tmp_path, authorized=True, local_base=override)
+    select_claude_code(selected, authorized=False)
+    selected.lock["base"]["reference"] = BASE_REPOSITORY + "@sha256:" + "b" * 64
+    if not local:
+        selected.checkout.clear()
+    trust = WorkstationTrust()
+    for channel in channels_for(selected.lock).values():
+        trust = trust.with_channel(channel)
+    write_trust(trust.document())
+    reference = override[0] if override else selected.lock["base"]["reference"]
+    base = base_image(reference, identity if local else "sha256:base")
+    obtain = Mock(return_value=base)
+    materialize = Mock(return_value=(CANONICAL_IMAGE, False))
+    result = realize_environment(selected, root=tmp_path / "cache", obtain_image=obtain,
+                                 inspect_image=Mock(), require_image=Mock(return_value=completed_image()),
+                                 build=Mock(), materialize=materialize)
+    assert result.base_reference == reference and result.explicit_base_override is local
+    obtain.assert_called_once_with(reference)
+    assert materialize.call_args.kwargs["base_reference"] == reference
+    # Neither a trusted base nor a trusted vendor may override a checkout denial.
+    selected.checkout.setdefault("authorization", {})[CLAUDE_CODE_AUTHORIZATION] = {
+        "value": False,
+        "recommendation-digest": authorization_declarations(selected.manifest, selected.lock)[CLAUDE_CODE_AUTHORIZATION].recommendation_digest,
+    }
+    obtain.reset_mock()
+    with pytest.raises(CliError, match="denied"):
+        realize_environment(selected, obtain_image=obtain)
+    obtain.assert_not_called()
+
+
 def test_realize_environment_requires_exact_locked_base_authorization(tmp_path: Path) -> None:
     selected = resolved_project(tmp_path, authorized=False)
     obtain = Mock()

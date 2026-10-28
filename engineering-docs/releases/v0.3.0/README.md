@@ -1,6 +1,6 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-22. Stage: **candidate 2 in preparation: the network node and C10 merged, the pre-candidate merge next, then the tag on the owner's word**.
+Updated: 2026-10-26. Stage: **candidate 8 in preparation: the manifest's two schemas as classes and `init --regenerate` migrating to schema 2, the owner's gate of 2026-10-26; the pre-candidate merge into `main` is the owner's; then the diagnostics snapshot, image cleanup and C20**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Changelog since 0.2.15](changelog.md) ·
@@ -51,7 +51,15 @@ that is honest about what it skips.
   console needs recipe 11; the fixed bug records verified against a
   downloaded candidate; the release notes as `notes.md` beside this file.
   Project-operation instructions, C17, stay assigned to
-  `workflow-improvements` for 0.3.0 and gate the final tag.
+  `workflow-improvements` for 0.3.0 and gate the final tag. Added by the
+  owner's direction of 2026-10-24, on reading the candidate-4 stack: a
+  language review of the user documentation, which reads as machine prose
+  and whose sections lack a conceptual entry page, the configuration
+  section first; booked with `project-management` by mail at
+  `9fcfdb8db440`, which assigns the reviewer and the method.
+  Added by the owner's direction of 2026-10-26: `init --regenerate`
+  migrates the manifest to schema 2, and schema 1 and schema 2 are
+  represented as classes; the work order of 2026-10-26 in `work-orders/`.
 - **Rulings of 2026-10-21.** The base publication happens later, in the
   promotion of the accepted candidate, not before the next one. The
   candidates are grouped: rc2 carries the network node and C10; rc3 forced
@@ -60,6 +68,61 @@ that is honest about what it skips.
   `workflow-improvements` and this project's own operating instructions in
   `WORKFLOW-LOCAL.md`, the concrete case against which the abstract rule is
   debugged.
+- **Direction of 2026-10-24.** Candidate 3 is tagged now with what the
+  release branch carries, software approvals at launch (PR #250) and the
+  saved Docker arguments (PR #253), because the owner needs the extra
+  Docker arguments to test development scenarios, environment variables
+  and GPUs among them. Forced configuration and the diagnostics snapshot,
+  grouped into rc3 on 2026-10-21, move to rc4 with image cleanup and C20;
+  the manifest's schema-version slice goes with them. The regenerated
+  shared lock rides rc3, so provider acceptance of the new agent pins on
+  a downloaded candidate becomes possible there.
+- **Direction of 2026-10-24, evening.** Candidate 4 is tagged with the
+  CLI UX redesign, the stack of PRs #260 to #269 the owner merged the same
+  day: the manifest's schema 2 with the owner's `require`, `offer`, `drop`
+  and `recommend` commands; the checkout commands; `run` deriving the plan
+  with no resolve step; workstation trust (D-0011); the console writing
+  through the launcher; the documentation and the candidate-4 changelog.
+  Forced configuration is superseded by the redesign: there is no resolve
+  step to force and `run --force-config` is retired. The diagnostics
+  snapshot, image cleanup and C20 move to the next candidate. The
+  documentation language review is a gate before the final tag (above).
+- **Direction of 2026-10-25.** Candidate 5 is tagged with the capabilities
+  and components work order, the three slices the owner merged the same
+  day (#276, #277, #279): one model of capabilities provided by
+  components, the IDE the only special role; agents as ordinary
+  capabilities; the SDK major removed, old files still read; a minimum
+  on a requirement; the resolution recommendation; the developer's
+  `add`, `omit`, `restore`, `use`; every retired spelling deleted; the
+  configuration documentation rewritten on the model, with its entry
+  page. The diagnostics snapshot, image cleanup and C20 move to the next
+  candidate.
+- **Direction of 2026-10-25, after the rc5 test.** The owner's test of
+  the rc5 download found the console's configuration page failing: the
+  console ran `config list`, retired by candidate 5, and showed its
+  status-2 refusal. The repair, PR #281 on the release branch, points the
+  console and the launcher's in-capsule hints at `config show`, and the
+  console's own test session now runs the launcher it ships with, so a
+  retired command fails the build instead of the page. Candidate 6 is cut
+  on that repair alone; the diagnostics snapshot, image cleanup and C20
+  stay with the next candidate.
+- **Direction of 2026-10-25, after the rc6 test.** The owner rebuilt the
+  base from the rc6 executable, confirmed the console's configuration
+  page on it, and published it as `mycodespaceai/devcapsule-base:v0.3.0.rc6`,
+  digest `8c97d308…`, `ubuntu-24.04@11`. The matrix pins it (PR #284,
+  `embedded-28`), the recipe-9 pin stays for existing locks, and candidate
+  7 is cut on that pin alone, so every regenerated lock reaches the
+  console on the published base. The published-base gate before the
+  final tag is met by this candidate. A project's own constraint on its
+  base is D-0015, proposed for V1, not for 0.3.0.
+- **Direction of 2026-10-26.** On finding that `init --regenerate` left the
+  AI Learning manifest at schema 1, the owner ruled that regeneration
+  migrates the manifest to schema 2 and that schema 1 and schema 2 are
+  represented explicitly, as classes, and made both a gate of the final
+  tag: the work order of 2026-10-26, implemented as PR #289 with Codex,
+  gpt-6-astra, as the review partner, merged at `9e4a2a8`. Candidate 8 is
+  cut on it. The owner's own regeneration of this repository's, the
+  website's and the samples' manifests follows the shipped candidate.
 - **Stopping points where the owner is consulted:** before each candidate
   tag; before the image-cleanup implementation; when a slice proves larger
   than the cycle tolerates; before the final tag. Scope changes go by the
@@ -175,7 +238,7 @@ replacement.
   web console session mypy clean over 8 files, 293 tests.
 - [x] Agent freshness upgrade attempt; dispositions in the table above.
 - [x] PR #224 merged into the release branch at `6b97657`; the release branch merged into `main` by PR #228 at `7c20292`, ancestry holds; `main` carries 0.3.0 during the cycle by the owner's merge. The branch, deleted by `delete_branch_on_merge`, restored at the same tip.
-- [ ] The owner regenerates the shared lock on the host; the written lock committed on the release branch, gated, merged to `main`.
+- [x] The shared lock regenerated on 2026-10-22 by `project config capabilities` on a fresh clone inside the capsule, where the command runs for any project but the capsule's own; committed on the release branch at `0c1a555`, gated (1672 unit tests), proven by the recursive attached launch from a fresh clone; merges to `main` with the next pre-candidate merge.
 - [x] `v0.3.0-rc0` tagged on the release branch at `53ebc17`; backend run
   passed; the three assets downloaded, checksum and version verified.
 - [ ] Local proofs against the download: clean machine, component cache,
@@ -259,7 +322,25 @@ replacement.
   The owner's judgment of the console: it works nicely, to the extent
   required for 0.3.0.
 
-### RC2 — in preparation, 2026-10-22
+### RC2 — tagged 2026-10-22
+
+- Tag `v0.3.0-rc2` on `e5b5a8b73309959f9407e115dcb3acd8707d6050`, the release
+  branch's tip at the pre-candidate merge (PR #249 from the throwaway copy
+  `4PR-3-release-0.3.0`, which carried one commit keeping `main`'s version
+  files); the record commits after it on the branch carry no source.
+- Candidate gate from a detached checkout of the tag before the push:
+  method `mainline`, no unintegrated commits, version `0.3.0rc2`.
+- Backend run [39803285881](https://github.com/ccozianu/devcapsule/actions/runs/39803285881)
+  passed; the [prerelease](https://github.com/ccozianu/devcapsule/releases/tag/v0.3.0-rc2)
+  is public, non-draft, with the three assets.
+- Downloaded over HTTPS into `/home/devcapsule/.cache/devcapsule-releases/v0.3.0-rc2`:
+  the checksum file verifies the executable, SHA-256
+  `abb9a8e18f6688326b7a94aae5b504ccdfa1e1782f1215465857eb9a03d9ba7e`; the
+  manifest records the tag, the branch, the source revision and the
+  `mainline` disposition; the executable reports `0.3.0rc2` at `e5b5a8b…`.
+- The shared lock is not in rc2: it was regenerated after the tag and
+  rides the next candidate. Provider acceptance of the new agent pins on a
+  downloaded candidate stays the owner's.
 
 - Carries, beyond rc1: the universal `network` authorization node (PR #240,
   review #242 by the Codex pair); the first-session summary and Ctrl+C
@@ -271,11 +352,253 @@ replacement.
 - The release branch synchronized with `main` twice on 2026-10-22, on the
   owner's word, so the cycle's workflow rules and both checkouts' records
   bind it; the version files kept the release side.
-- Next: the pre-candidate merge from `4PR-3-release-0.3.0`, the tag on the
-  release branch's tip, the backend, the download and its verification;
-  then the owner's dogfooding of the terminal and of Ctrl+C, and the three
+- Next: the owner's dogfooding of the terminal and of Ctrl+C, and the three
   records' verification: the IDE smoke on a fresh project, the interrupted
   launch, the quiet terminal.
+
+### RC3 — tagged 2026-10-24
+
+- Tag `v0.3.0-rc3` on `a22a21585f353c269c566686fe348e99959a91cd`, the release
+  branch's tip at the pre-candidate merge (PR #257 from the throwaway copy
+  `4PR-4-release-0.3.0`, merged by the owner at `cf760b8`); the record
+  commits after it on the branch carry no source.
+- Candidate gate from a detached checkout of the tag before the push:
+  method `mainline`, no unintegrated commits, version `0.3.0rc3`.
+- Backend run [40052369307](https://github.com/ccozianu/devcapsule/actions/runs/40052369307)
+  passed; the [prerelease](https://github.com/ccozianu/devcapsule/releases/tag/v0.3.0-rc3)
+  is public, non-draft, with the three assets.
+- Downloaded over HTTPS into `/home/devcapsule/.cache/devcapsule-releases/v0.3.0-rc3`:
+  the checksum file verifies the executable, SHA-256
+  `be739875ac75da0188f1330ebc6ca25805f2fb0257650ed986f2e9f7212c39bb`; the
+  manifest records the tag, the branch, the source revision and the
+  `mainline` disposition; `devcapsule version` reports `0.3.0rc3` at `a22a215…`.
+
+- Carries, beyond rc2: software approvals at launch, the one y/n for new
+  versions of software approved before and `project config approve`
+  (PR #250, review #251 by the Codex and gpt-6-astra pair); the saved
+  Docker arguments for each checkout, `set-extra-docker-args`,
+  `list-extra-docker-args`, `remove-extra-docker-args` and the `set-env`,
+  `list-env`, `unset-env` conveniences on the same list, with inline
+  environment values masked in every report (PR #253, review #255 by
+  Claude Code); the shared lock regenerated on matrix embedded-27, Codex
+  0.163.0, Claude Code 2.1.302, Antigravity CLI 1.4.2 (`0c1a555`). Each
+  slice was gated in full on its merged branch.
+- Full gate on the release tip before the pre-candidate merge: mypy clean
+  over 224 files, 1769 unit tests passed, 36 deselected, 2 xfailed,
+  packaging integration 17 passed, the documentation contract 188 pages,
+  the web console clean with its tests passed; posted on PR #257.
+- Next: the owner's test of the saved Docker arguments and of the
+  approvals prompt on the download; provider acceptance of the new agent
+  pins, which this candidate's lock makes possible; the network node's
+  check on a fresh project, still open from rc2.
+- Not in rc3: forced configuration, the diagnostics snapshot, the
+  schema-version slice; see the direction of 2026-10-24 above.
+
+### RC4 — tagged 2026-10-24
+
+- Tag `v0.3.0-rc4` on `78a9c6617226599f457504929d747faa9387830b`, the release
+  branch's tip at the pre-candidate merge (PR #274 from the throwaway copy
+  `4PR-5-release-0.3.0`, merged by the owner at `c04cb4e`).
+- Candidate gate from a detached checkout of the tag before the push:
+  method `mainline`, no unintegrated commits, version `0.3.0rc4`; record at
+  `/opt/devcapsule-gate/rc4-release-protocol.json`.
+- Backend run [40123896286](https://github.com/ccozianu/devcapsule/actions/runs/40123896286)
+  passed; the [prerelease](https://github.com/ccozianu/devcapsule/releases/tag/v0.3.0-rc4)
+  is public, non-draft, with the three assets.
+- Downloaded over HTTPS into `/home/devcapsule/.cache/devcapsule-releases/v0.3.0-rc4`:
+  the checksum file verifies the executable, SHA-256
+  `474fea1e04a5c87f99cac61ec50d980a88244f1ed9a74a267eb0e7ef51494995`; the
+  manifest records the tag, the branch, the source revision and the
+  `mainline` disposition; `devcapsule version` from an empty directory
+  reports `0.3.0rc4`, build `v0.3.0-rc4`, at `78a9c66…`.
+- Next: the owner's test of the redesigned commands on the download,
+  `init`, `config require|offer|recommend`, `config show|check`, `run`
+  asking at the terminal, `config trust`, the console's configuration
+  requests; then the diagnostics snapshot, image cleanup and C20 for the
+  next candidate; provider acceptance of the agent pins and the network
+  node's check on a fresh project, still open.
+
+How the candidate was prepared:
+
+- The release branch's tip after the owner's merge of the stack is
+  `3cc8a50`, PR #269. The full gate on it: mypy clean over 242 files,
+  2091 unit tests passed, 36 deselected, 1 xfailed, 1 xpassed; the
+  packaging integration failed one test of seventeen,
+  `test_built_pex_authors_shared_policy_and_keeps_personal_selection_local`,
+  which authored a project with the old spellings and expected `config
+  check` to pass with the base channel neither trusted nor consented to,
+  and expected the retired `--sdk-major` flag to resolve. Both
+  expectations predate the redesign: `check` reports the pending channel
+  with status 3, and the old flag refuses with a migration note. The test
+  now asserts the pending check, accepts the channel under its isolated
+  configuration home, and refuses the SDK major through `config require
+  tool`; `fe886ad` on the release branch, a test-only change. The unit
+  gate never ran this test, so the slices' gates could not see it; the
+  packaging integration runs only in `nox -s build` against the built
+  executable.
+- Full gate on `fe886ad`: mypy clean over 242 files, 2091 unit tests
+  passed, packaging integration 17 passed, the web console session clean
+  with its tests passed; the documentation contract passed on the same
+  `docs/` content, 188 pages, at the slice-6 tip.
+- The throwaway copy `4PR-5-release-0.3.0`, the release tip plus the
+  cherry-pick of `62fa063` keeping `main`'s version files, test-merged
+  into `main` cleanly and was PR #274, merged by the owner; the tag
+  followed on the release tip, `78a9c66`, the record commit.
+- Carries, beyond rc3: the CLI UX redesign of the direction above, every
+  slice reviewed by the Codex and gpt-6-astra pair (#262, #264, #267,
+  #270, #271, #272) with the reviews merged. The resolution matrix is
+  still embedded-27 with the recipe-9 base, so an existing lock
+  regenerated by this candidate is byte-identical.
+- Not in rc4: the diagnostics snapshot, image cleanup, C20; the gaps the
+  docs reviewer found and the candidate-4 changelog lists under *Not in
+  candidate 4*.
+
+### RC5 — tagged 2026-10-25
+
+- Tag `v0.3.0-rc5` on `03ed3483608de97ebf7770149fd25544e8387b49`, the release
+  branch's tip at the pre-candidate merge (PR #280 from the throwaway copy
+  `4PR-6-release-0.3.0`, merged by the owner at `35d74d9`).
+- Candidate gate from a detached checkout of the tag before the push:
+  method `mainline`, no unintegrated commits, version `0.3.0rc5`; record at
+  `/opt/devcapsule-gate/rc5-release-protocol.json`.
+- Backend run [40147675417](https://github.com/ccozianu/devcapsule/actions/runs/40147675417)
+  passed; the [prerelease](https://github.com/ccozianu/devcapsule/releases/tag/v0.3.0-rc5)
+  is public, non-draft, with the three assets.
+- Downloaded over HTTPS into `/home/devcapsule/.cache/devcapsule-releases/v0.3.0-rc5`:
+  the checksum file verifies the executable, SHA-256
+  `429aefee8af6434615b92f97c6c3b1f2f6ef55f177a3d58f9127e8b1cad8bfbb`; the
+  manifest records the tag, the branch, the source revision and the
+  `mainline` disposition; `devcapsule version` from an empty directory
+  reports `0.3.0rc5`, build `v0.3.0-rc5`, at `03ed348…`.
+- Next: the owner's test of the model's commands on the download, `init
+  --require 'java>=21' --with`, `config require|offer|drop|recommend`,
+  `config add|omit|restore|use`, `run --with|--use`, the refusals of the
+  old spellings, the console's configuration page; then the diagnostics
+  snapshot, image cleanup and C20 for the next candidate; the
+  documentation language review before the final tag.
+
+How the candidate was prepared:
+
+- The release branch's tip after the owner's merges is `d01fb8c`, PR
+  #279. Full gate on it from a separate worktree: mypy clean over 246
+  files, 2281 unit tests passed, 36 deselected, 2 xfailed, packaging
+  integration 17 passed, the web console session mypy clean over 9 files
+  with 326 tests passed; the documentation contract 189 pages, passed.
+- Carries, beyond rc4: the capabilities and components work order of the
+  direction above, implemented by the Codex and gpt-6-astra pair and
+  reviewed by Claude Fable 5.1, one round per slice (PRs #276, #277,
+  #279). The resolution matrix is still embedded-27 with the recipe-9
+  base; an rc4 lock regenerated by this candidate is byte-identical, and
+  an rc4 manifest with the SDK-major table reads with one note.
+- The throwaway copy `4PR-6-release-0.3.0`, the release tip plus the
+  cherry-pick of `62fa063` keeping `main`'s version files, test-merged
+  into `main` cleanly and was PR #280, merged by the owner; the tag
+  followed on the release tip, `03ed348`, the record commit.
+- Not in rc5: the diagnostics snapshot, image cleanup, C20; the gaps the
+  candidate-5 changelog lists under *Not in candidate 5*.
+
+### RC6 — tagged 2026-10-25
+
+- Tag `v0.3.0-rc6` on `2ed8ecf536b0d653056ac35792cae413a6d6732a`, the release
+  branch's tip at the pre-candidate merge (PR #282 from the throwaway copy
+  `4PR-7-release-0.3.0`, merged by the owner at `b64187f`).
+- Candidate gate from a detached checkout of the tag before the push:
+  method `mainline`, no unintegrated commits, version `0.3.0rc6`; record at
+  `/opt/devcapsule-gate/rc6-release-protocol.json`.
+- Backend run [40162886659](https://github.com/ccozianu/devcapsule/actions/runs/40162886659)
+  passed; the [prerelease](https://github.com/ccozianu/devcapsule/releases/tag/v0.3.0-rc6)
+  is public, non-draft, with the three assets.
+- Downloaded over HTTPS into `/home/devcapsule/.cache/devcapsule-releases/v0.3.0-rc6`:
+  the checksum file verifies the executable, SHA-256
+  `6cef940ec86c4b45fc89bb265aeb2c3750155dcb7c0fec50ad8a1fe8e658de75`; the
+  manifest records the tag, the branch, the source revision and the
+  `mainline` disposition; `devcapsule version` from an empty directory
+  reports `0.3.0rc6`, build `v0.3.0-rc6`, at `2ed8ecf…`.
+- Next: the owner's test of the download, the console's configuration
+  page first, then the model's commands; then the diagnostics snapshot,
+  image cleanup and C20 for the next candidate; the documentation
+  language review before the final tag.
+
+How the candidate was prepared:
+
+- Carries, beyond rc5: the console's configuration page and the
+  in-capsule hints calling `config show` (PR #281, `cd128bb`), and the
+  console's test session installing the launcher with contract tests
+  against its command tree (`ed01b4d`): every configuration-channel verb
+  is a `config` command that takes `--json`; the channel's applied,
+  deferred and secure sets agree with the launcher's; the channel
+  document lists the verbs.
+- The release branch's tip after the owner's merge of PR #281 is
+  `5daf5a2`, whose tree is the reviewed `ed01b4d`; `2ed8ecf`, the
+  preparation record, is the tagged tip. Full gate on `5daf5a2` from a
+  separate worktree: mypy clean over 246 files, 2281 unit tests passed,
+  36 deselected, 1 xfailed, 1 xpassed, packaging integration 17 passed,
+  the web console session mypy clean with 357 tests passed, 31 of them
+  the new contract; the documentation contract 189 pages, passed.
+- Not in rc6: the diagnostics snapshot, image cleanup, C20; the gaps the
+  candidate-5 changelog lists under *Not in candidate 5*.
+
+### RC7 — tagged 2026-10-25
+
+- Tag `v0.3.0-rc7` on `73bbe5361bad1ff190d2c27586aad578796f191f`, the release
+  branch's tip at the pre-candidate merge (PR #286 from the throwaway copy
+  `4PR-8-release-0.3.0`, merged by the owner at `77ac058`).
+- Candidate gate from a detached checkout of the tag before the push:
+  method `mainline`, no unintegrated commits, version `0.3.0rc7`; record at
+  `/opt/devcapsule-gate/rc7-release-protocol.json`.
+- Backend run [40198740279](https://github.com/ccozianu/devcapsule/actions/runs/40198740279)
+  passed; the [prerelease](https://github.com/ccozianu/devcapsule/releases/tag/v0.3.0-rc7)
+  is public, non-draft, with the three assets.
+- Downloaded over HTTPS into `/home/devcapsule/.cache/devcapsule-releases/v0.3.0-rc7`:
+  the checksum file verifies the executable, SHA-256
+  `1fe418a2c453c9640996bf8fbc86005c6b7e7de1518a5977b050a180a7ca7a91`; the
+  manifest records the tag, the branch, the source revision, the
+  `mainline` disposition and, as its base reference, the published
+  recipe-11 digest `8c97d308…`; `devcapsule version` from an empty
+  directory reports `0.3.0rc7`, build `v0.3.0-rc7`, at `73bbe53…`.
+- Next: the owner's test of the download on a regenerated lock, the
+  console on the published base first; then the diagnostics snapshot,
+  image cleanup and C20 for the next candidate; the documentation
+  language review before the final tag.
+
+How the candidate was prepared:
+
+- Carries, beyond rc6: the published recipe-11 base pinned in the matrix
+  (PR #284, `dedb485`): `v0.3.0-rc6`, `ubuntu-24.04@11`, digest
+  `8c97d308…`, newest pin of the family; matrix `embedded-28`; the golden
+  locks and this repository's lock regenerated onto it; the lock's base
+  table records the recipe's source path so consent links it; the
+  recipe-9 pin kept, with a test that its locks still resolve.
+- The release branch's tip after the owner's merge of PR #284 is
+  `349b3ad`, whose tree is the reviewed `dedb485` plus the status entry.
+  Full gate on it from a separate worktree: mypy clean over 246 files,
+  2282 unit tests passed, 36 deselected, 2 xfailed, packaging integration
+  17 passed, the web console session mypy clean over 9 files with 357
+  tests passed; the documentation contract 189 pages, passed.
+- Not in rc7: the diagnostics snapshot, image cleanup, C20; the gaps the
+  candidate-5 changelog lists under *Not in candidate 5*.
+
+### RC8 — in preparation, 2026-10-26
+
+- Tag `v0.3.0-rc8` on the release branch's tip after the pre-candidate
+  merge (PR from the throwaway copy `4PR-9-release-0.3.0`, the owner's).
+- Carries, beyond rc7: the manifest's two schemas as classes (PR #289,
+  reviewed by PR #290, accepted without a round): `ManifestV1`,
+  `ManifestV2`, `read_manifest` and `upgrade` in one module, every
+  consumer reading schema 2; `project init --regenerate` writes a
+  schema-1 manifest as schema 2 with its leading comment block kept and
+  says so, a schema-2 manifest stays byte for byte, a plain `init` writes
+  neither; the IDE a schema-1 file required becomes the project's IDE
+  recommendation and each developer may choose another; the retired
+  SDK-major table and the root `workflow-type` are never written again;
+  legacy locks are recognized by their own evidence and matrix generation.
+- The release branch's tip after the owner's merge of PR #289 is
+  `9e4a2a8`, whose tree is the reviewed `f4d0566` plus the status entry.
+  Full gate on it from a separate worktree: mypy clean over 248 files, 2338 unit tests passed, 36 deselected, 1 xfailed, 1 xpassed, packaging integration
+  17 passed, the web console session mypy clean over 9 files with 357
+  tests passed; the documentation contract 189 pages, passed.
+- Not in rc8: the diagnostics snapshot, image cleanup, C20; the gaps the
+  candidate-5 changelog lists under *Not in candidate 5*.
 
 ## Release Notes Preparation
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from tests.launch_preparation import run_until_prepared
+
 import os
 import subprocess
 from pathlib import Path
@@ -261,9 +263,9 @@ def test_capability_first_dogfood_init_resolve_and_run(tmp_path: Path) -> None:
                 f"host-directory:{path}",
             ]) == 0
         assert cli.main([
-            "project", "--path", str(project), "config", "set", "runtime.memory-limit", "8GiB"
+            "project", "--path", str(project), "config", "set", "memory", "8GiB"
         ]) == 0
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        assert run_until_prepared(project) == 0
 
         with (
             patch("devcapsule.launch.pycharm._launcher.shutil.which", return_value=None),
@@ -273,7 +275,7 @@ def test_capability_first_dogfood_init_resolve_and_run(tmp_path: Path) -> None:
             assert cli.main(
                 [
                     "project", "--path", str(project), "run",
-                    "--set", "runtime.memory-limit", "4GiB",
+                    "--set", "memory", "4GiB",
                     "--", "--cap-add", "SYS_PTRACE",
                 ]
             ) == 0

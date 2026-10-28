@@ -1106,15 +1106,21 @@ def test_launcher_owned_docker_options_are_refused_in_passthrough() -> None:
 
     from devcapsule.launch.pycharm import reject_launcher_owned_docker_options
 
-    for option in ("--network", "--network=host", "-m", "--memory=2g", "--shm-size=1g", "--user", "--privileged", "--pull=always"):
+    for option in ("--network", "--network=host", "-m", "--memory=2g", "--shm-size=1g", "--user", "--privileged", "--pull=always",
+                   "-m2g", "-u1000", "-dit", "-ti"):  # attached and clustered short spellings included
         with pytest.raises(PycharmRunError, match="composed by the launcher"):
             reject_launcher_owned_docker_options(["-v", "/x:/y", option])
+    with pytest.raises(PycharmRunError, match="Raw docker option '-m'"):
+        reject_launcher_owned_docker_options(["-m2g"])
+    with pytest.raises(PycharmRunError, match="Raw docker option '-i'"):
+        reject_launcher_owned_docker_options(["-ti"])
 
     with pytest.raises(PycharmRunError, match="shared-memory-size in its runtime template"):
         reject_launcher_owned_docker_options(["--shm-size", "1g"])
 
     reject_launcher_owned_docker_options(
-        ["-v", "/x:/y", "--volume", "/a:/b", "--env", "FOO=bar", "--mount", "type=tmpfs,dst=/z", "--cap-add", "NET_ADMIN"]
+        ["-v", "/x:/y", "--volume", "/a:/b", "--env", "FOO=bar", "--mount", "type=tmpfs,dst=/z", "--cap-add", "NET_ADMIN",
+         "-eNAME=value", "-e=NAME=value", "-v/src:/dst:ro", "-eit=m", "-t", "-P", "-"]  # values after -e/-v are never read as flags
     )
 
 
@@ -1320,7 +1326,8 @@ def test_run_pycharm_announces_the_display_url_and_opens_it_when_ready(
 
 def test_launcher_mounts_live_configuration_directory_and_private_snapshot_read_only(tmp_path):
     import json
-    from devcapsule.runtime_configuration import CONFIGURATION_PATH, CONTEXT_PATH, LaunchConfiguration
+    from devcapsule.launch.pycharm._launcher import channel_watcher, describe_run_command
+    from devcapsule.runtime_configuration import CHANNEL_PATH, CONFIGURATION_PATH, CONTEXT_PATH, LaunchConfiguration
     project = tmp_path / "project"
     project.mkdir()
     records = tmp_path / "records"
@@ -1344,9 +1351,30 @@ def test_launcher_mounts_live_configuration_directory_and_private_snapshot_read_
         assert f"type=bind,src={records},dst={CONFIGURATION_PATH},ro" in args
         assert f"type=bind,src={files.launch_context_file},dst={CONTEXT_PATH},ro" in args
         assert not any("src=" + str(records / "devcapsule.checkout.toml") in arg for arg in args)
+        # The console's channel: a private directory, mounted writable, with the launch listing when run computed one.
+        assert files.configuration_directory is not None and files.configuration_directory.stat().st_mode & 0o777 == 0o700
+        assert f"type=bind,src={files.configuration_directory},dst={CHANNEL_PATH}" in args
+        assert not (files.configuration_directory / "listing.json").exists()
+        watcher = channel_watcher(config, files)
+        assert watcher is not None and watcher.checkout_record == records / "devcapsule.checkout.toml" and watcher.root == project
     finally:
         cleanup_temp_runtime_files(files)
-    assert not files.launch_context_file.exists()
+    assert not files.launch_context_file.exists() and not files.configuration_directory.exists()
+    listing = {"schema-version": 2, "rows": [], "pending": [], "notes": []}
+    config = build_run_config(PycharmRunOptions(
+        project=project, project_mount="/workspace/project", docker_mode=DockerMode.none,
+        runtime_plan=external_runtime_plan(), use_image_process=True,
+        launch_configuration=LaunchConfiguration(records, document, listing),
+    ), env)
+    with patch("devcapsule.launch.pycharm._launcher.write_xauthority"), patch("devcapsule.launch.pycharm._launcher.write_user_files"):
+        files = prepare_temp_runtime_files(config, env)
+    try:
+        assert files.configuration_directory is not None
+        written = json.loads((files.configuration_directory / "listing.json").read_text())
+        assert written["format"] == 1 and written["listing"] == listing and written["at"]
+        assert "Temporary Configuration channel:" in describe_run_command(["docker", "run"], config, files)
+    finally:
+        cleanup_temp_runtime_files(files)
 
 
 def test_web_console_runs_whenever_the_runtime_runs_behind_its_own_token(tmp_path: Path) -> None:
@@ -1853,6 +1881,49 @@ def test_session_logs_with_an_external_daemon(tmp_path, backed, capsys):
             assert config.session_log_directory is None
             assert config.runtime_plan is not None and config.runtime_plan.logs is None
             assert "not backed by a mount" in capsys.readouterr().err
+
+
+def test_session_log_masks_inline_environment_values_of_extra_arguments(tmp_path, capsys):
+    """The launcher log keeps the docker run line but never a saved or one-off inline env value."""
+    from dataclasses import replace
+    from devcapsule import logs
+    from devcapsule.launch.pycharm import _launcher as launcher
+
+    config, env = session_config(tmp_path)
+    config = replace(config, extra_docker_args=[
+        "--gpus", "all", "--env", "APP_SECRET=saved-sentinel-value", "-eOTHER=one-off-sentinel", "--env", "PLAIN",
+    ])
+    commands: list[list[str]] = []
+
+    class Client:
+        def __init__(self, command, env):
+            commands.append(list(command))
+
+        def wait(self, timeout=None):
+            return 0
+
+    try:
+        with (
+            patch.object(launcher, "build_run_config", return_value=config),
+            patch.object(launcher, "write_xauthority"),
+            patch.object(launcher, "write_user_files"),
+            patch.object(launcher, "watch_display_ready"),
+            patch.object(launcher.subprocess, "Popen", Client),
+        ):
+            assert run_pycharm(PycharmRunOptions(project=config.project), env) == 0
+        # Docker receives the literal arguments, in order, before the image.
+        [command] = commands
+        image = command.index(config.image)
+        assert command[image - len(config.extra_docker_args):image] == config.extra_docker_args
+        assert config.session_log_directory is not None
+        record = (config.session_log_directory / "devcapsule-launcher.log").read_text()
+        assert "docker run: " in record
+        assert "--gpus all" in record and "APP_SECRET=<redacted>" in record and "-eOTHER=<redacted>" in record
+        assert "--env PLAIN" in record
+        assert "saved-sentinel-value" not in record and "one-off-sentinel" not in record
+        assert "saved-sentinel-value" not in capsys.readouterr().err
+    finally:
+        logs.reset()
 
 
 def test_interrupted_launch_ends_with_a_result_and_the_log_paths(tmp_path, capsys):

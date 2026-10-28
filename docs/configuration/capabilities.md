@@ -1,170 +1,184 @@
 ---
-description: Declare a project's required SDKs and optional tools, then choose your own IDE and coding agents without changing the repository.
+description: Require or offer capabilities, set a minimum, recommend a provider, and choose what this checkout uses.
 weight: 25
-updated: 2026-10-06
+updated: 2026-10-26
 ---
-# Project capabilities and personal choices
+# Capabilities and components
 
-A DevCapsule configuration describes the developer environment for a project.
-It has two owners: the project defines the shared development contract, and
-each developer chooses their personal tools and host permissions. A task or
-workstream does not need its own environment declaration.
+A **capability** names what an environment supplies. A **component** is the
+software that supplies it. For example, `browser-automation` is a capability
+and `playwright` is its component. The catalog lists each capability's
+providers. Each selected capability resolves to one provider.
 
-## What belongs where
+The project requires or offers capabilities and can recommend an IDE and a
+resolution. A requirement applies to every checkout. An offer is present
+unless you omit it. A resolution recommendation names the provider the
+project prefers. Your checkout can choose another provider from the catalog.
 
-| Choice | Owner | Meaning |
-|---|---|---|
-| Required capabilities | Project | Every usable environment must supply them. |
-| SDK major | Project | Contributors use the same required SDK major. |
-| Optional capabilities | Project | Enhancements offered by default; a checkout can omit them. |
-| IDE, coding agents, extra tools | Developer | Personal selections with local version pins. |
-| Host access, credentials and directories | Developer | Explicit decisions, separate from installing tools. |
+The **IDE** is the capability with a special launch role. Its component opens
+the project and owns the container's lifetime: the container ends when the
+IDE exits. The IDE can use the display. Coding agents are ordinary
+capabilities whose components come through vendor channels.
 
-For example, a Python project can require Python major 3 and recommend browser
-automation. One contributor can choose PyCharm and Codex; another can choose
-Eclipse and Claude Code. Neither choice changes what their collaborators install.
-There is no implicit coding agent. Component names must be supported by the
-installed DevCapsule catalog; naming a new provider does not install it automatically.
-
-## Create a project environment
+## Create the shared configuration
 
 From your project directory:
 
 ```sh
 devcapsule project init --creator mailto:you@example.org \
-  --required python --sdk-major python=3 \
-  --optional browser-automation --local python-ide codex-agent
+  --require 'java>=21' --offer browser-automation --ide java-ide \
+  --with codex-agent
 ```
 
-The project manifest, `.devcapsule/devcapsule.toml`, records shared intent:
+`--require` writes a capability name and optional minimum to the manifest.
+`--offer` writes a capability name. `--ide` records your checkout's choice.
+`--with` adds a personal capability and can repeat. The manifest section is:
 
 ```toml
 [capabilities]
-required = ["python"]
+required = ["java>=21"]
 optional = ["browser-automation"]
-
-[capabilities.sdk-major]
-python = 3
 ```
 
-DevCapsule generates the platform lock alongside it. Commit both shared files.
-The lock pins the base and project tools. Your IDE and agent selection is stored
-in your workstation's checkout record, outside the repository. Its exact tool
-versions stay local too.
+Initialization also writes the platform lock. Commit the manifest and lock
+together. The lock pins the resolved components, not every possible provider.
+Without an IDE choice, an interactive initialization can ask for one.
+You can leave that decision for the first run.
 
-Omit `--local` to leave the IDE choice to the developer. Before launching,
-choose a supported IDE, review permissions and resolve the checkout:
+## Require and offer capabilities
 
 ```sh
-devcapsule project config capabilities --local python-ide codex-agent
-devcapsule project config resolve
+devcapsule project config require 'java>=21' --because "the build targets Java 21"
+devcapsule project config require 'playwright>=1.21'
+devcapsule project config offer codex-agent --because "the project uses Codex instructions"
+devcapsule project config drop browser-automation
 ```
 
-`resolve` reports any outstanding authorization decisions and their commands.
-Installing an optional tool does not grant Docker access, expose a host directory,
-or accept a license. Answer those questions, resolve again, then run
-`devcapsule project run`.
+A minimum uses one relation: `NAME>=VERSION`, meaning that version or newer.
+Quote it in a shell, where `>` redirects output. The launcher compares dotted
+integers from left to right. It reads a leading `v` and build metadata, so
+`v22.23.1` and `25.0.4+7` compare as `22.23.1` and `25.0.4`.
+Prerelease minimums, upper bounds, ranges and exact constraints are unsupported.
+The lock supplies the exact version pin.
 
-SDK-major constraints currently support Python and .NET. A requirement such as
-`python=4` fails when no supported base supplies it. Unknown SDK majors and
-unverifiable local base overrides cannot satisfy a mandatory guarantee.
+`require 'java>=25'` replaces an earlier Java minimum. `drop java` removes
+the requirement regardless of its minimum. An unmet minimum refuses before
+writing. Today's catalog cannot satisfy `python>=3.14`; its bases supply
+Python 3.12.
 
-## Change the shared contract
+Capability edits update the manifest and lock together. Add `--preview` to
+an owner command to validate and inspect its result without writing.
+An offered capability can be unavailable on an older launcher; the launcher
+warns and omits it. Required capabilities must be available.
 
-Use commands to author configuration. Each supplied flag replaces that list;
-omitting a flag keeps its current value. Supplying a flag with no entries clears
-its list. For example:
+Environment inputs keep the `env` word:
 
 ```sh
-devcapsule project config capabilities --required python docker-cli \
-  --optional browser-automation --sdk-major python=3 --preview
+devcapsule project config require env POSTGRES_HOST POSTGRES_PASSWORD --because "the application connects to the database"
+devcapsule project config offer env SMTP_HOST --because "email is optional in development"
 ```
 
-`--preview` validates the candidate without writing it. Repeat without
-`--preview` to update the shared manifest and lock. Changes must keep SDK-major
-constraints attached to required capabilities. IDE and agent choices belong in
-`--local`, rather than new shared requirements.
+These commands write declarations, not values. At a terminal, `run` asks for
+missing required values with a hidden prompt and saves them privately.
+Without a terminal, a missing required value stops launch with status 3.
+Optional inputs are listed but never prompted.
 
-Older manifests using `capabilities.need` remain readable. Their listed tools
-remain mandatory until a project owner explicitly classifies them with the
-command above. The legacy `init --need` interface remains available for that
-representation; new required/optional projects use `init --required` and
-`config capabilities` for subsequent edits.
-
-## Make the checkout yours
+## Recommend an IDE or resolution
 
 ```sh
-devcapsule project config capabilities --local eclipse-ide claude-code-agent
+devcapsule project config recommend ide frontend-ide
+devcapsule project config recommend frontend-ide codium
 ```
 
-This replaces your personal selection. It changes neither shared file nor
-unrelated host decisions. Existing local version pins for retained tools survive
-reselection. The [version commands](../updates/component-upgrades.md) manage
-updates separately.
+The first command recommends the IDE capability. The second recommends its
+provider, recorded separately:
 
-To skip the project's browser-testing enhancement on this workstation:
+```toml
+[recommendations]
+ide = "frontend-ide"
 
-```sh
-devcapsule project config capabilities --without browser-automation
+[capabilities.resolution]
+frontend-ide = "codium"
 ```
 
-To restore all project enhancements:
+A resolution takes no reason. The capability's requirement or offer can
+already explain why it is needed. A resolution recommendation updates the
+manifest and lock together. It does not select a capability by itself.
+`recommend frontend-ide none` removes that provider recommendation.
+
+Resource and host-access recommendations keep their own names:
 
 ```sh
-devcapsule project config capabilities --without
+devcapsule project config recommend memory 6G --because "the test suite builds a large index"
+devcapsule project config recommend network host --because "the dev server uses host ports"
 ```
 
-Only optional capabilities can be omitted this way. A dependency needed by a
-mandatory capability remains installed even if it also supplies an optional one.
-A local choice cannot waive the project's SDK major or remove a mandatory tool.
+A host-access recommendation asks for your decision. It grants no access.
+A provider recommendation also leaves vendor trust and consent in place.
 
-An omission hides a tool from your launches; it does not change what your
-checkout has selected. Your version pins, including an explicit local version
-set, keep the omitted tool's exact version, and restoring the enhancement
-brings that version back. Selecting a tool the project already lists keeps the
-project's pin rather than taking a newer one from the launcher's catalog.
-
-## Validate and recover
+## Choose for this checkout
 
 ```sh
+devcapsule project config ide eclipse-ide
+devcapsule project config add claude-code-agent
+devcapsule project config omit codex-agent
+devcapsule project config restore codex-agent
+```
+
+`add` selects a capability the project did not declare. `omit` leaves out an
+offer or removes your addition. `restore` brings an offered capability back.
+A required capability cannot be omitted. An omitted offer keeps its local
+version pin; a required dependency remains installed.
+
+`config use CAPABILITY COMPONENT` chooses a provider when the catalog lists
+several. `config use CAPABILITY default` removes your choice. The launcher
+then follows the project's recommendation, or the catalog's first eligible
+provider. The current catalog has one provider per capability, so `use`
+reports that no choice exists. A provider must meet the project's minimum.
+
+Your choices and local pins stay in the checkout record. The
+[version commands](../updates/component-upgrades.md) manage updates separately.
+For one launch:
+
+```sh
+devcapsule project run --ide frontend-ide --with codex-agent
+```
+
+`--with` can repeat. `--use CAPABILITY=COMPONENT` chooses a provider for one
+launch when alternatives exist. Add `--save` to record these choices.
+Channel acceptance through `--trust` belongs to the workstation and persists
+without `--save` after the required review succeeds.
+
+## Inspect and recover
+
+```sh
+devcapsule project config show
 devcapsule project config check
-devcapsule project config check --manifest /path/to/candidate.toml \
-  --lock /path/to/candidate.lock
 ```
 
-`check` validates the shared capability contract offline. It does not register a
-checkout, write a resolution, download tools, contact Docker or grant permissions.
-It is not evidence that a container has launched successfully. Use `config resolve`
-and the normal launch for checkout permissions and runtime acceptance.
+`show` lists effective choices, their sources, providers and pending decisions.
+A requirement row includes its minimum and resolved version. `check` validates
+the contract and reports pending host decisions with status 3. Neither command
+downloads components or contacts Docker. Inside a capsule, inspection uses
+the captured launch view; current host decisions need the host launcher.
 
-Writers validate the starting documents and candidate before replacement.
-Shared edits have a recovery journal: the manifest replacement commits the pair.
-If a process stops between writes, readers refuse the intermediate state and give
-the recovery command:
+`check --manifest FILE --lock FILE` validates a candidate contract only.
+`config capabilities --recover` repairs an interrupted manifest/lock edit.
+Recovery refuses to overwrite files changed independently.
 
-```sh
-devcapsule project config capabilities --recover
-```
+A saved version set must still meet new project requirements. An incompatible
+set stops `run` with status 3. `devcapsule project versions follow-project
+--apply` returns to the shared lock. The launcher never waives a requirement.
 
-Recovery restores the matching lock or completes its replacement. It refuses to
-overwrite files changed independently while the transaction was pending.
+## Existing files and older launchers
 
-## When a contributor has a different launcher
+This launcher reads existing checkout selections, offers, IDE recommendations,
+provider locks and trust records. It ignores the removed SDK-major table with
+a note. The next owner write, or `project init --regenerate`, writes the
+manifest as schema 2 and removes that table. An unchanged manifest keeps
+its old lock current until the next shared edit.
 
-A reader that understands this capability contract can omit an unknown optional
-tool with a warning. A failed optional download also permits a reduced run;
-a checksum mismatch remains an integrity error. The warning names the missing enhancement. Required tools
-and their dependencies still have to be available. The reader derives its usable
-selection locally and leaves the shared manifest and lock intact.
-
-Optional-only shared changes can be reconciled for the next launch when the
-required environment, personal answers and permissions are unchanged. Changes to
-the required environment or local answers still require explicit resolution.
-Commands preserve opaque optional pins when they can do so safely; an unsafe
-mutation is refused before replacing the existing documents.
-
-Binaries released before this contract cannot acquire these semantics from a
-configuration file. Upgrade those launchers before adopting the representation.
-When DevCapsule develops itself, validate the transition with the identifiable
-running `devcapsule0` as well as the candidate executable. Preserve a known working
-host launcher and restart path; a configuration listing alone is not validation.
+Candidate 4 reads a resolution recommendation under `capabilities` and ignores
+it. It uses the catalog's first provider, currently the only provider of each
+capability. Candidate 4 cannot read requirements with minimums or component
+aliases. Launchers before candidate 4 cannot read schema 2.
