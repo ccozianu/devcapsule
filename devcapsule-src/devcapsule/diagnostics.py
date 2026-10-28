@@ -54,7 +54,6 @@ from devcapsule.container_runtime.diagnose import (
 from devcapsule.docker_arguments import inline_environment_names
 from devcapsule.launch.session_logs import SESSION_LOG_DESTINATION, session_logs_root
 from devcapsule.materialization import ENTRYPOINT_CONTRACT
-from devcapsule.project import project_namespace
 
 SNAPSHOT_SCHEMA_VERSION = 1
 DEFAULT_DOCKER_INSPECT_TIMEOUT_SECONDS = 3.0
@@ -605,16 +604,7 @@ def _managed_slot_path(
 ) -> Path:
     if dict(env) == dict(os.environ):
         return managed_binding_path(root, declaration).absolute()
-    home = Path(env.get("HOME", "~")).expanduser()
-    roots = {
-        "durable": Path(env.get("XDG_DATA_HOME") or home / ".local" / "share"),
-        "state": Path(env.get("XDG_STATE_HOME") or home / ".local" / "state"),
-        "cache": Path(env.get("XDG_CACHE_HOME") or home / ".cache"),
-    }
-    namespace = roots[declaration.kind] / "devcapsule" / "projects" / "by-path" / project_namespace(root)
-    if declaration.name == "home":
-        return (namespace / "home").absolute()
-    return (namespace / "components" / str(declaration.component_id) / str(declaration.slot_name)).absolute()
+    return managed_binding_path(root, declaration, env).absolute()
 
 
 def _fallback_host_ide_log_specs(

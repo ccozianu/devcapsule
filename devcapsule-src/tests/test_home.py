@@ -80,6 +80,28 @@ def test_matrix_channel_equals_rendered_lock_and_saved_acceptance(home: Path) ->
     assert HomeTrust.read(load_settings()).covers(channel)
 
 
+@pytest.mark.parametrize(("name", "kind", "directory"), [
+    ("home", "durable", "data"), ("pycharm/log", "state", "state"), ("pycharm/cache", "cache", "cache"),
+])
+def test_managed_bindings_and_diagnostics_share_named_home(
+    home: Path, name: str, kind: str, directory: str,
+) -> None:
+    from devcapsule.configuration.bindings import ConfigurationBindingDeclaration, managed_binding_path
+    from devcapsule.diagnostics import _managed_slot_path
+    from devcapsule.recursive_successor import _managed_binding_path
+    from devcapsule.project import project_namespace
+
+    project = home.parent / "project"
+    slot = name.split("/")[-1]
+    declaration = ConfigurationBindingDeclaration(name, "/target", "ordinary", False, "test", kind, "pycharm", slot)
+    suffix = Path("home") if name == "home" else Path("components/pycharm") / slot
+    expected = home / directory / "projects/by-path" / project_namespace(project) / suffix
+    assert managed_binding_path(project, declaration) == expected
+    assert _managed_binding_path(project, declaration) == expected
+    assert _managed_slot_path(project, declaration, {"DEVCAPSULE_CONFIG_HOME": str(home)}) == expected
+    assert not home.exists()
+
+
 def test_default_replace_remove_and_invalid_values(home: Path) -> None:
     assert cli.main(["home", "default", "cpus", "2"]) == 0
     assert cli.main(["home", "default", "cpus", "4"]) == 0

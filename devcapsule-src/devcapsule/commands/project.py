@@ -2097,7 +2097,7 @@ class ProjectRunCommand(Command):
         parser.add_argument("--env", action="append", default=[], metavar="NAME[=VALUE]",
                             help="An environment variable for this launch: NAME=VALUE, or NAME taken from the host.")
         parser.add_argument("--trust", action="append", default=[], metavar="CHANNEL",
-                            help="Accept a channel for this user account across projects; saved when all required answers are complete. Repeatable; see config trust list.")
+                            help="Accept a channel for this home across projects; saved when all required answers are complete. Repeatable; see config trust list.")
         parser.add_argument("--save", action="store_true", help="Save configuration flags after all required answers are complete, before launching.")
         parser.add_argument("--unverified", action="store_true", dest="allow_unverified", help=argparse.SUPPRESS)
         parser.add_argument(
