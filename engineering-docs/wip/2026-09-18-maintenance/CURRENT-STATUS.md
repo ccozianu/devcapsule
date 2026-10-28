@@ -396,6 +396,43 @@ begin the rewrite until project-management assigns it.
 
 ## Current State
 
+**2026-10-28: the configuration home and the home commands implemented; PR #299 ready.**
+The slice of the [work order of 2026-10-27](../../work-orders/2026-10-27-configuration-home-and-the-home-commands.md),
+designed by the owner in the project-management session and ordered
+there (in PR #297 to `main`), implemented by Codex, gpt-6-astra, with
+Claude Code, Claude Fable 5.1, as the review partner, dispatched from the
+project-management session on the owner's word. `DEVCAPSULE_CONFIG_HOME`
+names the one configuration home; set, data, state and cache are
+subdirectories of it; unset, the four XDG directories as before.
+`settings.toml` holds the defaults and the accepted channels under a
+schema integer and `minimum-devcapsule`, the first file to declare its
+minimum reader; `workstation.toml` and `trust.toml` are not read. The
+`devcapsule home` group holds `show`, `trust list|accept|withdraw` and
+`default`, from any directory; the three mutating spellings under
+`project config` are deleted; a project-less `trust accept` takes the
+channel from the embedded matrix's pin through the one function the lock
+path uses. The word "workstation" is gone from code, docs and D-0011,
+which is amended and renamed. The implementor stopped twice: on the
+order's evidence location, capsule-local and so invisible to the host
+daemon, moved to the host-backed home; and on `packaging`, a dependency
+the PEX does not carry, caught by the packaging gate and replaced by a
+three-integer comparison. The review (PR #300, PR299.1, accepted without
+a round, merged at `e83c0881`) found the launcher exporting the variable
+into the capsule as `/etc/devcapsule/home`, so every launcher-owned write
+inside a capsule, the recursive dogfood's among them, failed under a
+root-owned mount parent, reproduced with `checkout notifications post`;
+now the capsule reads the launcher's settings from the mount until it has
+settings of its own, writes only its own, and names no home, which
+retires the order's in-capsule refusal, a rule change recorded for the
+owner under the pull request's judgments. The review also deleted the
+renderers the one document made dead and an environment reach in
+`atomic_write`; the implementor had already routed session logs and the
+managed bindings through the home before the review was cut. Gates on
+the merged tip: mypy clean over 259 files and 9 console files, 2515
+unit tests, 37 deselected, one xfail and one xpass, packaging 17, the
+documentation contract 190 pages, the console 357. No image, capsule,
+tag or dispatch was used. Awaiting the owner's merge of PR #299 into
+`release-0.3.0`; the next candidate carries it.
 **2026-10-27: diagnostics snapshot and sanitized export ready for merge (#293).**
 Implemented `devcapsule project diagnose` and `devcapsule runtime diagnose-probe`
 on `ws-maintenance/0.3.0-diagnostics-snapshot` targeting `release-0.3.0`
