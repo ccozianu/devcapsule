@@ -298,6 +298,22 @@ foreground run against the sample is recorded in the detached-container bug.
 
 ## Open Threads
 
+- 2026-10-28: the owner requested the bounded authoring of an
+  [IDE requirement override work order](../../work-orders/2026-10-28-explicit-ide-requirement-override.md)
+  in this checkout after the read-only rc8 investigation. The order retains IDE
+  requirements and scopes the first `--force` case to an alternate IDE for one
+  launch. Implementation, assignment, and release sequencing remain pending.
+  No implementation or workstream change is authorized by this documentation slice.
+  The authoring stays here under the owner's bounded request and topic 12.11;
+  the missing cross-scope authoring detail is resolved without changing selection.
+  The existing sample next step remains unchanged.
+  Validation: `nox -s build` and its queued webconsole session passed with
+  scratch at `/opt/devcapsule-gate/pytest-ide-work-order`; 17 packaging
+  integrations and 293 webconsole tests passed. The gate skipped the website
+  docs contract because the website submodule is not initialized. Document
+  links and `git diff --check` passed. Workstream assignment and the force/save
+  decision remain open; no implementation or new GUI acceptance is claimed.
+
 - Integration review left two nonblocking child notes: a concurrent credential
   reset during password setup returns a scrubbed 503 (P2025) instead of 401;
   early rejection of locked usernames has a timing distinction, bounded by
