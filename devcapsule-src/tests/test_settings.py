@@ -71,3 +71,32 @@ def test_candidate_creates_release_minimum(tmp_path: Path, monkeypatch: pytest.M
     env = {"DEVCAPSULE_CONFIG_HOME": str(tmp_path)}
     storage.write_settings({"defaults": {"cpus": 2}}, env)
     assert storage.load_settings(env)["minimum-devcapsule"] == "0.3.0"
+
+
+@pytest.mark.parametrize(("version", "release", "minimum", "admitted"), [
+    ("0.3.0", "0.3.0", "0.3.0", True),
+    ("0.3.0rc8", "0.3.0", "0.3.0", True),
+    ("0.3.1.dev0", "0.3.1", "0.3.1", True),
+    ("9.0.0", "9.0.0", "9.0.0", True),
+    ("0.3.0rc8", "0.3.0", "9.0.0", False),
+    ("0.3.10", "0.3.10", "0.3.9", True),
+    ("0.3.9", "0.3.9", "0.3.10", False),
+])
+def test_release_comparison(version: str, release: str, minimum: str, admitted: bool,
+                            monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("importlib.metadata.version", lambda name: version)
+    assert storage.launcher_release() == release
+    assert storage.launcher_meets_minimum(minimum) is admitted
+
+
+@pytest.mark.parametrize("minimum", ["0.3", "0.3.0rc8"])
+def test_minimum_requires_three_release_integers(tmp_path: Path, minimum: str) -> None:
+    env = {"DEVCAPSULE_CONFIG_HOME": str(tmp_path)}
+    path = storage.settings_path(env)
+    path.write_text(f'minimum-devcapsule = "{minimum}"\ndevcapsule-settings-schema-version = 1\n')
+    before = path.read_bytes(), path.stat().st_mtime_ns
+    with pytest.raises(ProjectConfigurationError, match="minimum-devcapsule must be a release version"):
+        storage.load_settings(env)
+    with pytest.raises(ProjectConfigurationError, match="minimum-devcapsule must be a release version"):
+        storage.write_settings({"defaults": {"cpus": 2}}, env)
+    assert (path.read_bytes(), path.stat().st_mtime_ns) == before

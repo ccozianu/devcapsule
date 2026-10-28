@@ -91,27 +91,33 @@ def settings_path(env: Mapping[str, str] | None = None) -> Path:
 
 def launcher_release() -> str:
     from importlib.metadata import version
-    from packaging.version import Version
-    return Version(version("devcapsule")).base_version
+    return re.split(r"rc|\.dev|\+", version("devcapsule"), maxsplit=1)[0]
+
+
+def launcher_meets_minimum(required: object) -> bool:
+    """Compare three release integers; the file must name a complete release."""
+    pattern = r"([0-9]+)\.([0-9]+)\.([0-9]+)"
+    minimum = re.fullmatch(pattern, required) if isinstance(required, str) else None
+    if minimum is None:
+        raise ValueError("minimum-devcapsule must be a release version string (X.Y.Z)")
+    own = re.fullmatch(pattern, launcher_release())
+    if own is None:
+        raise ValueError("the launcher must have a release version (X.Y.Z)")
+    return tuple(map(int, own.groups())) >= tuple(map(int, minimum.groups()))
 
 
 def validate_settings(document: Mapping[str, Any], path: Path) -> None:
     """Check reader admission before the schema or the settings themselves."""
-    from packaging.version import InvalidVersion, Version
     from .home import HomeDefaults
     from .trust import HomeTrust
     required = document.get("minimum-devcapsule")
     try:
-        if not isinstance(required, str):
-            raise ValueError("minimum-devcapsule must be a release version string")
-        minimum = Version(required)
-        if minimum.is_prerelease or minimum.is_postrelease or minimum.local:
-            raise ValueError("minimum-devcapsule must be a release version string")
-    except (InvalidVersion, ValueError) as exc:
+        admitted = launcher_meets_minimum(required)
+    except ValueError as exc:
         raise ProjectConfigurationError(f"{path}: {exc}") from exc
     from importlib.metadata import version
     own = version("devcapsule")
-    if Version(launcher_release()) < minimum:
+    if not admitted:
         raise ProjectConfigurationError(
             f"DevCapsule home {path.parent} requires DevCapsule {required}; this launcher is {own}. "
             "Get the release at https://github.com/ccozianu/devcapsule/releases."
