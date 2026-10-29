@@ -30,7 +30,9 @@ SPELLINGS = [
     (("config", "unset", "memory"), "config set NAME default"),
     (("config", "list"), "config show"),
     (("config", "resolve"), "project run"),
-    (("run", "--force"), "project run"),
+    # ``run --force`` is a live flag since 2026-10-29: the explicit departure
+    # from a required IDE (work order of 2026-10-28), tested in
+    # test_ide_requirement_override.py.
     (("run", "--force-config"), "project run"),
     (("config", "agent", "add", "codex"), "config add"),
     (("config", "agent", "remove", "codex"), "config omit"),

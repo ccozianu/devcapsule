@@ -162,12 +162,16 @@ def test_run_exits_three_until_preparation_has_its_answers(project: Path, capsys
     assert "  resolve " not in render_command_listing(ConfigGroup.subcommands())
 
 
-def test_run_help_has_the_flags_and_no_force(capsys) -> None:
+def test_run_help_has_the_flags_and_force_names_the_ide_departure(capsys) -> None:
     assert cli.main(["project", "run", "--help"]) == 0
     text = capsys.readouterr().out
-    for flag in ("--ide", "--with", "--memory", "--cpus", "--env", "--save", "--print-command"):
+    for flag in ("--ide", "--with", "--memory", "--cpus", "--env", "--save", "--print-command", "--force"):
         assert flag in text
-    assert "--force" not in text
+    import re
+    assert re.search(r"although\s+the\s+project\s+requires\s+another\s+IDE", text)
+    assert "--force-config" not in text
+    assert cli.main(["project", "run", "--force-config"]) == 2
+    assert "--force-config is retired" in capsys.readouterr().err
 
 
 def snapshot(directory: Path) -> dict[Path, bytes]:

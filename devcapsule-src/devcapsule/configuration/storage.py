@@ -39,6 +39,9 @@ class ResolvedProject:
     checkout: dict[str, Any]
     resolution_path: Path
     resolution: dict[str, Any]
+    # The named departures from the project's contract this launch runs
+    # with (``RequirementDeparture``); empty for an ordinary launch.
+    departures: tuple[Any, ...] = ()
 
 
 def discover_project(path: Path) -> Path:

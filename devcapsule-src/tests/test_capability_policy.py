@@ -631,7 +631,7 @@ def test_a_hand_written_required_ide_still_refuses_a_conflicting_local_ide() -> 
     manifest["devcapsule-schema-version"] = 2
     shared = tomllib.loads(MATRIX.resolve(["python", "python-ide"]).render_lock())
     checkout = {"capabilities": {"selected": ["eclipse-ide"], "lock": MATRIX.resolve(["eclipse-ide"]).render_lock()}}
-    with pytest.raises(ProjectConfigurationError, match="Local IDE conflicts"):
+    with pytest.raises(ProjectConfigurationError, match="Local IDE 'eclipse-ide' conflicts with the project's required IDE 'python-ide'.*--ide eclipse-ide --force"):
         selected_lock(manifest, shared, checkout)
 
 

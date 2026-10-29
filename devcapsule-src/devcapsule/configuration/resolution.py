@@ -30,7 +30,9 @@ from .values import checkout_omitted_values
 
 def render_resolution(manifest: Mapping[str, Any], lock: Mapping[str, Any],
                       checkout: Mapping[str, Any], review: ConfigurationReview,
-                      home: Mapping[str, Any] | None = None) -> str:
+                      home: Mapping[str, Any] | None = None, *,
+                      departures: tuple[Any, ...] = ()) -> str:
+    """The resolution document; ``departures`` are the launch's named departures from the project's contract."""
     if not review.ready:
         raise ProjectConfigurationError("Cannot publish an incomplete configuration.")
     image = lock.get("image", {}).get("reference")
@@ -40,7 +42,9 @@ def render_resolution(manifest: Mapping[str, Any], lock: Mapping[str, Any],
     values, runtime_effects = review.values, review.runtime_effects
     bindings, secret_bindings = review.bindings, review.secret_bindings
     authorizations = review.resolved_authorizations()
-    sources = resolution_source_digests(manifest, lock, checkout, home)
+    from .capabilities import CapabilityPolicy
+    sources = resolution_source_digests(manifest, lock, checkout, home,
+                                        policy=CapabilityPolicy.read(manifest).departing(tuple(departures)))
     lines = [
         "devcapsule-resolved-schema-version = 1",
         "",
@@ -61,6 +65,12 @@ def render_resolution(manifest: Mapping[str, Any], lock: Mapping[str, Any],
     )
     if image:
         lines.append(f"image = {quote_toml(str(image))}")
+    for departure in departures:
+        # A departure is not satisfaction: the plan says which requirement
+        # it set aside, for the launch's records and diagnostics.
+        lines.extend(["", f"[departures.{departure.policy}]",
+                      f"required = {quote_toml(departure.capability)}",
+                      f"launched = {quote_toml(departure.replacement)}"])
     omitted = checkout_omitted_values(checkout)
     if omitted:
         # Explicit omissions are inspectable decisions, not silent gaps.

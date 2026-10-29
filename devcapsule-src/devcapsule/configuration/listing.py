@@ -43,7 +43,7 @@ from .authorization import (
     review_authorizations,
 )
 from .bindings import component_secret_inputs, configuration_binding_declarations
-from .capabilities import CapabilityPolicy, LocalCapabilities, capability_notes
+from .capabilities import CapabilityPolicy, LocalCapabilities, RequirementDeparture, capability_notes
 from .file_formats import ProjectConfigurationError, render_toml_scalar, table
 from .launcher_values import launcher_value_source
 from .manifest_document import EnvironmentPolicy, Recommendations
@@ -113,6 +113,9 @@ class ListingRow:
 class Listing:
     rows: tuple[ListingRow, ...]
     notes: tuple[str, ...] = ()
+    # The launch's named departures from the project's contract, when the
+    # listing is a launch's; a checkout's listing has none.
+    departures: tuple[RequirementDeparture, ...] = ()
 
     @property
     def pending(self) -> tuple[ListingRow, ...]:
@@ -145,7 +148,8 @@ class Listing:
 
     def document(self) -> dict[str, Any]:
         return {"schema-version": LISTING_SCHEMA_VERSION, "rows": [row.document() for row in self.rows],
-                "pending": [row.name for row in self.pending], "notes": list(self.notes)}
+                "pending": [row.name for row in self.pending], "notes": list(self.notes),
+                **({"departures": [item.document() for item in self.departures]} if self.departures else {})}
 
     @classmethod
     def from_document(cls, document: Mapping[str, Any]) -> Listing:
@@ -192,6 +196,7 @@ def assess_checkout(
     access_lock: Mapping[str, Any] | None = None,
     capability_versions: Mapping[str, str | None] | None = None,
     capability_providers: Mapping[str, tuple[str, str]] | None = None,
+    departures: tuple[RequirementDeparture, ...] = (),
 ) -> Listing:
     """The listing of one checkout, from its documents, writing nothing.
 
@@ -204,6 +209,9 @@ def assess_checkout(
     checkout has a record yet; an unregistered checkout is listed from an
     empty record. ``base_display`` is the catalog's display contract for
     the selected base, or None when the host must inspect it at launch.
+    ``departures`` are a launch's named departures from the project's
+    contract: the IDE row and a note say which requirement the launch set
+    aside, so the launch's listing never claims the project was satisfied.
     """
     rows: list[ListingRow] = []
     notes: list[str] = list(capability_notes(manifest))
@@ -211,7 +219,14 @@ def assess_checkout(
     local = LocalCapabilities.read(checkout)
     recommendations = Recommendations.read(manifest)
     surfaces = {name: (capability_providers or {}).get(name, (component, ""))[0] for name, component in surfaces.items()}
-    rows.extend(_capability_rows(policy, local, recommendations, shared_lock, composed_lock, surfaces, project, capability_versions or {}))
+    rows.extend(_capability_rows(policy.departing(departures), local, recommendations, shared_lock, composed_lock,
+                                 surfaces, project, capability_versions or {}))
+    for departure in departures:
+        from dataclasses import replace as _replace
+        rows = [_replace(row, source=f"this launch (--force); the project requires {departure.capability}")
+                if row.kind == "ide" and row.name == departure.replacement else row for row in rows]
+        notes.append(f"Departure: the project's required IDE {departure.capability} is set aside by --force for this "
+                     f"launch; {departure.replacement} runs. The requirement and the saved IDE are unchanged.")
     from dataclasses import replace
     rows = [replace(row, provider=capability_providers[row.name][0], provider_source=capability_providers[row.name][1])
             if capability_providers and row.name in capability_providers else row for row in rows]
@@ -228,7 +243,7 @@ def assess_checkout(
     rows.extend(_value_rows(manifest, checkout, project))
     if not registered:
         notes.append("This checkout has no record yet; the first 'devcapsule project run' registers it.")
-    return Listing(tuple(rows), tuple(notes))
+    return Listing(tuple(rows), tuple(notes), tuple(departures))
 
 
 def _capability_rows(

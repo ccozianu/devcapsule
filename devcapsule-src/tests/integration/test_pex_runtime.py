@@ -350,3 +350,38 @@ def test_built_pex_authors_shared_policy_and_keeps_personal_selection_local(
     refused = invoke("config", "require", "python=4")
     assert refused.returncode == 2 and "Unsupported requirement form 'python=4'; use NAME or NAME>=VERSION" in refused.stderr
     assert {path.name: path.read_bytes() for path in directory.iterdir()} == shared
+
+
+@pytest.mark.integration
+def test_built_pex_carries_force_for_a_required_ide_to_the_launch_review(built_pex: Path, tmp_path: Path) -> None:
+    """``run --ide IDE --force`` reaches preparation through the built executable; the refusals name it.
+
+    The forced launch itself materializes the requested IDE, which needs the
+    network and Docker; the unit tests prove the plan, the IDE smoke the launch.
+    """
+    project = tmp_path / "required-ide"
+    project.mkdir()
+    environment = {**os.environ, "HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(tmp_path / "config"),
+                   "XDG_STATE_HOME": str(tmp_path / "state"), "XDG_DATA_HOME": str(tmp_path / "data")}
+    def invoke(*arguments: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run([str(built_pex), "project", "--path", str(project), *arguments],
+                              cwd=project, env=environment, text=True, capture_output=True, check=False)
+    created = invoke("init", "--require", "python", "--require", "python-ide", "--ide", "python-ide",
+                     "--creator", "mailto:fixture@example.test", "--authorize", "base-image", "default")
+    assert created.returncode == 0, created.stderr
+    records = sorted((tmp_path / "config").rglob("*.toml"))
+    assert records, "init registers the checkout and derives its resolution"
+    before = {path: path.read_bytes() for path in (*records, *sorted((project / ".devcapsule").iterdir()))}
+    helped = invoke("run", "--help")
+    assert helped.returncode == 0 and "--force" in helped.stdout and "--force-config" not in helped.stdout
+    refused = invoke("run", "--ide", "codium", "--print-command")
+    assert refused.returncode == 2, refused.stdout
+    assert "The project requires python-ide (pycharm); frontend-ide (codium) is another IDE" in refused.stderr
+    assert f"--path {project} run --ide codium --force" in refused.stderr
+    nothing = invoke("run", "--force", "--print-command")
+    assert nothing.returncode == 2 and "--force names no departure" in nothing.stderr
+    same = invoke("run", "--ide", "pycharm", "--force", "--print-command")
+    assert same.returncode == 2 and "nothing to set aside: python-ide is the project's required IDE" in same.stderr
+    saved = invoke("run", "--ide", "codium", "--force", "--save", "--print-command")
+    assert saved.returncode == 2 and "cannot be combined with --save" in saved.stderr
+    assert {path: path.read_bytes() for path in before} == before, "no refusal writes anything"
