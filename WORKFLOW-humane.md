@@ -792,6 +792,19 @@ and three rounds were always enough. The loop sits in topic 9 because it is
 a way of running the work cycle, not a new record or a new ref; the local
 file names the engines, the checkouts and the commands.
 
+**Rule, added 2026-10-29.** Run the loop only when the human asks for it,
+for a task or for a session, or when the local workflow file makes it the
+default procedure.
+
+**Intended effect.** An agent that receives a slice without that request
+delivers its pull request and offers the loop in one line; it writes no
+brief, prepares no review worktree and asks the human for no engine.
+
+**Motivation.** The loop spends a second pair's tokens and wall time, and
+the rule above said how it runs but not when. On 2026-10-29 the owner found
+agents of several engines sliding into the loop by precedent, because every
+0.3.0 slice before had run one, and asked for the trigger to be in the rule.
+
 ## 10. Completing A Workstream
 
 **Rule.** Empty the intake and mailbox first; record the delivery facts in the
