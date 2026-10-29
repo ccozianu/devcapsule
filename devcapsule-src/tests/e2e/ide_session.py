@@ -207,18 +207,22 @@ def stop_session(facts: SessionFacts) -> None:
 
 @contextmanager
 def launched_ide(executable: Path, surface: IdeSurface, workspace: Path,
-                 evidence: Path, container: str, *, own_session: bool = False) -> Iterator[SessionFacts]:
+                 evidence: Path, container: str, *, own_session: bool = False,
+                 run_arguments: tuple[str, ...] = ()) -> Iterator[SessionFacts]:
     """Launch an initialized project, also used for a bounded persistence relaunch.
 
     With ``own_session`` the launcher leads its own process group, as it
     does in a terminal, so that a test can deliver SIGINT to the group the
-    way Ctrl+C does, launcher and docker client alike.
+    way Ctrl+C does, launcher and docker client alike. ``run_arguments``
+    are given to ``project run`` as an adopter would type them, for a
+    launch that departs from the project's saved selection; ``surface`` is
+    then the IDE that launch is expected to run.
     """
     evidence.mkdir(parents=True, exist_ok=True)
     log_path = evidence / "launcher.log"
     with log_path.open("wb") as log:
         launcher = subprocess.Popen(
-            [str(executable), "project", "run", "--no-update-check", "--name", container],
+            [str(executable), "project", "run", "--no-update-check", "--name", container, *run_arguments],
             cwd=workspace, env=dict(os.environ, BROWSER="true"), stdout=log,
             stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, start_new_session=own_session,
         )
