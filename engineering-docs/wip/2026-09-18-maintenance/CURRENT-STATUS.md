@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-29; releasing 0.3.0: the explicit IDE requirement override implemented on `ws-maintenance/0.3.0-ide-override` with its recorded acceptance session, awaiting the owner's choice of review partner and the pull request into `release-0.3.0`; VS Code (PR #301) and the configuration home (PR #299) await the owner's merge; rc3 tagged, published and verified as downloaded; the diagnostics snapshot merged by PR #293; forced configuration and the schema-version slice move to rc4 with C20; the base is published in the promotion; C17 stays a gate in both halves
+State: active 2026-10-29; releasing 0.3.0: the explicit IDE requirement override implemented on `ws-maintenance/0.3.0-ide-override` with its recorded acceptance session, PR #304 into `release-0.3.0` open, awaiting the owner's choice of review partner; VS Code (PR #301) and the configuration home (PR #299) await the owner's merge; rc3 tagged, published and verified as downloaded; the diagnostics snapshot merged by PR #293; forced configuration and the schema-version slice move to rc4 with C20; the base is published in the promotion; C17 stays a gate in both halves
 
 Definition read: WORKFLOW.md@5c89396f2200, WORKFLOW-LOCAL.md@b500a24f0736
 
@@ -80,7 +80,8 @@ files and checkout record, the forced plan's `departures` table, then
 PyCharm owning the display on the plain launch (class `jetbrains-pycharm`)
 with a plan without departures; see
 [evidence/2026-10-29-ide-override](evidence/2026-10-29-ide-override/README.md).
-D-0016 records the owner's choice; R-CONFIG-001 gains the explicit launch
+Opened as [PR #304](https://github.com/ccozianu/devcapsule/pull/304) into
+`release-0.3.0`. D-0016 records the owner's choice; R-CONFIG-001 gains the explicit launch
 exception; the CLI reference, the capabilities guide and the IDE page
 describe the flag; the 0.3.0 changelog carries it.
 
@@ -3001,11 +3002,12 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Explicit IDE requirement override, 2026-10-29: the branch
-  `ws-maintenance/0.3.0-ide-override` is ready for its pull request into
-  `release-0.3.0` and the review-partner loop; the owner names the review
-  engine (the brief is drafted for Codex, `gpt-6-astra`, in
-  [evidence/2026-10-29-ide-override/review-brief.md](evidence/2026-10-29-ide-override/review-brief.md)).
+- Explicit IDE requirement override, 2026-10-29:
+  [PR #304](https://github.com/ccozianu/devcapsule/pull/304)
+  (`ws-maintenance/0.3.0-ide-override` -> `release-0.3.0`) is open with
+  its judgments and validation; the review-partner loop waits for the
+  owner to name the engine (the brief is written for Codex, `gpt-6-astra`,
+  in [evidence/2026-10-29-ide-override/review-brief.md](evidence/2026-10-29-ide-override/review-brief.md)).
 - Awaiting the owner: the meaning of `--save` together with `--force`,
   refused until decided (the order's stopping point); whether any other
   policy check gets the same explicit escape.
