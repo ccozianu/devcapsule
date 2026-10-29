@@ -4,7 +4,7 @@ role: your-project
 aliases:
   - /docs/guides/your-project/
 weight: 1
-updated: 2026-09-28
+updated: 2026-10-24
 ---
 # An existing repository
 
@@ -20,18 +20,26 @@ If the repository carries `.devcapsule/devcapsule.toml`, someone has
 already declared what the project needs. From its root:
 
 ```bash
-~/.local/bin/devcapsule project init
 ~/.local/bin/devcapsule project run
 ```
 
-`init` reads the project's declared tools and asks only for what is still
-yours to decide: required local values, consent to run the base image, and
-consent for any vendor download the selected tools need. A project can
-*recommend* host access; a recommendation grants nothing. `project config
-show` lists the recommendations and the pending decisions; authorize the
-ones your work needs, as [Granting and withdrawing access](../containment/granting-and-withdrawing.md)
-describes. If the checkout is already initialized, go straight to
-`project run`.
+`run` reads the shared manifest and lock, then derives this checkout's plan.
+At a terminal, it asks for missing required inputs, an IDE when none is
+selected or recommended, and any needed consent. A host-access recommendation
+is a question; it grants nothing. See
+[Granting and withdrawing access](../containment/granting-and-withdrawing.md).
+
+The first successful review registers this path on your computer. A second
+checkout gets a separate record with a name derived from its directory.
+It inherits no answers from the first checkout. Use `project checkout
+register NAME` before the first run if you need a specific name.
+For a second checkout, commands that record configuration answers can require
+this explicit registration before the first run.
+The register command cannot rename an existing record.
+
+To inspect before answering, use `devcapsule project config show` or
+`devcapsule project config check`. Both leave an unregistered checkout unchanged.
+Without a manifest, `run` exits 2 and names `project init` as the remedy.
 
 ## A project without one
 
@@ -39,12 +47,12 @@ Choose one IDE and initialize from the project root:
 
 | Work you want to do | Initialize with |
 |---|---|
-| JavaScript or TypeScript, VSCodium | `~/.local/bin/devcapsule project init --need frontend-ide --need node` |
-| Python, PyCharm | `~/.local/bin/devcapsule project init --need python-ide --need python` |
-| Java, IntelliJ IDEA | `~/.local/bin/devcapsule project init --need java-ide --need java` |
+| JavaScript or TypeScript, VSCodium | `~/.local/bin/devcapsule project init --require node --ide frontend-ide` |
+| Python, PyCharm | `~/.local/bin/devcapsule project init --require python --ide python-ide` |
+| Java, IntelliJ IDEA | `~/.local/bin/devcapsule project init --require java --ide java-ide` |
 
 IntelliJ uses the unified vendor distribution with free core functionality;
-paid features require your JetBrains license. Add `--need browser-automation`
+paid features require your JetBrains license. Add `--offer browser-automation`
 to include Python Playwright and Chromium for browser-driven tests. The
 component provides `DEVCAPSULE_PLAYWRIGHT_PYTHON` as its Python executable and
 `PLAYWRIGHT_BROWSERS_PATH` for its installed browser.

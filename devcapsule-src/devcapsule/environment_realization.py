@@ -27,6 +27,7 @@ from devcapsule.configuration.authorization import (
     authorized_base_selection,
     review_authorizations,
 )
+from devcapsule.configuration.trust import WorkstationTrust
 from devcapsule.runtime_artifact import runtime_artifact
 from devcapsule.runtime_command import RuntimeCommand
 
@@ -62,14 +63,20 @@ def realize_environment(
     materialize: Materialize | None = None,
     report: Callable[[str], None] | None = None,
     prepare_base: Callable[[ImageDetails], None] | None = None,
+    trust: WorkstationTrust | None = None,
 ) -> RealizedEnvironment:
     """Strictly reuse or materialize the canonical image for one resolved project."""
 
-    if base_override is not None and selected.manifest.get("capabilities", {}).get("sdk-major"):
+    from devcapsule.configuration.capabilities import CapabilityPolicy
+    if (base_override is not None and "capabilities" in selected.manifest
+            and CapabilityPolicy.read(selected.manifest).minimums):
         if base_override != selected.lock.get("base", {}).get("reference"):
-            raise CliError("A base override cannot establish the project's SDK-major guarantee; use its pinned compatible base.")
+            raise CliError("A base override cannot establish the project's minimum-version guarantee; use its pinned compatible base.")
     locked = parse_locked_environment(selected.lock)
-    reviews = review_authorizations(selected.manifest, selected.lock, selected.checkout)
+    from devcapsule.configuration.storage import load_workstation
+    if trust is None:
+        trust = WorkstationTrust.read(load_workstation())
+    reviews = review_authorizations(selected.manifest, selected.lock, selected.checkout, trust)
     problems = [
         item for item in reviews if item.problem is not None
         and not (item.name == "base-image" and base_override is not None)
@@ -92,7 +99,7 @@ def realize_environment(
         base_reference = base_override
         expected_base_identity = None
     else:
-        selection = authorized_base_selection(selected.lock, selected.checkout)
+        selection = authorized_base_selection(selected.lock, selected.checkout, trust=trust)
         if selection is None:  # pragma: no cover - required selection raises instead.
             raise CliError("The checkout has no base-image authorization.")
         local_authorization = selection.is_local
@@ -247,17 +254,18 @@ def omit_unavailable_optional(selected: ResolvedProject, url: str) -> ResolvedPr
     failed = {name for name, metadata in selected.lock["components"].items()
               if isinstance(metadata, dict) and name in COMPONENTS
               and any(artifact.url == url for artifact in COMPONENTS[name].locked_artifacts(metadata, str(selected.lock["platform"])))}
-    mandatory = {component for capability in (*policy.required, *local.selected) for component in matrix.providers(capability)}
+    mandatory = {component for capability in (*policy.required, *local.selected) for component in matrix.component_closure(capability)}
     if not failed or failed & mandatory:
         return None
     omitted = {capability for capability in policy.optional if capability in matrix.capabilities()
-               and failed & set(matrix.providers(capability))}
+               and failed & set(matrix.component_closure(capability))}
     if not omitted:
         return None
     choice = LocalCapabilities(local.selected, tuple(sorted(set(local.without) | omitted)))
     lock, _ = usable_lock(policy, selected.lock, choice)
     checkout = deepcopy(selected.checkout)
     checkout.setdefault("capabilities", {})["without"] = list(choice.without)
-    configuration = Configuration(selected.manifest, lock, checkout)
+    from devcapsule.configuration.storage import load_workstation
+    configuration = Configuration(selected.manifest, lock, checkout, load_workstation())
     configuration.review().require_ready(selected.root)
     return replace(selected, lock=lock, checkout=checkout, resolution=configuration.resolve().document())

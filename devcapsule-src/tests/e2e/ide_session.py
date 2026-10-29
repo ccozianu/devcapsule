@@ -39,7 +39,7 @@ class IdeSurface:
     name: str
     """The component name, used for the project slug and the evidence directory."""
     needs: tuple[str, ...]
-    """The capabilities ``project init --need`` is given to select this surface."""
+    """The capabilities and IDE used to initialize the smoke project."""
     window_class: str
     """A case-insensitive fragment of the IDE's X11 ``WM_CLASS``."""
     ready_timeout: float
@@ -144,21 +144,8 @@ def ide_session(executable: Path, surface: IdeSurface, tmp_path: Path, evidence:
         (workspace / "Program.cs").write_text('System.Console.WriteLine("DevCapsule .NET smoke passed");\n')
         (workspace / "NuGet.Config").write_text('<configuration><packageSources><clear /></packageSources></configuration>\n')
     evidence.mkdir(parents=True, exist_ok=True)
-    environment = dict(os.environ, BROWSER="true")  # webbrowser runs `true URL`: no tab opens
-    built_base = os.environ.get("DEVCAPSULE_E2E_BASE_IMAGE")
     try:
-        init = subprocess.run(
-            [str(executable), "project", "init",
-             *(flag for need in surface.needs for flag in ("--need", need)),
-             "--creator", CREATOR, "--slug", slug,
-             "--authorize", "base-image", built_base or "default",
-             "--authorize", "network", "host", "Local graphical smoke requires host networking.",
-             "--less-pedantic", *(["--unverified"] if built_base else [])],
-            cwd=workspace, env=environment, text=True, capture_output=True, stdin=subprocess.DEVNULL,
-            check=False, timeout=300.0,
-        )
-        (evidence / "init.log").write_text(init.stdout + init.stderr, encoding="utf-8")
-        assert init.returncode == 0, f"project init failed for {surface.name}:\n{init.stdout}\n{init.stderr}"
+        initialize_project(executable, surface, workspace, evidence, slug)
         with launched_ide(executable, surface, workspace, evidence, container) as facts:
             yield facts
     finally:
@@ -166,6 +153,37 @@ def ide_session(executable: Path, surface: IdeSurface, tmp_path: Path, evidence:
         (evidence / "removed-records.json").write_text(
             json.dumps([str(path) for path in remove_project_records(slug)], indent=2) + "\n", encoding="utf-8"
         )
+
+
+def initialize_project(executable: Path, surface: IdeSurface, workspace: Path, evidence: Path, slug: str) -> None:
+    """``project init`` the workspace for ``surface`` as an adopter would; the log goes with the evidence.
+
+    The project consents to the recommended base, or to the locally built
+    base ``DEVCAPSULE_E2E_BASE_IMAGE`` names, as an unverified experiment,
+    and to local-test host networking.
+    """
+    environment = dict(os.environ, BROWSER="true")  # webbrowser runs `true URL`: no tab opens
+    built_base = os.environ.get("DEVCAPSULE_E2E_BASE_IMAGE")
+    init = subprocess.run(
+        [str(executable), "project", "init",
+         *(flag for need in surface.needs for flag in ("--ide" if need.endswith("-ide") else "--require", need)),
+         "--creator", CREATOR, "--slug", slug,
+         "--authorize", "base-image", "default",
+         "--authorize", "network", "host", "Local graphical smoke requires host networking.",
+         *(["--unverified"] if built_base else [])],
+        cwd=workspace, env=environment, text=True, capture_output=True, stdin=subprocess.DEVNULL,
+        check=False, timeout=300.0,
+    )
+    (evidence / "init.log").write_text(init.stdout + init.stderr, encoding="utf-8")
+    assert init.returncode == 0, f"project init failed for {surface.name}:\n{init.stdout}\n{init.stderr}"
+    if built_base:
+        selected = subprocess.run(
+            [str(executable), "project", "config", "authorize", "base-image", built_base],
+            cwd=workspace, env=environment, text=True, capture_output=True, stdin=subprocess.DEVNULL,
+            check=False, timeout=300.0,
+        )
+        (evidence / "select-base.log").write_text(selected.stdout + selected.stderr, encoding="utf-8")
+        assert selected.returncode == 0, selected.stderr
 
 
 def stop_session(facts: SessionFacts) -> None:
@@ -181,15 +199,20 @@ def stop_session(facts: SessionFacts) -> None:
 
 @contextmanager
 def launched_ide(executable: Path, surface: IdeSurface, workspace: Path,
-                 evidence: Path, container: str) -> Iterator[SessionFacts]:
-    """Launch an initialized project, also used for a bounded persistence relaunch."""
+                 evidence: Path, container: str, *, own_session: bool = False) -> Iterator[SessionFacts]:
+    """Launch an initialized project, also used for a bounded persistence relaunch.
+
+    With ``own_session`` the launcher leads its own process group, as it
+    does in a terminal, so that a test can deliver SIGINT to the group the
+    way Ctrl+C does, launcher and docker client alike.
+    """
     evidence.mkdir(parents=True, exist_ok=True)
     log_path = evidence / "launcher.log"
     with log_path.open("wb") as log:
         launcher = subprocess.Popen(
             [str(executable), "project", "run", "--no-update-check", "--name", container],
             cwd=workspace, env=dict(os.environ, BROWSER="true"), stdout=log,
-            stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+            stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, start_new_session=own_session,
         )
     facts = SessionFacts(surface, container, "", workspace, log_path, launcher)
     try:

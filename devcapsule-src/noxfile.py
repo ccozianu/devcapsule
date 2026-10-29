@@ -183,8 +183,8 @@ def run_smoke(session: nox.Session) -> None:
     session.run("python", "-m", "devcapsule", "pycharm", "run", "--help", success_codes=[2])
     session.run("python", "-m", "devcapsule", "project", "--help")
     session.run("python", "-m", "devcapsule", "project", "list", "--help")
-    session.run("python", "-m", "devcapsule", "project", "config", "list", "--help")
-    session.run("python", "-m", "devcapsule", "project", "config", "resolve", "--help")
+    session.run("python", "-m", "devcapsule", "project", "config", "show", "--help")
+    session.run("python", "-m", "devcapsule", "project", "run", "--help")
     session.run("python", "-m", "devcapsule", "project", "config", "set", "--help")
     session.run("python", "-m", "devcapsule", "project", "config", "bind", "--help")
     session.run("python", "-m", "devcapsule", "project", "config", "authorize", "--help")
@@ -252,8 +252,8 @@ def smoke_pex(session: nox.Session, path: Path = TEST_PEX_PATH) -> None:
     session.run(str(path), "pycharm", "run", "--help", success_codes=[2], external=True)
     session.run(str(path), "project", "--help", external=True)
     session.run(str(path), "project", "list", "--help", external=True)
-    session.run(str(path), "project", "config", "list", "--help", external=True)
-    session.run(str(path), "project", "config", "resolve", "--help", external=True)
+    session.run(str(path), "project", "config", "show", "--help", external=True)
+    session.run(str(path), "project", "run", "--help", external=True)
     session.run(str(path), "project", "config", "set", "--help", external=True)
     session.run(str(path), "project", "config", "bind", "--help", external=True)
     session.run(str(path), "project", "config", "authorize", "--help", external=True)
@@ -283,6 +283,11 @@ def run_webconsole_checks(session: nox.Session) -> None:
     """
     session.install("--require-hashes", "-r", str(WEBCONSOLE_ROOT / "requirements-dev.txt"))
     session.install("-e", str(WEBCONSOLE_ROOT), "--no-deps")
+    # The launcher too, with its one runtime dependency, which its command
+    # tree imports: the console's contract tests check every command it runs
+    # and every verb it forwards against the launcher's own parser and channel
+    # tables, so a retirement on one side fails here before it reaches a capsule.
+    session.install("-e", str(PROJECT_ROOT))
     session.run("python", "-m", "mypy", "--config-file", str(WEBCONSOLE_ROOT / "pyproject.toml"),
                 str(WEBCONSOLE_ROOT / "devcapsule_webconsole"))
     session.run("python", "-m", "pytest", str(WEBCONSOLE_ROOT / "tests"))
@@ -423,12 +428,15 @@ def ide_smoke(session: nox.Session) -> None:
     Uses DEVCAPSULE_PEX_UNDER_TEST when set, else the local build. Pass
     ``--display`` to install Playwright and Chromium into the session and keep a
     screenshot of each desktop as evidence; without it the X11 facts alone decide.
+    ``--scenario`` replays one recorded scenario on its own surface and keeps the
+    video; it needs exactly one ``--surface`` and excludes ``--agent``.
     """
     install_locked(session)
     parser = argparse.ArgumentParser(prog="nox -s ide-smoke --")
     parser.add_argument("--display", action="store_true")
     parser.add_argument("--agent", action="store_true", help="require an AI-driven saved edit and visual recognition")
-    parser.add_argument("--component-browser", action="store_true", help="drive the child Playwright component; requires --display or --agent")
+    parser.add_argument("--scenario", help="run a recorded or scripted IDE scenario and record pause-free WebM video")
+    parser.add_argument("--component-browser", action="store_true", help="drive the child Playwright component; requires --display, --agent, or --scenario")
     parser.add_argument("--relaunch", action="store_true", help="JetBrains: set editor font size through the UI and verify persistence")
     parser.add_argument("--driver", choices=("codex", "claude"), default="codex")
     parser.add_argument("--model", help="default: gpt-6-astra for Codex, claude-fable-5-1 for Claude")
@@ -438,16 +446,21 @@ def ide_smoke(session: nox.Session) -> None:
     parser.add_argument("--agent-timeout", type=int, default=900)
     parser.add_argument("--surface", action="append", default=[], help="limit to a surface name; repeatable")
     options = parser.parse_args(session.posargs)
-    if options.component_browser and not (options.agent or options.display):
-        session.error("--component-browser requires --display or --agent")
+    if options.component_browser and not (options.agent or options.display or options.scenario):
+        session.error("--component-browser requires --display, --agent, or --scenario")
     if options.component_browser:
         session.env["DEVCAPSULE_SMOKE_COMPONENT_BROWSER"] = "1"
+    if options.scenario:
+        if options.agent:
+            session.error("--scenario cannot be combined with --agent: the scenario leaves the IDE in its final state")
+        if len(options.surface) != 1:
+            session.error("--scenario requires exactly one --surface, the scenario's own")
     if options.relaunch:
         if not options.agent or options.surface not in (["intellij"], ["rider"]):
             session.error("--relaunch requires --agent --surface intellij or rider")
         session.env["DEVCAPSULE_SMOKE_RELAUNCH"] = "1"
     select_e2e_pex(session)
-    if options.display or options.agent:
+    if options.display or options.agent or options.scenario:
         wheels = os.environ.get("DEVCAPSULE_PLAYWRIGHT_WHEELS")
         if wheels:
             session.install("--no-index", "--find-links", wheels, f"playwright=={PLAYWRIGHT_VERSION}")
@@ -455,6 +468,8 @@ def ide_smoke(session: nox.Session) -> None:
             session.install(f"playwright=={PLAYWRIGHT_VERSION}")
             session.run("playwright", "install", "chromium")
         session.env["DEVCAPSULE_SMOKE_DISPLAY"] = "1"
+    if options.scenario:
+        session.env["DEVCAPSULE_SMOKE_SCENARIO"] = options.scenario
     if options.agent:
         session.env.update({
             "DEVCAPSULE_SMOKE_AGENT": "1", "DEVCAPSULE_SMOKE_DRIVER": options.driver,

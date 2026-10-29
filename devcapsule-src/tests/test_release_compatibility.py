@@ -8,6 +8,8 @@ no user action, which is exactly the property a release must not break.
 
 from __future__ import annotations
 
+from tests.launch_preparation import run_until_prepared
+
 import os
 from pathlib import Path
 import shutil
@@ -58,15 +60,15 @@ def test_v0262_checkout_resumes_with_no_user_action(tmp_path: Path, capsys, monk
     monkeypatch.chdir(tmp_path)
     project, env = materialize_v0262(tmp_path)
     with patch.dict(os.environ, env, clear=False):
-        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        assert cli.main(["project", "--path", str(project), "config", "show"]) == 0
         output = capsys.readouterr().out
-        assert "fresh" in output
+        assert "Nothing is pending." in output
 
         assert cli.main(["project", "list"]) == 0
         assert "ready" in capsys.readouterr().out
 
         # Re-resolving is ordinary work and must not prompt or demand anything.
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
+        assert run_until_prepared(project) == 0
 
 
 def test_v0262_manifest_edit_never_blocks_inspection(tmp_path: Path, capsys) -> None:
@@ -77,11 +79,11 @@ def test_v0262_manifest_edit_never_blocks_inspection(tmp_path: Path, capsys) -> 
         encoding="utf-8",
     )
     with patch.dict(os.environ, env, clear=False):
-        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
-        assert "fresh" in capsys.readouterr().out
-        assert cli.main(["project", "--path", str(project), "config", "resolve"]) == 0
-        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
-        assert "fresh" in capsys.readouterr().out
+        assert cli.main(["project", "--path", str(project), "config", "show"]) == 0
+        assert "Nothing is pending." in capsys.readouterr().out
+        assert run_until_prepared(project) == 0
+        assert cli.main(["project", "--path", str(project), "config", "show"]) == 0
+        assert "Nothing is pending." in capsys.readouterr().out
 
 
 def test_v026_formation_artifacts_are_inspectable_despite_manifest_digest(
@@ -93,7 +95,7 @@ def test_v026_formation_artifacts_are_inspectable_despite_manifest_digest(
     shutil.copytree(FIXTURES / "v026-formation" / "project", project)
     env = {"HOME": str(tmp_path / "home"), "XDG_CONFIG_HOME": str(tmp_path / "config")}
     with patch.dict(os.environ, env, clear=False):
-        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        assert cli.main(["project", "--path", str(project), "config", "show"]) == 0
         listing = capsys.readouterr().out
         assert "base-image" in listing
         assert "project lock" not in listing
@@ -103,4 +105,4 @@ def test_v026_formation_artifacts_are_inspectable_despite_manifest_digest(
             manifest.read_text(encoding="utf-8") + "\n[compat-test-extra]\nnote = 1\n",
             encoding="utf-8",
         )
-        assert cli.main(["project", "--path", str(project), "config", "list"]) == 0
+        assert cli.main(["project", "--path", str(project), "config", "show"]) == 0

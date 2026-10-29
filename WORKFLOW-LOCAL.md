@@ -19,8 +19,12 @@ source of the packaged one, not an installed copy. See *Exceptions*.
    the release it works toward. The suffix stays `dev0`.
 3. The release branch's first commit sets the release version `X.Y.Z`, or
    confirms it when the product owner has already set it.
-4. After the final tag, `main` reopens with the next development version: the
-   next patch, unless the owner names another.
+4. At the cut, `main` reopens with the next development version: the next
+   patch, unless the owner names another, set by a pull request to `main`
+   as soon as the release branch exists. `main` is then ahead of every
+   candidate and of the final release for the whole cycle, and the merges
+   of the release branch into `main` before each candidate tag carry no
+   version conflict after the first. Owner decision, 2026-10-18.
 5. Candidate builds are stamped `X.Y.ZrcN` from their tags. Local builds carry
    a local marker. Never author either in the source.
 6. The single authored copy is `[project] version` in
@@ -49,6 +53,11 @@ source of the packaged one, not an installed copy. See *Exceptions*.
    is published per [the content–website contract, version 1](engineering-docs/specifications/product/content-website-contract.md).
    `docs/versions.yaml` on `main` is the authored list of documented versions.
    Promote it after every final tag.
+8. Merge the release branch into `main` through a throwaway copy. Create
+   the copy at the release branch's tip, named `4PR-NNN-release-X.Y.Z`, for
+   one pull request. NNN counts from 1 within the release. Commit nothing to
+   the copy. Point no tag into it. The candidate workflow checks tags against
+   `release-X.Y.Z` alone. Owner decision, 2026-10-18.
 
 ## Documentation Refs
 
@@ -262,24 +271,89 @@ Owner direction, 2026-09-24.
 6. This is a local operating rule, not a change to product defaults or to
    other projects' permissions.
 
-## GitHub Integration: Owner Through The UI
+## GitHub Integration: The CLI When The Human Provides It
 
-Owner direction, 2026-09-21.
+Owner direction, 2026-10-21. It replaces the direction of 2026-09-21. It
+stands until the GitHub CLI is a DevCapsule component.
 
-1. Agents use ordinary Git operations with the configured SSH remote for fetch
-   and workstream-branch delivery.
-2. The `gh` CLI is not an available integration tool. The owner performs all
-   other GitHub integration through the GitHub UI: opening, updating, and
+1. The human may install GitHub's CLI as the conda environment `gh` under
+   `/opt/xtras/miniconda3`. Detect it by the file
+   `/opt/xtras/miniconda3/envs/gh/bin/gh`. Do not search the `PATH` for it.
+2. Activate it in every shell call that uses it:
+
+   ```text
+   source /opt/xtras/miniconda3/etc/profile.d/conda.sh && conda activate gh
+   ```
+
+   Do not edit the shell profile. Do not run `conda init`.
+3. Before the first use in a session, check the login:
+
+   ```text
+   source /opt/xtras/miniconda3/etc/profile.d/conda.sh && conda activate gh \
+     && gh auth status -h github.com
+   ```
+
+   Run the check once per session. If it fails, stop and ask the human to
+   run `gh auth login -h github.com`. Do not retry. Do not use another
+   credential. Treat a later failure in the session the same way.
+4. After the check passes, the agent may create, update and consult pull
+   requests and post reviews on this repository with the CLI. Post a review
+   as a comment, `gh pr review --comment`. The human merges into `main` and
+   into a release branch.
+5. When the file is absent, the human does GitHub: opening, updating and
    merging pull requests; dispatching workflows; changing repository or
-   publication settings.
-3. Do not probe `gh` availability or connector credentials. Do not attempt
-   API-based integration as part of delivery, even if a connector or API
-   appears available.
-4. Prepare and validate the change. Commit and push the workstream branch over
-   SSH. Give the owner a concise UI handoff.
-5. Do not substitute a direct push to `main` for owner PR integration.
-6. Re-verify `main` through an SSH fetch after the owner reports the merge.
-7. Keep this rule until the owner explicitly changes it.
+   publication settings. Prepare and validate the change, commit and push
+   the branch over SSH, and give the human the compare link:
+
+   ```text
+   https://github.com/ccozianu/devcapsule/compare/<base>...<head>?expand=1
+   ```
+
+   `<base>` is the branch the pull request targets. `<head>` is the pushed
+   branch.
+6. In both cases, use ordinary Git over the SSH remote for fetch and branch
+   delivery. Do not push to `main` in place of pull request integration.
+   After the human reports a merge, re-verify `main` through an SSH fetch.
+7. Keep this rule until the owner changes it or the component replaces it.
+
+## Review Partners In This Checkout
+
+Owner direction, 2026-10-22. It applies the review-partner loop, topic 9.11
+of `WORKFLOW.md`, in this checkout.
+
+1. The engines are the agent command lines on the capsule's `PATH`, signed
+   in once by the human: `claude` (Anthropic), `codex` (OpenAI) and
+   `antigravity` (Google). Use no API key.
+2. Name a pair by its engine and the model that ran, in the brief, the pull
+   request bodies and the assessment comments, as *Commit Authorship* names
+   it in the trailer.
+3. Give the review partner a git worktree under `~/worktrees/<workstream>-review`
+   on the review branch, with its own `devcapsule-src/.venv` built as
+   *Validation Commands* say, and its scratch at
+   `/opt/devcapsule-gate/pytest-<engine>`.
+4. Run the review partner detached in that worktree, the brief as its
+   prompt, its output in a log under the session scratchpad that ends with
+   an exit line, and wait for that line. The recorded forms are:
+   - Codex: `codex exec -m <model> -s danger-full-access -c 'projects."<worktree>".trust_level="trusted"' - < <brief>`.
+     A round continues the same session with the round brief on standard input:
+     `codex exec resume <session-id> -c 'sandbox_mode="danger-full-access"' - < <round brief>`,
+     the id read from the `session id:` line of the first log; `resume` takes no `-s`.
+   - Claude Code: `claude -p --dangerously-skip-permissions < <brief>`.
+   - Antigravity: `antigravity --model <model> --dangerously-skip-permissions -p '<one-line instruction to follow the brief on standard input>' < <brief>`;
+     the model flag goes before `-p`, which takes the prompt as its own argument. A round continues the
+     same conversation with `-c` before `-p`.
+   Establish any other form with the human and record it here before use.
+5. The review partner uses the GitHub CLI as *GitHub Integration* says; the
+   brief repeats the activation line. Label the assessment comment
+   `**Accepted at <sha> (<pair>, no round needed).**` or `**Round N (<pair>).**`.
+   Merge PRn.1 with `gh pr merge --merge`.
+6. Commit each brief and each round brief under the workstream's
+   `evidence/` directory beside the slice's records. The session scratchpad
+   is not kept.
+7. The brief template, the assessment forms, the recipes and the record of
+   the loops run are in
+   [the development document](engineering-docs/development/review-partner-loop.md).
+   Keep it current with every loop.
 
 ## Commit Authorship
 
@@ -352,6 +426,23 @@ Owner direction, 2026-10-09, after the controlled-language edition merged.
 
 ## Exceptions
 
+- **The 0.3.0 release branch synchronizes with `main` during the cycle, on
+  the owner's word each time.** Owner direction, 2026-10-22: `main` is
+  merged into `release-0.3.0`, at `c779dc2` and again at `e03b060` before
+  candidate 2, because nothing was developed on `main` outside the
+  candidate process and the workflow rules and records written during the
+  cycle must bind the release checkout. The version-bearing files keep the
+  release side. Topic 11 of the generic definition forbids synchronizing a
+  release ref. Ends with the final tag of 0.3.0.
+- **`main` reopens at the cut, not after the final tag.** Owner decision,
+  2026-10-18, during the 0.3.0 cycle, after the merge of the release
+  branch carried the release version onto `main`: a development version
+  orders before the release it names under PEP 440, so `main` on the old
+  development version sits behind the release branch for the whole cycle.
+  *Version Scheme* rule 4 now reopens `main` with the next development
+  version at the cut. Topic 11.2.7 of the generic definition says after the
+  final tag; its revision is routed to workflow-improvements. Ends when the
+  definition incorporates it.
 - **Release-fix propagation uses engineering judgment.** Owner direction,
   2026-09-22. It supersedes the generic release rule's blanket merge-only and
   no-cherry-pick restrictions. `main` stays open to other workstreams. Merge a

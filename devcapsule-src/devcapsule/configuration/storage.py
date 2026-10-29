@@ -11,8 +11,8 @@ from urllib.parse import quote
 from devcapsule.platforms import Platform, UnsupportedPlatformError, XdgHomes
 
 from .authorization import locked_base_reference
-from .file_formats import ConfigurationFileKind, ProjectConfigurationError, validate_file_format, table, selected_version_lock, render_toml
-from .manifest import validate_manifest
+from .file_formats import ConfigurationFileKind, ProjectConfigurationError, canonical_digest, legacy_lock, validate_file_format, table, selected_version_lock, render_toml
+from .manifest import current_manifest
 from .nodes import build_node_registry
 
 
@@ -83,6 +83,68 @@ def load_resolution(path: Path) -> dict[str, Any]:
 
 def config_root(env: Mapping[str, str] | None = None) -> Path:
     return XdgHomes.from_environment(env).config
+
+
+def workstation_path(env: Mapping[str, str] | None = None) -> Path:
+    """Where this workstation keeps its own defaults: ``$XDG_CONFIG_HOME/devcapsule/workstation.toml``."""
+    return config_root(env) / "workstation.toml"
+
+
+def trust_path(env: Mapping[str, str] | None = None) -> Path:
+    """Where this workstation keeps the channels its user trusts: ``$XDG_CONFIG_HOME/devcapsule/trust.toml``."""
+    return config_root(env) / "trust.toml"
+
+
+def load_trust(env: Mapping[str, str] | None = None) -> dict[str, Any]:
+    """The workstation's trust record, validated; empty when the file does not exist."""
+    from .trust import WorkstationTrust
+    path = trust_path(env)
+    if not path.is_file():
+        return {}
+    document = load_toml(path)
+    try:
+        WorkstationTrust.read(document)
+    except ProjectConfigurationError as exc:
+        raise ProjectConfigurationError(f"{path}: {exc}") from exc
+    return document
+
+
+def write_trust(document: Mapping[str, Any], env: Mapping[str, str] | None = None) -> Path:
+    """Write the workstation's trust record atomically; return its path."""
+    from .trust import WorkstationTrust, render_trust
+    path = trust_path(env)
+    atomic_write(path, render_trust(WorkstationTrust.read(document)))
+    return path
+
+
+def load_workstation(env: Mapping[str, str] | None = None) -> dict[str, Any]:
+    """The workstation's configuration document, validated; empty when no file exists.
+
+    The defaults come from ``workstation.toml``; the trust record of
+    ``trust.toml`` rides along under ``trust`` so one document carries what
+    the review needs of the workstation.
+    """
+    from .workstation import WorkstationDefaults
+    path = workstation_path(env)
+    document: dict[str, Any] = {}
+    if path.is_file():
+        document = load_toml(path)
+        try:
+            WorkstationDefaults.read(document)
+        except ProjectConfigurationError as exc:
+            raise ProjectConfigurationError(f"{path}: {exc}") from exc
+    trust = load_trust(env)
+    if trust:
+        document = {**document, "trust": trust}
+    return document
+
+
+def write_workstation(document: Mapping[str, Any], env: Mapping[str, str] | None = None) -> Path:
+    """Write the workstation's configuration document atomically; return its path."""
+    from .workstation import WorkstationDefaults, render_workstation
+    path = workstation_path(env)
+    atomic_write(path, render_workstation(WorkstationDefaults.read(document)))
+    return path
 
 
 def checkout_directory(manifest: Mapping[str, Any], env: Mapping[str, str] | None = None) -> Path:
@@ -260,12 +322,23 @@ def require_settled(root: Path) -> None:
 
 
 def manifest_for(project: Path) -> tuple[Path, dict[str, Any]]:
+    """The project root and its manifest as this launcher reads it: schema 2, a schema-1 file upgraded in memory."""
     root = discover_project(project)
     require_settled(root)
     path = root / ".devcapsule" / "devcapsule.toml"
-    value = load_toml(path)
-    validate_manifest(value, path)
-    return root, value
+    return root, current_manifest(load_toml(path), path).document()
+
+
+def manifest_source_digest(root: Path) -> str | None:
+    """The digest of the manifest file as written, which checkpoints before scoped digests recorded.
+
+    None when the file holds a TOML value the digest does not support; the
+    freshness check then compares derived meaning instead.
+    """
+    try:
+        return canonical_digest(load_toml(root / ".devcapsule" / "devcapsule.toml"))
+    except ProjectConfigurationError:
+        return None
 
 
 def recommendation_lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[str, Any]]:
@@ -277,7 +350,7 @@ def recommendation_lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Pa
     other project input changed. Drift between the manifest and a checkout's
     generated resolution belongs to the resolution layer
     (``fresh_resolved_project``), whose source digests name exactly what
-    drifted and whose remedy — ``devcapsule project config resolve`` — actually
+    drifted and whose remedy — ``devcapsule project run`` — actually
     reconciles it. See "The Lock Is A Record, Not A Mandate" in
     ``engineering-docs/design-notes/devcapsule/v1-user-experience.md``.
 
@@ -307,7 +380,7 @@ def recommendation_lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Pa
     # Every public consumer gets the same unambiguous vocabulary.
     from .capabilities import CapabilityPolicy
     policy = CapabilityPolicy.read(manifest)
-    if not policy.layered and not policy.optional and not policy.sdk_major:
+    if legacy_lock(value) and not policy.optional and not policy.minimums:
         build_node_registry(manifest, value)
     return path, value
 
@@ -347,7 +420,10 @@ def selection_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[s
     if "base" in value:
         locked_base_reference(value)
     if not value.get("components", {}).get("interactive-surface"):
-        raise ProjectConfigurationError("Choose a local IDE: devcapsule project config capabilities --local python-ide (or another IDE capability).")
+        raise ProjectConfigurationError(
+            "Choose your IDE for this checkout: devcapsule project config ide IDE "
+            "(python-ide, frontend-ide, java-ide, eclipse-ide or dotnet-ide)."
+        )
     build_node_registry(manifest, value)
     return path, composed, value
 
@@ -358,6 +434,14 @@ def lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[str, A
     return path, value
 
 
+_ACTIVATION_JOURNAL_SUFFIX = ".activation.toml"
+
+
+def interrupted_activation(input_path: Path) -> bool:
+    """Whether this checkout has an activation journal awaiting recovery."""
+    return input_path.with_suffix(_ACTIVATION_JOURNAL_SUFFIX).exists()
+
+
 def recover_activation(input_path: Path) -> None:
     """Finish or undo an interrupted two-file activation under serialized access.
 
@@ -365,7 +449,7 @@ def recover_activation(input_path: Path) -> None:
     used after the transaction: a later edit that differs from both endpoints
     causes refusal, never resurrection of a historical permission.
     """
-    journal = input_path.with_suffix(".activation.toml")
+    journal = input_path.with_suffix(_ACTIVATION_JOURNAL_SUFFIX)
     if not journal.exists():
         return
     transaction = load_toml(journal)
@@ -384,7 +468,7 @@ def activate_configuration(input_path: Path, checkout: Mapping[str, Any], resolu
     """Publish a prepared choice and its derived plan recoverably."""
     recover_activation(input_path)
     output = resolved_record_path(input_path)
-    journal = input_path.with_suffix(".activation.toml")
+    journal = input_path.with_suffix(_ACTIVATION_JOURNAL_SUFFIX)
     transaction = {
         "before-checkout": input_path.read_text(),
         "before-resolution": output.read_text() if output.exists() else "",

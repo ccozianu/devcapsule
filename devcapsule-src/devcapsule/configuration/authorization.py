@@ -6,10 +6,11 @@ import shlex
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
-from devcapsule.images.contract import Provenance
+from devcapsule.images.contract import LEGACY_RECIPE_SOURCE_PATH, Provenance
 from devcapsule.components.catalog import COMPONENTS
 
 from .file_formats import AuthorizationScalar, ProjectConfigurationError, canonical_digest
+from .trust import BASE_CHANNEL, Channel, WorkstationTrust, channels_for
 
 
 OCI_REPOSITORY_COMPONENT_PATTERN = re.compile(r"^[a-z0-9]+(?:[._-][a-z0-9]+)*$")
@@ -45,14 +46,22 @@ CURATED_HOST_RECOMMENDATIONS: dict[str, tuple[tuple[str, ...], AuthorizationScal
 # "Denial is the default. The developer may deny it, allow it once, allow it
 # for this checkout" — so their availability cannot depend on the project's
 # advice; a recommendation merely attaches the project's justification and
-# rebinds the answer to it. Host networking is deliberately absent: its
-# run-once form is the raw docker passthrough, and its persistent relaxation
-# remains a project-recommended decision.
+# rebinds the answer to it. Host networking joined the table on 2026-10-22 by
+# the owner's ruling of 2026-10-05: it had been left out while its run-once
+# form was the raw ``--network`` passthrough, and once ``--authorize network
+# host`` replaced that passthrough the omission only made a fresh project
+# refuse the documented command.
 WORKSTATION_CAPABILITY_DEFAULTS: dict[str, tuple[AuthorizationScalar, str]] = {
     "docker-daemon": (
         "host-socket",
         "Expose the host Docker daemon socket to the capsule; this permits broad "
         "control of the host.",
+    ),
+    "network": (
+        "host",
+        "Share the host network namespace with the capsule instead of Docker's "
+        "bridge. Host and capsule services share localhost and ports. "
+        "This removes network namespace isolation. Deny with 'bridge' (the default).",
     ),
     "development-sudo": (
         True,
@@ -162,6 +171,13 @@ class AuthorizationReview:
     value: AuthorizationScalar | None = None
     problem: str | None = None
     choices: tuple[AuthorizationChoice, ...] = ()
+    # For a host answer recorded under an earlier recommendation: the answer
+    # is kept and never asked again (D-0012, answer 23 of the CLI UX work
+    # order); this says what changed, for the listing to disclose.
+    superseded: str | None = None
+    # The channel of the workstation trust record that answers this node
+    # (D-0011), when the trust covers it; the checkout record is not consulted.
+    trusted_channel: str | None = None
 
     def render(self, project: Path | None = None) -> str:
         lines = [
@@ -189,7 +205,10 @@ def authorization_declarations(
         # states it; who built it is provenance and follows, with a permalink
         # to the recipe. Locks written before contracts were recorded fall
         # back to the builder's name, which is all they carry.
-        provenance = Provenance(builder=build_mnemonic) if build_mnemonic is not None else None
+        provenance = Provenance(
+            builder=build_mnemonic,
+            recipe_path=str(lock["base"].get("recipe-source", LEGACY_RECIPE_SOURCE_PATH)),
+        ) if build_mnemonic is not None else None
         if contract_identity is not None:
             description = (
                 f"Execute base {contract_identity} at {reference}"
@@ -429,17 +448,33 @@ def _authorization_choices(
     return tuple(choices)
 
 
+def _trusted_channel(declaration: AuthorizationDeclaration, channels: Mapping[str, Channel], trust: WorkstationTrust | None) -> str | None:
+    """The accepted channel that answers a base or acquisition node, when the workstation trusts it."""
+    if trust is None or not declaration.required:
+        return None
+    for channel in channels.values():
+        if channel.authorization == declaration.name and trust.covers(channel):
+            return channel.id
+    return None
+
+
 def review_authorizations(
-    manifest: Mapping[str, Any], lock: Mapping[str, Any], checkout: Mapping[str, Any]
+    manifest: Mapping[str, Any], lock: Mapping[str, Any], checkout: Mapping[str, Any],
+    trust: WorkstationTrust | None = None,
 ) -> tuple[AuthorizationReview, ...]:
     """Assess every authorization without writes, Docker calls or early refusal.
 
     The same result drives inspection and resolution. Missing optional host
-    access is safe; missing base consent or selected vendor acquisition is not
-    run-ready. Stale answers must be renewed, never silently reinterpreted.
+    access is safe; a base or vendor download the workstation's trust record
+    covers (D-0011) is answered by it; a missing consent the trust does not
+    cover is not run-ready. A host answer recorded under an earlier
+    recommendation is kept, never asked again, and marked superseded
+    (D-0012); a vendor consent whose version moved is the software-approval
+    question unless the vendor is trusted.
     """
 
     declarations = authorization_declarations(manifest, lock)
+    channels = channels_for(lock)
     records = checkout.get("authorization", {})
     if not isinstance(records, dict):
         raise ProjectConfigurationError("Checkout authorization must be a table.")
@@ -452,6 +487,23 @@ def review_authorizations(
         value: AuthorizationScalar | None = None
         problem: str | None = None
         choices: tuple[AuthorizationChoice, ...] = ()
+        superseded: str | None = None
+        channel = _trusted_channel(declaration, channels, trust)
+        local_override = name == "base-image" and isinstance(record, dict) and record.get("image-id") is not None
+        checkout_blocks_trust = name in records and not isinstance(record, dict)
+        if declaration.kind == "acquisition" and isinstance(record, dict):
+            try:
+                checkout_blocks_trust = normalize_authorization_value(declaration, record.get("value")) is False
+            except ProjectConfigurationError:
+                checkout_blocks_trust = True  # An invalid answer still needs repair.
+        if channel is not None and not local_override and not checkout_blocks_trust:
+            # The workstation's acceptance answers it; a recorded per-checkout
+            # denial of a vendor download still outranks (denial is a value).
+            reviews.append(AuthorizationReview(
+                name, "trusted", "workstation", recommended, declaration.description,
+                declaration.recommended_value, None, (), None, channel,
+            ))
+            continue
         if name not in records:
             status = "missing-required" if required else (
                 "missing-recommended" if declaration.project_recommended else "available"
@@ -495,7 +547,14 @@ def review_authorizations(
                 status = "invalid"
                 problem = str(exc)
             else:
-                if record.get("recommendation-digest") != declaration.recommendation_digest:
+                if record.get("recommendation-digest") != declaration.recommendation_digest and declaration.kind != "acquisition":
+                    # D-0012: a recorded host answer is kept; the listing discloses the change.
+                    superseded = (
+                        f"the project now recommends {recommended}" if declaration.project_recommended
+                        else "the project no longer recommends it"
+                    )
+                    status = "denied" if value == authorization_deny_value(declaration) else "authorized"
+                elif record.get("recommendation-digest") != declaration.recommendation_digest:
                     status = "stale"
                     problem = "The recommendation changed; review it and explicitly renew or change your answer."
                 elif value == authorization_deny_value(declaration):
@@ -503,7 +562,7 @@ def review_authorizations(
                     if required:
                         problem = (
                             f"The selected {declaration.subject} acquisition is denied. "
-                            f"Remove {declaration.capability!r} from the project need, or explicitly authorize it."
+                            f"Remove {declaration.capability!r} from the project's required capabilities, or explicitly authorize it."
                         )
                 else:
                     status = "authorized"
@@ -514,7 +573,7 @@ def review_authorizations(
                 else _authorization_choices(declaration, value)
             )
         reviews.append(AuthorizationReview(
-            name, status, recorded, recommended, declaration.description, value, problem, choices
+            name, status, recorded, recommended, declaration.description, value, problem, choices, superseded
         ))
     inactive_acquisitions = {
         contract.authorization for definition in COMPONENTS.values()
@@ -529,9 +588,10 @@ def review_authorizations(
 
 
 def resolved_checkout_authorizations(
-    manifest: Mapping[str, Any], lock: Mapping[str, Any], checkout: Mapping[str, Any]
+    manifest: Mapping[str, Any], lock: Mapping[str, Any], checkout: Mapping[str, Any],
+    trust: WorkstationTrust | None = None,
 ) -> dict[str, AuthorizationScalar]:
-    reviews = review_authorizations(manifest, lock, checkout)
+    reviews = review_authorizations(manifest, lock, checkout, trust)
     problems = [review for review in reviews if review.problem is not None]
     if problems:
         raise ProjectConfigurationError(
@@ -637,6 +697,7 @@ def authorized_base_selection(
     checkout: Mapping[str, Any],
     *,
     required: bool = True,
+    trust: WorkstationTrust | None = None,
 ) -> AuthorizedBaseSelection | None:
     locked_reference = locked_base_reference(lock)
     build_mnemonic = locked_base_build_mnemonic(lock)
@@ -645,6 +706,14 @@ def authorized_base_selection(
         authorization_root.get("base-image") if isinstance(authorization_root, dict) else None
     )
     command = f"devcapsule project config authorize base-image {locked_reference}"
+    local_override = isinstance(authorization, dict) and authorization.get("image-id") is not None
+    if not local_override and trust is not None:
+        # D-0011: the workstation trusts DevCapsule's base channel; the pinned
+        # digest is the selection, including when an earlier published base
+        # still has per-checkout consent. An explicit local override wins.
+        channel = channels_for(lock).get(BASE_CHANNEL)
+        if channel is not None and trust.covers(channel):
+            return AuthorizedBaseSelection(reference=locked_reference, lock_digest=canonical_digest(lock))
     if not isinstance(authorization, dict):
         if required:
             recognizable_base = (
@@ -710,8 +779,9 @@ def authorized_base_reference(
     checkout: Mapping[str, Any],
     *,
     required: bool = True,
+    trust: WorkstationTrust | None = None,
 ) -> str | None:
     """Compatibility accessor for consumers needing only the selected reference."""
 
-    selection = authorized_base_selection(lock, checkout, required=required)
+    selection = authorized_base_selection(lock, checkout, required=required, trust=trust)
     return selection.reference if selection is not None else None

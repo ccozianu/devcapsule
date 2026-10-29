@@ -2,7 +2,7 @@
 description: What the DevCapsule documentation covers, the three places to start, and how to find the version you run.
 role: overview
 weight: 0
-updated: 2026-09-28
+updated: 2026-10-25
 ---
 # Use DevCapsule
 
@@ -28,7 +28,7 @@ lists the others.
 | How do I bring my project here? | [Your project](your-project/existing-repository.md): existing repositories, new projects, what a project declares |
 | How do I get effective help from an AI? | [Working with AI](working-with-ai/choose-an-agent.md): agents, sign-in and defaults, instructions, models |
 | Can I do my normal work? | [Everyday development](everyday-development/clipboard-and-browser.md): IDEs, terminals, Git, running and debugging, previews |
-| How do I make the workspace mine? | [Configuration](configuration/inspect.md): inspect, project versus personal, extra tools, IDE preferences |
+| How do I make the workspace mine? | [Configuration](configuration/index.md): records, project versus personal, capabilities, IDE preferences, a local base |
 | What can the capsule and its agents touch? | [Containment](containment/the-boundary.md): the boundary, granting and withdrawing access |
 | Can I leave and come back? | [Sessions](sessions/start-stop-reconnect.md): start, stop, reconnect, what persists |
 | Can someone else pick up the work? | [Collaboration](collaboration/working-in-workstreams.md): people and agents on one repository |

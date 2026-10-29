@@ -59,6 +59,27 @@ and never rebased because the website reads it. The candidate gate does not
 apply because nothing executable changes; the website's build check does
 because that is what the branch feeds.
 
+**Rule, the throwaway copy.** Each merge of `release-X.Y.Z` into `main` is a
+pull request from `4PR-NNN-release-X.Y.Z`, a branch created at the release
+branch's tip for that pull request alone; nothing is committed to it and no
+tag points into it.
+
+**Intended effect.** The active release branch survives every merge into
+`main`, the candidate gate's ancestry check holds because the merge commit's
+second parent is the release branch's tip, and nothing that could be
+deleted or mistaken for a release ref starts with `release-`.
+
+**Motivation.** Owner decision of 2026-10-18. Since 2026-10-15 the repository
+deletes a pull request's head branch on merge, and the release branch is the
+one ref that must survive its merges, since it carries the cycle from the cut
+to the final tag. The name reads in the order it means: a throwaway, for one
+pull request, made off that release branch; the order matters so that no
+branch of the kind begins with the `release-` prefix the definition reserves.
+The first copy of the 0.3.0 cycle was spelled `release-0.3.0-4PR-1` before
+the order was fixed. The copy is an integration ref, never a release ref,
+which is why nothing is committed to it and why the candidate workflow looks
+only at `release-X.Y.Z` when it checks a tag.
+
 ## Blog Entries
 
 **Rule.** On request, write a dated entry under `engineering-docs/blog/` with
@@ -183,21 +204,67 @@ because asking for it on every launch is ceremony without information; it is
 local because the product's defaults for other projects are a separate
 decision.
 
-## GitHub Integration: Owner Through The UI
+## GitHub Integration: The CLI When The Human Provides It
 
-**Rule.** Agents fetch and push over SSH; the owner operates GitHub through the
-UI; `gh` is not an integration tool; no probing of connectors; concise UI
-handoffs.
+**Rule.** If the human has put GitHub's CLI at
+`/opt/xtras/miniconda3/envs/gh/bin/gh`, the agent activates it through
+conda's bootstrap script in each shell call, checks once per session that it
+is logged in, and then opens, updates and consults pull requests and posts
+reviews as comments; a failed login check stops the agent and asks the human
+to log in. If the CLI is absent, the human does GitHub, and the agent hands
+over the compare link from which one click opens the pull request. Merging
+stays the human's either way.
 
-**Intended effect.** Pull-request integration stays an explicit owner act, and
-agents never discover a credential and use it.
+**Intended effect.** Pull-request work happens from the capsule when the
+tool is there, without the agent probing for credentials, and degrades to
+a one-click handoff when it is not. An expired token is reported, never
+worked around.
 
-**Motivation.** Owner direction of 2026-09-21, when no `gh` installation
-existed and probing for one wasted sessions. Note for the owner: on 2026-10-08
-the owner installed `gh` in this environment and directed agents to use it to
-open pull requests and comment on reviews. The rule text above is kept as
-written because this edition changes no rule's meaning; the section is due for
-an owner update, and project-management has recorded that.
+The details have reasons. Activation is repeated in every shell call because
+shell state does not persist between an agent's calls, and the owner forbids
+the usual `conda init` edit of the shell profile. Detection is a file test
+because the earlier rule was made to stop agents probing for tools. Reviews
+are comments because GitHub refuses the approval of a pull request opened
+under the same account, which every pull request here is. The compare link
+is the one-click path GitHub offers to open a pull request between two
+branches.
+
+**Motivation.** Owner direction of 2026-10-21, replacing the direction of
+2026-09-21 made when no `gh` installation existed and probing for one wasted
+sessions. Since 2026-10-08 the owner had been installing `gh` in the
+checkout's extra tools and directing agents in chat, session after session,
+to use it; the rule makes that standing. It names the exact path so that
+detection is a file test, not a search. It is a local arrangement, a hack of
+this project's own, until the GitHub CLI is a proper DevCapsule component.
+
+## Review Partners In This Checkout
+
+**Rule.** The engines are the three agent command lines signed in once in the
+capsule; a pair is named by engine and model; the review partner gets a
+worktree under `~/worktrees`, its own venv and its own gate scratch; it runs
+detached with the brief as its prompt, in the recorded form for its engine;
+the GitHub CLI rule applies to it; assessment comments carry one of two
+labels; briefs are committed under the workstream's evidence; the developer
+document holds the template, the recipes and the record.
+
+**Intended effect.** A human can say "implement this with the review-partner
+loop, with that engine as the review partner" and any of the three agents
+can run it from the files alone, with the same artifacts as the loops that
+came before.
+
+**Motivation.** Owner direction of 2026-10-22, after the agent was asked to
+extract the mechanism from the sessions of 2026-10-09 to 2026-10-12. No API
+key is used because the capsule's agents are signed in once by the human and
+read the repository as their context; the process record of 2026-10-12 lists
+the trade-offs against API clients. The worktree exists because the reviewer
+must not disturb the implementor's checkout, and the separate scratch because
+two gates in one scratch corrupt each other. The Codex form is the one every
+loop so far ran; the Claude form was smoke-tested on 2026-10-22; the
+Antigravity form is read from its help and is recorded as unproven so that
+the first pair to run it knows to verify and record it. The briefs are
+committed from now on because the earlier ones lived in a session scratchpad
+and died with the capsule, which is why the template had to be rebuilt from
+transcripts.
 
 ## Commit Authorship
 
@@ -244,14 +311,19 @@ next definition change rather than after it.
 ## Integration Method And Exceptions
 
 **Rule.** Merge commits since 2026-10-03, enforced by the hosting platform
-since 2026-10-15 together with head-branch deletion on merge; four recorded exceptions:
+since 2026-10-15 together with head-branch deletion on merge; the recorded exceptions:
 release-fix propagation by judgment, the root definition as source, two
 adoption exceptions, and pre-`ws-` branch names.
 
 **Intended effect.** Every departure from the generic rules is visible, dated,
 reasoned, and has an end condition.
 
-**Motivation.** The release-fix exception exists because the generic rule's
+**Motivation.** The synchronization of `release-0.3.0` with `main` during
+the cycle, on 2026-10-22 twice, each on the owner's word, exists because the cycle produced workflow rules on `main`,
+the GitHub CLI rule and the review-partner loop, that the release checkout
+must follow too, and `main` had received nothing else outside the
+candidate process; the merge kept the release version where `main` carries
+the next development version. The release-fix exception exists because the generic rule's
 blanket merge-only policy would hold unrelated work back or leave `main`
 without a fix; the owner ruled on 2026-09-22 that engineering judgment chooses
 merge, cherry-pick, or evidence that `main` lacks the bug, with the disposition

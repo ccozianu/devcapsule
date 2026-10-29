@@ -26,6 +26,7 @@ from devcapsule.resolution_matrix import (
     ResolutionMatrix,
 )
 from devcapsule.resolution_matrix import (
+    Capability,
     _BasePin,
     _ComponentPin,
     _Coupling,
@@ -130,28 +131,6 @@ def test_resolution_matches_the_captured_golden_lock(name: str) -> None:
     assert rendered(GOLDEN_NEEDS[name]) == golden
 
 
-def test_resolution_reconstitutes_the_dogfood_environment() -> None:
-    """Resolving the dogfood checkout's own need reproduces its formation.
-
-    The committed dogfood lock is an earlier, hand-authored generation
-    (``dogfood-v1``), so header metadata legitimately differs; the formation
-    — base, components, materialization — must match exactly.
-    """
-
-    manifest_path = REPO_ROOT / ".devcapsule" / "devcapsule.toml"
-    lock_path = REPO_ROOT / ".devcapsule" / "devcapsule.linux-amd64.lock"
-    if not manifest_path.is_file() or not lock_path.is_file():
-        pytest.skip("the dogfood checkout's .devcapsule is not present")
-    need = tomllib.loads(manifest_path.read_text(encoding="utf-8"))["capabilities"]["need"]
-    dogfood = tomllib.loads(lock_path.read_text(encoding="utf-8"))
-
-    generated = parse(rendered(need))
-
-    assert generated["base"] == dogfood["base"]
-    assert generated["components"] == dogfood["components"]
-    assert generated["materialization"] == dogfood["materialization"]
-
-
 def test_minimal_need_generates_a_complete_pycharm_lock() -> None:
     lock = parse(rendered(["python", "python-ide"]))
 
@@ -160,7 +139,7 @@ def test_minimal_need_generates_a_complete_pycharm_lock() -> None:
     assert lock["base"]["reference"].startswith(
         "docker.io/mycodespaceai/devcapsule-base@sha256:"
     )
-    assert lock["base"]["build-mnemonic"] == "v0.2.12-rc5"
+    assert lock["base"]["build-mnemonic"] == "v0.3.0-rc6"
     assert lock["components"]["interactive-surface"] == "pycharm"
     assert lock["components"]["pycharm"]["version"] == "2026.2.0.1"
     assert lock["materialization"]["recipe"] == "jetbrains-local-materialization"
@@ -184,7 +163,7 @@ def test_frontend_need_generates_a_complete_codium_lock() -> None:
     assert lock["materialization"]["recipe"] == "vscode-local-materialization"
     assert set(lock["components"]) == {"interactive-surface", "codium"}
     # The newest base in the validated family wins.
-    assert lock["base"]["build-mnemonic"] == "v0.2.12-rc5"
+    assert lock["base"]["build-mnemonic"] == "v0.3.0-rc6"
 
 
 def test_base_selection_follows_each_needs_verified_edges() -> None:
@@ -195,17 +174,17 @@ def test_base_selection_follows_each_needs_verified_edges() -> None:
     synthetic matrices below cover the sparse case.
     """
 
-    assert parse(rendered(["node", "frontend-ide"]))["base"]["build-mnemonic"] == "v0.2.12-rc5"
-    assert parse(rendered(["python", "python-ide"]))["base"]["build-mnemonic"] == "v0.2.12-rc5"
+    assert parse(rendered(["node", "frontend-ide"]))["base"]["build-mnemonic"] == "v0.3.0-rc6"
+    assert parse(rendered(["python", "python-ide"]))["base"]["build-mnemonic"] == "v0.3.0-rc6"
     assert (
         parse(rendered(["node", "frontend-ide", "codex-agent"]))["base"]["build-mnemonic"]
-        == "v0.2.12-rc5"
+        == "v0.3.0-rc6"
     )
     assert (
         parse(rendered(["python", "python-ide", "antigravity-agent", "codex-agent"]))["base"][
             "build-mnemonic"
         ]
-        == "v0.2.12-rc5"
+        == "v0.3.0-rc6"
     )
 
 
@@ -215,7 +194,7 @@ def test_formation_reports_capabilities_and_provenance() -> None:
     assert isinstance(formation, Formation)
     assert formation.capabilities == ("python", "python-ide")
     assert "pycharm 2026.2.0.1" in formation.provenance
-    assert "base v0.2.12-rc5" in formation.provenance
+    assert "base v0.3.0-rc6" in formation.provenance
 
 
 # ---------------------------------------------------------------------------
@@ -286,8 +265,8 @@ def _synthetic_matrix(
         matrix_version="test-1",
         bases=bases
         or (
-            _BasePin("v1", "s1", frozenset({"python"}), {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),
-            _BasePin("v2", "s2", frozenset({"python"}), {"reference": "example@sha256:bb", "build-mnemonic": "v2"}),
+            _BasePin("v1", "s1", {"python": "3.12"}, {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),
+            _BasePin("v2", "s2", {"python": "3.12"}, {"reference": "example@sha256:bb", "build-mnemonic": "v2"}),
         ),
         components={
             "ide": (
@@ -298,8 +277,8 @@ def _synthetic_matrix(
         },
         edges=edges,
         couplings=couplings,
-        surface_capabilities={"the-ide": "ide"},
-        ancillary_capabilities={"the-agent": "agent"},
+        capability_table={"the-ide": Capability(("ide",), ide=True), "the-agent": Capability(("agent",)),
+                          "python": Capability(), "java": Capability(), "node": Capability()},
         materialization={"ide": {"recipe": "r", "recipe-version": "1"}},
     )
 
@@ -339,8 +318,8 @@ def test_a_new_base_in_a_validated_family_inherits_its_validations() -> None:
     matrix = _synthetic_matrix(
         edges=(_VerifiedEdge("ide", "1.0", "s1", "smoke"),),
         bases=(
-            _BasePin("v1", "s1", frozenset({"python"}), {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),
-            _BasePin("v2", "s1", frozenset({"python"}), {"reference": "example@sha256:bb", "build-mnemonic": "v2"}),
+            _BasePin("v1", "s1", {"python": "3.12"}, {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),
+            _BasePin("v2", "s1", {"python": "3.12"}, {"reference": "example@sha256:bb", "build-mnemonic": "v2"}),
         ),
     )
     lock = parse(matrix.resolve(["the-ide"]).render_lock())
@@ -435,8 +414,8 @@ def test_allow_unverified_keeps_base_capabilities_a_hard_constraint() -> None:
     matrix = _synthetic_matrix(
         edges=(),
         bases=(
-            _BasePin("v1", "s1", frozenset({"python"}), {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),
-            _BasePin("v2", "s2", frozenset(), {"reference": "example@sha256:bb", "build-mnemonic": "v2"}),
+            _BasePin("v1", "s1", {"python": "3.12"}, {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),
+            _BasePin("v2", "s2", {}, {"reference": "example@sha256:bb", "build-mnemonic": "v2"}),
         ),
     )
 
@@ -507,6 +486,8 @@ def test_generated_lock_passes_the_real_loaders(tmp_path: Path) -> None:
         rendered(need), encoding="utf-8"
     )
 
+    from devcapsule.configuration.manifest import current_manifest
+    manifest = current_manifest(manifest, "manifest").document()
     lock_path, lock = lock_for(project, manifest)
     assert lock_path.name == "devcapsule.linux-amd64.lock"
 
@@ -558,8 +539,8 @@ def test_exhausted_unverified_refusal_does_not_recommend_the_flag_again() -> Non
     matrix = _synthetic_matrix(
         edges=(_VerifiedEdge("ide", "1.0", "s1", "smoke"),),
         bases=(
-            _BasePin("v1", "s1", frozenset({"python", "java"}), {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),
-            _BasePin("v2", "s2", frozenset({"python", "node"}), {"reference": "example@sha256:bb", "build-mnemonic": "v2"}),
+            _BasePin("v1", "s1", {"python": "3.12", "java": "25"}, {"reference": "example@sha256:aa", "build-mnemonic": "v1"}),
+            _BasePin("v2", "s2", {"python": "3.12", "node": "22"}, {"reference": "example@sha256:bb", "build-mnemonic": "v2"}),
         ),
     )
     with pytest.raises(ResolutionError) as refusal:

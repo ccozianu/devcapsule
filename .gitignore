@@ -6,6 +6,8 @@
 !/.devcapsule/devcapsule.toml
 !/.devcapsule/devcapsule.*.lock
 
-# JetBrains records the developer's workstation-specific Python SDK here.
+# JetBrains project files: .idea/.gitignore, written by PyCharm, is the list of
+# per-machine files and governs; the rest is tracked (DEVELOPING.md, IDE project
+# files). misc.xml stays out: it names the workstation's project SDK, and a
+# tracked misc.xml makes PyCharm add every new .idea file to VCS on its own.
 /.idea/misc.xml
-/.idea/rotated-consensus.iml

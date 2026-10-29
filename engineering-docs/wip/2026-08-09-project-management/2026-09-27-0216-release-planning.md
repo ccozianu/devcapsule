@@ -118,6 +118,18 @@ means source delivery, not downloaded-candidate acceptance.
 | C20 | Notes and documentation release automation | Accepted on maintenance's 0.3.0 plate; retain operator steps until implemented and validated. |
 | C21 | Persistent, bounded session diagnostics | Assigned to maintenance on 2026-10-11, targeted ready for 0.3.0; bounded scope, implementation and acceptance remain. |
 
+## Decisions Taken 2026-10-18
+
+Decision 1 below is settled by
+[the scope and cut decision](2026-10-18-decision-release-0-3-0-scope-and-cut.md):
+cut now, driver `maintenance`, the headline the console, session
+diagnostics and an honest launcher, six items implemented during the
+candidate cycle, consent and three others out. Decision 5 is settled as no
+upgrade-design slice in 0.3.0. The owner's sequence of 2026-10-11 is
+superseded on the order; its gates stand. The
+[release work order](../../work-orders/2026-10-18-release-0-3-0.md) carries
+it to the driver. Decisions 2, 3 and 4 remain as written.
+
 ## Decisions Still Needed
 
 1. Set the final 0.3.0 scope, headline, driver and cut trigger. Maintenance was

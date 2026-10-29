@@ -3,37 +3,53 @@
 [![Tests](https://github.com/ccozianu/devcapsule/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/ccozianu/devcapsule/actions/workflows/tests.yml)
 [![Coverage](https://raw.githubusercontent.com/ccozianu/devcapsule/badges/coverage.svg)](https://github.com/ccozianu/devcapsule/actions/workflows/tests.yml)
 
-<!-- website:social title="DevCapsule: a real IDE and a coding agent in a capsule" description="Start work on any project in minutes: a real IDE and your coding agent at full speed, inside a capsule that shares only your project folder. Linux and Windows via WSL2, open source." -->
+<!-- website:social title="DevCapsule: let your coding agent work, keep your workstation yours" description="Run Claude Code, Codex, or Antigravity without approving every routine step. Share one persistent container with a full IDE on Linux or Windows via WSL2, while host files stay outside by default." -->
 
 <!-- website:hero -->
-## Start working on a project right away!
+## Let your coding agent work. Keep your workstation yours.
 
-A real IDE and a coding agent of your choice, inside a capsule that shares
-your project folder and nothing else on your computer unless you say so.
-Ready in minutes, persistent across sessions, honest about its edges.
+Run Claude Code, Codex, or Antigravity without approving every routine
+step. DevCapsule brings your agent, a full IDE, and your project's tools
+together in one persistent container on your own computer.
 **[Start here: open your first workspace](docs/getting-started/first-session.md)**
 on Linux x86-64; on Windows, [read the WSL2 notes first](docs/platforms/windows-wsl2.md).
 
-- Pre-V1
-- Linux x86-64
-- Windows via WSL2
-- Open source, Apache-2.0
+Your host home directory, SSH keys, and desktop session stay outside by
+default. You decide what additional access to grant.
+
+**The environment your agent tests in is the one you debug in.**
+
+- PyCharm
+- IntelliJ IDEA
+- Eclipse
+- Rider
+- VSCodium
+
+<!-- website:demo -->
+### Watch a real session inside a capsule
+
+[![Eclipse IDE in the Debug perspective inside a DevCapsule container, paused at a breakpoint in HelloTime.java with live Variables and Console output](engineering-docs/blog/assets/2026-10-21-eclipse-debug/eclipse-hello-time-debug-poster.png)](engineering-docs/blog/assets/2026-10-21-eclipse-debug/eclipse-hello-time-debug.webm)
+
+See a sample of a full graphical IDE running inside DevCapsule's isolated Docker container. More scenario illustrations coming soon.
 
 <!-- website:benefits -->
-- **A real IDE in a capsule.** PyCharm, IntelliJ IDEA, Eclipse, Rider or VSCodium with the editing, debugging,
-  testing, plugins and persistent settings you expect, and the project's
-  tools already in place. Zero time spent installing things per project.
-  [Your first session](docs/getting-started/first-session.md)
-- **Agents at full speed, behind a boundary you control.** Claude Code, Codex
-  or the Antigravity CLI work in "YOLO" mode, no approval per step, because
-  the worst they can reach is your project folder, which Git protects.
-  [What the capsule can touch](docs/containment/the-boundary.md)
-- **Leave and come back.** Stop for an hour or a month; your IDE state,
-  your agents' sign-ins and your extra tools are there when you return.
-  [Sessions](docs/sessions/start-stop-reconnect.md)
-- **People and agents on one repository.** A workflow that records status,
-  decisions and next steps in files, so any person or any agent resumes cold.
-  We use it to build DevCapsule. [Collaboration](docs/collaboration/working-in-workstreams.md)
+## Why switch to DevCapsule?
+
+- **Give agents room to work.** Run Claude Code, Codex, or the Antigravity CLI without approving every routine command, behind a container boundary where your host home directory stays outside by default and extra mounts are explicit opt-ins. [What the capsule can touch](docs/containment/the-boundary.md)
+- **Inspect and debug in the same environment.** Open PyCharm, IntelliJ IDEA, Eclipse, Rider, or VSCodium on the same workspace and toolchain the agent used—edit, run tests, inspect results, debug, or take over directly. [Your first session](docs/getting-started/first-session.md)
+- **Come back ready to continue.** Stop for an hour or a month. Persistent container state, IDE settings, agent sign-ins, and file-based [workstream records](docs/collaboration/working-in-workstreams.md) let you or the next agent resume without rebuilding context from chat history. [Sessions](docs/sessions/start-stop-reconnect.md)
+
+<!-- website:continuity -->
+## Pick up where the last session stopped
+
+When a developer or coding agent pauses work in DevCapsule, the handoff lives in a versioned status file in the repository rather than inside a chat window. Here is a real handoff excerpt from building DevCapsule (`0.3.0` release verification on `maintenance`):
+
+- **What changed:** Repaired the automated GUI smoke harness and verified persistent workspace state across `devcapsule stop` and `devcapsule start` for IntelliJ IDEA, PyCharm, Eclipse, Rider, and VSCodium.
+- **What was checked:** Full test suite (`557 passed`), documentation contract check (`docs-contract`), and recorded two-session persistence runs with saved screenshots and WebM videos.
+- **What remains uncertain:** Cold first-import Maven indexing time on larger multi-module Java projects under constrained container CPU quotas.
+- **Next action:** Publish the landing-page demonstration update and verify the rendered site across desktop and mobile viewports.
+
+At the start of the next session, the incoming agent or developer reads [`CURRENT-STATUS.md`](CURRENT-STATUS.md) and the active workstream record before touching code—resuming with the same verified state, open questions, and next step ([read the workflow](WORKFLOW.md) · [browse the engineering journal](engineering-docs/blog/2026-09-30-what-i-have-been-up-to-lately.md)).
 
 <!-- website:fit -->
 ## Is it for you?
@@ -61,43 +77,27 @@ and the journal is the transcript. **We DO eat our own dog food.**
 <!-- website:why -->
 ## Why DevCapsule?
 
-Gone are the days of spending hours onboarding, following complicated setup
-instructions, and debugging your development environment. For supported project
-types, DevCapsule gives you a ready-to-use, reproducible workspace with the tools
-and dependencies already in place.
+A coding agent is most useful when it can edit files, run tests, and invoke project tools without stopping for permission at every command—and when you can step into that exact same environment with a full IDE whenever judgment, debugging, or inspection is needed.
 
-No more “it works on my laptop” excuses.
+### 1. Give agents room to work without risking your host
 
-**Work in a full-fledged IDE.** Choose from supported leading IDEs, paired with
-an AI coding agent of your choice, with the
-editing, navigation, debugging, testing, plugins, and persistent settings you
-expect for serious development. ZERO time spent installing new things every
-other project. As a bona fide hacker, let's assume you already have Docker
-and Git on the command line in your pocket :)
+DevCapsule runs major coding agents (Claude Code, Codex, and the Antigravity CLI) inside an isolated container workspace. Let them edit files, run test suites, and use project tools at full speed without approving every routine step.
 
-**Let your coding agent work at full speed.** DevCapsule supports major coding
-agents, running in “YOLO” mode inside an isolated workspace. Let them edit files,
-run tests, and use development tools without approving every routine step.
+**Why is that safe?** Only your project checkout is mounted by default. Your host `$HOME`, SSH keys, browser profiles, and desktop session stay outside the capsule unless you explicitly grant access—and you can withdraw extra access when it is no longer needed. If an agent makes a mess of the workspace, Git is right there to inspect or revert it.
 
-**YOLO, you said?** Just last week I read another `rm -rf $HOME` story.
+### 2. Inspect and debug in the same environment
 
-Access to host resources beyond that boundary requires your explicit opt-in.
-You decide what to grant and can withdraw it when it’s no longer needed.
-By default, an AI mishap can only destroy your checked-out source code.
-But that's why you have Git: your project is backed up on GitHub, GitLab,
-or some other remote. There's no excuse not to.
+Terminal output and diffs are not always enough. When a test fails or a design needs closer inspection, you should not have to reproduce the container's toolchain on your host laptop first.
 
-### Aim for engineering excellence. Keep the fun.
+Inside the same capsule, open a full IDE—PyCharm, IntelliJ IDEA, Eclipse, Rider, or VSCodium—sharing the exact files, compilers, runtimes, and test runners your agent just used. Set breakpoints, inspect variables, review diffs, or write code directly with zero per-project setup drift.
 
-From hobbyists to seasoned professionals, DevCapsule puts good engineering
-within reach. Your AI helps with the minutiae: testing your code, tracking
-requirements, preserving design decisions, and keeping the next step clear.
+### 3. Come back ready to continue—and keep the fun
 
-Switch tasks, change agents, or put a project aside for months—then return with
-its environment and essential context preserved. You keep the judgment; AI
-helps with the bookkeeping.
+Switch tasks, change agents, or put a project aside for weeks—then return with both your container state (IDE layout, plugins, agent sign-ins, installed tools) and your engineering context preserved in versioned repository files.
 
-**Less engineering envy. More satisfaction in what you build.**
+Your AI helps with the minutiae: running checks, tracking requirements, recording design decisions, and keeping the next step explicit. You keep the judgment; AI helps with the bookkeeping.
+
+**Less environment friction. More satisfaction in what you build.**
 
 <!-- website:comparison -->
 ### But is it really needed?

@@ -4,9 +4,9 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: paused 2026-10-14 at owner direction, the pair moves to the trading-research sample project; the decision agenda of 2026-10-13 awaits the owner; consent and forced configuration first, remaining 0.3.0 work during the RC cycle
+State: paused 2026-10-18, the pair moves to maintenance to drive release 0.3.0; the work order is mailed; the remaining decisions, the eleven docs proposals among them, are gates of the cycle; consent and forced configuration first, remaining 0.3.0 work during the RC cycle
 
-Definition read: WORKFLOW.md@2b576adb1a40, WORKFLOW-LOCAL.md@7362bae8ec82
+Definition read: WORKFLOW.md@2b576adb1a40, WORKFLOW-LOCAL.md@28234e24364b
 
 Branch association: `ws-project-management/coordination`
 
@@ -339,11 +339,59 @@ entry carries no draft flag and publishes with the next website
 publication. The matrix's memory row and the host-environment column were
 left as they are, by the owner's word that the document is good as is.
 
+## 2026-10-18: Release 0.3.0 Scoped And Cut
+
+The owner decided after the inventory of unimplemented plan items: cut
+now, `maintenance` drives, six items are implemented during the candidate
+cycle as dogfooding, consent and three others are out. Recorded in
+[the decision](2026-10-18-decision-release-0-3-0-scope-and-cut.md), carried
+to the driver by [the release work order](../../work-orders/2026-10-18-release-0-3-0.md),
+delivered by mail the same day. The proposal's decisions 1 and 5 are
+settled; 2, 3 and 4 stand as gates of the cycle.
+
+## 2026-10-24: The CLI UX Redesign Work Order
+
+While testing candidate 3 the owner asked for a challenge of the command
+surface's assumptions, then for a work order: the deficiencies, the
+principles as the owner ruled them on 2026-10-24, the config and run
+experience addressed to the user, and the decisions still open. The
+manifest a capable agent wrote for `ai-learning-bootstrap` on 2026-10-22
+is part of the evidence: it expresses one of the project's three needs.
+The draft is
+[the work order](../../work-orders/2026-10-24-cli-ux-redesign.md); the
+owner accepted the draft's last iteration and directed, the same day, that
+it go through the review-partner loop with the Codex, gpt-6-astra pair.
+Nothing in it is implemented; the owner named 0.3.0 rc4 as its release on
+2026-10-24, answering Part 5 item 8; Part 5 lists
+the eleven decisions for the owner.
+
+The loop, topic 9.11: the slice is the document itself, PRn on
+`ws-project-management/cli-ux-work-order` against `main`; the brief and
+any round brief are under
+[`evidence/2026-10-24-cli-ux-work-order/`](evidence/2026-10-24-cli-ux-work-order/).
+Rounds and outcome: PR258 is #258; the Codex gpt-6-astra pair opened
+PR258.1 as #259 at `bc3bf9b`, reproducing items 1 to 23 with 67 CLI
+invocations and no container. Its findings held: Node was declarable with
+`capabilities --required node` and the draft said the opposite; the lock
+carries no workflow table; the bootstrap writer uses bare keys; the
+transcript's IDE pins and the console on recipe 9 were wrong; two further
+first-day gaps, a policy `init` that leaves the owner unable to run and a
+`config list` that writes a placeholder; Part 5 grown from eleven to
+twenty-four questions, item 24 catching a conflict between section 3.2 and
+principle 1. One round, on the review's notes interleaved in Part 3, which
+the owner had asked to be written to the user; moved into Part 5 at
+`30ecdca`. Accepted and merged at `eab9ed6`. PR258 awaits the owner.
+
 ## Open Threads
 
-- Awaiting the human: bounded RC scope for remaining diagnostics and image
-  reuse/cleanup, release driver and cut criteria, and eleven user-docs proposal
-  decisions. The eight original intake messages and the new testing-policy
+- The CLI UX redesign work order awaits the owner's decisions, Part 5,
+  items 1 to 11, after the review loop settles. The specification and the
+  implementation are two later work orders, in 0.3.0 rc4 by the owner's
+  answer to item 8.
+
+- Awaiting the human: the eleven user-docs proposal decisions, a gate of the
+  0.3.0 cycle; the image-cleanup design review when maintenance reaches it.
+  The RC scope, driver and cut are decided as of 2026-10-18. The eight original intake messages and the new testing-policy
   reconciliation remain undecided. Consent and forced configuration go first;
   no additional deferral was agreed.
 - Suspension point: planning paused deliberately. Recheck implementation
@@ -357,6 +405,8 @@ left as they are, by the owner's word that the document is good as is.
 
 ## Workstream Document Index
 
+- [Release 0.3.0: scope, driver and cut](2026-10-18-decision-release-0-3-0-scope-and-cut.md): the owner's decision of 2026-10-18; open when a scope question returns.
+- [Release 0.3.0 work order](../../work-orders/2026-10-18-release-0-3-0.md): what the driver delivers and the gates before the final tag.
 - [Project operations for 0.3.0; ecosystem bootstrap for 0.9](2026-10-11-decision-project-operations-and-bootstrap.md): accepted owner decision, default PATH and exceptional project shell direction, and continuing agent responsibility for project instructions.
 
 - [Persistent session diagnostics work order](../../work-orders/2026-10-08-persistent-session-diagnostics.md): C21 assigned to maintenance on 2026-10-11, targeted ready for 0.3.0; bounded scope and acceptance remain.

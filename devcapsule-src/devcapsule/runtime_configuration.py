@@ -21,6 +21,8 @@ from devcapsule.configuration.storage import ResolvedProject, checkout_name_for,
 
 CONTEXT_PATH = Path("/etc/devcapsule/launch-context.json")
 CONFIGURATION_PATH = Path("/etc/devcapsule/checkout")
+CHANNEL_PATH = Path("/run/devcapsule-configuration")
+"""The console's configuration channel, mounted writable for the run; :mod:`devcapsule.configuration.console_channel`."""
 
 
 class CapsuleAccess(Enum):
@@ -60,9 +62,12 @@ class CapsuleAccess(Enum):
 class LaunchConfiguration:
     directory: Path
     document: dict[str, Any]
+    # The listing ``run`` computed for this launch, written into the channel
+    # for the capsule's own ``config show``; absent for a legacy launch.
+    listing: dict[str, Any] | None = None
 
     @classmethod
-    def capture(cls, selected: ResolvedProject, identity: str) -> LaunchConfiguration:
+    def capture(cls, selected: ResolvedProject, identity: str, listing: dict[str, Any] | None = None) -> LaunchConfiguration:
         from devcapsule.project_information import configured_information
 
         checkout_name = checkout_name_for(selected.manifest, selected.checkout_path)
@@ -79,7 +84,7 @@ class LaunchConfiguration:
             "running": {"identity": identity, "lock": deepcopy(selected.lock),
                         "origin": "local selection" if selected_version_lock(selected.checkout) else "project recommendation",
                         "base": deepcopy(selected.checkout.get("authorization", {}).get("base-image", {}))},
-        })
+        }, listing)
 
 
 @dataclass(frozen=True)
@@ -136,7 +141,7 @@ class RuntimeConfiguration:
         return {key: value for key, value in checkout.items() if key != "version-set"}
 
     def configuration_document(self) -> dict[str, Any]:
-        """The ``config list --json`` document inside a capsule: schema
+        """The ``config show --json`` document inside a capsule: schema
         version 1, the same facts as ``configuration_report`` prints.
 
         The record's host paths and permissions are the launcher's recorded
@@ -151,7 +156,7 @@ class RuntimeConfiguration:
                          "launcher-path": self.document["launcher-root"],
                          "runtime-path": self.document["runtime-root"],
                          "record": self._recorded_checkout()},
-            "launcher-command": self.launcher_command(["config", "list"]),
+            "launcher-command": self.launcher_command(["config", "show"]),
         }
 
     def configuration_report(self) -> str:
@@ -161,7 +166,7 @@ class RuntimeConfiguration:
                 "Use 'devcapsule project versions show' for running and next-launch software.\n\n"
                 + render_toml(shown)
                 + "\nTo change configuration, use the launcher outside this capsule: "
-                + self.launcher_command(["config", "list"]))
+                + self.launcher_command(["config", "show"]))
 
 
 def capsule_project_root(start: Path) -> Path | None:

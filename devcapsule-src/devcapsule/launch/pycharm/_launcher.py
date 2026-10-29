@@ -21,8 +21,10 @@ from enum import Enum
 from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
+from ...docker_arguments import inline_environment_names, redact_environment
 from ...container_runtime.contract import (
     CONTAINED_DISPLAY_TRANSPORT,
+    INFRASTRUCTURE_FAILURE_EXIT_CODE,
     DISPLAY_TRANSPORTS,
     HOST_X11_DISPLAY_TRANSPORT,
     ConsolePlan,
@@ -71,8 +73,12 @@ from ...host_open import (
     host_open_bridge,
 )
 from ..command_output import render_command
+from ...build_info import BuildInfoError, current_build_info
+from ...images.contract import WEBCONSOLE_RECIPE, WebConsoleAvailability
 from ...materialization import RUNTIME_PLAN_PATH
-from ...runtime_configuration import CONFIGURATION_PATH, CONTEXT_PATH, LaunchConfiguration
+from ...commands._console_channel import ChannelWatcher
+from ...configuration.console_channel import LISTING_FILE, listing_document, write_complete
+from ...runtime_configuration import CHANNEL_PATH, CONFIGURATION_PATH, CONTEXT_PATH, LaunchConfiguration
 from ...project import ProjectMountError
 from ...runtime import (
     plan_shared_runtime,
@@ -118,10 +124,44 @@ class TempRuntimeFiles:
     display_token_file: Path | None = None
     console_token_file: Path | None = None
     launch_context_file: Path | None = None
+    # The console's configuration channel: a directory the capsule writes
+    # requests into and reads the launch-time listing from; CHANNEL_PATH inside.
+    configuration_directory: Path | None = None
 
 
 SUDOERS_POLICY_PATH = "/etc/sudoers.d/devcapsule-development-sudo"
 SUDOERS_POLICY = "%ide-sudo ALL=(ALL:ALL) NOPASSWD: ALL\n"
+
+
+
+LOCAL_BASE_GUIDE_URL = "https://devcapsule.mycodespace.ai/docs/current/configuration/local-base/"
+
+
+def web_console_notice(availability: WebConsoleAvailability) -> str:
+    """One true statement in place of the console link on a base without one.
+
+    Names the base, the recipe the console needs, the one command that builds
+    a base with it from this launcher's own source, and the guide that says
+    how to select the built base for a checkout.
+    """
+
+    base = availability.base or "an image without DevCapsule recipe labels"
+    try:
+        revision = current_build_info().source_revision
+    except BuildInfoError:
+        revision = "unknown"
+    provenance = (
+        f"--source-revision {revision}"
+        if re.fullmatch(r"[0-9a-f]{40,64}", revision)
+        else "--allow-local-source"
+    )
+    return (
+        f"Web console: none on this base ({base}; the console needs base recipe "
+        f"{WEBCONSOLE_RECIPE} or later); the capsule runs without it.\n"
+        f"  To build a base that has it:  devcapsule images build --type base "
+        f"--recipe ubuntu-24.04 {provenance}\n"
+        f"  Then select it for this checkout; the steps: {LOCAL_BASE_GUIDE_URL}"
+    )
 
 
 @dataclass
@@ -163,6 +203,8 @@ class PycharmRunOptions:
     ignore_config_lock: bool = False
     network_mode: str = "host"
     memory_limit_bytes: int | None = None
+    # The CPU count the capsule may use, Docker's --cpus; None leaves it unlimited.
+    cpus: int | None = None
     runtime_plan: RuntimePlan | None = None
     launch_configuration: LaunchConfiguration | None = None
     use_image_process: bool = False
@@ -184,6 +226,10 @@ class PycharmRunOptions:
     # Test seam: how the contained display's URL is opened once ready.
     open_display_url: Callable[[str], None] | None = None
     open_console_url: Callable[[str], None] | None = None
+    # Whether the base promises a web console, read from its labels by the
+    # caller (commands/project.py); without it the launcher announces the
+    # absence once and plans no console: no port, no token, no wait.
+    web_console: WebConsoleAvailability = WebConsoleAvailability(True, None)
 
 
 @dataclass
@@ -221,6 +267,7 @@ class PycharmRunConfig:
     memory_limit_bytes: int | None
     runtime_plan: RuntimePlan | None
     use_image_process: bool
+    cpus: int | None = None
     launch_configuration: LaunchConfiguration | None = None
     host_browser_socket: Path | None = None
     display_transport: str = HOST_X11_DISPLAY_TRANSPORT
@@ -235,6 +282,7 @@ class PycharmRunConfig:
     console_host_port: int | None = None
     console_token: str = ""
     open_console_url: Callable[[str], None] | None = None
+    web_console: WebConsoleAvailability = WebConsoleAvailability(True, None)
     # This session's log directory on the host, bound into the capsule at
     # SESSION_LOG_DESTINATION: the launcher's own log, the supervisor's, and
     # one file per supervised child (see devcapsule.logs).
@@ -301,6 +349,8 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
                         config.open_display_url or default_opener(runtime_env),
                         stop_watching,
                     )
+                if config.runtime_plan is not None and not config.web_console.available:
+                    print(web_console_notice(config.web_console), file=sys.stderr, flush=True)
                 if config.console_host_port is not None:
                     console = console_url(config.console_host_port, config.console_token)
                     print(
@@ -319,18 +369,39 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
                     watch_display_ready(
                         config.console_host_port, console, opener, stop_watching, label=CONSOLE_LABEL_TEXT,
                     )
-                _session_events.info("docker run: %s", shlex.join(command))
+                # The session log outlives the session on the host: mask the
+                # inline environment values of the extra arguments, as the
+                # printed command does; Docker receives the command unchanged.
+                _session_events.info("docker run: %s", shlex.join(
+                    redact_environment(command, inline_environment_names(config.extra_docker_args))))
+                watcher = channel_watcher(config, files)
+                if watcher is not None:
+                    watcher.start()
                 try:
-                    completed = subprocess.run(command, check=False, env=runtime_env)
-                except KeyboardInterrupt:
-                    _session_events.info("session end: interrupted from the terminal (Ctrl+C)")
-                    end_session_logs(config, None)
-                    raise
+                    result = run_attached(
+                        command, runtime_env, container_name=config.name, on_interrupt=stop_watching.set,
+                    )
                 finally:
                     stop_watching.set()
-                _session_events.info("session end: docker run exit code %d", completed.returncode)
-                end_session_logs(config, completed.returncode)
-                return completed.returncode
+                    if watcher is not None:
+                        watcher.stop()
+                exit_code = INTERRUPTED_EXIT_CODE if result.interrupted else result.exit_code
+                if not result.stopped:
+                    _session_events.info(
+                        "session end unknown: interrupted from the terminal (Ctrl+C); container %s may still be running",
+                        config.name,
+                    )
+                else:
+                    if result.interrupted:
+                        _session_events.info(
+                            "session end: interrupted from the terminal (Ctrl+C); docker run exit code %d",
+                            result.exit_code,
+                        )
+                    else:
+                        _session_events.info("session end: docker run exit code %d", result.exit_code)
+                    end_session_logs(config, exit_code)
+                print(session_result_text(config, result), file=sys.stderr, flush=True)
+                return exit_code
             finally:
                 cleanup_temp_runtime_files(files)
     except HostOpenError as exc:
@@ -338,6 +409,119 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
 
 
 _session_events = logs.events_logger(LAUNCHER_LOG_COMPONENT)
+
+INTERRUPTED_EXIT_CODE = 130
+"""What the launcher returns after Ctrl+C: 128 + SIGINT, as shells report it."""
+
+INTERRUPT_STOP_SECONDS = 60.0
+"""How long the launcher waits for the capsule to stop after Ctrl+C before it
+asks the daemon; the supervisor's own grace is seconds, so this is generous."""
+
+DAEMON_STOP_SECONDS = 30.0
+"""How long the launcher waits after asking the daemon to stop the capsule."""
+
+
+@dataclass(frozen=True)
+class AttachedResult:
+    """How the attached ``docker run`` ended."""
+
+    exit_code: int
+    """The client's exit code: the capsule's own, or INTERRUPTED_EXIT_CODE when
+    the launcher stopped waiting for it."""
+    interrupted: bool
+    """The terminal interrupted the session with Ctrl+C."""
+    stopped: bool
+    """The client returned, so the capsule has stopped. False only when the
+    launcher stopped waiting for it, in which case the capsule may still run."""
+
+
+def run_attached(
+    command: Sequence[str],
+    env: Mapping[str, str],
+    *,
+    container_name: str,
+    on_interrupt: Callable[[], None] = lambda: None,
+) -> AttachedResult:
+    """Run the capsule in the foreground and wait through Ctrl+C for its end.
+
+    The terminal delivers SIGINT to the whole foreground group: the docker
+    client gets it and forwards it into the capsule, whose supervisor stops
+    its children within its grace period and exits; then the client returns
+    the capsule's exit code. ``subprocess.run`` would instead kill the client
+    a quarter of a second after the interrupt and raise, which is how Ctrl+C
+    used to end in a traceback with the capsule's end unknown. So the client
+    is waited for explicitly: the first Ctrl+C is announced and waited
+    through; a capsule that has not stopped within INTERRUPT_STOP_SECONDS is
+    stopped through the daemon; a second Ctrl+C stops the waiting and says
+    what may still be running.
+    """
+
+    process = subprocess.Popen(command, env=env)
+    try:
+        return AttachedResult(process.wait(), interrupted=False, stopped=True)
+    except KeyboardInterrupt:
+        pass
+    try:
+        on_interrupt()
+        print(
+            "Interrupted from the terminal (Ctrl+C); the capsule is stopping. "
+            "Press Ctrl+C again to stop waiting for it.",
+            file=sys.stderr, flush=True,
+        )
+        try:
+            return AttachedResult(process.wait(timeout=INTERRUPT_STOP_SECONDS), interrupted=True, stopped=True)
+        except subprocess.TimeoutExpired:
+            print(
+                f"The capsule has not stopped after {INTERRUPT_STOP_SECONDS:g}s; asking the daemon to stop it.",
+                file=sys.stderr, flush=True,
+            )
+            subprocess.run(
+                ["docker", "stop", "--time", "10", container_name],
+                check=False, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                timeout=DAEMON_STOP_SECONDS,
+            )
+            return AttachedResult(process.wait(timeout=DAEMON_STOP_SECONDS), interrupted=True, stopped=True)
+    except (KeyboardInterrupt, subprocess.TimeoutExpired, OSError):
+        process.kill()
+        exit_code = process.wait()
+        if exit_code >= 0:
+            return AttachedResult(exit_code, interrupted=True, stopped=True)
+        return AttachedResult(INTERRUPTED_EXIT_CODE, interrupted=True, stopped=False)
+
+
+def session_result_text(config: PycharmRunConfig, result: AttachedResult) -> str:
+    """The one statement that ends a session on the terminal, and where its logs are.
+
+    The terminal no longer carries the components' output, so this is what a
+    user reads at the end: what happened, and the files on this computer
+    that hold the detail.
+    """
+
+    if result.interrupted and not result.stopped:
+        head = (
+            "Session interrupted from the terminal; the capsule may still be running. "
+            f"Stop it with: docker stop {config.name}"
+        )
+    elif result.interrupted:
+        head = "Session interrupted from the terminal (Ctrl+C); the capsule stopped."
+    elif result.exit_code == 0:
+        head = "Session ended: the IDE exited and the capsule stopped."
+    elif result.exit_code == INFRASTRUCTURE_FAILURE_EXIT_CODE:
+        head = "Session failed: a capsule component died; the supervisor's log names it."
+    else:
+        head = f"Session ended with exit code {result.exit_code}."
+    lines = [head]
+    directory = config.session_log_directory
+    if directory is None:
+        lines.append("Session logs: none; this session logged to the console only.")
+        return "\n".join(lines)
+    try:
+        files = sorted(path for path in directory.iterdir() if path.is_file()) if directory.is_dir() else []
+    except OSError:
+        files = []
+    lines.append("Session logs on this computer:")
+    lines.extend(f"  {path}" for path in files or [directory])
+    return "\n".join(lines)
 
 
 def begin_session_logs(config: PycharmRunConfig, env: Mapping[str, str]) -> None:
@@ -403,7 +587,7 @@ def describe_run_command(command: list[str], config: PycharmRunConfig,
         ("Shadow file", files.shadow_file), ("Sudo policy", files.sudoers_file),
         ("Git token file", files.token_file), ("Runtime plan", files.runtime_plan_file),
         ("Display token", files.display_token_file), ("Console token", files.console_token_file),
-        ("Launch context", files.launch_context_file),
+        ("Launch context", files.launch_context_file), ("Configuration channel", files.configuration_directory),
     ):
         if path is not None:
             comments.append(f"Temporary {label}: {path}")
@@ -421,7 +605,10 @@ def describe_run_command(command: list[str], config: PycharmRunConfig,
     if config.secret_environment:
         comments.append("Required environment variables (values omitted): " + ", ".join(config.secret_environment))
     comments.append("No successful-use history was recorded. Manual execution and any edits are your responsibility.")
-    return render_command(command, comments)
+    names = inline_environment_names(config.extra_docker_args)
+    if names:
+        comments.append("Inline environment values are redacted; use project run to launch the saved arguments.")
+    return render_command(redact_environment(command, names), comments)
 
 
 def host_backed_runtime_environment(env: Mapping[str, str]) -> dict[str, str]:
@@ -761,23 +948,26 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
             )
         else:
             selected_runtime_plan = selected_runtime_plan.with_display(DisplayPlan.host_x11())
-        # The web console runs whenever the runtime runs, with or without a
-        # display, reached like the display: one loopback port, one token.
+        # The web console runs whenever the runtime runs on a base that has
+        # one, with or without a display, reached like the display: one
+        # loopback port, one token. On a base without it nothing is planned,
+        # and the launch announces the absence once beside the links.
         # Allocation releases its socket. The OS can return the display's
         # port again before either listener starts.
-        for _ in range(10):
-            console_host_port = allocate_loopback_port()
-            if console_host_port != display_host_port:
-                break
-        else:
-            raise PycharmRunError("Could not allocate distinct display and web console ports; retry the launch.")
-        console_token = new_run_token()
-        console_listen = "127.0.0.1" if options.network_mode == "host" else "0.0.0.0"
-        console_port = console_host_port if options.network_mode == "host" else CONTAINER_CONSOLE_PORT
-        selected_runtime_plan = selected_runtime_plan.with_console(ConsolePlan(
-            console_listen, console_port, CONSOLE_TOKEN_DESTINATION,
-            source_path=console_development_source(project, runtime_plan.project_mount),
-        ))
+        if options.web_console.available:
+            for _ in range(10):
+                console_host_port = allocate_loopback_port()
+                if console_host_port != display_host_port:
+                    break
+            else:
+                raise PycharmRunError("Could not allocate distinct display and web console ports; retry the launch.")
+            console_token = new_run_token()
+            console_listen = "127.0.0.1" if options.network_mode == "host" else "0.0.0.0"
+            console_port = console_host_port if options.network_mode == "host" else CONTAINER_CONSOLE_PORT
+            selected_runtime_plan = selected_runtime_plan.with_console(ConsolePlan(
+                console_listen, console_port, CONSOLE_TOKEN_DESTINATION,
+                source_path=console_development_source(project, runtime_plan.project_mount),
+            ))
     session_id = logs.new_session_id()
     session_log_path = session_logs_root(project, env) / session_id
     session_log_directory: Path | None
@@ -872,6 +1062,7 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         ignore_config_lock=ignore_config_lock,
         network_mode=options.network_mode,
         memory_limit_bytes=options.memory_limit_bytes,
+        cpus=options.cpus,
         runtime_plan=selected_runtime_plan,
         launch_configuration=options.launch_configuration,
         use_image_process=options.use_image_process,
@@ -886,6 +1077,7 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         log_budget_bytes=log_budget_bytes,
         console_token=console_token,
         open_console_url=options.open_console_url,
+        web_console=options.web_console,
         interactive_state_mounts=tuple(interactive_state_mounts),
         additional_state_mounts=tuple(additional_state_mounts),
         additional_environment=tuple(additional_environment),
@@ -1136,6 +1328,8 @@ def build_docker_args(
             "--mount", f"type=bind,src={config.launch_configuration.directory},dst={CONFIGURATION_PATH},ro",
             "--mount", f"type=bind,src={files.launch_context_file},dst={CONTEXT_PATH},ro",
         ])
+        if files.configuration_directory is not None:
+            args.extend(["--mount", f"type=bind,src={files.configuration_directory},dst={CHANNEL_PATH}"])
     if config.git_user_name:
         args.extend(["--env", f"GIT_USER_NAME={config.git_user_name}"])
     if config.git_user_email:
@@ -1180,6 +1374,10 @@ def build_docker_args(
         if config.memory_limit_bytes <= 0:
             raise PycharmRunError("The container memory limit must be positive.")
         args.extend(["--memory", str(config.memory_limit_bytes)])
+    if config.cpus is not None:
+        if config.cpus <= 0:
+            raise PycharmRunError("The container CPU count must be positive.")
+        args.extend(["--cpus", str(config.cpus)])
     args.extend(config.extra_docker_args)
     return args
 
@@ -1351,8 +1549,12 @@ LAUNCHER_OWNED_DOCKER_OPTIONS: dict[str, str] = {
     "-u": "the launcher derives the container identity from the host user",
     "--network": "authorize it: '--authorize network host' or the config family",
     "--net": "authorize it: '--authorize network host' or the config family",
-    "--memory": "set the runtime.memory-limit configuration value",
-    "-m": "set the runtime.memory-limit configuration value",
+    "--memory": "set it: 'devcapsule project config set memory SIZE'",
+    "-m": "set it: 'devcapsule project config set memory SIZE'",
+    "--cpus": "set it: 'devcapsule project config set cpus N'",
+    "-c": "set the CPU count instead: 'devcapsule project config set cpus N'",
+    "--cpu-shares": "set the CPU count instead: 'devcapsule project config set cpus N'",
+    "--cpuset-cpus": "set the CPU count instead: 'devcapsule project config set cpus N'",
     "--shm-size": "the surface declares shared-memory-size in its runtime template",
     "--ipc": "the launcher owns IPC isolation",
     "--pids-limit": "the launcher owns the PID budget",
@@ -1361,12 +1563,26 @@ LAUNCHER_OWNED_DOCKER_OPTIONS: dict[str, str] = {
 }
 
 
+CLUSTERED_SHORT_DOCKER_FLAGS = frozenset("ditP")
+"""docker run's boolean short flags, which may share one token: -d, -i, -t, -P."""
+
+
 def reject_launcher_owned_docker_options(options: Sequence[str]) -> None:
     """Refuse raw docker options the launcher already composes exactly once."""
 
     for option in options:
         name = option.split("=", 1)[0]
         remedy = LAUNCHER_OWNED_DOCKER_OPTIONS.get(name)
+        if remedy is None and option.startswith("-") and not option.startswith("--") and len(option) > 2:
+            # Attached short spellings: -m2g, -u1000, -dit, -ti. Docker lets
+            # boolean short flags cluster, so walk past the known ones; the
+            # first other letter owns the rest of the token as its value
+            # (-eNAME=value, -vSRC:DST) and is never inspected further.
+            for letter in option[1:]:
+                name = f"-{letter}"
+                remedy = LAUNCHER_OWNED_DOCKER_OPTIONS.get(name)
+                if remedy is not None or letter not in CLUSTERED_SHORT_DOCKER_FLAGS:
+                    break
         if remedy is not None:
             raise PycharmRunError(
                 f"Raw docker option {name!r} is composed by the launcher and cannot "
@@ -1443,6 +1659,11 @@ def prepare_temp_runtime_files(config: PycharmRunConfig, env: Mapping[str, str])
             files.launch_context_file = make_temp(runtime_parent, "devcapsule-launch-context.")
             files.launch_context_file.write_text(json.dumps(config.launch_configuration.document) + "\n", encoding="utf-8")
             files.launch_context_file.chmod(0o600)
+            files.configuration_directory = Path(tempfile.mkdtemp(prefix="devcapsule-configuration.", dir=runtime_parent))
+            files.configuration_directory.chmod(0o700)
+            if config.launch_configuration.listing is not None:
+                write_complete(files.configuration_directory / LISTING_FILE,
+                               listing_document(config.launch_configuration.listing))
         return files
     except BaseException:
         cleanup_temp_runtime_files(files)
@@ -1611,7 +1832,17 @@ def resolve_git_token_file(
     return git_token_file
 
 
+def channel_watcher(config: PycharmRunConfig, files: TempRuntimeFiles) -> ChannelWatcher | None:
+    """The watcher answering the console's requests for this run, or ``None`` for a launch without the channel."""
+    if files.configuration_directory is None or config.launch_configuration is None:
+        return None
+    record = config.launch_configuration.directory / str(config.launch_configuration.document["checkout-file"])
+    return ChannelWatcher(files.configuration_directory, config.project, record)
+
+
 def cleanup_temp_runtime_files(files: TempRuntimeFiles) -> None:
+    if files.configuration_directory is not None:
+        shutil.rmtree(files.configuration_directory, ignore_errors=True)
     for path in [
         files.xauth_file,
         files.passwd_file,
@@ -1748,7 +1979,7 @@ def current_host_user() -> HostUser:
 
 
 def config_lock_message(ide_config: Path, project: Path, project_state: Path) -> str:
-    inspect = shlex.join(["devcapsule", "project", "--path", str(project), "config", "list"])
+    inspect = shlex.join(["devcapsule", "project", "--path", str(project), "config", "show"])
     return f"""PyCharm config directory appears to be locked:
   {ide_config / ".lock"}
 Project state:
@@ -1759,7 +1990,7 @@ at a time. Inspect this checkout's 'pycharm/config' binding with:
   {inspect}
 
 For concurrent sessions, bind 'pycharm/config' to a separate directory with
-'project config bind', then run 'project config resolve' before launching.
+'project config bind', then run 'project run' before launching.
 If the lock is stale, confirm no IDE is using that directory before removing
 its .lock file and retrying 'devcapsule project run'."""
 

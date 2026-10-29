@@ -1,7 +1,7 @@
 ---
 status: confirmed
 severity: minor
-target: 0.3.0
+target: 0.9
 owner: maintenance
 opened: 2026-08-03
 requirements: [R-PRODUCT-001, R-PRODUCT-004, R-DEV-001, R-FRAMEWORK-001]
@@ -15,6 +15,32 @@ Status note (pre-vocabulary, kept as evidence): reproduced; accepted V1 backlog 
 
 Requirements: root R-PRODUCT-001, root R-PRODUCT-004, R-DEV-001,
 R-FRAMEWORK-001
+
+## Retargeted, 2026-10-18: 0.9, behind project-type templating
+
+Applied by `maintenance` with the 0.3.0 cut, from the owner's decision of
+2026-10-11 in the project-management release-scope review
+([the decision record](../../wip/2026-08-09-project-management/2026-10-11-decision-project-operations-and-bootstrap.md)).
+The record stays a confirmed minor bug owned by `maintenance`; what changes
+is its timing and direction. Target **0.9**, and out of 0.3.0, whose
+[release overview](../../releases/v0.3.0/README.md) names it among the
+exclusions. Revisit at the 0.9 planning, with the dependency made explicit:
+bootstrap needs a way to express the project type or ecosystem the user
+intends, through project templating (Java with Maven, Scala with sbt, Python
+with nox as in this repository, Node with npm or Yarn are the examples, not
+a chosen format), and discovers tooling from that intended type.
+Project-management sequences the templating dependency; its implementation
+owner and design are not selected by the decision.
+
+The direction the owner set: the capsule is bootstrapped so the project's
+tools are on `PATH` by default throughout, for the developer, the IDE, the
+terminals and the agent processes, without installing project dependencies
+into a shared system environment; for project types that need it, the
+documented exception is an activated shell, `devcapsule project shell`,
+which belongs to the 0.9 direction and is not promised for 0.3.0. The
+versioned-adapter design and the Python and non-Python proof below remain
+design input for that slice. The 2026-10-05 triage that follows is history:
+its target 0.3.0 is superseded by this ruling.
 
 ## Triage, 2026-10-05: a bug after all, target 0.3, behind the bigger fish
 

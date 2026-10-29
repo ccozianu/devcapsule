@@ -25,7 +25,7 @@ def test_each_page_is_html_that_loads_the_console_script(client, route, title):
 
 
 @pytest.mark.parametrize("route, expected, command", [
-    ("/api/configuration", CONFIGURATION, ["config", "list"]),
+    ("/api/configuration", {**CONFIGURATION, "channel": False}, ["config", "show"]),
     ("/api/versions", VERSIONS, ["versions", "show"]),
     ("/api/project", INFORMATION, ["info"]),
 ])
@@ -64,7 +64,7 @@ def test_a_change_made_with_a_command_shows_after_reload(client, monkeypatch):
     assert client.get("/api/configuration").json()["rows"][0]["status"] == "unset-optional"
     changed = json.loads(json.dumps(CONFIGURATION))
     changed["rows"][0]["status"] = "configured"
-    monkeypatch.setenv("FAKE_CLI_DOCUMENTS", json.dumps({"config list": changed}))
+    monkeypatch.setenv("FAKE_CLI_DOCUMENTS", json.dumps({"config show": changed}))
     assert client.get("/api/configuration").json()["rows"][0]["status"] == "configured"
 
 
@@ -75,7 +75,7 @@ def test_a_failing_cli_is_reported_as_a_bad_gateway(client, monkeypatch, project
     body = response.json()
     assert body["error"] == "the runtime CLI exited with status 2"
     assert body["stderr"] == "devcapsule: the fixture refused\n"
-    assert body["command"][-3:] == ["config", "list", "--json"]
+    assert body["command"][-3:] == ["config", "show", "--json"]
     monkeypatch.delenv("FAKE_CLI_EXIT")
     monkeypatch.setenv("FAKE_CLI_GARBAGE", "1")
     response = with_token(client).get("/api/identity")
@@ -89,7 +89,7 @@ def test_the_reader_names_an_absent_executable_and_a_timeout(project: Path, tmp_
         absent.configuration()
     assert refused.value.reason.startswith("cannot run the runtime CLI")
     assert refused.value.command == (str(tmp_path / "no-such-devcapsule"), "project", "--path", str(project),
-                                     "config", "list", "--json")
+                                     "config", "show", "--json")
     sleeper = tmp_path / "sleep.py"
     sleeper.write_text("import time; time.sleep(5)\n", encoding="utf-8")
     import sys
@@ -138,5 +138,5 @@ def test_an_unavailable_running_set_never_uses_the_next_launch():
 
 def test_the_reader_preserves_unicode_and_finite_numbers(client, monkeypatch):
     document = {"text": "caf\u00e9", "numbers": [1.25, -2.5e10, 0]}
-    monkeypatch.setenv("FAKE_CLI_DOCUMENTS", json.dumps({"config list": document}, ensure_ascii=False))
-    assert with_token(client).get("/api/configuration").json() == document
+    monkeypatch.setenv("FAKE_CLI_DOCUMENTS", json.dumps({"config show": document}, ensure_ascii=False))
+    assert with_token(client).get("/api/configuration").json() == {**document, "channel": False}

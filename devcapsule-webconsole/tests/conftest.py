@@ -92,7 +92,7 @@ def fake_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[tuple[str
     log = tmp_path / "cli-log.jsonl"
     monkeypatch.setenv("FAKE_CLI_LOG", str(log))
     monkeypatch.setenv("FAKE_CLI_DOCUMENTS", json.dumps({
-        "config list": CONFIGURATION, "versions show": VERSIONS, "info": INFORMATION,
+        "config show": CONFIGURATION, "versions show": VERSIONS, "info": INFORMATION,
     }))
     monkeypatch.delenv("FAKE_CLI_EXIT", raising=False)
     monkeypatch.delenv("FAKE_CLI_GARBAGE", raising=False)

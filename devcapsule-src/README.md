@@ -595,7 +595,7 @@ description = "Hard memory limit applied to the checkout's project container."
 
 A declaration may also supply a typed `recommended` value. Resolution uses it
 when the checkout has neither an explicit value nor an explicit omission;
-`config list` labels it `project-recommended`. `config set NAME default` records
+`config show` labels it `project-recommended`. `config set NAME default` records
 the current recommendation, while `config unset NAME` follows it again. These
 ordinary-value defaults never grant host access or authorize downloads.
 
@@ -626,12 +626,12 @@ This value is persistent checkout configuration, not a run-once `--set` effect.
 The developer selects a value for one checkout with the generic command:
 
 ```bash
-devcapsule project config list
+devcapsule project config show
 devcapsule project config set runtime.memory-limit 8GiB
 devcapsule project config resolve
 ```
 
-`project config list` initializes the selected checkout's workstation-owned
+`project config show` initializes the selected checkout's workstation-owned
 directory, minimal checkout input, and unresolved generated-plan placeholder
 when they do not exist, then prints every declared value, component binding,
 recommended authorization, and the generated resolution's state. It is a
@@ -767,7 +767,7 @@ TOML seeding described above.
 Codex falls back to file-backed authentication beneath `$CODEX_HOME` when no
 container keyring is available, so its login and configuration survive later
 launches. The component interface also declares `OPENAI_API_KEY` as an
-optional secret input. `project config list` shows that input and warns that
+optional secret input. `project config show` shows that input and warns that
 environment delivery exposes it to every process in the capsule and through
 Docker inspection while the container runs. DevCapsule never imports it
 ambiently: the developer must explicitly bind the declared same-named host
@@ -817,9 +817,12 @@ digest so the developer can recognize the release being reviewed. The
 authorization record still binds the exact digest and complete lock; the
 mnemonic is never accepted as an artifact identity.
 
-`config authorize NAME VALUE` accepts only the lock-selected base and curated
-host recommendations declared by the project. It writes the exact value and a
-digest of the relevant recommendation to this checkout's input file. A changed
+`config authorize NAME VALUE` accepts the lock-selected base, the host
+capability nodes every project has (`network`, `docker-daemon`,
+`development-sudo`, `host-browser`, `host-x11`) and the vendor acquisitions;
+a project's recommendation attaches its justification to a node, it does not
+create it. The command writes the exact value and a digest of the relevant
+recommendation to this checkout's input file. A changed
 base lock or host recommendation is stale and requires deliberate review and
 reauthorization; a committed project change never grants access by itself.
 
@@ -868,7 +871,7 @@ Docker image ID; the selection stays valid across lock changes, being bound
 to the image. Resolve and run inspect it again;
 removing or retagging the name fails instead of pulling or silently running a
 different image. Reauthorize after deliberately rebuilding the tag.
-`config list` reports this state as `authorized-local`, while
+`config show` reports this state as `authorized-local`, while
 `authorize --all-recommended` deliberately switches back to the lock's
 published recommendation. A different published registry digest remains
 rejected unless the project lock recommends it.
@@ -1204,11 +1207,21 @@ or the configured environment materialization used by `project run`.
 
 Project launch preserves home and IDE state through declared bindings, including
 `home`, `pycharm/config`, `pycharm/plugins`, `pycharm/system`, `pycharm/log`, and
-`pycharm/cache`. Use `project config list` to inspect them and
+`pycharm/cache`. Use `project config show` to inspect them and
 `project config bind NAME host-directory:/path/to/directory` to select an
 explicit location, then `project config resolve`. Separate concurrent PyCharm
 sessions must use separate IDE configuration directories. Legacy profile and
 state-root flags are no longer a public launch interface.
+
+### Persist extra Docker options
+
+Use `project config set-extra-docker-args -- OPTIONS...` to replace the saved
+argument list for this checkout. For example, `--gpus all` grants GPU access
+when the host has the necessary GPU runtime. `list-extra-docker-args [--json]`
+shows the saved tokens with inline environment values masked;
+`remove-extra-docker-args` clears the list. The hidden-input `set-env KEY`
+convenience edits that same list. See [saved Docker arguments](../docs/configuration/project-versus-personal.md#saved-docker-arguments)
+for storage, precedence, mounts and credential handling.
 
 ### Inspect the Docker launch command
 
@@ -1217,7 +1230,9 @@ devcapsule project --path /path/to/project run --print-command > launch.sh
 ```
 
 This prepares the currently selected environment through ordinary configuration
-and authorization checks, then prints the actual shell-quoted Docker command.
+and authorization checks, then prints the shell-quoted Docker command, masking
+inline environment values from saved or one-off extra options. A redacted
+command is a preview; use `project run` to supply the actual saved values.
 It may acquire/build the image and prepare state; it does not launch the project
 container, open a desktop, check/select component updates or record successful use.
 Preparation messages go to stderr, keeping stdout suitable for a file or editor.

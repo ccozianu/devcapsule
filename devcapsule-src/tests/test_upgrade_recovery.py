@@ -6,6 +6,8 @@ Docker, image building and GUI launch are substituted in the journey tests.
 """
 from __future__ import annotations
 
+from tests.launch_preparation import run_until_prepared
+
 from dataclasses import replace
 from pathlib import Path
 import shlex
@@ -72,9 +74,11 @@ def invoke(project, *args):
 
 
 def review(project, record):
+    # The checkout's effective lock: a lock regenerated since rc4 is
+    # project-only, the IDE comes from the checkout's own pins.
+    from devcapsule.configuration.storage import lock_for
     _, manifest = manifest_for(project)
-    lock = load_toml(project / ".devcapsule/devcapsule.linux-amd64.lock")
-    return review_configuration(manifest, lock, load_toml(record))
+    return review_configuration(manifest, lock_for(project, manifest)[1], load_toml(record))
 
 
 def replace_answers(project, record, answers):
@@ -93,7 +97,14 @@ def change_project(project, *, lock=True, manifest=True):
 
 def install_external_fakes(monkeypatch, events, *, contained=True):
     """Keep real realization; substitute its external effects."""
-    def realize(selected, *, report, prepare_base):
+    # The fake base's catalog contract must agree with its daemon labels.
+    from devcapsule.configuration import derivation
+    from devcapsule.resolution_matrix import known_base_image
+    def fake_base(reference):
+        base = known_base_image(reference)
+        return replace(base, contract=replace(base.contract, display="contained" if contained else "host-x11-only")) if base else None
+    monkeypatch.setattr(derivation, "known_base_image", fake_base, raising=False)
+    def realize(selected, *, report, prepare_base, trust=None):
         def obtain(reference):
             events.append("obtain-base")
             return ImageDetails(reference, LOCAL_ID, {
@@ -108,7 +119,8 @@ def install_external_fakes(monkeypatch, events, *, contained=True):
             return "local/environment:test", False
         return realize_environment(selected, obtain_image=obtain, inspect_image=Mock(), build=Mock(),
             require_image=lambda ref: ImageDetails(ref, "sha256:environment", CONTAINED if contained else {}, "linux", "amd64"),
-            materialize=materialize, report=report, prepare_base=prepare)
+            materialize=materialize, report=report, prepare_base=prepare,
+            **({"trust": trust} if trust is not None else {}))
     launch = Mock(side_effect=lambda options: events.append(options) or 0)
     monkeypatch.setattr("devcapsule.commands.project.realize_environment", realize)
     monkeypatch.setattr("devcapsule.commands.project.run_pycharm", launch)
@@ -116,16 +128,22 @@ def install_external_fakes(monkeypatch, events, *, contained=True):
 
 
 # Persistence adapter law: inspection and execution preserve their input files.
-@pytest.mark.parametrize("operation", [("config", "list"), ("run",)])
+@pytest.mark.parametrize("operation", [("config", "show"), ("run",)])
 def test_read_only_operations_preserve_configuration_files(checkout, monkeypatch, operation):
     """Persistence adapter contract; semantic upgrade laws live in tests.configuration.test_adt."""
     project, record, resolution = checkout
-    paths = [record, resolution, *sorted((project / ".devcapsule").iterdir())]
+    # The resolution is the launch's own derived artifact since 0.3.0 rc4;
+    # every input file is preserved, by inspection and by the launch alike.
+    paths = [record, *sorted((project / ".devcapsule").iterdir())]
     before = {p: p.read_bytes() for p in paths}
     if operation == ("run",):
         install_external_fakes(monkeypatch, [], contained=False)
+        # A base without a contained desktop shows the IDE on the host's X
+        # session only by explicit consent; given for this launch alone.
+        operation = ("run", "--authorize", "host-x11", "true")
     assert invoke(project, *operation) == 0
     assert {p: p.read_bytes() for p in paths} == before
+    assert resolution.is_file()
 
 
 # Show all changed questions; each selected answer makes progress. Unrelated
@@ -139,26 +157,37 @@ def test_upgrade_recovery_commands_converge_to_the_intended_launch(
     if display_answer is not None:
         assert invoke(project, "config", "authorize", "host-x11", str(display_answer).lower()) == 0
     assert invoke(project, "config", "authorize", "development-sudo", "false") == 0
-    assert invoke(project, "config", "resolve") == 0
+    assert run_until_prepared(project) == 0
     original_answers = load_toml(record)["authorization"]
     before_record, before_resolution = record.read_bytes(), resolution.read_bytes()
     change_project(project, lock=lock_changed, manifest=manifest_changed)
     capsys.readouterr()
     events = []
     launch = install_external_fakes(monkeypatch, events)
-    assert invoke(project, "run") == 2
-    assert events == []
-    assert invoke(project, "config", "resolve") == 2
-    refusal = capsys.readouterr().err
-    expected = ({"base-image"} if lock_changed else set()) | ({"host-browser"} if manifest_changed else set())
+    # A moved base is a pending decision: the launch ends with status 3 and
+    # nothing written. A changed host recommendation asks nothing: the
+    # recorded answer is kept and the launch goes on (D-0012, answer 23).
+    expected = {"base-image"} if lock_changed else set()
+    if lock_changed:
+        assert invoke(project, "run", "--authorize", "host-x11", "true") == 3
+        assert events == []
+        assert run_until_prepared(project) == 3
+        refusal = capsys.readouterr().err
+        for name in expected:
+            assert name in refusal
+        assert record.read_bytes() == before_record
+        assert resolution.read_bytes() == before_resolution
+    else:
+        assert invoke(project, "run", "--authorize", "host-x11", "true") == 0
+        assert launch.call_count == 1
+        assert record.read_bytes() == before_record
     pending = {r.name: r for r in review(project, record).authorizations if r.problem}
     assert set(pending) == expected
-    for name in expected:
-        assert f"{name}: stale" in refusal
-    assert record.read_bytes() == before_record
-    assert resolution.read_bytes() == before_resolution
+    if manifest_changed:
+        browser = next(r for r in review(project, record).authorizations if r.name == "host-browser")
+        assert browser.superseded and browser.problem is None
     # The remedies are advice, and advice lives in `config show` since
-    # 2026-09-24; `config list` is the data listing alone.
+    # 2026-09-24; `config show` is the data listing alone.
     assert invoke(project, "config", "show") == 0
     listing = capsys.readouterr().out
     for item in pending.values():
@@ -167,7 +196,7 @@ def test_upgrade_recovery_commands_converge_to_the_intended_launch(
         assert cli.main(shlex.split(command)[1:]) == 0
         expected.remove(item.name)
         assert {r.name for r in review(project, record).authorizations if r.problem} == expected
-    assert invoke(project, "config", "resolve") == 0
+    assert run_until_prepared(project) == 0
     assert review(project, record).ready
     answers = load_toml(record)["authorization"]
     assert answers["development-sudo"] == original_answers["development-sudo"]
@@ -203,18 +232,12 @@ def test_host_answer_state_table_and_executable_choices(checkout, name, allow, d
     answers = {name: {"value": answer, "recommendation-digest": "old" if stale else declarations[name].recommendation_digest}}
     replace_answers(project, record, answers)
     result = next(item for item in review(project, record).authorizations if item.name == name)
-    assert result.status == ("stale" if stale else "authorized" if allowed else "denied")
+    # A host answer under an earlier recommendation is kept and disclosed as
+    # superseded, never asked again (D-0012, answer 23 of the CLI UX work order).
+    assert result.status == ("authorized" if allowed else "denied")
     assert result.value == answer
-    if stale:
-        assert result.choices[0].value == str(answer).lower()
-        for choice in result.choices:
-            replace_answers(project, record, answers)
-            assert cli.main(shlex.split(choice.command(project))[1:]) == 0
-            updated = next(item for item in review(project, record).authorizations if item.name == name)
-            assert updated.problem is None
-            assert updated.value == (allow if choice.value == str(allow).lower() else deny)
-    else:
-        assert result.choices == ()
+    assert result.problem is None and result.choices == ()
+    assert bool(result.superseded) is stale
 
 
 @pytest.mark.parametrize("record,status,choice_values", [
@@ -287,7 +310,7 @@ def test_conflicting_state_bindings_do_not_publish_partial_resolution(checkout):
     record.write_text(render_checkout(manifest, project, {"home": str(project)}, {}, answers,
         host_directory_bindings={"home": str(project)}))
     before = resolution.read_bytes()
-    assert invoke(project, "config", "resolve") == 2
+    assert run_until_prepared(project) == 2
     assert resolution.read_bytes() == before
     assert "cannot be both adopted" in review(project, record).render(project)
 
@@ -307,7 +330,7 @@ def test_display_decision_table(labels, answer, expected):
 def test_display_denial_stops_before_materialization(checkout, monkeypatch):
     project, _, _ = checkout
     assert invoke(project, "config", "authorize", "host-x11", "false") == 0
-    assert invoke(project, "config", "resolve") == 0
+    assert run_until_prepared(project) == 0
     events = []
     launch = install_external_fakes(monkeypatch, events, contained=False)
     assert invoke(project, "run") == 2
@@ -328,13 +351,13 @@ def test_invalid_run_once_choices_cannot_trigger_a_build(checkout, monkeypatch, 
     launch.assert_not_called()
 
 
-def test_force_cannot_resurrect_a_revoked_host_permission(checkout, monkeypatch):
+def test_run_cannot_resurrect_a_revoked_host_permission(checkout, monkeypatch):
     project, record, _ = checkout
-    assert invoke(project, "config", "unset", "host-browser") == 0
+    assert invoke(project, "config", "forget", 'host-browser') == 0
     before = record.read_bytes()
     events = []
     launch = install_external_fakes(monkeypatch, events)
-    assert invoke(project, "run", "--force") == 0
+    assert invoke(project, "run") == 0
     assert launch.call_args.args[0].enable_host_browser is False
     assert record.read_bytes() == before
 
@@ -401,7 +424,7 @@ def test_regeneration_preserves_an_existing_denial(checkout):
     project, record, _ = checkout
     change_project(project, lock=False)
     assert invoke(project, "config", "authorize", "host-browser", "false") == 0
-    assert invoke(project, "config", "resolve") == 0
+    assert run_until_prepared(project) == 0
     previous = load_toml(record)["authorization"]["host-browser"]
     assert invoke(project, "init", "--regenerate", "--authorize", "base-image", "default") == 0
     assert load_toml(record)["authorization"]["host-browser"] == previous
@@ -410,9 +433,8 @@ def test_regeneration_preserves_an_existing_denial(checkout):
 
 def test_repeated_init_does_not_turn_acquisition_denial_into_consent(checkout):
     project, record, _ = checkout
-    assert invoke(project, "config", "need", "claude-code-agent",
-                  "--authorize", "base-image", "default",
-                  "--authorize", "claude-code-download", "true") == 0
+    assert invoke(project, "config", "add", "claude-code-agent") == 0
+    assert invoke(project, "config", "authorize", "claude-code-download", "true") == 0
     assert invoke(project, "config", "authorize", "claude-code-download", "false") == 0
     before = record.read_bytes()
     assert invoke(project, "init", "--regenerate", "--authorize", "base-image", "default") == 2
@@ -442,7 +464,8 @@ def test_current_answers_have_one_resolved_interpretation(checkout):
 
 def test_recovery_preserves_values_bindings_secrets_and_adopted_state(checkout, monkeypatch, capsys):
     project, record, resolution = checkout
-    assert invoke(project, "config", "need", "codex-agent", "--authorize", "base-image", "default") == 0
+    assert invoke(project, "config", "add", "codex-agent") == 0
+    assert invoke(project, "config", "authorize", "base-image", "default") == 0
     manifest_path = project / ".devcapsule/devcapsule.toml"
     manifest_path.write_text(manifest_path.read_text() + '''
 [configuration.values."editor.theme"]
@@ -452,11 +475,11 @@ type = "memory-size"
 runtime-effect = "docker.memory-limit"
 ''')
     assert invoke(project, "config", "set", "editor.theme", "dark") == 0
-    assert invoke(project, "config", "set", "runtime.memory-limit", "8GiB") == 0
+    assert invoke(project, "config", "set", "memory", "8GiB") == 0
     assert invoke(project, "config", "bind", "home", f"host-directory:{project}") == 0
     assert invoke(project, "config", "bind", "codex/openai-api-key", "host-environment:OPENAI_API_KEY") == 0
     record.write_text(record.read_text() + f'\n[state.adopted]\n"pycharm/config" = "{project.as_posix()}"\n')
-    assert invoke(project, "config", "resolve") == 0
+    assert run_until_prepared(project) == 0
     before_record = load_toml(record)
     before_resolution = load_toml(resolution)
     monkeypatch.setenv("OPENAI_API_KEY", "test-secret-must-never-be-persisted")
@@ -465,11 +488,8 @@ runtime-effect = "docker.memory-limit"
 value = true
 justification = "Changed browser recommendation."
 ''')
-    assert invoke(project, "config", "resolve") == 2
-    for item in review(project, record).authorizations:
-        if item.problem:
-            assert cli.main(shlex.split(item.choices[0].command(project))[1:]) == 0
-    assert invoke(project, "config", "resolve") == 0
+    # The changed recommendation asks nothing; the recorded answer stands.
+    assert run_until_prepared(project) == 0
     after_record = load_toml(record)
     after_resolution = load_toml(resolution)
     for key in ("configuration", "state"):
@@ -481,13 +501,13 @@ justification = "Changed browser recommendation."
     assert "test-secret-must-never-be-persisted" not in record.read_text() + resolution.read_text() + out.out + out.err
 
 
-def test_force_uses_current_legacy_host_decisions(checkout, monkeypatch):
+def test_run_uses_current_legacy_host_decisions(checkout, monkeypatch):
     project, record, _ = checkout
     manifest = load_toml(project / ".devcapsule/devcapsule.toml")
     answers = load_toml(record)["authorization"]
     record.write_text(render_checkout(manifest, project, {}, {"development-sudo": True}, answers))
-    assert invoke(project, "config", "resolve") == 0
+    assert run_until_prepared(project) == 0
     replace_answers(project, record, answers)
     launch = install_external_fakes(monkeypatch, [])
-    assert invoke(project, "run", "--force") == 0
+    assert invoke(project, "run") == 0
     assert launch.call_args.args[0].enable_sudo is False

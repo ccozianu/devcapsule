@@ -9,6 +9,14 @@ import re
 from typing import Any, Mapping
 
 
+INFRASTRUCTURE_FAILURE_EXIT_CODE = 70
+"""The capsule's exit code when a supervised component died, not the IDE.
+
+The supervisor returns it in place of the foreground child's status, and the
+launcher reads it to tell a failed session from one the IDE ended; EX_SOFTWARE
+in sysexits.h, outside the codes an IDE returns."""
+
+
 class RuntimePlanError(ValueError):
     """The runtime plan is malformed or unsupported."""
 
