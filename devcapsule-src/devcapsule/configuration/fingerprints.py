@@ -3,6 +3,7 @@
 from __future__ import annotations
 from typing import Any, Mapping
 
+from .capabilities import CapabilityPolicy, LocalCapabilities
 from .file_formats import canonical_digest, legacy_lock, table, ProjectConfigurationError
 from .manifest import configuration_manifest
 from .home import HomeDefaults
@@ -10,7 +11,7 @@ from .home import HomeDefaults
 
 def resolution_source_digests(
     manifest: Mapping[str, Any], lock: Mapping[str, Any], checkout: Mapping[str, Any],
-    home: Mapping[str, Any] | None = None, *, policy: Any | None = None,
+    home: Mapping[str, Any] | None = None, *, policy: CapabilityPolicy | None = None,
 ) -> dict[str, str]:
     """The exact source digests a fresh generated resolution must record.
 
@@ -30,7 +31,6 @@ def resolution_source_digests(
         "home-config": canonical_digest(defaults) if defaults else "absent",
     }
 
-    from .capabilities import CapabilityPolicy, LocalCapabilities
     if policy is None:
         policy = CapabilityPolicy.read(manifest)
     if not legacy_lock(lock):

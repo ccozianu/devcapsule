@@ -206,7 +206,7 @@ def test_a_real_dependency_on_the_replaced_ide_is_explained_and_refused(monkeypa
 
 
 def test_departing_sets_aside_only_the_named_requirement() -> None:
-    policy = CapabilityPolicy(("python", "python-ide"), ("browser-automation",), (("python", "3.12"),))
+    policy = CapabilityPolicy(("python", "python-ide"), ("browser-automation",), (("python", "3.12"), ("python-ide", "2026")))
     departed = policy.departing((RequirementDeparture(IDE_REQUIREMENT, "python-ide", "frontend-ide"),))
     assert departed == CapabilityPolicy(("python",), ("browser-automation",), (("python", "3.12"),))
     assert policy.departing((RequirementDeparture(IDE_REQUIREMENT, "java-ide", "frontend-ide"),)) is policy
@@ -224,6 +224,9 @@ def test_the_cli_carries_force_to_the_plan_and_back_to_the_saved_ide(project: Pa
     assert "Not recorded as known-good" in captured.out
     options = launch.call_args.args[0]
     assert options.runtime_plan.component.id == "codium"
+    assert options.docker_mode.value == "none"
+    assert options.network_mode == "bridge" and not options.enable_sudo
+    assert options.display_transport == "contained" and not options.enable_host_browser
     assert "codex" in {item.id for item in options.runtime_plan.ancillary_components}
     assert "pycharm" not in {item.id for item in options.runtime_plan.ancillary_components}
     assert options.launch_configuration.listing["departures"][0]["required"] == "python-ide"
@@ -261,6 +264,7 @@ def test_print_command_follows_the_same_override_path(project: Path, monkeypatch
     launch = install_external_fakes(monkeypatch, [])
     before = (shared_bytes(project), record_path(project).read_bytes())
     resolution = checkout_record_paths(load_toml(paths(project)[0]), project)[1]
+    resolution_before = resolution.read_bytes()
     assert invoke(project, "run", "--ide", "codium", "--print-command") == 2, "the print path refuses the conflict too"
     assert "--ide codium --force" in capsys.readouterr().err
     assert invoke(project, "run", "--ide", "codium", "--force", "--print-command") == 0
@@ -268,6 +272,7 @@ def test_print_command_follows_the_same_override_path(project: Path, monkeypatch
     assert "WARNING: --force sets aside the project's required IDE python-ide" in err
     assert launch.call_args.args[0].runtime_plan.component.id == "codium"
     assert launch.call_args.args[0].command_report is not None
+    assert resolution.read_bytes() == resolution_before
     assert (shared_bytes(project), record_path(project).read_bytes()) == before
     assert invoke(project, "run", "--ide", "codium", "--force", "--save", "--print-command") == 2
     assert "cannot be combined with --save" in capsys.readouterr().err
@@ -282,3 +287,212 @@ def test_a_saved_conflicting_ide_names_the_override(project: Path) -> None:
     checkout = {"capabilities": {"selected": ["frontend-ide"], "lock": MATRIX.resolve(["frontend-ide"]).render_lock()}}
     with pytest.raises(ProjectConfigurationError, match="Local IDE 'frontend-ide' conflicts with the project's required IDE 'python-ide'.*--ide frontend-ide --force"):
         selected_lock(manifest, shared, checkout)
+
+
+@pytest.mark.parametrize("arguments", [
+    ("--ide", "codium"), ("--force",), ("--ide", "pycharm", "--force"),
+    ("--ide", "codium", "--force", "--save"),
+])
+def test_invalid_override_precedes_software_approval_writes(
+    project: Path, monkeypatch: pytest.MonkeyPatch, arguments: tuple[str, ...],
+) -> None:
+    from devcapsule.commands import project as command_module
+    from unittest.mock import Mock
+    approvals = Mock(return_value=True)
+    monkeypatch.setattr(command_module, "offer_software_approvals", approvals)
+    before = {path: path.read_bytes() for path in project.parent.rglob("*.toml")}
+    assert invoke(project, "run", *arguments, "--no-update-check") == 2
+    approvals.assert_not_called()
+    assert {path: path.read_bytes() for path in project.parent.rglob("*.toml")} == before
+
+
+def test_optional_download_retry_keeps_the_departure(
+    project: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from devcapsule.commands import project as command_module
+    from devcapsule.components.catalog import COMPONENTS
+    from devcapsule.configuration.capability_commands import configure
+    from devcapsule.configuration.storage import ResolvedProject
+    from devcapsule.materialization import ArtifactUnavailable
+    from tests.test_upgrade_recovery import install_external_fakes
+
+    configure(project, optional=["browser-automation"])
+    launch = install_external_fakes(monkeypatch, [])
+    realize = command_module.realize_environment
+    attempts: list[ResolvedProject] = []
+
+    def retry(selected: ResolvedProject, **kwargs):
+        attempts.append(selected)
+        if "playwright" in selected.lock["components"]:
+            artifact = COMPONENTS["playwright"].locked_artifacts(selected.lock["components"]["playwright"], "linux-amd64")[0]
+            raise ArtifactUnavailable(artifact.url, "fixture unavailable")
+        return realize(selected, **kwargs)
+
+    monkeypatch.setattr(command_module, "realize_environment", retry)
+    before = (shared_bytes(project), record_path(project).read_bytes())
+    assert invoke(project, "run", "--ide", "codium", "--force", "--no-update-check") == 0
+    assert len(attempts) == 2
+    reduced = attempts[-1]
+    assert "playwright" not in reduced.lock["components"]
+    assert "codex" in reduced.lock["components"] and "pycharm" not in reduced.lock["components"]
+    assert reduced.departures == attempts[0].departures
+    assert reduced.resolution["departures"] == attempts[0].resolution["departures"]
+    assert launch.call_args.args[0].runtime_plan.component.id == "codium"
+    assert launch.call_args.args[0].launch_configuration.listing["departures"][0]["required"] == "python-ide"
+    assert (shared_bytes(project), record_path(project).read_bytes()) == before
+    assert not history_directory(load_toml(paths(project)[0])).exists()
+    assert not (state_directory(project) / "known-good").exists()
+
+
+def test_forced_launch_from_a_saved_version_set(project: Path) -> None:
+    from devcapsule.configuration.derivation import load_state
+    from devcapsule.configuration.file_formats import canonical_digest, render_toml
+    state = load_state(project, load_toml(paths(project)[0]))
+    document = load_toml(record_path(project))
+    document["version-set"] = {"format": 1, "lock": render_toml(state.composed_lock()),
+                               "recommendation-digest": canonical_digest(state.shared_lock)}
+    record_path(project).write_text(render_toml(document))
+    before = record_path(project).read_bytes()
+    selected = prepare_launch(project, RunFlags(ide="codium", force=True), interactive=False).selected
+    assert selected.resolution["runtime"]["component"] == "codium"
+    assert selected.resolution["departures"][IDE_REQUIREMENT]["required"] == "python-ide"
+    assert "pycharm" not in selected.lock["components"]
+    assert "codex" in selected.lock["components"]
+    assert record_path(project).read_bytes() == before
+    assert prepare_launch(project, RunFlags(), interactive=False).selected.resolution["runtime"]["component"] == "pycharm"
+
+
+def test_checkout_show_after_forced_launch_has_no_departure(project: Path, monkeypatch: pytest.MonkeyPatch, capsys) -> None:
+    import json
+    from devcapsule import runtime_configuration
+    monkeypatch.setattr(runtime_configuration, "CHANNEL_PATH", project / "no-runtime-channel")
+    selected = prepare_launch(project, RunFlags(ide="codium", force=True), interactive=False).selected
+    assert "departures" in load_toml(selected.resolution_path)
+    capsys.readouterr()
+    assert invoke(project, "config", "show", "--json") == 0
+    listing = json.loads(capsys.readouterr().out)
+    assert "departures" not in listing
+    assert [row["name"] for row in listing["rows"] if row["kind"] == "ide"] == ["python-ide"]
+    assert "departures" in load_toml(selected.resolution_path), "inspection must not replace the launch plan"
+
+
+def test_force_can_recover_a_saved_ide_that_conflicts_with_a_later_requirement(
+    project: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from devcapsule.configuration.file_formats import render_toml
+    from tests.test_upgrade_recovery import install_external_fakes
+    # This is the record a developer already had when the owner added the requirement.
+    selected = prepare_launch(project, RunFlags(ide="codium", force=True), interactive=False, print_only=True).selected
+    record_path(project).write_text(render_toml(selected.checkout))
+    before = record_path(project).read_bytes()
+    launch = install_external_fakes(monkeypatch, [])
+    assert invoke(project, "run", "--ide", "codium", "--force", "--no-update-check") == 0
+    assert launch.call_args.args[0].runtime_plan.component.id == "codium"
+    assert record_path(project).read_bytes() == before
+    assert invoke(project, "run", "--no-update-check") == 2, "the unchanged saved choice still conflicts"
+
+
+@pytest.mark.parametrize("required_ide", ["python-ide", "pycharm"])
+def test_departed_minimum_and_canonical_ide_comparison(project: Path, required_ide: str) -> None:
+    from devcapsule.configuration.file_formats import render_toml
+    manifest_path = paths(project)[0]
+    manifest = load_toml(manifest_path)
+    manifest["capabilities"]["required"] = ["python>=3", f"{required_ide}>=9999", "codex-agent"]
+    manifest_path.write_text(render_toml(manifest))
+    with pytest.raises(ProjectConfigurationError, match="nothing to set aside"):
+        prepare_launch(project, RunFlags(ide="python-ide", force=True), interactive=False)
+    selected = prepare_launch(project, RunFlags(ide="codium", force=True), interactive=False).selected
+    assert selected.resolution["runtime"]["component"] == "codium"
+    assert selected.resolution["departures"][IDE_REQUIREMENT]["required"] == required_ide
+    # Only the IDE's minimum is waived; an impossible Python minimum still refuses.
+    manifest["capabilities"]["required"][0] = "python>=9999"
+    manifest_path.write_text(render_toml(manifest))
+    with pytest.raises(ProjectConfigurationError, match="python.*9999"):
+        prepare_launch(project, RunFlags(ide="codium", force=True), interactive=False)
+
+
+def test_forced_cli_still_requires_the_requested_channel(project: Path, monkeypatch: pytest.MonkeyPatch, capsys) -> None:
+    from tests.test_upgrade_recovery import install_external_fakes
+    launch = install_external_fakes(monkeypatch, [])
+    before = {path: path.read_bytes() for path in project.parent.rglob("*.toml")}
+    assert invoke(project, "run", "--ide", "vscode", "--force", "--no-update-check") == 3
+    assert "vscode" in capsys.readouterr().err
+    launch.assert_not_called()
+    assert {path: path.read_bytes() for path in project.parent.rglob("*.toml")} == before
+
+
+def test_schema_one_recommendation_accepts_an_unforced_override(project: Path) -> None:
+    from devcapsule.configuration.file_formats import render_toml
+    manifest_path = paths(project)[0]
+    manifest = load_toml(manifest_path)
+    manifest["devcapsule-schema-version"] = 1
+    manifest["capabilities"] = {"need": ["python", "python-ide", "codex-agent"]}
+    manifest_path.write_text(render_toml(manifest))
+    before = (shared_bytes(project), record_path(project).read_bytes())
+    selected = prepare_launch(project, RunFlags(ide="codium"), interactive=False).selected
+    assert selected.resolution["runtime"]["component"] == "codium"
+    assert selected.departures == () and "departures" not in selected.resolution
+    assert (shared_bytes(project), record_path(project).read_bytes()) == before
+
+
+def test_forced_launch_does_not_catch_an_artifact_digest_failure(
+    project: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys,
+) -> None:
+    from devcapsule.commands import project as command_module
+    from devcapsule.materialization import acquire_artifact, ArtifactSpec
+    from tests.test_upgrade_recovery import install_external_fakes
+    launch = install_external_fakes(monkeypatch, [])
+    payload = tmp_path / "bad-artifact"
+    payload.write_bytes(b"incorrect artifact bytes")
+
+    def corrupted(selected, **kwargs):
+        assert selected.departures and selected.resolution["runtime"]["component"] == "codium"
+        return acquire_artifact(ArtifactSpec("1", payload.as_uri(), "a" * 64), tmp_path / "artifacts")
+
+    monkeypatch.setattr(command_module, "realize_environment", corrupted)
+    before = (shared_bytes(project), record_path(project).read_bytes())
+    assert invoke(project, "run", "--ide", "codium", "--force", "--no-update-check") == 2
+    assert "digest mismatch" in capsys.readouterr().err
+    launch.assert_not_called()
+    assert (shared_bytes(project), record_path(project).read_bytes()) == before
+    assert prepare_launch(project, RunFlags(), interactive=False).selected.resolution["runtime"]["component"] == "pycharm"
+
+
+@pytest.mark.parametrize("sdk_minimum", [False, True])
+def test_local_base_minimum_guards_use_the_launch_policy(project: Path, sdk_minimum: bool) -> None:
+    from copy import deepcopy
+    from dataclasses import replace
+    from devcapsule.compat import CliError
+    from devcapsule.configuration.model import Configuration
+    from devcapsule.environment_realization import realize_environment
+
+    prepared = prepare_launch(project, RunFlags(ide="codium", force=True), interactive=False)
+    selected = prepared.selected
+    manifest = deepcopy(selected.manifest)
+    manifest["capabilities"]["required"] = ["python>=3" if sdk_minimum else "python", "python-ide>=2026", "codex-agent"]
+    checkout = deepcopy(selected.checkout)
+    checkout["authorization"]["base-image"] = {"reference": "local/base:approved", "image-id": "sha256:" + "a" * 64}
+
+    if sdk_minimum:
+        with pytest.raises(ProjectConfigurationError, match="minimum-version guarantee"):
+            Configuration(manifest, selected.lock, checkout, prepared.home, departures=selected.departures)
+    else:
+        configuration = Configuration(manifest, selected.lock, checkout, prepared.home, departures=selected.departures)
+        assert configuration.review().ready
+        assert configuration.resolve().document()["departures"] == selected.resolution["departures"]
+
+    looked_up: list[str] = []
+
+    def stop_at_lookup(reference: str):
+        looked_up.append(reference)
+        raise RuntimeError("reached image lookup")
+
+    candidate = replace(selected, manifest=manifest)
+    if sdk_minimum:
+        with pytest.raises(CliError, match="minimum-version guarantee"):
+            realize_environment(candidate, base_override="local/base:approved", obtain_image=stop_at_lookup)
+        assert looked_up == []
+    else:
+        with pytest.raises(RuntimeError, match="reached image lookup"):
+            realize_environment(candidate, base_override="local/base:approved", obtain_image=stop_at_lookup)
+        assert looked_up == ["local/base:approved"]

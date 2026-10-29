@@ -12,6 +12,7 @@ from devcapsule.components.catalog import INTERACTIVE_SURFACES
 from devcapsule.project import ProjectMountError, normalize_project_mount
 from devcapsule.runtime_command import RuntimeCommand
 
+from .capabilities import RequirementDeparture
 from .authorization import authorized_base_selection
 from .file_formats import (
     ConfigurationFileKind,
@@ -31,7 +32,7 @@ from .values import checkout_omitted_values
 def render_resolution(manifest: Mapping[str, Any], lock: Mapping[str, Any],
                       checkout: Mapping[str, Any], review: ConfigurationReview,
                       home: Mapping[str, Any] | None = None, *,
-                      departures: tuple[Any, ...] = ()) -> str:
+                      departures: tuple[RequirementDeparture, ...] = ()) -> str:
     """The resolution document; ``departures`` are the launch's named departures from the project's contract."""
     if not review.ready:
         raise ProjectConfigurationError("Cannot publish an incomplete configuration.")

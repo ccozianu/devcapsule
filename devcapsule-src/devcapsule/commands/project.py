@@ -37,7 +37,7 @@ from devcapsule.commands.framework import (
 from devcapsule.components.catalog import COMPONENTS
 from devcapsule.commands._versions import VersionsGroup
 from devcapsule.commands._upgrade_prompt import offer_upgrades
-from devcapsule.commands._run_flow import RunFlags, launch_listing_document, prepare_launch
+from devcapsule.commands._run_flow import RunFlags, launch_listing_document, load_launch_state, prepare_launch
 from devcapsule.display_client import has_contained_display
 from devcapsule.commands._software_approvals import (
     SOFTWARE_APPROVALS_GUIDE_URL,
@@ -2138,13 +2138,15 @@ class ProjectRunCommand(Command):
     def _run(cls, arguments: argparse.Namespace, context: object | None,
              command_report: Callable[[str], None] | None = None) -> int:
         start = _project_context(context).start_path()
-        # Software approvals first: new versions of vendor software approved
-        # before are one question at launch, by the owner's direction of
-        # 2026-10-22. Printing the command never asks or writes.
-        if command_report is None and not offer_software_approvals(start):
+        flags = _run_flags(arguments, manifest_for(start)[1])
+        if flags.ide is not None or flags.force:
+            load_launch_state(start, flags)
+        # The bulk offer reviews and saves the checkout's ordinary selection.
+        # A departed launch instead reviews its actual environment in prepare_launch;
+        # that staged review still requires all software approvals and channel trust.
+        if command_report is None and not flags.force and not offer_software_approvals(start):
             print("Launch cancelled; no session was started.")
             return 1
-        flags = _run_flags(arguments, manifest_for(start)[1])
         # The saved Docker arguments and the raw options are validated before
         # anything is asked, so a bad file refuses the launch before a question.
         docker_options = list(arguments.docker_options)
