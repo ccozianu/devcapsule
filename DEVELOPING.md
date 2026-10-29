@@ -34,6 +34,31 @@ Setup, the gate's steps, building the executable, the shipped `devcapsule0`
 versus the development `devcapsule`, and working from inside a capsule:
 [Developer environment](engineering-docs/development/developer-environment.md).
 
+### IDE project files
+
+The repository tracks the JetBrains project files that PyCharm itself does
+not ignore. `.idea/.gitignore`, written by PyCharm, is JetBrains' own list
+of per-machine files and is the contract; everything else under `.idea/`
+is committed: the module files PyCharm generates from each `pyproject.toml`
+it finds, the modules list, and the shared run configurations under
+`.idea/runConfigurations/` (the unit tests and the `devcapsule` CLI), so
+that another checkout runs and debugs without setup. Both configurations
+use the module's interpreter and project-relative paths; nothing in them
+names a machine.
+
+The one per-machine step is the interpreter. Register
+`devcapsule-src/.venv` as the project interpreter once; PyCharm names it by
+its path, which is the name the module file carries as a `$MODULE_DIR$`
+macro, so the committed module and run configurations resolve to it.
+`.idea/misc.xml` stays ignored: it records the workstation's project SDK by
+name, and once tracked it makes PyCharm add every new `.idea` file to VCS
+on its own.
+
+DevCapsule writes nothing into `.idea` and takes no responsibility for IDE
+settings across ecosystems; it relies on the IDE cooperating with Git.
+Other projects choose their own rule. Owner's rule of 2026-10-23, replacing
+the ruling of 2026-10-01 to ignore the directory.
+
 ## Source layout
 
 ### Python package boundaries

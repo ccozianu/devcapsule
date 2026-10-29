@@ -131,6 +131,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Work Orders
 
+- [Explicit IDE requirement override](engineering-docs/work-orders/2026-10-28-explicit-ide-requirement-override.md)
 - [The manifest's two schemas as classes; `init --regenerate` migrates](engineering-docs/work-orders/2026-10-26-manifest-schemas-as-classes.md)
 - [Orientation, concepts, persistence and recipes in the documentation](engineering-docs/work-orders/2026-10-25-documentation-orientation-and-concepts.md)
 - [Redesign the project config and project run experience (draft)](engineering-docs/work-orders/2026-10-24-cli-ux-redesign.md)
@@ -222,6 +223,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Development Blog
 
+- [Diagnosing a capsule from both sides](engineering-docs/blog/2026-10-28-diagnosing-a-capsule-from-both-sides.md) — probing a live browser desktop from outside and inside a nested PyCharm capsule, with embedded recording; draft for owner review.
 - [An AI takes our IDEs for a test drive](engineering-docs/blog/2026-10-04-an-ai-takes-intellij-for-a-test-drive.md) — shared AI graphical tests across IntelliJ, Rider and Eclipse, the .NET build, and three original recordings; draft for owner review.
 - [The workflow explains itself](engineering-docs/blog/2026-10-03-the-workflow-explains-itself.md) — preamble, information model, merge rule, and a bug filed against ourselves; draft for owner review.
 - [What I have been up to lately](engineering-docs/blog/2026-09-30-what-i-have-been-up-to-lately.md)
