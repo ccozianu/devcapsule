@@ -71,10 +71,39 @@ The product feature, agent-ready codebase verification offered to adopters in a 
 This order produces the experience and the rule set a later product order can draw on; it makes no promise about
 one.
 
-## Deliverables, in three slices
+## Why rules, and which
 
-Slice 1 makes the loop exist and green. Slice 2 adds the rules that need a baseline. Slice 3 measures. Each slice
-is one pull request; slice 2 may be two.
+The purpose is outcomes: fewer files per change, fewer bugs of the missed-consumer class, shorter iterations.
+A rule earns its place by protecting a design decision that has already changed and scattered when it did.
+Parnas's criterion (1972) is the selector: hide each decision likely to change in one module, so a change to it
+is an edit, not a search. An agent makes that criterion more binding, not less: its correctness on a scattered
+decision is bounded by its search for every consumer, its context cost grows with the spread, the gate can verify
+a decision cheaply only at one boundary, and an agent reproduces whatever pattern it finds, so spread compounds.
+
+The rules named below are examples drawn from one afternoon's measurement. The real set comes from the discovery
+step, and the owner picks it.
+
+## Deliverables, in four slices
+
+Slice 0 discovers the rules. Slice 1 makes the loop exist and green. Slice 2 adds the rules that need a baseline.
+Slice 3 measures. Each slice is one pull request; slice 2 may be two.
+
+### Slice 0: rule discovery
+
+An interactive session between the owner and an agent, recorded in the order's directory as a candidate list.
+Evidence in, not opinion:
+
+- the footprint of each merged slice of the last cycle: files touched per design decision changed, from the diff
+  stats, the way the IDE override slice was read on 2026-10-29;
+- the bug records and the incident records: which defects were a consumer missed, a boundary crossed, or a pattern copied;
+- the counts a candidate pattern has on `main` today.
+
+Each candidate states the decision it protects, the module that should own it, the files the last change to it
+touched, the bug or incident that motivates it, and the outcome expected: the footprint of the next change to
+that decision. Candidates with no change history and no bug are parked, not written. The owner picks the set,
+and the picked rules replace the examples in slices 1 and 2.
+
+Record the footprint measure itself in `guardrails.md`; slice 3 reports it per rule.
 
 ### Slice 1: the loop exists
 
@@ -92,7 +121,7 @@ match absent from the rule's baseline, and on a missing binary. This puts the ru
 is what the hosted runner runs (`nox -s syntax tests typecheck` in `release-pex.yml`); a step in the `integration`
 session would run locally only. No new nox session. Budget: one second.
 
-**Rules that enter at `error`, zero violations required.**
+**Rules that enter at `error`, zero violations required.** Examples until slice 0 replaces them.
 
 1. `dc-slop-silent-except`: an `except` clause naming `Exception`, `BaseException` or nothing, whose body is
    `pass`, `...`, `return None` or a bare `return`, with no `raise` and no call into the project's logging. Four
@@ -120,7 +149,7 @@ reports no error, and every rule has a valid and an invalid case that `ast-grep 
 
 ### Slice 2: structural rules with baselines
 
-Each rule below has violations on `main` today, so each enters at `warning` with a baseline file beside it listing
+Examples until slice 0 replaces them. Each rule below has violations on `main` today, so each enters at `warning` with a baseline file beside it listing
 the sites, and a cleanup work item recorded in the implementing workstream's status. A warning never fails the
 gate; a new site outside the baseline does. The baseline shrinks and never grows. Promote the rule to `error` in
 the pull request that empties its baseline. No refactoring in this slice: the cleanups are their own slices.
@@ -145,8 +174,9 @@ layer, and a rule there needs a design decision first.
 ### Slice 3: lessons after thirty days
 
 Thirty days after slice 1 merges, record in `guardrails.md` under an "Operation" heading: which rules fired on a
-real defect, which produced a false positive and how the rule was narrowed, the incidents added in the period, and
-the time the step takes on the hosted runner. That tally is the input of a separate product order; how the tool
+real defect, which produced a false positive and how the rule was narrowed, the incidents added in the period,
+the footprint of each change to a protected decision against the footprint before the rule, and the time the step
+takes on the hosted runner. That tally is the input of a separate product order; how the tool
 would be exposed in a project's `devcapsule.toml` or in the CLI is product design and is not written here.
 
 ### Rule intake from incidents
