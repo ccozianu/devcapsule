@@ -18,6 +18,11 @@ The gate reports a violation as a diagnostic the author can act on without readi
 A rule set is the product of this order, not the tool. The tool earns its place through the rules that exist
 only because of it.
 
+The motivation is the feedback loop between the gate and the agents that work in this repository: the more of
+the project's opinion the gate can state mechanically, the less an agent's output depends on the reviewer catching
+it, and the more work can be handed to an agent at once. Where the gate is silent, the human is the validator, and
+the week of 2026-10-26 showed the cost: a day of work rewritten because agent-authored shortcuts passed the gate.
+
 ## What exists today
 
 The gate (`nox -s build`) runs `compileall`, mypy in its default strictness, pytest, the packaging tests and the
@@ -40,6 +45,9 @@ Measured on `main` at `6e509e2d`, package `devcapsule-src/devcapsule/` only:
 | `print(` in package modules | 193 | — |
 | `os.environ` read or written | 43 sites | — |
 
+These counts measure merged code after human review. They do not measure what the gate let through during the
+week and the human caught or rewrote afterwards; that is what the incident record below is for.
+
 The first row is the finding of 2026-10-29: the explicit IDE override touched eight consumers of the capability
 policy because the policy's derivation is reconstructed at each consumer instead of owned by one module.
 Twice during that slice a consumer was missed, once caught in review, once filed as a bug. That is the class of
@@ -47,7 +55,9 @@ defect a structural rule prevents, and it is the first rule this order should wr
 
 ## Decisions already taken
 
-The owner wants the repository to dogfood syntax-aware guardrails before any product feature offers them to adopters.
+The owner wants the gate, not the reviewer, to refuse agent-authored anti-patterns and structural drift, and wants
+the rules to grow from what the project actually suffers. The product feature that may later offer the same to
+adopters is a motive, not the justification; the order stands without it.
 The tool is `ast-grep`. It is installed through the `ast-grep-cli` wheel on PyPI, added to the `dev` extra of
 `devcapsule-src/pyproject.toml` and the compiled `dev-requirements.txt`, so every venv, capsule and the hosted
 runner get the same binary.
@@ -110,6 +120,23 @@ First rules, to be confirmed by measurement:
    ast-grep diagnostic is as actionable as the pytest assertion, and the two must agree. If they ever disagree,
    the pytest test wins.
 
+### Rule intake from incidents
+
+Rules grow from incidents, not from the tool's catalog. Each time agent output passes the gate and later costs
+rework, the workstream that pays for the rework records the incident and adds the rule or the test that would have
+refused it, in the same slice when that is small, otherwise as a work item named in the incident record.
+
+An incident record states the date, the change, what the agent did wrong in one sentence, what it cost, and the
+rule id or test that now covers it. Keep the records in this order's directory under
+`engineering-docs/work-orders/` until the implementing workstream names a permanent home; link each from the rule's `note`.
+
+A narrow rule that is correct beats no rule. A rule that fires on code the project considers correct is wrong and
+is narrowed or dropped, never argued around with an inline suppression.
+
+The five rules above are the first slice. The incidents of the week of 2026-10-26 are not yet recorded in the
+repository; the owner supplies them, and the rules derived from them join the list before the order is assigned.
+They take precedence over the five if the budget is short.
+
 Do not write a rule for `print(` or `os.environ` in this order. The counts show those are the current design
 of the CLI's output and host-access layers, not drift; a rule there needs a design decision first.
 
@@ -160,12 +187,12 @@ workstream `eng-ast-grep-dogfooding`, restated the workflow's pre-flight steps, 
 This order keeps the goal and drops those: the workflow is in `WORKFLOW.md`, workstreams are named by the owner in
 `CURRENT-STATUS.md`, and the layout is the one in source layout.
 
-Two alternatives were weighed and should be re-weighed if the first rules prove awkward:
+Two complements were weighed. Neither replaces this order:
 
-- `ruff`, with its blind-except and try-except-pass rules, covers rules 3 and 4 with no new rule language and no
-  new binary. It cannot express rules 1, 2 and 5. If the owner later wants a general linter, ruff is that; this
-  order is not a linter order.
+- `ruff` is the ordinary opinionated linter the repository does not have. It covers rules 3 and 4 and a few
+  hundred more, in milliseconds, with no rule authoring. It cannot express rules 1, 2 and 5. Whether to add it is a
+  separate owner decision; if yes, it belongs in the same gate step and the two rules move out of ast-grep.
 - More pytest architecture tests over Python's `ast`, in the style of the existing one, express every rule above
-  in about fifteen lines each with full access to Python semantics. The repository already has the pattern. The
-  case for ast-grep over it is the dogfooding goal and the per-rule test harness and diagnostics, not expressive
-  power. If the dogfooding goal is dropped, this order should be dropped with it and the rules written as tests.
+  with full access to Python semantics. The case for ast-grep beside them is that a rule is one YAML file any agent
+  can read, test and add in minutes, with a diagnostic the author sees at the call site; that is what lets the rule
+  set grow by incident. Graph properties stay in pytest.
