@@ -56,7 +56,10 @@ Judgments taken, for the owner's review in the pull request:
    plain `run`, which is honest and cheap.
 3. `--force` is refused where it would select a replacement itself:
    without `--ide`, with the required IDE, on a project requiring no IDE;
-   and with `--save`, whose semantics the order reserves to the owner.
+   and with `--save`. The `--save` question was the order author's, Codex,
+   not the owner's; on 2026-10-29 the owner ruled the refusal final: the
+   developer must make up her mind, since saving the IDE beside a
+   transient departure leaves a checkout that no longer launches plainly.
 4. A second surface that a remaining capability's closure needs is
    refused by name in `usable_lock` (`Capability 'x' needs pycharm, an IDE
    that cannot accompany the selected IDE codium`) instead of the catalog's
@@ -3008,9 +3011,10 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   its judgments and validation; the review-partner loop waits for the
   owner to name the engine (the brief is written for Codex, `gpt-6-astra`,
   in [evidence/2026-10-29-ide-override/review-brief.md](evidence/2026-10-29-ide-override/review-brief.md)).
-- Awaiting the owner: the meaning of `--save` together with `--force`,
-  refused until decided (the order's stopping point); whether any other
-  policy check gets the same explicit escape.
+- Settled 2026-10-29: `--save` with `--force` stays refused, by the
+  owner's ruling. Awaiting the owner: whether any other policy check gets
+  the same explicit escape; the review-partner loop runs only on request
+  (PR #305), so no review is pending for PR #304 unless the owner asks.
 - Weighed and unresolved: a forced launch's resolution on disk makes
   `images build` and the recursive successor ask for a plain `run` until
   the next launch; accepted as honest. The `config show` listing of the

@@ -104,14 +104,16 @@ keeps it from becoming the way around every refusal.
   usable lock refuses a remaining dependency on the replaced IDE by name.
 - The resolution and the launch listing carry a `departures` record; a
   forced launch is not recorded as known-good and proves no version set.
-- `--save` with `--force` is refused; its semantics are the owner's to
-  decide.
+- `--save` with `--force` is refused. The question was raised by the
+  order's author, not by the owner; on 2026-10-29 the owner ruled the
+  refusal final: the developer decides between saving an allowed IDE and
+  departing for one launch, and the launcher does not help her save a
+  checkout that can no longer launch plainly.
 - The `config show` listing of the checkout is unchanged: departures are
   the launch's, not the checkout's.
 
 ## Reopen If
 
-The owner defines `--save` semantics for a departure; another policy check
-needs the same explicit escape; or a project with a required IDE turns out to
-need a persistent per-checkout exception that a transient override cannot
-express.
+Another policy check needs the same explicit escape, or a project with a
+required IDE turns out to need a persistent per-checkout exception that a
+transient override cannot express.
