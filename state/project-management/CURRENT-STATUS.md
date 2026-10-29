@@ -236,6 +236,20 @@ sample-projects. Neither lack of a live publication nor this cleanup closes them
 
 ## Validation And External State
 
+2026-10-29 scope checkpoint: decision links and `git diff --check` pass.
+The required build gate was attempted after synchronization. `/opt/devcapsule-gate`
+is not writable here. Scratch under the project caused capsule path guards;
+the affected capability-command module passes outside it (54 tests).
+With scratch at `/var/tmp/pm-docs-gate-20261029/pytest` and `--maxfail=1`,
+the gate stops after 490 passes at
+`test_runtime_inspection_uses_recorded_context_and_never_host_assessment[show]`:
+the channel listing belongs to another checkout. The release branch's
+diagnostics slice already isolates `runtime_configuration.CHANNEL_PATH`
+in this fixture; that correction has not reached `main`. No source fix
+is included in this records checkpoint and the full gate is not green.
+Logs remain in `.git/pm-docs-gate-20261029/`; they are local scratch.
+The final mailbox check found no waiting mail.
+
 Pause checkpoint: records only; the prior full gate for 71f1fde remains the
 validation baseline because executable inputs have not changed. Handoff links and
 whitespace passed for this update; both recipient copies match the sent item.
