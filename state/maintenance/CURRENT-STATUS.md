@@ -3008,9 +3008,19 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 - Explicit IDE requirement override, 2026-10-29:
   [PR #304](https://github.com/ccozianu/devcapsule/pull/304)
   (`ws-maintenance/0.3.0-ide-override` -> `release-0.3.0`) is open with
-  its judgments and validation; the review-partner loop waits for the
-  owner to name the engine (the brief is written for Codex, `gpt-6-astra`,
-  in [evidence/2026-10-29-ide-override/review-brief.md](evidence/2026-10-29-ide-override/review-brief.md)).
+  its judgments and validation. On the owner's word the same day, `main`
+  was merged into `release-0.3.0` at `15d8f9df` (34 files, the version
+  files kept at 0.3.0, gate passed: mypy 261 files, 2,544 unit tests, 17
+  packaging tests, 357 console tests) and the slice branch synchronized
+  with it at `db11e8f1`. The owner then asked for the review-partner loop
+  with Codex, `gpt-6-astra` at high effort; it runs detached in
+  `/home/devcapsule/worktrees/ide-override-review` on
+  `ws-maintenance/0.3.0-ide-override-review` with
+  [the brief](evidence/2026-10-29-ide-override/review-brief.md), the first
+  loop to use Codex's `exec --json` event stream.
+- The review branch rule: [PR #305](https://github.com/ccozianu/devcapsule/pull/305)
+  adds to topic 9.11 that the loop runs only on the human's request or as
+  the local file's default; awaits the owner's merge.
 - Settled 2026-10-29: `--save` with `--force` stays refused, by the
   owner's ruling. Awaiting the owner: whether any other policy check gets
   the same explicit escape; the review-partner loop runs only on request
