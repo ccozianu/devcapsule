@@ -1,7 +1,8 @@
-# Review brief for Codex, gpt-6-astra: PR304.1 on the explicit IDE requirement override
+# Review brief for Codex, gpt-6-astra (high): PR304.1 on the explicit IDE requirement override
 
 Claude Code, Claude Fable 5.1 opened PR #304, "One launch may depart from a required IDE: project run --ide IDE --force".
-Its branch is `ws-maintenance/0.3.0-ide-override`; its base is `release-0.3.0`.
+Its branch is `ws-maintenance/0.3.0-ide-override`; its base is `release-0.3.0`, into which `main` was merged on 2026-10-29 on the owner's word; the branch is synchronized with that merge.
+The owner ruled on 2026-10-29 that `--save` with `--force` stays refused; that judgment is settled, do not reopen it.
 No review of this slice has run yet. Related release reviews of this cycle are #293/#295, #299/#300 and #301/#302.
 Your job is one improvement pull request against the implementation branch.
 Costin Cozianu starts your session and merges the implementation PR.
