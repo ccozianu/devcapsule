@@ -85,13 +85,34 @@ workstation-commands record awaiting the owner's choice of home.
   commands write the capsule's own home instead of refusing, because the
   capsule's own state must stay writable for a launcher run inside it.
 
+## Amendment: October 25 documentation proposals move to 0.3.1
+
+Owner decision, 2026-10-29: postpone the new documentation proposals in
+[the October 25 work order](../../work-orders/2026-10-25-documentation-orientation-and-concepts.md)
+to **0.3.1**. Both Part A and Part B now have that target. The new
+orientation, concepts/glossary, persistence explanations, recipes,
+background-agent guidance and site proposals do not gate 0.3.0.
+Maintenance remains the work order's owner and retains it for 0.3.1 planning.
+
+The separate October 24 language review remains a condition of 0.3.0,
+as does C16: documentation must describe the accepted candidate. This
+decision does not postpone those obligations or C20 release automation.
+Existing documentation stays; this is a scheduling decision, not a rollback.
+
+Glossary and recipes, items 5 and 6 of the September 28 proposal list,
+remain accepted through the October 25 order, now for 0.3.1. The other
+nine proposal decisions remain open. This decision does not settle them.
+
+Maintenance receives the decision by coordination mail to update the work
+order, release overview and its own plan on the release branch.
+
 ## Still open from the same check, for the owner
 
 - Who performs the documentation language review, which pages, in what
   order, and under which reviewer loop; the mail of 2026-10-24 in this
   workstream's intake.
-- Whether the eleven user-docs proposals and the C17 generic half remain
-  gates of the final tag, given that `user-docs` and
+- The remaining nine user-docs proposal decisions and delivery of the C17
+  generic half; both remain final-tag obligations while `user-docs` and
   `workflow-improvements` are paused.
 - Who verifies the six fixed bug records on the rc8 download, two of
   them from inside a capsule, three with Docker.
