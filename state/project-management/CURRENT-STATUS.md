@@ -4,9 +4,9 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: paused 2026-10-18, the pair moves to maintenance to drive release 0.3.0; the work order is mailed; the remaining decisions, the eleven docs proposals among them, are gates of the cycle; consent and forced configuration first, remaining 0.3.0 work during the RC cycle
+State: active 2026-10-29; reviewing 0.3.0 completion; the October 25 documentation proposals move to 0.3.1 by owner decision
 
-Definition read: WORKFLOW.md@2b576adb1a40, WORKFLOW-LOCAL.md@28234e24364b
+Definition read: WORKFLOW.md@8976f8d5f8f0, WORKFLOW-LOCAL.md@31819cc43359
 
 Branch association: `ws-project-management/coordination`
 
@@ -23,6 +23,37 @@ This reserved workstream remains open for the lifetime of multiple-stream mode.
 The immutable start date and adoption exception remain in the workstream list.
 
 ## Current State
+
+### Resumed 2026-10-29: release scope and documentation deferral
+
+The owner moved the October 25 documentation proposals to **0.3.1**.
+The [scope decision's amendment](2026-10-27-decision-release-0-3-0-scope-at-rc8.md#amendment-october-25-documentation-proposals-move-to-031)
+records the boundary: the separate language review and accurate candidate
+documentation remain 0.3.0 obligations. Maintenance retains the deferred
+work order. Glossary and recipes stay accepted for 0.3.1; the other nine
+September 28 proposal decisions remain open.
+
+Remote state checked on 2026-10-29: `main` at `6e509e2d`, release branch
+at `7545a536`, latest candidate RC8. PRs #293 (diagnostics), #294 (C20),
+#299 (configuration home) and #301 (VS Code) are merged into the release
+branch and await a later candidate. C17, remaining documentation decisions,
+language review and downloaded-candidate acceptance remain open. The
+October 27 decision already moved image/cache cleanup out of 0.3.0.
+
+Synchronized this branch with `origin/main` because the workflow rules
+changed. Read those changes; preserved the IDE and submodule contents.
+No open bug on the checked release tree is owned by project-management.
+Took the October 28 agent-run-supervision mail into intake; it remains
+pending and its product work is explicitly outside 0.3.0.
+
+Delivered `2026-10-29-project-management-october25-docs-to-031.md` to
+maintenance at coordination `ed0b3f1cd0da`. Its acknowledgement and the
+release-branch record updates remain with maintenance.
+
+The dated accounts below preserve earlier decisions; use the October 27
+scope decision and its October 29 amendment for current release planning.
+
+### Earlier coordination account
 
 The owner confirmed the proposed 23 dispositions on 2026-10-09, then directed
 closure of the obsolete Stage 7 resource-convention request with no action.
@@ -178,12 +209,11 @@ of further console work.
 
 ## Planned Next Step
 
-On resumption, read Open Threads and recheck main and the owners' published
-state. Start from the owner's sequence: consent/vendor trust and forced
-configuration first, then the remaining work in the RC cycle. Check delivery
-of the bootstrap retargeting and project-operation instruction assignments.
-Finish release driver/cut decisions and the eleven user-docs proposal decisions
-without reopening the settled release name, consent inclusion or postponements.
+Continue the 0.3.0 review with the remaining nine documentation proposal
+decisions, the separate language review, C17 and candidate acceptance.
+Check maintenance's acknowledgement of the October 25 work order's move
+to 0.3.1. Recheck remote delivery before presenting outstanding work;
+published summaries still describe several merged slices as awaiting merge.
 
 Items 7 (mycodespace/checkout naming), 8 (OpenCode evaluation) and 12 (routine
 documentation cleanup) are recorded in the [pre-V1 backlog](coordination-backlog.md#pre-v1-work-tentatively-09-excluded-from-030).
@@ -349,7 +379,52 @@ to the driver by [the release work order](../../work-orders/2026-10-18-release-0
 delivered by mail the same day. The proposal's decisions 1 and 5 are
 settled; 2, 3 and 4 stand as gates of the cycle.
 
+## 2026-10-24: The CLI UX Redesign Work Order
+
+While testing candidate 3 the owner asked for a challenge of the command
+surface's assumptions, then for a work order: the deficiencies, the
+principles as the owner ruled them on 2026-10-24, the config and run
+experience addressed to the user, and the decisions still open. The
+manifest a capable agent wrote for `ai-learning-bootstrap` on 2026-10-22
+is part of the evidence: it expresses one of the project's three needs.
+The draft is
+[the work order](../../work-orders/2026-10-24-cli-ux-redesign.md); the
+owner accepted the draft's last iteration and directed, the same day, that
+it go through the review-partner loop with the Codex, gpt-6-astra pair.
+Nothing in it is implemented; the owner named 0.3.0 rc4 as its release on
+2026-10-24, answering Part 5 item 8; Part 5 lists
+the eleven decisions for the owner.
+
+The loop, topic 9.11: the slice is the document itself, PRn on
+`ws-project-management/cli-ux-work-order` against `main`; the brief and
+any round brief are under
+[`evidence/2026-10-24-cli-ux-work-order/`](evidence/2026-10-24-cli-ux-work-order/).
+Rounds and outcome: PR258 is #258; the Codex gpt-6-astra pair opened
+PR258.1 as #259 at `bc3bf9b`, reproducing items 1 to 23 with 67 CLI
+invocations and no container. Its findings held: Node was declarable with
+`capabilities --required node` and the draft said the opposite; the lock
+carries no workflow table; the bootstrap writer uses bare keys; the
+transcript's IDE pins and the console on recipe 9 were wrong; two further
+first-day gaps, a policy `init` that leaves the owner unable to run and a
+`config list` that writes a placeholder; Part 5 grown from eleven to
+twenty-four questions, item 24 catching a conflict between section 3.2 and
+principle 1. One round, on the review's notes interleaved in Part 3, which
+the owner had asked to be written to the user; moved into Part 5 at
+`30ecdca`. Accepted and merged at `eab9ed6`. PR258 awaits the owner.
+
 ## Open Threads
+
+- Current, 2026-10-29: the nine remaining documentation proposal decisions,
+  the language-review assignment, C17 and candidate acceptance are open.
+  The October 25 work order is deferred to 0.3.1, not cancelled.
+  The new agent-run-supervision intake remains pending, outside 0.3.0.
+  Older unresolved statements below must be read against the current scope
+  decision; no transcript, implementation experiment or reminder was created.
+
+- The CLI UX redesign work order awaits the owner's decisions, Part 5,
+  items 1 to 11, after the review loop settles. The specification and the
+  implementation are two later work orders, in 0.3.0 rc4 by the owner's
+  answer to item 8.
 
 - Awaiting the human: the eleven user-docs proposal decisions, a gate of the
   0.3.0 cycle; the image-cleanup design review when maintenance reaches it.
@@ -366,6 +441,8 @@ settled; 2, 3 and 4 stand as gates of the cycle.
   reminder service. Historical handoff and release proposal are retained verbatim.
 
 ## Workstream Document Index
+
+- [Scope rechecked at RC8, amended October 29](2026-10-27-decision-release-0-3-0-scope-at-rc8.md): current release scope, including the October 25 documentation work deferred to 0.3.1.
 
 - [Release 0.3.0: scope, driver and cut](2026-10-18-decision-release-0-3-0-scope-and-cut.md): the owner's decision of 2026-10-18; open when a scope question returns.
 - [Release 0.3.0 work order](../../work-orders/2026-10-18-release-0-3-0.md): what the driver delivers and the gates before the final tag.
