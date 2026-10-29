@@ -10,3 +10,6 @@
 [submodule "website"]
 	path = website
 	url = git@github.com:ccozianu/devcapsule-website.git
+[submodule "devcapsule-src/tests/resources/sample_projects/ai-learning"]
+	path = devcapsule-src/tests/resources/sample_projects/ai-learning
+	url = git@github.com:ccozianu/ai-learning-bootstrap.git
