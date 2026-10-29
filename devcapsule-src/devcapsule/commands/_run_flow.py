@@ -82,6 +82,29 @@ class Prepared:
     home: dict[str, Any] = field(default_factory=dict)
 
 
+def load_launch_state(start: Path, flags: RunFlags) -> CheckoutState:
+    """Load the launch inputs and reject invalid IDE requests before any approval review.
+
+    Departures are applied in memory. The staged launch review still checks
+    consent, trust, dependencies and host access for the requested environment.
+    """
+    if flags.force and flags.ide is None:
+        raise ProjectConfigurationError(
+            "--force names no departure; give the IDE to run instead of the project's required one: --ide IDE --force."
+        )
+    if flags.force and flags.save:
+        # The owner requires a choice: save an allowed IDE or depart for one launch.
+        raise ProjectConfigurationError(
+            "--force applies to one launch and cannot be combined with --save. Launch without --save, "
+            "or save a choice the project allows without --force."
+        )
+    root, manifest = manifest_for(start)
+    state = load_state(root, manifest)
+    if flags.ide is not None:
+        _requested_ide(state, flags)
+    return state
+
+
 def prepare_launch(
     start: Path,
     flags: RunFlags,
@@ -99,19 +122,8 @@ def prepare_launch(
     """
     interactive = sys.stdin.isatty() if interactive is None else interactive
     output = output_stream if output_stream is not None else sys.stdout
-    if flags.force and flags.ide is None:
-        raise ProjectConfigurationError(
-            "--force names no departure; give the IDE to run instead of the project's required one: --ide IDE --force."
-        )
-    if flags.force and flags.save:
-        # The owner has not decided what saving a departure means; it is
-        # never a silently saved waiver of the requirement.
-        raise ProjectConfigurationError(
-            "--force applies to one launch and cannot be combined with --save. Launch without --save, "
-            "or save a choice the project allows without --force."
-        )
-    root, manifest = manifest_for(start)
-    state = load_state(root, manifest)
+    state = load_launch_state(start, flags)
+    root, manifest = state.root, state.manifest
     input_path = register_checkout(state, write=False)
     record = CheckoutRecord.staged(input_path, state.checkout)
     original = deepcopy(record.document)

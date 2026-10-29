@@ -164,8 +164,10 @@ devcapsule project run --ide codium --force
 launch. It does not satisfy the requirement. The launcher warns which required
 IDE it sets aside and which IDE runs; the launch's plan and its listing inside
 the capsule record the departure. The requirement, the shared lock and your
-saved IDE stay as they are, and the next plain `run` launches the required IDE
-again. The downloaded IDE and its own settings remain available for later;
+saved IDE stay as they are. The next plain `run` applies the ordinary
+requirements to your saved selection. If that selection already conflicted
+with the requirement, the plain launch still refuses it. The downloaded IDE
+and its own settings remain available for later;
 each IDE keeps its separate settings namespace. `--force` cannot be combined
 with `--save`, and it is refused when nothing is set aside: without `--ide`,
 with the required IDE itself, or on a project that requires no IDE. It grants
