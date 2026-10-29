@@ -21,6 +21,16 @@ that is honest about what it skips.
 
 ## Scope And Owner Decisions
 
+- **The explicit IDE requirement override, 2026-10-29.** The owner brought
+  the [work order of 2026-10-28](../../work-orders/2026-10-28-explicit-ide-requirement-override.md)
+  from `main` into 0.3.0 and assigned it to `maintenance`: a project may
+  require an IDE, and `project run --ide IDE --force` launches another one
+  for one session, warned, recorded in the plan and never saved
+  ([D-0016](../../decisions/product/d-0016-explicit-launch-departure-from-a-required-ide.md),
+  R-CONFIG-001's one explicit launch exception). Claude Code, Claude
+  Fable 5.1, implements on `ws-maintenance/0.3.0-ide-override` with the
+  recorded acceptance session; the review partner is the owner's choice.
+  The `--save` combination is refused until the owner defines it.
 - **C20, release documentation automation, 2026-10-27.** The owner approved
   the release documentation work order on `main`. Codex, GPT-6 Astra,
   implements it; Claude Code, Claude Fable 5.1, reviews it.

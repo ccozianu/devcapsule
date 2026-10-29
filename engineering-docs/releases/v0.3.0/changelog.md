@@ -44,6 +44,13 @@ candidate 0 on 2026-10-18 at `53ebc17`.
   capabilities and regenerates the lock; `project config check` validates
   the project contract, or candidate files, without writing or launching.
   `project config list` and `project versions show` answer `--json`.
+- **One launch may depart from a required IDE.** A project may require
+  an IDE, for instance one that develops a plugin for it. `project run
+  --ide IDE --force` launches another IDE for that session: the launcher
+  warns which required IDE it sets aside, the plan records the departure,
+  and nothing is saved, so the next plain `run` launches the required IDE
+  again. Without `--force` the conflicting IDE is refused with that
+  command named; `--force` grants no consent and skips no check.
 - **Checkout notifications and decisions from the command line.**
   `project checkout notifications` lists, posts, reads and dismisses what
   the environment tells the developer; `project checkout decisions`

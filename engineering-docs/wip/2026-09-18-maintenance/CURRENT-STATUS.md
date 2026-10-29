@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-24; releasing 0.3.0: rc3 tagged, published and verified as downloaded, carrying software approvals at launch, the saved Docker arguments and the regenerated lock, the owner's test of them on the download next; rc2's two C10 records closed, the network node's check still open; rc2 was prepared with the network node and C10 merged into the release branch, each with its review-partner loop settled; the pre-candidate merge then the tag on the owner's word; forced configuration, the diagnostics snapshot and the schema-version slice move to rc4 with image cleanup and C20; the base is published in the promotion; C17 stays a gate in both halves
+State: active 2026-10-29; releasing 0.3.0: the explicit IDE requirement override implemented on `ws-maintenance/0.3.0-ide-override` with its recorded acceptance session, awaiting the owner's choice of review partner and the pull request into `release-0.3.0`; VS Code (PR #301) and the configuration home (PR #299) await the owner's merge; rc3 tagged, published and verified as downloaded; the diagnostics snapshot merged by PR #293; forced configuration and the schema-version slice move to rc4 with C20; the base is published in the promotion; C17 stays a gate in both halves
 
 Definition read: WORKFLOW.md@5c89396f2200, WORKFLOW-LOCAL.md@b500a24f0736
 
@@ -21,6 +21,70 @@ Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`
 Own defects no open workstream covers and drive maintenance releases. This
 reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
+
+## Explicit IDE requirement override — 2026-10-29
+
+Owner direction of 2026-10-29: pick the
+[work order of 2026-10-28](../../work-orders/2026-10-28-explicit-ide-requirement-override.md)
+up from `main`, bring it into the 0.3.0 scope and implement it. The order
+was delivered on `main` by PR #303 (`39dbb6ec`) with no implementation
+owner and no release target; this workstream acknowledges it as its task,
+release target 0.3.0, and the release overview's *Scope And Owner Decisions*
+records the ruling. Work on `ws-maintenance/0.3.0-ide-override`, forked from
+`origin/release-0.3.0` (`7545a536`, PR #301's merge), targeting
+`release-0.3.0`, in `/home/devcapsule/worktrees/ide-override`, by Claude
+Code, Claude Fable 5.1. The order's document and its `index.md` line came
+onto the branch as one commit from `main`; nothing else of `main` was
+merged, under the exception that the release branch synchronizes with
+`main` on the owner's word each time.
+
+Judgments taken, for the owner's review in the pull request:
+1. The departure is a value, `RequirementDeparture(policy, capability,
+   replacement)` with the one policy identity `ide-requirement`, carried
+   in memory by the launch's `CheckoutState`; the manifest, the lock and
+   the record are never written with it. Every derivation a launch uses
+   takes the policy with that requirement set aside
+   (`CapabilityPolicy.departing`): pin selection, composition, the usable
+   lock, the listing, the resolution's baseline digest.
+2. The records of the departure: the resolution's
+   `[departures.ide-requirement]` table, the launch listing's IDE row
+   (`this launch (--force); the project requires python-ide`) and note, and
+   the stderr warning. A forced launch that exits 0 records no known-good
+   generation and no proven version set, since it satisfied the developer,
+   not the project. After a forced launch, commands that admit the
+   on-disk resolution (`images build`, the recursive successor) ask for a
+   plain `run`, which is honest and cheap.
+3. `--force` is refused where it would select a replacement itself:
+   without `--ide`, with the required IDE, on a project requiring no IDE;
+   and with `--save`, whose semantics the order reserves to the owner.
+4. A second surface that a remaining capability's closure needs is
+   refused by name in `usable_lock` (`Capability 'x' needs pycharm, an IDE
+   that cannot accompany the selected IDE codium`) instead of the catalog's
+   internal error; no catalog component has such a dependency today, the
+   test monkeypatches one.
+5. The saved-IDE conflict message of `compose_lock` now names the
+   override too; its head is unchanged for the existing test.
+6. `--force` replaces the retired spelling of the same name
+   (`_retired_option`), `--force-config` stays retired.
+
+Tests: `tests/test_ide_requirement_override.py`, 18 tests at the policy,
+plan and CLI boundaries, the eight acceptance items of the order among
+them; the built-executable flag propagation in
+`tests/integration/test_pex_runtime.py`; the help and retired-spelling
+expectations updated. Recorded acceptance session, 2026-10-29, inside this
+capsule with the executable built from `fcf5c4e6`:
+`nox -s ide-smoke -- --display --required-ide` passed in 50.5 s; the
+refusal without force, VSCodium owning the display on the forced launch
+(class `codium codium`, the fixture folder open), the unchanged project
+files and checkout record, the forced plan's `departures` table, then
+PyCharm owning the display on the plain launch (class `jetbrains-pycharm`)
+with a plan without departures; see
+[evidence/2026-10-29-ide-override](evidence/2026-10-29-ide-override/README.md).
+D-0016 records the owner's choice; R-CONFIG-001 gains the explicit launch
+exception; the CLI reference, the capabilities guide and the IDE page
+describe the flag; the 0.3.0 changelog carries it.
+
+Pre-review gate passed: `nox -s build` and `webconsole` on `fcf5c4e6` with the records uncommitted: mypy clean on 263 source files; 2,559 unit tests passed, 40 deselected, 1 xfailed, 1 xpassed; the local executable built and smoked; 18 packaging tests passed; `docs-contract` 190 pages including 17 aliases passed; 357 web console tests passed, mypy clean on 9 files.
 
 ## Diagnostics snapshot and export — 2026-10-27
 
@@ -2937,6 +3001,26 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- Explicit IDE requirement override, 2026-10-29: the branch
+  `ws-maintenance/0.3.0-ide-override` is ready for its pull request into
+  `release-0.3.0` and the review-partner loop; the owner names the review
+  engine (the brief is drafted for Codex, `gpt-6-astra`, in
+  [evidence/2026-10-29-ide-override/review-brief.md](evidence/2026-10-29-ide-override/review-brief.md)).
+- Awaiting the owner: the meaning of `--save` together with `--force`,
+  refused until decided (the order's stopping point); whether any other
+  policy check gets the same explicit escape.
+- Weighed and unresolved: a forced launch's resolution on disk makes
+  `images build` and the recursive successor ask for a plain `run` until
+  the next launch; accepted as honest. The `config show` listing of the
+  checkout never shows a departure, by design.
+- Not run: the known-good record path of a successful forced launch on a
+  real capsule, since the smoke stops its sessions with `docker stop`; the
+  unit test covers it.
+- External state preserved: the implementation worktree
+  `/home/devcapsule/worktrees/ide-override`; the raw smoke evidence under
+  its `devcapsule-src/dist/e2e-evidence/ide-smoke/`, removable; the gate
+  scratch `/opt/devcapsule-gate/pytest-ide-override`.
+
 - VS Code slice, 2026-10-28:
   [PR #301](https://github.com/ccozianu/devcapsule/pull/301)
   (`ws-maintenance/0.3.0-vscode` -> `release-0.3.0`) awaits the owner's
@@ -3328,6 +3412,7 @@ Earlier open-thread history (read against the current scope above):
 
 ## Workstream Document Index
 
+- [Explicit IDE requirement override evidence](evidence/2026-10-29-ide-override/README.md): the recorded acceptance session of 2026-10-29, forced Codium then plain PyCharm, and the review brief.
 - [VS Code smoke evidence](evidence/2026-10-28-vscode/README.md): the recorded IDE smoke of the `vscode` surface, 2026-10-28, and the PR301.1 brief for Antigravity, Gemini 4 Argon (High).
 - [PR #293 review-partner brief (PR293.1)](evidence/2026-10-27-diagnostics-snapshot/brief-pr293-1.md): brief for Codex (`gpt-6-astra`) on the session diagnostics snapshot and sanitized export slice.
 - [PR #236 review-partner brief (PR236.1)](evidence/2026-10-22-pr236-review-brief.md): brief for Claude Fable 5.1 on the E2E scenario video recorder and Eclipse Java debugger demo slice.
