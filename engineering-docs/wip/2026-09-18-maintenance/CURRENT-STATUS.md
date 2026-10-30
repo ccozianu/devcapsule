@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: integrating 2026-10-30; authorized main synchronization resolved in PR #318 for owner review; release-to-main PR #317 waits for it
+State: integrating 2026-10-30; #318 merged and #317 refreshed without conflicts; main-metadata correction awaits exception to untouched-copy rule
 
 Definition read: WORKFLOW.md@bfc91d68cd06, WORKFLOW-LOCAL.md@65501b3407db
 
@@ -51,11 +51,23 @@ documentation contract including 18 aliases. Log: local scratch
 `/var/tmp/maintenance-ci/main-sync-gate.log`; counts are preserved here and
 in PR #318. Only status records changed after this gate.
 
-Next: owner reviews and merges #318, then refresh #317's untouched release
-copy. Before handing #317 over for merge, preserve main's 0.3.1.dev0 and
-remove the release-only documentation override from the final main tree;
-merging ancestry alone must not reset main's version. This remains a
-concrete integration follow-up, not a completed validation claim. No final
+Owner merge of #318 verified at `9a412058` by GitHub and SSH fetch.
+Its tree equals tested head `a2485dd4`. PR #317's untouched release copy
+was fast-forwarded to that release tip; main `ebab228a` is an ancestor,
+so the textual conflicts are resolved.
+
+Remaining policy conflict: Version Scheme 4 requires main to retain its
+next development version, but Release Policy 8 says to commit nothing to
+the PR copy. The unmodified release tree would reset main to 0.3.0.
+A four-file patch, prepared and checked with `git apply --check`, restores
+0.3.1.dev0 in pyproject.toml and both workflow frontmatters and removes the
+release-only source-version override from docs/versions.yaml. It is shown
+in PR #317 and kept in scratch `/var/tmp/maintenance-ci/main-metadata.patch`.
+No patch content has been applied. Await owner permission for this one-time
+metadata adjustment on #317's copy; release-0.3.0 would stay unchanged.
+Then apply the standard bump command, remove the override, validate the main
+integration tree and hand #317 back. This project-local rule conflict needs
+clarification before the next release propagation. No final
 tag or publication was requested. Required ci-gate enforcement remains a
 separate GitHub setting.
 
@@ -2290,10 +2302,10 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-Current: owner reviews and merges main-synchronization PR #318. Then
-refresh release-to-main PR #317, settle main-specific version/documentation
-metadata, validate its final tree, and hand it back for merge. The accepted
-Pair Review naming and packaged definition arrive through #318. The CI work order
+Current: #318 is merged and #317 refreshed. Obtain the one-time exception
+for main metadata on the release-copy branch, apply the prepared four-file
+correction, validate, and hand #317 back for merge. Pair Review naming and
+its packaged definition are now on the release branch through #318. The CI work order
 is implemented, reviewed, validated and merged into the release through
 PR #312. Required ci-gate configuration remains an owner action; normal
 release propagation to main remains open. Documentation scheduling records
@@ -3145,10 +3157,11 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Main-to-release synchronization is authorized and resolved in PR #318,
-  pending owner review/merge. PR #317 stays draft until its release copy
-  is refreshed and main-specific metadata is handled. The naming patch
-  comes with #318; no new feature work is implied by this integration.
+- PR #318 is merged; #317 is refreshed and has no textual conflicts.
+  The four-file main-metadata correction is prepared but not applied.
+  It requires an explicit exception to Release Policy 8 (untouched copy)
+  to preserve Version Scheme 4 (main stays on its development version).
+  No new feature work is implied by this integration.
 
 - CI Pair Review #314 settled without a revision round. Reviewer proposals
   not implemented: migrate paths-filter v3 to v4 (Node 20 produces a hosted
