@@ -21,6 +21,18 @@ that is honest about what it skips.
 
 ## Scope And Owner Decisions
 
+- **0.3.0 user documentation CLI alignment, full stub authoring, and prose review, 2026-10-30.**
+  The owner merged [PR #316](https://github.com/ccozianu/devcapsule/pull/316) on
+  `main` (`ebab228a`) and assigned
+  [the work order](../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md)
+  to `maintenance` on `release-0.3.0` (`write-full-pages`,
+  `combine-with-language`, `direct-wo-pair-batches`), closing final-tag gate
+  **C16** and the October 24 language-review booking in one pass. All `49`
+  `docs/*.md` files on `release-0.3.0` (including authoring all `12`
+  `status: planned` stubs in full, without inventing `0.3.1`-deferred commands)
+  are audited and rewritten in five coherent pull-request batches of `<= 10`
+  `docs/*.md` files each using Pair Review: Antigravity (`Gemini 4 Argon
+  (High)`) implements and Codex (`gpt-6-astra`) reviews.
 - **CI path gating and advisory diff coverage, 2026-10-30.** The owner
   assigned the [reviewed work order](../../work-orders/2026-10-30-ci-path-gating-and-diff-coverage.md)
   to maintenance for 0.3.0. Decisions 1B and 2B mean advisory coverage with

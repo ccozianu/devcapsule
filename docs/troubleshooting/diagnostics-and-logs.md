@@ -1,46 +1,48 @@
 ---
 description: Where every component of a session writes its log, how to capture a diagnostic snapshot or sanitized export bundle, how to collect browser evidence, and what to include when asking for help.
 weight: 2
-updated: 2026-10-27
+updated: 2026-10-30
 ---
 # Diagnostics and logs
 
-Every launch gets its own log directory on your computer. Every critical
-component of the session writes one file there, named after itself. Nothing
+Every launch gets its own log directory on your computer, and every critical
+component of the session writes one file there named after itself. Nothing
 depends on a flag you had to set before the problem happened: the files are
-there by default, and they survive the browser tab, Ctrl+C in the launcher,
-the IDE's exit and the container's removal.
+created by default, and they survive closing the browser tab, pressing Ctrl+C
+in the launcher, exiting the IDE, and removing the container.
 
 If the session directory cannot be created, or an external Docker daemon
 cannot see its backing mount, the launcher reports that and continues with
-console output only.
+terminal output only.
 
 ## Where the logs are
 
-The launcher prints the directory at every start, on the line `Session logs:`
-of the storage summary. Inside the capsule the same directory is mounted at
-`/var/log/devcapsule`, and the environment variable `DEVCAPSULE_LOG_DIR`
-names it, so a tool or an agent in the capsule finds it without guessing.
+At every start, the launcher prints the directory on the `Session logs:` line
+of the storage summary. Inside the capsule, the same directory is mounted at
+`/var/log/devcapsule`, and `DEVCAPSULE_LOG_DIR` points to it so tools and
+agents in the capsule can find it directly.
 
-The launcher terminal is not where the components write. It carries the
-launcher's own lines, the desktop and console links and the ready line, the
-supervisor's warnings when a component dies or the stop runs out of time,
-and at the end one result line, `Session ended`, `Session failed` or
-`Session interrupted`, followed by the path of every log file of the
-session on your computer. The IDE's and the display stack's own output,
-with its harmless ERROR labels, is in the files only.
+Components do not write their stream noise to your launcher terminal. The
+terminal prints the launcher's own status lines, the desktop and web console
+links, supervisor warnings when a component dies or shutdown runs out of time,
+and at exit one summary line (`Session ended`, `Session failed`, or `Session
+interrupted`) followed by the host path of every log file from that session.
+Routine IDE and display-stack output—including harmless `ERROR` lines from GUI
+toolkits—stays in the log files.
 
-On your computer the directory lives in your DevCapsule state storage, per
-checkout, one directory per session:
+On your computer, session logs live in DevCapsule state storage, grouped by
+checkout, with one directory per session:
 
 ```text
 $XDG_STATE_HOME/devcapsule/projects/by-path/<checkout id>/logs/<session id>/
 ```
 
-`$XDG_STATE_HOME` is `~/.local/state` unless you set it. The session id is
-the start time in UTC and a short random suffix, `20261011-041533-3f9a`, so
-the directories sort by time. `devcapsule project info` lists the `logs` row
-with the exact path for your checkout.
+`$XDG_STATE_HOME` defaults to `~/.local/state`. When `DEVCAPSULE_CONFIG_HOME`
+is set (see [The configuration home](../configuration/home.md)), state storage
+lives under `$DEVCAPSULE_CONFIG_HOME/state/projects/by-path/<checkout id>/logs/<session id>/`
+instead. Each `<session id>` combines the UTC start time and a short random
+suffix (such as `20261011-041533-3f9a`), so directories sort chronologically.
+`devcapsule project info` prints the exact `logs` directory for your checkout.
 
 ## What is in a session directory
 
@@ -63,31 +65,30 @@ copies the remaining output to the terminal so nothing is lost. The
 launcher's and the supervisor's own records carry the level and the process
 id as well.
 
-The IDE keeps its own log where it always did, in its persistent log
-directory: `idea.log` for the JetBrains IDEs, under the log slot listed by
-`devcapsule project info`; the `logs` directory of VSCodium's user data;
-`.metadata/.log` of the Eclipse workspace. Those logs are not copied; the
-session directory holds the IDE's standard streams only.
+The IDE keeps its own structured log in its persistent log directory:
+`idea.log` for PyCharm, IntelliJ IDEA, and Rider (under the IDE `log` slot, such as
+`pycharm/log`, listed by `devcapsule project info --json`), the `logs/` directory
+inside VSCodium's or Visual Studio Code's `user-data` slot, and `.metadata/.log` inside the
+Eclipse `workspace` slot. Those native IDE logs stay in place; the session
+directory captures the IDE process's standard output and error streams.
 
 ## Levels and the verbosity override
 
-The baseline is the equivalent of WARNING: each component records warnings
-and errors, and the session's lifecycle events, which are recorded whatever
-the baseline says, because they are what reconstructs an incident. For Xvnc
-the baseline is its status level, errors plus connection and server state
-changes.
+By default, components log at `WARNING` plus session lifecycle events (starts,
+readiness, signals, and exits), which are always recorded so you can
+reconstruct an incident. `Xvnc` runs at its status level, recording errors as
+well as connection and server state changes.
 
-To see more for one launch, set `DEVCAPSULE_LOG_LEVEL` on the launcher's
-shell. It accepts `DEBUG`, `INFO`, `WARNING` and `ERROR` and reaches every
-component: the launcher, the supervisor, the web console, and Xvnc, which
-logs everything under `DEBUG`.
+To capture full diagnostic detail for one launch, set `DEVCAPSULE_LOG_LEVEL`
+in the shell that runs the launcher. It accepts `DEBUG`, `INFO`, `WARNING`,
+and `ERROR`, and applies across the launcher, supervisor, web console, and
+`Xvnc`:
 
 ```bash
 DEVCAPSULE_LOG_LEVEL=DEBUG devcapsule project run
 ```
 
-A value the variable does not accept is reported once, and the session logs
-at WARNING.
+Unrecognized values print a single warning and fall back to `WARNING`.
 
 ## How much disk this takes
 
@@ -147,10 +148,11 @@ devcapsule project diagnose
 devcapsule project diagnose --session 20261011-041533-3f9a --json
 ```
 
-When you omit `--session`, the command inspects the active running session, or
-the latest ended session when none is running. Each run writes a private
-(`0600`) `snapshot-<utc>.json` file inside the session's log directory and
-prints a short verdict.
+On the host, omitting `--session` selects the newest running session, or the
+latest session directory when none is running. Inside a capsule, only its
+current session is mounted; inspect other sessions from the host. With a
+writable session directory, each run writes a private (`0600`)
+`snapshot-<utc>.json` file there and prints a short verdict.
 
 For a running container, the command runs bounded checks (`docker inspect` up
 to 3 seconds, in-capsule probe up to 5 seconds, and 2 seconds per protocol
@@ -194,13 +196,14 @@ devcapsule project diagnose --export ./my-session.tar.gz --include-ide-logs
   URL-encoded tokens, `devcapsule-console-token` cookies, `Authorization`,
   `Cookie`, and `X-DevCapsule-Token` headers, secret command flags, and saved
   inline Docker environment values.
-- IDE-native logs (`idea.log`, VSCodium `logs/`, Eclipse `.metadata/.log`) are
-  **excluded by default** because they often contain project paths and source
-  excerpts. `snapshot.json` records their locations, file counts, and byte
-  sizes; pass `--include-ide-logs` with `--export` when IDE startup or UI
-  freezes are part of the problem. Discovery visits at most 4,096 entries per
-  IDE log location and reports when it reaches that limit. Reads refuse symlinks
-  in the file path, including parent directories.
+- IDE-native logs (`idea.log`, VSCodium and Visual Studio Code `logs/`,
+  Eclipse `.metadata/.log`) are **excluded by default** because they often
+  contain project paths and source excerpts. `snapshot.json` records their
+  locations, file counts, and byte sizes; pass `--include-ide-logs` with
+  `--export` when IDE startup or UI freezes are part of the problem. Discovery
+  visits at most 4,096 entries per IDE log location and reports when it reaches
+  that limit. Reads refuse symlinks in the file path, including parent
+  directories.
 - Redaction covers known token and credential formats only. Arbitrary child
   output and IDE logs can still contain secrets or proprietary code; inspect
   the archive before sharing it outside your machine.
