@@ -11,9 +11,9 @@ checks even when given `--help`.
 
 `devcapsule project` commands discover the project from the current directory.
 To target another directory, pass `--path` before the subcommand:
-`devcapsule project --path PROJECT config show`. Inside a capsule, read-only
-inspection commands use the capsule's captured launch view, while commands that
-need host state print the exact `devcapsule` command to run outside.
+`devcapsule project --path PROJECT config show`. Inside a capsule, inspection
+commands distinguish captured launch data from next-launch choices where available. Commands that need launcher-owned state
+print the exact `devcapsule` command to run outside.
 
 ## `devcapsule home`
 
@@ -30,8 +30,9 @@ run from any directory without a project or `--path`. Set
 | `default memory\|cpus VALUE\|none` | Set a memory or CPU default for this home, or clear it with `none`. |
 
 Inside a capsule, `show` and `trust list` read the launcher's settings mounted
-read-only until you write a home setting inside the capsule. The first write
-copies those settings into the capsule's own home without modifying the host's.
+read-only until the capsule has its own settings. The first write copies those
+settings into the capsule's home. Setting `DEVCAPSULE_CONFIG_HOME` selects that
+home instead and disables this fallback to launcher settings.
 
 ## `devcapsule project`
 
@@ -133,7 +134,7 @@ Checkout choices (stored outside the repository):
 |---|---|
 | `ide [--unverified] IDE` | Set this checkout's IDE (`python-ide`, `frontend-ide`, `vscode-ide`, `java-ide`, `eclipse-ide`, `dotnet-ide`, or a component name such as `codium` or `vscode`). |
 | `add [--unverified] CAPABILITY` | Add a personal capability not declared by the project. |
-| `omit CAPABILITY` | Leave out an offered project capability or remove a personal addition. |
+| `omit [--unverified] CAPABILITY` | Leave out an offered project capability or remove a personal addition. |
 | `restore [--unverified] CAPABILITY` | Restore a previously omitted offered capability. |
 | `use [--unverified] CAPABILITY COMPONENT\|default` | Pick a provider when several exist (such as `codium` or `vscode` for `frontend-ide`), or return to the project/catalog default. |
 | `set NAME VALUE\|default` | Set `memory` (`6GiB`, `6g`), `cpus` (`4`), or a project-declared value; `default` clears your override. |
@@ -143,9 +144,9 @@ Checkout choices (stored outside the repository):
 | `approve [NAME...\|--all]` | List pending per-checkout software updates, or approve named updates (or `--all`). |
 | `env set NAME [VALUE] [--from-host]` | Save a private variable value, prompt with hidden input when `VALUE` is omitted, or pass a host variable through at launch. |
 | `env unset NAME` | Delete a saved or pass-through checkout environment entry. |
-| `docker-args set -- OPTIONS...` | Replace this checkout's saved `docker run` options. |
-| `docker-args clear` | Clear all saved `docker run` options. |
-| `bind NAME PROVIDER:VALUE`, `unbind NAME` | Bind a declared state slot or secret input to a host directory or host environment variable, or return it to managed storage. |
+| `docker-args set -- OPTIONS...` | Replace this checkout's saved `docker run` options, including entries saved with `config env set`. |
+| `docker-args clear` | Clear all saved `docker run` options, including entries saved with `config env set`. |
+| `bind NAME PROVIDER:VALUE`, `unbind NAME` | Bind a declared state slot to a host directory or a secret input to a host variable; `unbind` removes that binding. |
 | `console apply\|discard ID` | Apply a queued web-console request on the host, or discard it. |
 
 Shared project contract (for repository owners; writes schema 2):
@@ -162,9 +163,9 @@ Shared project contract (for repository owners; writes schema 2):
 
 Every shared-contract command accepts `--preview` to validate and print the
 resulting change without writing files. Capability changes and provider
-recommendations update the manifest and platform lock together and accept
-`--unverified` when needed; environment declarations and non-provider
-recommendations update only `.devcapsule/devcapsule.toml`.
+recommendations update the manifest and platform lock together. Capability
+commands accept `--unverified`; `recommend` does not. Environment declarations
+and non-provider recommendations update only `.devcapsule/devcapsule.toml`.
 
 See [Vendor software and trust](../configuration/software-approvals.md) for
 home trust vs. per-checkout consent, and
@@ -183,7 +184,7 @@ Each command below follows `devcapsule project`:
 | `checkout register NAME` | Name an unregistered checkout (refuses to rename an already registered checkout). |
 | `checkout notifications list\|post\|read\|dismiss` | Read, post, mark read, or dismiss checkout notifications used by the capsule web console. |
 | `checkout decisions from-table\|check\|hand-off` | Build a web-console decision file from a Markdown table, validate it, or print chat handoff text and the console link. |
-| `state adopt --from SOURCE SLOT` | Copy or adopt an existing host directory into a declared checkout state slot. |
+| `state adopt --from SOURCE SLOT` | Use an existing host directory directly for a declared checkout state slot; no files are copied. |
 | `versions show [--json]` | Show the effective version set, its origin, validation evidence, and local launch history. |
 | `versions history` | List exact version sets that have completed an ordinary launch on this checkout. |
 | `versions check` | Query upstream distribution channels for newer releases or notices without changing selections. |
@@ -199,10 +200,11 @@ See [Component upgrades](../updates/component-upgrades.md) for version-set workf
 
 ## Retired spellings
 
-Removed configuration subcommands (`config list`, `config resolve`,
-`config need`, `config agent`, `config tool`, mutating `project config default`
-and `project config trust`) and retired `init`/`run` flags exit with status `2`,
-write nothing, and print the replacement command on one line.
+Retired commands such as `config list`, `config resolve`, `config need`,
+`config agent add`, and `config tool omit` exit with status `2`, write nothing,
+and print their replacements. Retired `init`/`run` flags do the same.
+`project config default` and mutating `project config trust` subcommands are
+absent; use `devcapsule home default` and `devcapsule home trust` instead.
 `project config capabilities --recover` remains available solely to repair an
 interrupted manifest/lock write.
 

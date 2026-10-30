@@ -14,7 +14,9 @@ item.
 Published base images and vendor downloads are normally trusted once for your
 [configuration home](../configuration/home.md) (`devcapsule home trust accept
 CHANNEL`), while host-access grants and optional per-checkout software consents
-live on the checkout itself. See
+live on the checkout itself. Channel names are `devcapsule-base`, `vscode`,
+`claude-code`, and `antigravity-cli`; they differ from the authorization node
+names below. See
 [Vendor software and trust](../configuration/software-approvals.md).
 
 ## Authorizations, `config authorize NAME VALUE [JUSTIFICATION]`
@@ -55,10 +57,10 @@ recommendation or home default (`devcapsule home default`) takes effect again.
 
 ## Bindings, `config bind RESOURCE PROVIDER:VALUE`
 
-`config bind` redirects a declared persistent state slot or secret input to a
-location you supply; `config unbind RESOURCE` returns it to DevCapsule's
-managed per-checkout storage. Only resources belonging to components in your
-checkout's active lock can be bound.
+`config bind` redirects a declared persistent state slot or supplies a secret
+input. `config unbind RESOURCE` returns a directory slot to managed storage;
+for a secret input, it removes the host-variable binding. Directory slots and
+secret inputs must belong to the selected components; `home` is always available.
 
 Two providers exist:
 
@@ -82,9 +84,10 @@ Two providers exist:
 | `codex/openai-api-key` | Codex | Optional `host-environment:OPENAI_API_KEY`; exported into the container environment and visible to all capsule processes. |
 | `antigravity-cli/gemini-api-key` | Antigravity CLI | Optional `host-environment:GEMINI_API_KEY`; exported into the container environment and visible to all capsule processes. |
 
-`config bind` prints the slot's sensitivity (`ordinary`, `personal`, or
-`credentials`) and whether concurrent capsules may share it safely (all slots
-above declare `concurrent = false`). Every binding is rechecked when
-`project run` derives the launch plan. For ordinary application environment
+For directory bindings, `config bind` prints the slot's sensitivity
+(`ordinary`, `personal`, or `credentials`) and its sharing restriction. All
+directory slots above declare `concurrent = false`. For secret bindings, it
+warns that all capsule processes and Docker inspection can see the value.
+Every binding is rechecked when `project run` derives the launch plan. For ordinary application environment
 variables rather than component-declared secret inputs, use
 `devcapsule project config env set`.

@@ -13,8 +13,9 @@ back if something breaks, or export a lock patch for the rest of the team.
 
 Run mutating `versions` commands from your checkout in a host terminal (or pass
 `devcapsule project --path /path/to/checkout versions ...`). Update discovery
-covers PyCharm, VSCodium, Visual Studio Code, Codex, Claude Code, Antigravity
-CLI, and the PostgreSQL client. In {{tag}}, **Codex** supports local preview,
+covers all catalog components: PyCharm, IntelliJ IDEA, Rider, Eclipse,
+VSCodium, Visual Studio Code, Codex, Claude Code, Antigravity CLI, PostgreSQL
+client, .NET SDK, and Playwright. In {{tag}}, **Codex** supports local preview,
 selection, and rollback through these commands; the other adapters report
 upstream freshness and delivery limits. See
 [How DevCapsule checks component freshness](component-freshness.md) for what
@@ -32,9 +33,10 @@ devcapsule project versions show
 devcapsule project config show
 ```
 
-Both commands are offline, write nothing, and accept `--json` (`schema-version`
-`1`, with a `context` field naming either the host's next launch or the running
-capsule).
+Both commands are offline, write nothing, and accept `--json`. `versions show`
+uses `schema-version: 1`; the current `config show` listing uses
+`schema-version: 2`. Both include `context`. An older capsule without a captured
+listing can return the legacy schema-1 `config show` report.
 
 Inside a capsule, `versions show` separates the **running session's version
 set** (captured when the container started) from the **host's current selection
@@ -46,7 +48,7 @@ checkout's host path.
 ## Critical notices at launch
 
 During an interactive `devcapsule project run`, the launcher checks component
-channels at most once per day. If a channel publishes an explicit security or
+channels after a day, or when the selected version set changes. If a channel publishes an explicit security or
 end-of-support notice (for example, an npm deprecation notice on a Codex
 release), `project run` pauses before launching:
 
@@ -58,7 +60,7 @@ Choose upgrade (review first), later (seven days), keep (silence this notice), o
 ```
 
 - `upgrade` previews the candidate's version changes, downloads, validation
-  status, and rollback path, then prepares and launches it for this session if
+  status, and rollback path, then selects it for this and subsequent launches if
   you confirm. Vendor trust or acquisition consent is still checked separately,
   and nothing widens host access.
 - `later` (or pressing Enter) launches your current version and asks again in
@@ -79,8 +81,9 @@ devcapsule project versions show
 devcapsule project versions check
 ```
 
-`versions check` queries the upstream feeds immediately without altering your
-checkout. When a vendor endpoint fails, DevCapsule checks its maintained
+`versions check` queries the selected components' upstream feeds immediately
+and saves observations without changing your software selection. When a vendor
+endpoint fails, DevCapsule checks its maintained
 [component status feed](component-freshness.md#maintained-status-fallback-when-a-vendor-check-fails)
 for known adapter issues or workarounds.
 
@@ -93,7 +96,8 @@ devcapsule project versions preview codex latest
 ```
 
 `preview` resolves the tag to an exact version and immutable artifact checksums
-without downloading binaries or changing your checkout. It prints what would
+without downloading binaries or changing your software selection. It saves a
+preview record in the home's state directory. The output shows what would
 change, whether the combination is matrix-verified, and a `PREVIEW_ID` to pass
 to `select`:
 
@@ -131,13 +135,18 @@ devcapsule project run
 a clean session on this checkout, or to a specific identity copied from
 `versions history`.
 
-Downloaded component archives are kept in your
-[DevCapsule home's](../configuration/home.md) state directory (separate from
-disposable cache), and materialized Docker images keep distinct tags, so
-ordinary rollbacks work offline. If you deleted both the Docker image and the
-retained archives, `rollback` reports what is missing and leaves your selection
-alone unless you pass `rollback --reacquire` to re-download the exact pinned
-artifacts.
+Recovery archives live under `version-sets/<path hash>/artifacts/sha256/` in
+your [DevCapsule home's](../configuration/home.md) state directory. The default
+root is `~/.local/state/devcapsule`, or `$XDG_STATE_HOME/devcapsule` when set;
+a named home uses `$DEVCAPSULE_CONFIG_HOME/state`. `<path hash>` is the full
+SHA-256 of the checkout's canonical absolute path, without a trailing newline.
+These retained copies are separate from disposable download caches.
+
+Offline rollback needs the base image and either the exact archives or a
+matching materialized environment image. A missing base image also requires
+`rollback --reacquire`. If recovery resources are missing, rollback keeps your
+selection and reports the error. `--reacquire` permits exact downloads, but
+withdrawn vendor artifacts might no longer be available.
 
 Rollback switches software versions only: your source tree, host permissions,
 persistent home, IDE settings, and agent sign-ins stay untouched. Keep in mind
@@ -185,8 +194,8 @@ devcapsule project versions defer
 devcapsule project versions dismiss
 ```
 
-Routine update reminders appear at most once every seven days during
-interactive launches. `defer` restarts the seven-day quiet window; `dismiss`
-silences the currently discovered candidate versions until different upstream
-versions or a new critical security/deprecation notice appear. Neither command
-changes notices printed by an agent's own CLI inside the capsule.
+Routine reminders for checked candidates appear at most once every seven
+days during launches, including non-interactive launches. `defer` quiets checked
+candidates and critical notices for seven days. `dismiss` silences both until
+a different candidate or a new or revised critical notice appears. Neither
+command changes notices printed by an agent's own CLI inside the capsule.
