@@ -405,6 +405,15 @@ outside basetemp. Final validation uses tmpfs scratch and an external log. No me
 the current release tip, whose workflow and approval changes are already
 present. The release branch is not synchronized or rewritten.
 
+## User Documentation 0.3.0 CLI Alignment — Batch 5 (`sessions/`, `collaboration/`, `platforms/`) — 2026-10-30
+
+Slice branch: `ws-maintenance/0.3.0-docs-batch-5-sessions-collab-platforms` (targeting `release-0.3.0`, final batch of [2026-10-30-user-docs-0-3-0-cli-alignment.md](../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md)).
+
+- Updated 9 `docs/*.md` files across `docs/sessions/` (5), `docs/collaboration/` (1), and `docs/platforms/` (3), retiring the final 2 `status: planned` stubs (`docs/sessions/several-projects.md` and `docs/sessions/another-machine.md`) so all 49 `docs/**/*.md` files and all 12 stubs across Batches 1–5 are covered with zero overlaps.
+- Aligned `start-stop-reconnect.md` (fixing the stale host `project info` container-name statement), `what-persists.md` (explicit mount scope and `~/.gemini` credential rules), `web-console.md` (0.3.0 launcher configuration channel, immediate vs deferred `config console` requests, and launch-time `listing.json`), `working-in-workstreams.md` (`workflow` and `bootstrap project` CLI alignment, `aliases` preserved), and `linux.md`, `macos.md`, and `windows-wsl2.md` (`role: windows` and `aliases` preserved).
+- Pre-review validation passed: `docs-contract` (`192` pages), `./scripts/website.sh build && ./scripts/website.sh check` (`23` tests, `196` HTML pages, `14,459` links/assets/anchors), `92` `release_docs` unit tests, and `bash -n` on all 16 shell blocks.
+- Next step: open Batch 5 PR against `release-0.3.0` and run file-by-file Pair Review with `Codex (gpt-6-astra)`.
+
 ## The CLI UX redesign in rc4 — 2026-10-24
 
 The owner answered the
@@ -3608,6 +3617,7 @@ Earlier open-thread history (read against the current scope above):
 - [Runtime CLI blocker](../../bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md): next implementation task; blocks 0.2.14.
 - [URL-opening defect](../../bugs/devcapsule/2026-09-24-url-opening-without-browser-handler.md): contained-display triage.
 - [Workflow onboarding](../../work-orders/2026-09-24-workflow-installation-onboarding.md): non-blocking follow-up.
+- [0.3.0 user docs Batch 5 evidence](evidence/2026-10-30-docs-batch-5/README.md): Batch 5 (`sessions/`, `collaboration/`, `platforms/`) scope, validation, and Pair Review record.
 
 - [Legacy launch capability work item](../../work-orders/2026-09-22-legacy-launch-capability-disposition.md): future-release decisions and delivery, blocking V1.
 - [Release overview](../../releases/v0.2.14/README.md): cut, candidates and acceptance checklist.
