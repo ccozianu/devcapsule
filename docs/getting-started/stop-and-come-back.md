@@ -1,47 +1,56 @@
 ---
-description: How a session ends, what closing the browser tab does, and how you return to exactly where you left off.
+description: How a capsule session ends, why closing the browser tab leaves it running, and what survives when you start the next session.
 weight: 3
-updated: 2026-09-28
+updated: 2026-10-30
 ---
 # Stop and come back
 
-A capsule session is the IDE, the terminal you launched it from, and a
-browser tab showing the capsule's desktop. Each has its own way of ending,
-and only one of them ends the session.
+A running session involves three pieces: the IDE inside the container, the host
+terminal running `devcapsule project run`, and the browser tab displaying the
+capsule's desktop. Only stopping the IDE (or interrupting the launcher) ends
+the container.
 
 ## Ending a session
 
-Choose **File → Exit** in the IDE. The capsule stops, the launcher terminal
-returns to its prompt, and the container is removed. Your project folder and
-your persistent state are untouched: they never lived in the container.
+Choose **File → Exit** inside the IDE for a clean shutdown. The IDE exits,
+Docker removes the disposable container, and your host terminal returns to its
+shell prompt. Your project files and persistent checkout directories stay on
+your computer untouched.
 
-Pressing Ctrl+C in the launcher terminal also stops the capsule, after a
-short shutdown interval. The launcher waits for it, then prints the result,
-`Session interrupted from the terminal (Ctrl+C); the capsule stopped.`, and
-the paths of this session's log files on your computer. A second Ctrl+C
-stops the waiting and tells you how to stop the capsule yourself. Prefer the
-IDE's exit for an ordinary stop.
+Pressing `Ctrl+C` in the launcher terminal also stops the capsule after a brief
+shutdown grace period, printing `Session interrupted from the terminal
+(Ctrl+C); the capsule stopped.` along with the host paths to that session's log
+files. Pressing `Ctrl+C` a second time stops waiting and prints the `docker
+stop` command so you can finish stopping the container yourself. Prefer exiting
+from the IDE during normal work so the editor flushes unsaved workspace state
+cleanly.
 
-## Closing the tab
+## Closing the browser tab
 
-Closing the browser tab leaves the capsule running. Reopen the URL the
-launcher printed to return to the same desktop, with every window as you
-left it. Each run prints a new URL; a second `project run` cannot recover
-the URL of a session that is already running, so keep the terminal output.
+Closing the desktop tab (or the [web console](../sessions/web-console.md) tab)
+leaves the capsule running. Reopen the URL printed in your launcher terminal to
+reconnect to the exact same desktop with every window and terminal still live.
 
-## Coming back
+Every `project run` generates fresh loopback ports and tokens. Running a second
+`devcapsule project run` cannot recover the URL of an already-running session,
+so keep your launcher terminal open while the session runs.
 
-From the project folder, in any terminal:
+## Coming back later
+
+From the project directory in any host terminal:
 
 ```bash
 ~/.local/bin/devcapsule project run
 ```
 
-The IDE opens with your files, its settings, extensions and window layout,
-and your agents' sign-ins. Processes you had running, servers or watchers,
-restart. You do not initialize again, and you are not asked the same
-questions again unless the project itself changed what it needs; see
-[Recover after a project change](../configuration/project-versus-personal.md#when-the-project-changes).
+The IDE reopens with your source tree, personal IDE preferences, installed
+plugins or extensions, window layout, and coding-agent sign-ins intact.
+Processes that were running inside the previous container—such as dev servers
+or file watchers—stopped when that container exited, so start them again in the
+IDE terminal when needed.
 
-What persists, and where it lives on your computer, is in
-[What persists](../sessions/what-persists.md).
+You do not run `project init` again, and DevCapsule asks new questions only
+when the project's shared configuration adds new requirements or
+recommendations; see [Changes at the next
+launch](../configuration/project-versus-personal.md#when-the-project-changes)
+and [What persists](../sessions/what-persists.md).
