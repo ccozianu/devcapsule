@@ -21,6 +21,21 @@ that is honest about what it skips.
 
 ## Scope And Owner Decisions
 
+- **CI path gating and advisory diff coverage, 2026-10-30.** The owner
+  assigned the [reviewed work order](../../work-orders/2026-10-30-ci-path-gating-and-diff-coverage.md)
+  to maintenance for 0.3.0. Decisions 1B and 2B mean advisory coverage with
+  no percentage gate and serial execution; parallelism is deferred beyond
+  0.3.0 without a later release target. PR #312 implements the slice with
+  GPT-6 Codex and Claude Code / Claude Fable 5.1 Pair Review. Review #314 is accepted and the final local/hosted gates passed.
+  Integration and the owner-required `ci-gate` setting remain open.
+- **October 25 documentation proposals, retargeted 2026-10-29.** Parts A
+  and B of that work order belong to 0.3.1, still owned by maintenance.
+  They no longer gate 0.3.0. The separate language review, accurate candidate
+  documentation (C16) and C20 remain 0.3.0 obligations.
+- **Pair Review Loop name, 2026-10-30.** The owner requires the terminology
+  and packaged-definition change in 0.3.0. Main PR #309 is merged; maintenance
+  has accepted the release-adapted patch for a separate slice after CI review.
+
 - **The explicit IDE requirement override, 2026-10-29.** The owner brought
   the [work order of 2026-10-28](../../work-orders/2026-10-28-explicit-ide-requirement-override.md)
   from `main` into 0.3.0 and assigned it to `maintenance`: a project may
