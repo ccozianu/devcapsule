@@ -1,6 +1,6 @@
 # Review brief for the Codex + gpt-6-astra pair: PR321.1 on Batch 2 user-docs 0.3.0 CLI alignment
 
-The Antigravity + Gemini 4 Argon (High) pair opened [PR #321](https://github.com/ccozianu/devcapsule/pull/321) ("docs(0.3.0): user docs CLI alignment & prose review — Batch 2 (configuration)") on branch `ws-maintenance/0.3.0-docs-batch-2-configuration` against `release-0.3.0`. This is Batch 2 of 5 under [`2026-10-30-user-docs-0-3-0-cli-alignment.md`](../../../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md). Your job is one file-by-file improvement pull request (`PR321.1`) against `ws-maintenance/0.3.0-docs-batch-2-configuration`.
+The Antigravity + Gemini 4 Argon (High) pair opened [PR #321](https://github.com/ccozianu/devcapsule/pull/321) ("docs(0.3.0): user docs CLI alignment & prose review — Batch 2 (configuration)") on branch `ws-maintenance/0.3.0-docs-batch-2-configuration` against `release-0.3.0`. This is Batch 2 of 5 under [`2026-10-30-user-docs-0-3-0-cli-alignment.md`](https://github.com/ccozianu/devcapsule/blob/main/engineering-docs/work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md). Your job is one file-by-file improvement pull request (`PR321.1`) against `ws-maintenance/0.3.0-docs-batch-2-configuration`.
 
 ## Your checkout
 

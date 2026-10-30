@@ -1,10 +1,10 @@
 # User Documentation 0.3.0 CLI Alignment — Batch 2 Verification Ledger
 
 Workstream: `maintenance`
-Work order: [`2026-10-30-user-docs-0-3-0-cli-alignment.md`](../../../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md)
-Slice branch: `ws-maintenance/0.3.0-docs-batch-2-configuration` (target `release-0.3.0`)
+Work order: [`2026-10-30-user-docs-0-3-0-cli-alignment.md`](https://github.com/ccozianu/devcapsule/blob/main/engineering-docs/work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md)
+Slice branch: `ws-maintenance/0.3.0-docs-batch-2-configuration` (target `release-0.3.0`, [PR #321](https://github.com/ccozianu/devcapsule/pull/321))
 Implementor pair: `Antigravity (Gemini 4 Argon (High))`
-Review partner: `Codex (gpt-6-astra)`
+Review partner: `Codex (gpt-6-astra)` ([PR #322](https://github.com/ccozianu/devcapsule/pull/322), accepted at `a082a710` without a revision round and merged at `b7849132`)
 
 ## Scope (10 `docs/configuration/*.md` files; 1 `status: planned` stub retired)
 
@@ -21,10 +21,11 @@ Review partner: `Codex (gpt-6-astra)`
 | 9 | `docs/configuration/software-approvals.md` | No | Corrected `antigravity-cli` origin description from `"a bare Cloud Run host"` to shared Google Cloud Storage (`https://storage.googleapis.com`) with the exact deployment/credentials trust note from `trust.py`, distinguished `project config trust list [--json]` from `home trust list`, removed `~/.local/bin/` prefixes, and tightened prose. | Verified against `configuration/trust.py`, `home_channels.py`, and `commands/home.py` |
 | 10 | `docs/configuration/capabilities.md` | No | Documented `--unverified` (`init`, `require`, `offer`, `drop`, `ide`, `add`, `omit`, `restore`, `use`; absent on `recommend`), component-name IDE support, and replaced leaked internal `"Candidate 4"` notes with adopter-facing `{{tag}}` schema-1/schema-2 compatibility guidance while preserving `#a-required-ide`. | Verified against `commands/project.py` and `configuration/manifest_schemas.py` |
 
-## Validation Gate
+## Validation Gate (Post-Merge of PR #322 at `b7849132`)
 
 - `git diff --name-only origin/release-0.3.0 -- docs/`: 10 files (`<= 10` batch limit satisfied; `docs/versions.yaml` untouched).
 - `git grep -n '^status: planned' -- docs/configuration/`: 0 matches (`ide-preferences.md` stub retired).
 - `(cd devcapsule-src && .venv/bin/python -m nox -s docs-contract)`: passed (`192` pages including `18` aliases).
-- `./scripts/website.sh build && ./scripts/website.sh check`: passed (`23` website tests, `196` HTML pages, `14,423` local links/assets/anchors).
+- `./scripts/website.sh build && ./scripts/website.sh check`: passed (`23` website tests, `196` HTML pages, `14,425` local links/assets/anchors).
 - `(cd devcapsule-src && .venv/bin/pytest -q -k "release_docs")`: passed (`92` tests).
+- `(cd devcapsule-src && .venv/bin/python -m nox -s smoke)`: passed.

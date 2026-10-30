@@ -123,32 +123,34 @@ Validation scratch uses `/var/tmp/maintenance-ci` because the configured
 
 ## User documentation 0.3.0 CLI alignment and prose review (Batch 2) — 2026-10-30
 
-Slice branch `ws-maintenance/0.3.0-docs-batch-2-configuration` (from
-`origin/release-0.3.0` at `c2742621`) updates all 10 `docs/configuration/*.md`
-files under
-[`2026-10-30-user-docs-0-3-0-cli-alignment.md`](../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md)
-and folds in the human-prose pass from
-`2026-10-24-maintenance-docs-language-review-before-0-3-0.md`.
+Implementation [PR #321](https://github.com/ccozianu/devcapsule/pull/321)
+(`ws-maintenance/0.3.0-docs-batch-2-configuration` -> `release-0.3.0`) received
+Pair Review [PR #322](https://github.com/ccozianu/devcapsule/pull/322) from
+`Codex (gpt-6-astra)`, accepted at `a082a710` without a revision round and
+merged at `b7849132`.
 
-Key changes:
-- Authored `docs/configuration/ide-preferences.md` in full (`status: planned`
-  retired) covering declared slots across `pycharm`, `intellij`, `rider`,
-  `codium`, `vscode`, and `eclipse`, per-checkout XDG / `DEVCAPSULE_CONFIG_HOME`
-  paths, `config bind` / `state adopt` / `init --bind` / `config unbind`
-  direct-mount behavior, and `concurrent = false` sharing hazards.
-- Fixed `docs/configuration/software-approvals.md` (`antigravity-cli` downloads
-  from `https://storage.googleapis.com` rather than `"a bare Cloud Run host"`),
-  `docs/configuration/local-base.md` (`--tag` required on `images build --type
-  base`), `docs/configuration/index.md` (added all 4 missing sibling guide
-  links), `docs/configuration/home.md` and `docs/configuration/capabilities.md`
-  (removed leaked internal RC/candidate notes, documented `--unverified` and
-  component-name IDE aliases), `docs/configuration/inspect.md`,
-  `docs/configuration/resource-limits.md`, `docs/configuration/extra-tools.md`,
-  and `docs/configuration/project-versus-personal.md`; see the
-  [Batch 2 verification ledger](evidence/2026-10-30-docs-batch-2/README.md).
-- Next step: run documentation and website contract gates, open Batch 2 PR
-  against `release-0.3.0`, and dispatch `Codex (gpt-6-astra)` for file-by-file
-  Pair Review.
+Batch 2 updates all 10 `docs/configuration/*.md` files under
+[`2026-10-30-user-docs-0-3-0-cli-alignment.md`](https://github.com/ccozianu/devcapsule/blob/main/engineering-docs/work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md)
+(merged to `main` in PR #316 at `ebab228a`) and folds in the human-prose pass
+from `2026-10-24-maintenance-docs-language-review-before-0-3-0.md`, retiring
+`status: planned` on `docs/configuration/ide-preferences.md` (complete 22-slot
+IDE storage reference across `pycharm`, `intellij`, `rider`, `codium`, `vscode`,
+and `eclipse`) and correcting `antigravity-cli` channel origin, `images build
+--type base --tag`, missing `docs/configuration/index.md` guide links, and
+leaked internal RC notes. Codex ran 46 `--help` calls and 68 isolated scratch
+CLI probes across all 10 files and applied 11 source-verified refinements
+(required-IDE `--force` links, console auto-applied restrictive authorizations,
+`project info` runtime allowlist vs. `config show` declared inputs, `default`
+vs. `none` value omission, `images list` columns vs. `devcapsule.source.revision`
+label, and immediate directory checks on `bind`/`adopt`/`init --bind`); see the
+[Batch 2 verification ledger](evidence/2026-10-30-docs-batch-2/README.md).
+Two unimplemented CLI hint proposals surfaced during review are recorded for a
+separate code slice: `_launcher.py:160-163` omits required `--tag` in the
+printed `images build --type base` hint, and `project.py:1138` still prints
+retired `config resolve` when non-software decisions accompany `config approve`.
+Next step: owner merge of PR #321 into `release-0.3.0`; Batch 3 (`docs/README.md`,
+`docs/getting-started/`, `docs/your-project/`, `docs/containment/` — 10 files)
+proceeds on its own slice branch.
 
 ## Goal
 
