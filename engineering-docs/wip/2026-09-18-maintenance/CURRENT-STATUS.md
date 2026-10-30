@@ -6,7 +6,7 @@ Start date: 2026-09-18
 
 State: active 2026-10-30; releasing 0.3.0: the explicit IDE requirement override is on `release-0.3.0`, PR #304 merged by the owner at `cfa45937` after the Codex review (PR #306) and the post-merge gate, the review-branch rule (PR #305) merged at `a1e3b0b2`, the slice's last records following in a records pull request; VS Code (PR #301) and the configuration home (PR #299) await the owner's merge; rc3 tagged, published and verified as downloaded; the diagnostics snapshot merged by PR #293; forced configuration and the schema-version slice move to rc4 with C20; the base is published in the promotion; C17 stays a gate in both halves
 
-Definition read: WORKFLOW.md@5c89396f2200, WORKFLOW-LOCAL.md@b500a24f0736
+Definition read: WORKFLOW.md@bc1b631d1da6, WORKFLOW-LOCAL.md@b500a24f0736
 
 Integration target: `main`
 
