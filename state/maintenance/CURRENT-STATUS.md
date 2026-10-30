@@ -4,9 +4,9 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: integrating 2026-10-30; authorized main synchronization resolved in PR #318 for owner review; release-to-main PR #317 waits for it
+State: in-progress 2026-10-30; user-docs 0.3.0 CLI alignment Batch 1 (PR #319 / review PR #320, 10 files) Pair-Reviewed, validated, and ready for owner merge; proceeding to Batch 2 (`docs/configuration/`, 10 files)
 
-Definition read: WORKFLOW.md@bfc91d68cd06, WORKFLOW-LOCAL.md@65501b3407db
+Definition read: WORKFLOW.md@bc1b631d1da6, WORKFLOW-LOCAL.md@450fc42e2234
 
 Integration target: `main`
 
@@ -16,62 +16,35 @@ Branch association: `release-0.3.0`, the release branch, the workstream's select
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`
 
-## Release-to-main integration — 2026-10-30
+## User documentation 0.3.0 CLI alignment and prose review (Batch 1) — 2026-10-30
 
-Owner requested a PR carrying everything currently on release-0.3.0 to main.
-Opened [PR #317](https://github.com/ccozianu/devcapsule/pull/317), head
-`4PR-10-release-0.3.0`, an untouched copy of the release tip under local
-Release Policy 8. Read-only merge-tree preview against main `ebab228a`
-found two conflicts: WORKFLOW.md (retain the Pair Review short name) and
-the CI work order (retain the implementation evidence). Main's development
-version remains 0.3.1.dev0; its final tree must omit the release-only
-source-version override in docs/versions.yaml.
+Implementation [PR #319](https://github.com/ccozianu/devcapsule/pull/319)
+(`ws-maintenance/0.3.0-docs-batch-1-reference-updates-troubleshooting` ->
+`release-0.3.0`) received Pair Review [PR #320](https://github.com/ccozianu/devcapsule/pull/320)
+from `Codex (gpt-6-astra)`, accepted at `71243a0c` without a revision round and
+merged at `0c0006c4`.
 
-Owner authorized main-to-release synchronization on 2026-10-30 and
-requested a PR to inspect the resolution. [PR #318](https://github.com/ccozianu/devcapsule/pull/318),
-`ws-maintenance/0.3.0-main-sync` into `release-0.3.0`, contains merge
-`fb8d8f10` with parents release `c2742621` and main `ebab228a`. This
-owner-requested review branch is a temporary maintenance slice; the release
-remains the workstream's integration selection. No merge is pushed directly
-to the release branch. `git show --remerge-diff fb8d8f10` isolates the
-resolution edits for the owner:
-- retain the Pair Review short-name sentence and the explicit-trigger rule;
-- retain CI implementation/acceptance evidence, acknowledge #312's merge,
-  and use the local ast-grep proposal link now that its file is present.
-
-The automatic merge carries main's accepted Pair Review naming and packaged
-definition; a separate application of that accepted patch is no longer
-needed after #318 lands. Other incoming work orders retain their own scope
-and owners. All three source-version fields remain 0.3.0; docs/versions.yaml
-keeps its release-only source-version override. No new tests are warranted
-for these textual conflict resolutions. The full combined gate at `fb8d8f10`
-passed: 2,644 unit tests (40 deselected, one xfail and one XPASS), 18 packaging
-tests, 357 web-console tests, type checks, source/PEX smokes and the 192-page
-documentation contract including 18 aliases. Log: local scratch
-`/var/tmp/maintenance-ci/main-sync-gate.log`; counts are preserved here and
-in PR #318. Only status records changed after this gate.
-
-Next: owner reviews and merges #318, then refresh #317's untouched release
-copy. Before handing #317 over for merge, preserve main's 0.3.1.dev0 and
-remove the release-only documentation override from the final main tree;
-merging ancestry alone must not reset main's version. This remains a
-concrete integration follow-up, not a completed validation claim. No final
-tag or publication was requested. Required ci-gate enforcement remains a
-separate GitHub setting.
+Batch 1 covers all 10 files in `docs/reference/` (3), `docs/updates/` (4), and
+`docs/troubleshooting/` (3) under
+[`2026-10-30-user-docs-0-3-0-cli-alignment.md`](../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md)
+(merged to `main` in PR #316 at `ebab228a` and acknowledged from coordination
+mail at `2d4aa223`), retiring two `status: planned` stubs
+(`docs/reference/project-info.md` and
+`docs/troubleshooting/cleanup-and-uninstall.md`) and folding in the human-prose
+pass from `2026-10-24-maintenance-docs-language-review-before-0-3-0.md`.
+Codex ran 106 CLI `--help` and isolated `DEVCAPSULE_CONFIG_HOME` probes across
+all 10 files, confirming `supported-versions.md` and applying 13 source-verified
+fixes across the other 9 files; two unimplemented CLI help/migration-hint gaps
+(`STABLE_JSON_HELP` schema-1 string on schema-2 `config show --json`, and
+missing replacement hints on `project config default` and mutating `project
+config trust`) are filed as
+[`2026-10-30-config-show-json-help-and-retired-home-command-hints.md`](../../bugs/devcapsule/2026-10-30-config-show-json-help-and-retired-home-command-hints.md);
+see the [Batch 1 verification ledger](evidence/2026-10-30-docs-batch-1/README.md).
+Next step: complete post-merge validation on PR #319, update its PR body for
+owner merge, and branch Batch 2 (`docs/configuration/`, 10 files) cleanly from
+`origin/release-0.3.0`.
 
 ## CI path gating and advisory diff coverage — 2026-10-30
-
-Owner merge verified by GitHub and SSH fetch: PR #312 merged into
-`release-0.3.0` at `9eb500da4177e85aa4c4aa353e936327c2bded10` on
-2026-10-30. Its tree equals the validated PR head `3aba7d04`; final hosted
-run 40990774517 passed Python, website and ci-gate. No repeat gate is
-needed for the unchanged tree. The clean maintenance checkout now selects
-`release-0.3.0`, fast-forwarded to that remote merge; no main synchronization.
-The mainline Pair Review naming change was read but remains the accepted
-separate release patch. Required-check configuration and release propagation
-to main remain open; the PR merge alone does not establish either.
-This post-merge record is committed locally and published on coordination;
-it travels with the next deliverable, with no records-only PR.
 
 Implementation [PR #312](https://github.com/ccozianu/devcapsule/pull/312)
 has received [review PR #314](https://github.com/ccozianu/devcapsule/pull/314),
@@ -89,7 +62,7 @@ Native Files changed placement is observed in a Chromium screenshot from
 closed probe PR #313: a warning on lines 1–2 with 0% diff coverage and green
 CI. Its fixture is absent from the implementation. Evidence is retained in
 [the acceptance record](evidence/2026-10-30-ci-gating/acceptance.md).
-The owner still must add required ci-gate; the release-targeted PR is merged.
+The owner still must add required ci-gate and merge the release-targeted PR.
 No main/release branch was merged by the agent.
 
 
@@ -2290,14 +2263,10 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-Current: owner reviews and merges main-synchronization PR #318. Then
-refresh release-to-main PR #317, settle main-specific version/documentation
-metadata, validate its final tree, and hand it back for merge. The accepted
-Pair Review naming and packaged definition arrive through #318. The CI work order
-is implemented, reviewed, validated and merged into the release through
-PR #312. Required ci-gate configuration remains an owner action; normal
-release propagation to main remains open. Documentation scheduling records
-reflect the acknowledged 0.3.1 deferral.
+Current: implement the CI work order, complete Claude Fable 5.1 Pair Review,
+run the full gate, and hand the release-targeted PR to the human. Then
+apply the accepted naming patch. Documentation scheduling records now
+reflect the acknowledged deferral.
 Historical candidate sequencing below must not override this owner direction.
 
 1. The network-node slice, on `ws-maintenance/0.3.0-network-node` from
@@ -3145,11 +3114,6 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Main-to-release synchronization is authorized and resolved in PR #318,
-  pending owner review/merge. PR #317 stays draft until its release copy
-  is refreshed and main-specific metadata is handled. The naming patch
-  comes with #318; no new feature work is implied by this integration.
-
 - CI Pair Review #314 settled without a revision round. Reviewer proposals
   not implemented: migrate paths-filter v3 to v4 (Node 20 produces a hosted
   deprecation warning), and replace repository-file fixtures in release-doc
@@ -3157,7 +3121,7 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   choices, not new 0.3.0 requirements or blockers to this approved scope.
 
 - CI slice 2026-10-30: implementation and Pair Review are complete. Next:
-  PR #312 is merged at `9eb500da`; the owner adds required `ci-gate` once
+  owner merges PR #312 into release-0.3.0 and adds required `ci-gate` once
   the workflow is available on each intended integration branch; then
   follow normal release propagation to main. No coverage threshold or
   parallelism decision remains open for 0.3.0. Temporary probe PRs must
@@ -3601,6 +3565,11 @@ Earlier open-thread history (read against the current scope above):
   release documents and bug records.
 
 ## Workstream Document Index
+
+- [User-docs 0.3.0 CLI alignment work order](../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md),
+  [Batch 1 verification ledger](evidence/2026-10-30-docs-batch-1/README.md),
+  [PR319.1 Pair Review brief](evidence/2026-10-30-docs-batch-1/review-brief.md), and
+  [CLI schema-help / migration-hint bug](../../bugs/devcapsule/2026-10-30-config-show-json-help-and-retired-home-command-hints.md): PR #319 / #320, reviewed 0.3.0 documentation alignment slice (`docs/reference/`, `docs/updates/`, `docs/troubleshooting/`).
 
 - [CI Pair Review brief](evidence/2026-10-30-ci-gating/review-brief.md) and
   [acceptance evidence](evidence/2026-10-30-ci-gating/acceptance.md): PR #312,
