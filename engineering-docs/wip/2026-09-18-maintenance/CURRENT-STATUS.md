@@ -290,6 +290,46 @@ Pre-review gate passed: `nox -s build` and `webconsole` on `fcf5c4e6` with the r
 
 Post-merge gate passed on `3bfb3a16`, the slice with the review's PR #306 merged: mypy clean on 263 source files; 2,574 unit tests passed, 40 deselected, 1 xfailed, 1 xpassed; the executable built and smoked; 18 packaging tests passed; `docs-contract` 192 pages including 18 aliases passed; 357 web console tests passed, mypy clean on 9 files. The owner merged PR #304 into `release-0.3.0` at `cfa45937` on 2026-10-30.
 
+## User documentation 0.3.0 CLI alignment and prose review (Batch 3) — 2026-10-30
+
+Slice branch `ws-maintenance/0.3.0-docs-batch-3-onboarding-project-containment`
+(from `origin/release-0.3.0` at `c2742621`) updates 10 `docs/*.md` files across
+`docs/README.md` (1), `docs/getting-started/` (3), `docs/your-project/` (4), and
+`docs/containment/` (2) under
+[`2026-10-30-user-docs-0-3-0-cli-alignment.md`](https://github.com/ccozianu/devcapsule/blob/main/engineering-docs/work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md)
+and folds in the human-prose pass from
+`2026-10-24-maintenance-docs-language-review-before-0-3-0.md`.
+
+Key changes:
+- Authored `docs/your-project/declare-needs.md` and
+  `docs/your-project/services-and-ports.md` in full (`status: planned` retired
+  on both), covering schema-2 manifests and platform locks, all 17 catalog
+  capabilities, `require`/`offer`/`drop`/`recommend`, `init --regenerate`,
+  `config check --manifest --lock`, loopback `--publish=127.0.0.1:PORT:PORT` vs.
+  `network host`, and host/Testcontainers/embedded service patterns.
+- Updated `docs/README.md` (retired `"coming soon"` notice, refreshed section
+  links), `docs/getting-started/install.md`, `first-session.md` (exact `0.3.0`
+  `project init` prompts including `antigravity-agent` default and recipe-11+
+  web console URL), `stop-and-come-back.md` (corrected container process
+  restart wording), `existing-repository.md` and `new-project.md` (added
+  `eclipse-ide`, `dotnet-ide`, component-name IDE aliases, and `checkout
+  register`), and `the-boundary.md` / `granting-and-withdrawing.md` (`config
+  deny` 5-node scope vs. `authorize <vendor>-download false`, `default`/`none`
+  keywords, `vscode-download`); see the
+  [Batch 3 verification ledger](evidence/2026-10-30-docs-batch-3/README.md).
+- Opened [PR #323](https://github.com/ccozianu/devcapsule/pull/323) against
+  `release-0.3.0`, dispatched `Codex (gpt-6-astra)` under
+  [`review-brief.md`](evidence/2026-10-30-docs-batch-3/review-brief.md),
+  accepted [PR #324](https://github.com/ccozianu/devcapsule/pull/324)
+  (`f218a6d5`, 10 source-verified fixes across all 10 files) without a revision
+  round, and merged it at `18728ce8`.
+- Recorded unimplemented Batch 5 follow-up (`docs/sessions/what-persists.md:8`
+  mount-scope wording); post-merge gate passed (`docs-contract`: `192` pages;
+  `website.sh build && check`: `23` tests, `196` HTML pages, `14,449`
+  links/anchors; `pytest -q -k release_docs`: `92` passed; `nox -s smoke`:
+  passed). Ready for owner merge into `release-0.3.0`; next step: execute Batch
+  4 (`docs/everyday-development/` + `docs/working-with-ai/`, 10 files, 5 stubs).
+
 ## Diagnostics snapshot and export — 2026-10-27
 
 Owner-directed work on `ws-maintenance/0.3.0-diagnostics-snapshot`, forked
@@ -3692,6 +3732,7 @@ Earlier open-thread history (read against the current scope above):
 - [PR #236 review-partner brief (PR236.1)](evidence/2026-10-22-pr236-review-brief.md): brief for Claude Fable 5.1 on the E2E scenario video recorder and Eclipse Java debugger demo slice.
 - [Landing-page work order (`Why DevCapsule?`)](../../work-orders/2026-10-18-landing-page-why-devcapsule.md): Deliverables 1–4 completed and verified on `ws-maintenance/e2e_videos`.
 - [Stretch-goal hero video follow-up work order](../../work-orders/2026-10-19-eclipse-java-1brc-hero-video.md): Eclipse/Java 1BRC hero video stretch goal with reusable pipeline preamble and unblocking options.
+- [Batch 3 verification ledger (`README`, `getting-started`, `your-project`, `containment`)](evidence/2026-10-30-docs-batch-3/README.md) and [PR323.1 review brief](evidence/2026-10-30-docs-batch-3/review-brief.md): 10-file 0.3.0 documentation alignment and prose slice ([PR #323](https://github.com/ccozianu/devcapsule/pull/323)) on `ws-maintenance/0.3.0-docs-batch-3-onboarding-project-containment`.
 - [0.3.0 release overview](../../releases/v0.3.0/README.md): the cut, the checklist, the freshness review, the candidates; open for any release question.
 - [0.3.0 bug table](../../releases/v0.3.0/bugs.md): the records the release carries and their dispositions.
 - [0.3.0 changelog](../../releases/v0.3.0/changelog.md): what is new and fixed since 0.2.15, maintained at every candidate; the prerelease body.
