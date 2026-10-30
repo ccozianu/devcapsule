@@ -81,7 +81,7 @@ class ResolutionError(ProjectConfigurationError):
     """
 
 
-_MATRIX_VERSION = "embedded-28"
+_MATRIX_VERSION = "embedded-29"
 
 
 # --------------------------------------------------------------------------
@@ -307,10 +307,12 @@ class ResolutionMatrix:
         return tuple(sorted(self._capability_table))
 
     def canonical_name(self, name: str) -> str:
-        """Accept a component name when exactly one capability provides it alone."""
+        """Accept a component name when it unambiguously names one capability."""
         if name in self._capability_table:
             return name
         matches = [key for key, entry in self._capability_table.items() if entry.providers == (name,)]
+        if not matches:
+            matches = [key for key, entry in self._capability_table.items() if name in entry.providers]
         if len(matches) == 1:
             return matches[0]
         raise ResolutionError(f"The embedded resolution matrix does not know {name!r}; supported capabilities: "
@@ -384,6 +386,10 @@ class ResolutionMatrix:
         available = ", ".join(f"{component} {pin.version}" for component in providers
                               for pin in self._components.get(component, ()))
         raise ResolutionError(f"No provider supplies {capability} {minimum or ''} or newer; catalog supplies {available or 'none'}.")
+
+    def component_pins(self) -> dict[str, Mapping[str, Any]]:
+        """The latest embedded table for each component on this platform."""
+        return {name: pins[-1].lock_table for name, pins in self._components.items() if pins}
 
     def component_closure(self, capability: str, minimum: str | None = None,
                           lock: Mapping[str, Any] | None = None, *,
@@ -883,6 +889,28 @@ _CODIUM_1_126_04524 = _ComponentPin(
     },
 )
 
+# Visual Studio Code 1.143.1 (commit e646868227c3e3a9e3f24277c8c7220be42c0be7),
+# queried from Microsoft's official stable update feed on 2026-10-28; the
+# downloaded linux-x64 tar.gz matches sha256hash verbatim. Proprietary
+# Microsoft binary acquired on the user's machine under vscode-download or
+# home trust (vscode), never redistributed in published DevCapsule images.
+_VSCODE_1_143_1 = _ComponentPin(
+    component_id="vscode",
+    version="1.143.1",
+    lock_table={
+        "version": "1.143.1",
+        "delivery-policy": "local-materialization",
+        "acquisition-authorization": "vscode-download",
+        "license": "Proprietary",
+        "terms-url": "https://code.visualstudio.com/license",
+        "url": (
+            "https://vscode.download.prss.microsoft.com/dbazure/download/stable/"
+            "e646868227c3e3a9e3f24277c8c7220be42c0be7/code-stable-x64-1792691793.tar.gz"
+        ),
+        "sha256": "48f658052e54e020a1c1be7b37ac0f9ae39f07e8ccda805c63f053cfda72b2be",
+    },
+)
+
 # Codex is pinned as npm publishes it (owner direction 2026-09-05, replacing
 # the single-binary extraction that dropped the bundled bubblewrap, ripgrep,
 # zsh and code-mode host — see the 2026-09-05 bug record): the meta package
@@ -1245,6 +1273,7 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
         "dotnet-sdk": (_DOTNET_SDK_10_0_401,),
         "playwright": (_ComponentPin("playwright", str(PLAYWRIGHT_PIN["version"]), PLAYWRIGHT_PIN),),
         "codium": (_CODIUM_1_126_04524,),
+        "vscode": (_VSCODE_1_143_1,),
         "codex": (_CODEX_0_145_0, _CODEX_0_153_0, _CODEX_0_153_4, _CODEX_0_157_1, _CODEX_0_163_0),
         "claude-code": (
             _CLAUDE_CODE_2_1_227,
@@ -1340,6 +1369,15 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
             "base (config-history 20260902T075529Z)",
         ),
         _VerifiedEdge(
+            "vscode",
+            "1.143.1",
+            _BASE_FAMILY_UBUNTU_24_04,
+            "IDE smoke 2026-10-28 from a capsule on the v0.3.0-rc6 base: the "
+            "desktop answered, a 'code' X11 window titled 'Visual Studio Code' "
+            "owned the display, the recorded desktop kept (maintenance evidence "
+            "2026-10-28-vscode); no relaunch or persistence check yet",
+        ),
+        _VerifiedEdge(
             "codex",
             "0.145.0",
             _BASE_FAMILY_UBUNTU_24_04,
@@ -1415,7 +1453,8 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
         "java-ide": Capability(("intellij",), ide=True),
         "eclipse-ide": Capability(("eclipse",), ide=True),
         "dotnet-ide": Capability(("rider",), ide=True),
-        "frontend-ide": Capability(("codium",), ide=True),
+        "frontend-ide": Capability(("codium", "vscode"), ide=True),
+        "vscode-ide": Capability(("vscode",), ide=True),
         "codex-agent": Capability(("codex",)),
         "claude-code-agent": Capability(("claude-code",)),
         "antigravity-agent": Capability(("antigravity-cli",)),
@@ -1443,6 +1482,10 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
             # Version 2: the chrome-sandbox 4755 step is removed — renderers
             # run --no-sandbox (product-owner ruling 2026-09-02; see the
             # renderer-sandboxing design note).
+            "recipe-version": "2",
+        },
+        "vscode": {
+            "recipe": "vscode-local-materialization",
             "recipe-version": "2",
         },
     },

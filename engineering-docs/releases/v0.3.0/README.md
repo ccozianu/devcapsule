@@ -1,6 +1,6 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-26. Stage: **candidate 8 in preparation: the manifest's two schemas as classes and `init --regenerate` migrating to schema 2, the owner's gate of 2026-10-26; the pre-candidate merge into `main` is the owner's; then the diagnostics snapshot, image cleanup and C20**.
+Updated: 2026-10-26. Stage: **candidate 8 published and verified as downloaded; `init --regenerate` migrates a schema-1 manifest to schema 2, the owner's gate of 2026-10-26 met; the owner's regeneration of the repository's own manifests next, then the diagnostics snapshot, image cleanup and C20**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Changelog since 0.2.15](changelog.md) ·
@@ -20,6 +20,43 @@ The capsule web console, persistent session diagnostics, and a launcher
 that is honest about what it skips.
 
 ## Scope And Owner Decisions
+
+- **CI path gating and advisory diff coverage, 2026-10-30.** The owner
+  assigned the [reviewed work order](../../work-orders/2026-10-30-ci-path-gating-and-diff-coverage.md)
+  to maintenance for 0.3.0. Decisions 1B and 2B mean advisory coverage with
+  no percentage gate and serial execution; parallelism is deferred beyond
+  0.3.0 without a later release target. PR #312 implements the slice with
+  GPT-6 Codex and Claude Code / Claude Fable 5.1 Pair Review. Review #314 is accepted and the final local/hosted gates passed.
+  Integration and the owner-required `ci-gate` setting remain open.
+- **October 25 documentation proposals, retargeted 2026-10-29.** Parts A
+  and B of that work order belong to 0.3.1, still owned by maintenance.
+  They no longer gate 0.3.0. The separate language review, accurate candidate
+  documentation (C16) and C20 remain 0.3.0 obligations.
+- **Pair Review Loop name, 2026-10-30.** The owner requires the terminology
+  and packaged-definition change in 0.3.0. Main PR #309 is merged; maintenance
+  has accepted the release-adapted patch for a separate slice after CI review.
+
+- **The explicit IDE requirement override, 2026-10-29.** The owner brought
+  the [work order of 2026-10-28](../../work-orders/2026-10-28-explicit-ide-requirement-override.md)
+  from `main` into 0.3.0 and assigned it to `maintenance`: a project may
+  require an IDE, and `project run --ide IDE --force` launches another one
+  for one session, warned, recorded in the plan and never saved
+  ([D-0016](../../decisions/product/d-0016-explicit-launch-departure-from-a-required-ide.md),
+  R-CONFIG-001's one explicit launch exception). Claude Code, Claude
+  Fable 5.1, implements on `ws-maintenance/0.3.0-ide-override` with the
+  recorded acceptance session; the review partner is the owner's choice.
+  The `--save` combination is refused until the owner defines it.
+- **C20, release documentation automation, 2026-10-27.** The owner approved
+  the release documentation work order on `main`. Codex, GPT-6 Astra,
+  implements it; Claude Code, Claude Fable 5.1, reviews it.
+  Before the last candidate, write `notes.md`, run `release-docs.py promote 0.3.0`,
+  commit both, push `docs-0.3.0` at that commit, and merge to `main`.
+  Validate and accept that candidate. Integrate its acceptance record.
+  Run `release-docs.py check 0.3.0`, then tag the accepted source.
+  The final job verifies the documentation, publishes the PEX with the
+  notes as its body, and dispatches the test website. The owner reads the
+  test site and promotes it to production. Both website modes refuse a
+  listed release without its published download.
 
 - **Cut now**, decided 2026-10-18 after the inventory of what the plan still
   had unimplemented: a candidate of what exists is worth validating, and
@@ -578,10 +615,35 @@ How the candidate was prepared:
 - Not in rc7: the diagnostics snapshot, image cleanup, C20; the gaps the
   candidate-5 changelog lists under *Not in candidate 5*.
 
-### RC8 — in preparation, 2026-10-26
+### RC8 — tagged 2026-10-26
 
-- Tag `v0.3.0-rc8` on the release branch's tip after the pre-candidate
-  merge (PR from the throwaway copy `4PR-9-release-0.3.0`, the owner's).
+- Tag `v0.3.0-rc8` on `8d41fabe9f7ecc439e6854a0e89e9a9586fd4edf`, the release
+  branch's tip at the pre-candidate merge (PR #291 from the throwaway copy
+  `4PR-9-release-0.3.0`, merged by the owner at `8afa5f6`).
+- Candidate gate from a detached checkout of the tag before the push:
+  method `mainline`, no unintegrated commits, version `0.3.0rc8`; record at
+  `/opt/devcapsule-gate/rc8-release-protocol.json`.
+- Backend run [40271738816](https://github.com/ccozianu/devcapsule/actions/runs/40271738816)
+  passed; the [prerelease](https://github.com/ccozianu/devcapsule/releases/tag/v0.3.0-rc8)
+  is public, non-draft, with the three assets.
+- Downloaded over HTTPS into `/home/devcapsule/.cache/devcapsule-releases/v0.3.0-rc8`:
+  the checksum file verifies the executable, SHA-256
+  `5f1f8429351f0acf4a86bcaf92eb1cccaf6e26b0bb281a28c66c93d546ac8e6a`; the
+  manifest records the tag, the branch, the source revision, the
+  `mainline` disposition and, as its base reference, the published
+  recipe-11 digest `8c97d308…`; `devcapsule version` from an empty
+  directory reports `0.3.0rc8`, build `v0.3.0-rc8`, at `8d41fab…`. With
+  the downloaded executable, `project init --regenerate` on a copy of the
+  trading sample reported *Migrated ... to schema 2* and wrote the
+  `required` form with the IDE as the recommendation; the same command
+  with rc7 had left the file at schema 1.
+- Next: the owner's regeneration of this repository's, the website's and
+  the samples' manifests; then the diagnostics snapshot, image cleanup
+  and C20 for the next candidate; the documentation round before the
+  final tag.
+
+How the candidate was prepared:
+
 - Carries, beyond rc7: the manifest's two schemas as classes (PR #289,
   reviewed by PR #290, accepted without a round): `ManifestV1`,
   `ManifestV2`, `read_manifest` and `upgrade` in one module, every

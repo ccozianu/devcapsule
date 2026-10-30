@@ -1,7 +1,7 @@
 ---
 description: Require or offer capabilities, set a minimum, recommend a provider, and choose what this checkout uses.
 weight: 25
-updated: 2026-10-26
+updated: 2026-10-29
 ---
 # Capabilities and components
 
@@ -131,9 +131,9 @@ A required capability cannot be omitted. An omitted offer keeps its local
 version pin; a required dependency remains installed.
 
 `config use CAPABILITY COMPONENT` chooses a provider when the catalog lists
-several. `config use CAPABILITY default` removes your choice. The launcher
+several (for example, `config use frontend-ide vscode` or `codium`). `config use CAPABILITY default` removes your choice. The launcher
 then follows the project's recommendation, or the catalog's first eligible
-provider. The current catalog has one provider per capability, so `use`
+provider. When a capability has only one provider, `use`
 reports that no choice exists. A provider must meet the project's minimum.
 
 Your choices and local pins stay in the checkout record. The
@@ -146,8 +146,34 @@ devcapsule project run --ide frontend-ide --with codex-agent
 
 `--with` can repeat. `--use CAPABILITY=COMPONENT` chooses a provider for one
 launch when alternatives exist. Add `--save` to record these choices.
-Channel acceptance through `--trust` belongs to the workstation and persists
+Channel acceptance through `--trust` belongs to the home and persists
 without `--save` after the required review succeeds.
+
+### A required IDE
+
+A project may require an IDE, for example a project that develops a plugin
+for it: `init --require python-ide` or `config require python-ide`. Every
+checkout of that project then launches it, and `--ide` with another IDE is
+refused. The refusal names the one way past it, for one launch:
+
+```sh
+devcapsule project run --ide codium --force
+```
+
+`--force` accepts a named departure from the project's contract for this
+launch. It does not satisfy the requirement. The launcher warns which required
+IDE it sets aside and which IDE runs; the launch's plan and its listing inside
+the capsule record the departure. The requirement, the shared lock and your
+saved IDE stay as they are. The next plain `run` applies the ordinary
+requirements to your saved selection. If that selection already conflicted
+with the requirement, the plain launch still refuses it. The downloaded IDE
+and its own settings remain available for later;
+each IDE keeps its separate settings namespace. `--force` cannot be combined
+with `--save`, and it is refused when nothing is set aside: without `--ide`,
+with the required IDE itself, or on a project that requires no IDE. It grants
+no consent and skips no check: a channel to accept, an artifact that fails
+verification, or a required tool that needs the replaced IDE still stops the
+launch. A forced launch records no known-good configuration.
 
 ## Inspect and recover
 
@@ -168,7 +194,9 @@ Recovery refuses to overwrite files changed independently.
 
 A saved version set must still meet new project requirements. An incompatible
 set stops `run` with status 3. `devcapsule project versions follow-project
---apply` returns to the shared lock. The launcher never waives a requirement.
+--apply` returns to the shared lock. The launcher waives no requirement on its
+own; the one explicit, per-launch exception is `run --ide IDE --force` for a
+required IDE, [above](#a-required-ide).
 
 ## Existing files and older launchers
 

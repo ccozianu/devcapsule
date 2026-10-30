@@ -42,12 +42,17 @@ reported as a defect by the tooling.
 **Rule.** The operator guide is the policy; default ref spelling; GitHub
 Actions builds candidates; a resolved main disposition gates each candidate;
 downloaded-artifact smoke evidence is required; a release includes its
-documentation; `docs-<version>` branches carry post-release documentation
-corrections and are never merged or rebased.
+documentation. Promote the manifest on the release branch before the final
+tag and merge it to `main`. Fork `docs-<version>` at the promotion commit
+with `git push origin HEAD:refs/heads/docs-X.Y.Z`. Its `docs/` tree must
+match the final tag, which the final-tag job checks. These branches carry
+later documentation corrections and are never merged or rebased.
 
 **Intended effect.** A release is reproducible from its tag, its documentation
 is published for its version, and a released version's guides can be corrected
-after the fact without touching its source.
+after the fact without touching its source. Creating the documentation ref
+before the tag lets the content check resolve the promoted manifest during
+candidate validation. The download guard prevents premature publication.
 
 **Motivation.** The documentation obligations date from 2026-09-28, when the
 owner found the website unpublished since 2026-09-21 and the guides pinned to
@@ -96,6 +101,11 @@ deleted. There is no proposal, schedule, or approval procedure because the blog
 is the owner's voice, released by the owner.
 
 ## Validation Commands
+
+The 0.3.0 CI order adds advisory changed-line coverage to the existing serial
+unit suite. Use the PR's actual target when comparing; low coverage informs
+review without blocking it. Test and reporting failures still block their
+checks. Parallel execution is deliberately deferred beyond 0.3.0.
 
 **Rule.** Every command runs from `devcapsule-src` in its `.venv`; the kinds
 are the definition's; each has a command runnable as written; the gate is

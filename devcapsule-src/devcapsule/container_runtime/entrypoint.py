@@ -33,7 +33,10 @@ from .graphics import environment as graphics_environment
 from .identity import foreground_command
 from .supervisor import SupervisedChild, Supervisor, SupervisorError
 
-USAGE = "usage: devcapsule runtime RUNTIME_PLAN.json [-- COMMAND [ARGUMENT...]]"
+USAGE = (
+    "usage: devcapsule runtime RUNTIME_PLAN.json [-- COMMAND [ARGUMENT...]]\n"
+    "       devcapsule runtime diagnose-probe [--plan RUNTIME_PLAN.json] [--probe-timeout SECONDS]"
+)
 
 
 SUPERVISOR_LOG_COMPONENT = "supervisor"
@@ -119,6 +122,10 @@ def logged_children(
 
 def main(argv: Sequence[str] | None = None) -> int:
     arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments[:1] == ["diagnose-probe"]:
+        from .diagnose import main as diagnose_main
+
+        return diagnose_main(arguments[1:])
     if arguments == ["--help"]:
         print(USAGE)
         return 0

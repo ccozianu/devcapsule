@@ -11,7 +11,7 @@ Every row is one of these kinds:
 - ``ide``, ``agent``, ``tool``: the capabilities of the checkout, from the
   project's requirements and offers and the checkout's selection;
 - ``memory``, ``cpus``: the launcher-owned values, from the checkout, the
-  project's recommendation or the workstation's defaults;
+  project's recommendation or the home's defaults;
 - ``access``: host access and the base and vendor consents, from the
   authorization review;
 - ``env``: the environment the project asks for and the checkout saved;
@@ -19,7 +19,7 @@ Every row is one of these kinds:
   selected components' state slots and secret inputs.
 
 The sources are plain words: ``checkout``, ``project (required)``,
-``project (offered)``, ``project recommendation``, ``workstation default``,
+``project (offered)``, ``project recommendation``, ``home default``,
 ``secure default``, ``none``.  A pending row carries the one command that
 settles it.
 
@@ -43,11 +43,11 @@ from .authorization import (
     review_authorizations,
 )
 from .bindings import component_secret_inputs, configuration_binding_declarations
-from .capabilities import CapabilityPolicy, LocalCapabilities, capability_notes
+from .capabilities import CapabilityPolicy, LocalCapabilities, RequirementDeparture, capability_notes
 from .file_formats import ProjectConfigurationError, render_toml_scalar, table
 from .launcher_values import launcher_value_source
 from .manifest_document import EnvironmentPolicy, Recommendations
-from .trust import WorkstationTrust, channels_for
+from .trust import HomeTrust, channels_for
 from .values import (
     LAUNCHER_VALUE_NAMES,
     configuration_value_declarations,
@@ -72,7 +72,7 @@ class Decision:
     at ``value``, with the project's reason and ``deny`` as the deny value),
     ``renew`` (a recorded host answer that is invalid, to allow or deny
     again), ``trust`` (accept the channel ``name`` of a vendor product or of
-    DevCapsule's base images once for this workstation, D-0011), ``consent``
+    DevCapsule's base images once for this home, D-0011), ``consent``
     (accept a base or download that no channel covers, per checkout),
     ``value`` (a declared value the project requires) or ``secret`` (a
     component's required secret input, bound to ``variable``).
@@ -113,6 +113,9 @@ class ListingRow:
 class Listing:
     rows: tuple[ListingRow, ...]
     notes: tuple[str, ...] = ()
+    # The launch's named departures from the project's contract, when the
+    # listing is a launch's; a checkout's listing has none.
+    departures: tuple[RequirementDeparture, ...] = ()
 
     @property
     def pending(self) -> tuple[ListingRow, ...]:
@@ -145,7 +148,8 @@ class Listing:
 
     def document(self) -> dict[str, Any]:
         return {"schema-version": LISTING_SCHEMA_VERSION, "rows": [row.document() for row in self.rows],
-                "pending": [row.name for row in self.pending], "notes": list(self.notes)}
+                "pending": [row.name for row in self.pending], "notes": list(self.notes),
+                **({"departures": [item.document() for item in self.departures]} if self.departures else {})}
 
     @classmethod
     def from_document(cls, document: Mapping[str, Any]) -> Listing:
@@ -182,15 +186,17 @@ def assess_checkout(
     composed_lock: Mapping[str, Any],
     checkout: Mapping[str, Any],
     *,
-    workstation: Mapping[str, Any] | None = None,
+    home: Mapping[str, Any] | None = None,
     saved_environment: Mapping[str, str | None] | None = None,
     surfaces: Mapping[str, str],
     project: Path | None = None,
     registered: bool = True,
+    home_path: Path | None = None,
     base_display: str | None = None,
     access_lock: Mapping[str, Any] | None = None,
     capability_versions: Mapping[str, str | None] | None = None,
     capability_providers: Mapping[str, tuple[str, str]] | None = None,
+    departures: tuple[RequirementDeparture, ...] = (),
 ) -> Listing:
     """The listing of one checkout, from its documents, writing nothing.
 
@@ -203,6 +209,9 @@ def assess_checkout(
     checkout has a record yet; an unregistered checkout is listed from an
     empty record. ``base_display`` is the catalog's display contract for
     the selected base, or None when the host must inspect it at launch.
+    ``departures`` are a launch's named departures from the project's
+    contract: the IDE row and a note say which requirement the launch set
+    aside, so the launch's listing never claims the project was satisfied.
     """
     rows: list[ListingRow] = []
     notes: list[str] = list(capability_notes(manifest))
@@ -210,13 +219,20 @@ def assess_checkout(
     local = LocalCapabilities.read(checkout)
     recommendations = Recommendations.read(manifest)
     surfaces = {name: (capability_providers or {}).get(name, (component, ""))[0] for name, component in surfaces.items()}
-    rows.extend(_capability_rows(policy, local, recommendations, shared_lock, composed_lock, surfaces, project, capability_versions or {}))
+    rows.extend(_capability_rows(policy.departing(departures), local, recommendations, shared_lock, composed_lock,
+                                 surfaces, project, capability_versions or {}))
+    for departure in departures:
+        from dataclasses import replace as _replace
+        rows = [_replace(row, source=f"this launch (--force); the project requires {departure.capability}")
+                if row.kind == "ide" and row.name == departure.replacement else row for row in rows]
+        notes.append(f"Departure: the project's required IDE {departure.capability} is set aside by --force for this "
+                     f"launch; {departure.replacement} runs. The requirement and the saved IDE are unchanged.")
     from dataclasses import replace
     rows = [replace(row, provider=capability_providers[row.name][0], provider_source=capability_providers[row.name][1])
             if capability_providers and row.name in capability_providers else row for row in rows]
-    rows.extend(_launcher_value_rows(manifest, checkout, workstation, project))
+    rows.extend(_launcher_value_rows(manifest, checkout, home, project))
     rows.extend(_access_rows(manifest, composed_lock if access_lock is None else access_lock,
-                             checkout, project, base_display, workstation))
+                             checkout, project, base_display, home, home_path))
     rows.extend(_environment_rows(manifest, saved_environment or {}, project))
     has_surface = bool(table(composed_lock, "components").get("interactive-surface"))
     if has_surface:
@@ -227,7 +243,7 @@ def assess_checkout(
     rows.extend(_value_rows(manifest, checkout, project))
     if not registered:
         notes.append("This checkout has no record yet; the first 'devcapsule project run' registers it.")
-    return Listing(tuple(rows), tuple(notes))
+    return Listing(tuple(rows), tuple(notes), tuple(departures))
 
 
 def _capability_rows(
@@ -288,12 +304,12 @@ def _capability_rows(
 
 
 def _launcher_value_rows(
-    manifest: Mapping[str, Any], checkout: Mapping[str, Any], workstation: Mapping[str, Any] | None, project: Path | None,
+    manifest: Mapping[str, Any], checkout: Mapping[str, Any], home: Mapping[str, Any] | None, project: Path | None,
 ) -> list[ListingRow]:
     rows: list[ListingRow] = []
     for name in LAUNCHER_VALUE_NAMES:
         try:
-            value, source = launcher_value_source(name, manifest, checkout, workstation)
+            value, source = launcher_value_source(name, manifest, checkout, home)
         except ProjectConfigurationError as exc:
             rows.append(ListingRow(name, name, "unresolved", "invalid or missing value", str(exc),
                                    _command(project, "set", name, "SIZE" if name == "memory" else "N")))
@@ -305,10 +321,11 @@ def _launcher_value_rows(
 
 def _access_rows(
     manifest: Mapping[str, Any], lock: Mapping[str, Any], checkout: Mapping[str, Any], project: Path | None,
-    base_display: str | None, workstation: Mapping[str, Any] | None = None,
+    base_display: str | None, home: Mapping[str, Any] | None = None,
+    home_path: Path | None = None,
 ) -> list[ListingRow]:
     try:
-        trust = WorkstationTrust.read(workstation or {})
+        trust = HomeTrust.read(home or {})
         reviews = {item.name: item for item in review_authorizations(manifest, lock, checkout, trust)}
         declarations = authorization_declarations(manifest, lock)
     except ProjectConfigurationError as exc:
@@ -390,13 +407,13 @@ def _access_rows(
         channel = channels.get(name)
         if review.trusted_channel is not None:
             effective = str(review.value) if name == "base-image" else "trusted"
-            source = f"workstation trust ({review.trusted_channel})"
+            source = f"home trust ({review.trusted_channel})"
         elif review.problem is not None and channel is not None and review.recorded == "unanswered":
-            # D-0011: one acceptance per channel per workstation, instead of a
+            # D-0011: one acceptance per channel per home, instead of a
             # per-checkout consent.
-            pending = f"trust {channel.vendor}'s channel once for this workstation"
-            command = _command(project, "trust", "accept", channel.id)
-            decision = Decision("trust", channel.id, channel.statement(), command, reason=channel.note, value=name)
+            pending = f"trust {channel.vendor}'s channel once for this home"
+            command = f"devcapsule home trust accept {channel.id}"
+            decision = Decision("trust", channel.id, channel.statement(home_path), command, reason=channel.note, value=name)
         elif review.problem is not None:
             pending = review.problem
             value = "default" if name == "base-image" else "true"

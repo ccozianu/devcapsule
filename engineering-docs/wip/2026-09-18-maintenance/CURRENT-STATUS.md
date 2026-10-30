@@ -4,9 +4,9 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-24; releasing 0.3.0: rc3 tagged, published and verified as downloaded, carrying software approvals at launch, the saved Docker arguments and the regenerated lock, the owner's test of them on the download next; rc2's two C10 records closed, the network node's check still open; rc2 was prepared with the network node and C10 merged into the release branch, each with its review-partner loop settled; the pre-candidate merge then the tag on the owner's word; forced configuration, the diagnostics snapshot and the schema-version slice move to rc4 with image cleanup and C20; the base is published in the promotion; C17 stays a gate in both halves
+State: integrating 2026-10-30; #318 merged and #317 refreshed without conflicts; user-docs 0.3.0 CLI alignment Batches 1–5 (#319, #321, #323, #325, #327; 49/49 files, 12/12 stubs retired) Pair-Reviewed and ready for owner merge; main-metadata correction applied; #317 local gate passed and ready for owner review
 
-Definition read: WORKFLOW.md@5c89396f2200, WORKFLOW-LOCAL.md@31819cc43359
+Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@65501b3407db
 
 Integration target: `main`
 
@@ -16,11 +16,375 @@ Branch association: `release-0.3.0`, the release branch, the workstream's select
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`
 
+## User documentation 0.3.0 CLI alignment and prose review (Batch 1) — 2026-10-30
+
+Implementation [PR #319](https://github.com/ccozianu/devcapsule/pull/319)
+(`ws-maintenance/0.3.0-docs-batch-1-reference-updates-troubleshooting` ->
+`release-0.3.0`) received Pair Review [PR #320](https://github.com/ccozianu/devcapsule/pull/320)
+from `Codex (gpt-6-astra)`, accepted at `71243a0c` without a revision round and
+merged at `0c0006c4`.
+
+Batch 1 covers all 10 files in `docs/reference/` (3), `docs/updates/` (4), and
+`docs/troubleshooting/` (3) under
+[`2026-10-30-user-docs-0-3-0-cli-alignment.md`](../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md)
+(merged to `main` in PR #316 at `ebab228a` and acknowledged from coordination
+mail at `2d4aa223`), retiring two `status: planned` stubs
+(`docs/reference/project-info.md` and
+`docs/troubleshooting/cleanup-and-uninstall.md`) and folding in the human-prose
+pass from `2026-10-24-maintenance-docs-language-review-before-0-3-0.md`.
+Codex ran 106 CLI `--help` and isolated `DEVCAPSULE_CONFIG_HOME` probes across
+all 10 files, confirming `supported-versions.md` and applying 13 source-verified
+fixes across the other 9 files; two unimplemented CLI help/migration-hint gaps
+(`STABLE_JSON_HELP` schema-1 string on schema-2 `config show --json`, and
+missing replacement hints on `project config default` and mutating `project
+config trust`) are filed as
+[`2026-10-30-config-show-json-help-and-retired-home-command-hints.md`](../../bugs/devcapsule/2026-10-30-config-show-json-help-and-retired-home-command-hints.md);
+see the [Batch 1 verification ledger](evidence/2026-10-30-docs-batch-1/README.md).
+Next step: owner merge of PR #319 into `release-0.3.0`; Batch 2
+(`docs/configuration/`, 10 files) proceeds on its own slice branch.
+
+## Release-to-main integration — 2026-10-30
+
+Owner requested a PR carrying everything currently on release-0.3.0 to main.
+Opened [PR #317](https://github.com/ccozianu/devcapsule/pull/317), head
+`4PR-10-release-0.3.0`, an untouched copy of the release tip under local
+Release Policy 8. Read-only merge-tree preview against main `ebab228a`
+found two conflicts: WORKFLOW.md (retain the Pair Review short name) and
+the CI work order (retain the implementation evidence). Main's development
+version remains 0.3.1.dev0; its final tree must omit the release-only
+source-version override in docs/versions.yaml.
+
+Owner authorized main-to-release synchronization on 2026-10-30 and
+requested a PR to inspect the resolution. [PR #318](https://github.com/ccozianu/devcapsule/pull/318),
+`ws-maintenance/0.3.0-main-sync` into `release-0.3.0`, contains merge
+`fb8d8f10` with parents release `c2742621` and main `ebab228a`. This
+owner-requested review branch is a temporary maintenance slice; the release
+remains the workstream's integration selection. No merge is pushed directly
+to the release branch. `git show --remerge-diff fb8d8f10` isolates the
+resolution edits for the owner:
+- retain the Pair Review short-name sentence and the explicit-trigger rule;
+- retain CI implementation/acceptance evidence, acknowledge #312's merge,
+  and use the local ast-grep proposal link now that its file is present.
+
+The automatic merge carries main's accepted Pair Review naming and packaged
+definition; a separate application of that accepted patch is no longer
+needed after #318 lands. Other incoming work orders retain their own scope
+and owners. All three source-version fields remain 0.3.0; docs/versions.yaml
+keeps its release-only source-version override. No new tests are warranted
+for these textual conflict resolutions. The full combined gate at `fb8d8f10`
+passed: 2,644 unit tests (40 deselected, one xfail and one XPASS), 18 packaging
+tests, 357 web-console tests, type checks, source/PEX smokes and the 192-page
+documentation contract including 18 aliases. Log: local scratch
+`/var/tmp/maintenance-ci/main-sync-gate.log`; counts are preserved here and
+in PR #318. Only status records changed after this gate.
+
+Owner merge of #318 verified at `9a412058` by GitHub and SSH fetch.
+Its tree equals tested head `a2485dd4`. PR #317's untouched release copy
+was fast-forwarded to that release tip; main `ebab228a` is an ancestor,
+so the textual conflicts are resolved.
+
+The owner explicitly authorized the four-file main-metadata correction on
+#317's branch on 2026-10-30, a one-time exception to Release Policy 8.
+Commit `2e8709ad` on `4PR-10-release-0.3.0` applies it: standard
+`nox -s bump -- 0.3.1.dev0` updates pyproject.toml and both workflow
+frontmatters; docs/versions.yaml loses its release-only source-version
+override. The exact prepared patch was verified by reverse apply-check.
+The release branch remains at `def205a4` with version 0.3.0. This copy is
+now a main integration branch by the owner's exception; do not overwrite
+its correction by resetting it to the release tip. This project-local rule
+conflict needs clarification before the next release propagation.
+
+The first main-version gate exposed three existing tests with hard-coded
+0.3.0 launcher expectations (home display, settings round-trip, refusal
+message). Runtime behavior correctly normalizes 0.3.1.dev0 to 0.3.1 and is
+already covered by the release-comparison matrix. Commit `580b4ce0` gives
+those three tests explicit 0.3.0 launcher inputs; both affected modules pass
+39 tests. No runtime behavior changes. The final full gate at `580b4ce0`
+passed: 2,644 unit tests (40 deselected, one xfail and one XPASS), 18 packaging
+tests, 357 web-console tests, type checks, source/PEX smokes and the 192-page
+documentation contract including 18 aliases, with devel correctly identified
+as 0.3.1.dev0. Log: `/var/tmp/maintenance-ci/main-metadata-final.log`.
+The earlier three-failure run is retained in `main-metadata-gate.log`.
+Only status records changed after the successful gate. Hosted CI is linked
+from #317; website verification passed and Python was still running at this
+checkpoint. PR #317 is ready for owner review and merge after its checks pass. Existing documentation batch
+status and dispositions from coordination have been preserved; these pending
+PRs are not silently folded into this integration. No final
+tag or publication was requested. Required ci-gate enforcement remains a
+separate GitHub setting.
+
+## CI path gating and advisory diff coverage — 2026-10-30
+
+Owner merge verified by GitHub and SSH fetch: PR #312 merged into
+`release-0.3.0` at `9eb500da4177e85aa4c4aa353e936327c2bded10` on
+2026-10-30. Its tree equals the validated PR head `3aba7d04`; final hosted
+run 40990774517 passed Python, website and ci-gate. No repeat gate is
+needed for the unchanged tree. The clean maintenance checkout now selects
+`release-0.3.0`, fast-forwarded to that remote merge; no main synchronization.
+The mainline Pair Review naming change was read but remains the accepted
+separate release patch. Required-check configuration and release propagation
+to main remain open; the PR merge alone does not establish either.
+This post-merge record is committed locally and published on coordination;
+it travels with the next deliverable, with no records-only PR.
+
+Implementation [PR #312](https://github.com/ccozianu/devcapsule/pull/312)
+has received [review PR #314](https://github.com/ccozianu/devcapsule/pull/314),
+accepted at `2dd3f14e` without a revision round and merged into the slice.
+The implementor read the full diff and independently passed all 70 focused
+tests. The reviewer fixed the annotated-tag pin, protected actual release-doc
+inputs, guarded GitHub's 3000-file API limit and strengthened routing and
+nested-path tests. The reviewer full gate passed: 2,644 unit, 18 packaging,
+357 web-console tests and 192 documentation pages. The implementor’s final
+combined gate at `0ea320e9` independently passed the same counts, type checks,
+source/PEX smokes and documentation contract. Hosted run 40989994671 also
+passed Python, website verification and ci-gate on that reviewed source.
+
+Native Files changed placement is observed in a Chromium screenshot from
+closed probe PR #313: a warning on lines 1–2 with 0% diff coverage and green
+CI. Its fixture is absent from the implementation. Evidence is retained in
+[the acceptance record](evidence/2026-10-30-ci-gating/acceptance.md).
+The owner still must add required ci-gate; the release-targeted PR is merged.
+No main/release branch was merged by the agent.
+
+
+Owner-selected slice: implement the
+[work order](../../work-orders/2026-10-30-ci-path-gating-and-diff-coverage.md)
+for 0.3.0 with GPT-6 Codex implementing and Claude Code / Claude Fable 5.1
+reviewing through Pair Review. Owner decisions 1B and 2B bind: advisory
+coverage without a percentage gate; serial tests, no parallelism work.
+The owner merged the order's mainline PR #311 at `27f24fc6`. The exact order
+is copied here for release delivery; no mainline source is merged.
+
+Clean checkout `/home/devcapsule/worktrees/maintenance-ci`, from released
+branch tip `000c8656` (PR #310). Main synchronization is forbidden for the
+open release and is not performed. Read the changed mainline naming rule;
+its delivered release patch is a separate accepted task below. The
+owner-requested Pair Review uses a temporary slice branch
+`ws-maintenance/ci-gating-030` targeting `release-0.3.0`, as prior release
+slices did; the release remains maintenance's integration selection. This
+resolves the overlap between topic 11.3's selection and topic 9.11's
+required PR/review branches without reopening a closed maintenance branch.
+The human merges the implementation PR into the release branch.
+
+Acknowledged all three delivered items:
+- CI gating and advisory diff coverage: implement now, then review and
+  validate; reporting errors fail, low coverage does not.
+- October 25 documentation proposals: retain Parts A and B for 0.3.1;
+  canonical work-order and release-overview scheduling records now reflect
+  the deferral. The separate
+  language review, C16 and C20 remain 0.3.0 obligations.
+- Pair Review Loop naming and packaged definition: accepted for 0.3.0,
+  apply the supplied release patch as the next separate workflow slice
+  after the CI review settles. Main PR #309 is already merged.
+
+Implementation judgments: retain the existing hosted runtime suite and its
+separate local console-gate contract; classify unknown paths conservatively;
+use PR head for both measured coverage and annotation coordinates against
+the event base SHA; keep the badge publisher separate. No Docker or new
+hosted console suite is added. Native warnings are capped at ten per step;
+complete reports remain in the artifact. Fifty-six focused tests passed,
+including actual coverage/diff-cover execution below 85% without failure;
+review expanded this to 70 focused tests, all passing.
+
+GitHub settings inspected 2026-10-30 through the read-only API: the only
+active ruleset is `main: no force push, no deletion` (25144717), with
+`deletion` and `non_fast_forward` rules. Both main and release-0.3.0's
+classic protection endpoints return `Branch not protected`. No existing
+required CI check needs replacement. The owner must add `ci-gate` as required
+after the representative hosted runs succeed; no settings are changed here.
+
+Existing IDE and sample-project changes stay in the original PM checkout.
+Claude availability check returned `claude-fable-5-1`; no API key is used.
+Validation scratch uses `/var/tmp/maintenance-ci` because the configured
+`/opt/devcapsule-gate` is unavailable; no container or service is needed.
+
 ## Goal
 
 Own defects no open workstream covers and drive maintenance releases. This
 reserved workstream remains open for the lifetime of multiple-stream mode.
 Its 2026-09-18 start is the recorded adoption exception.
+
+## Explicit IDE requirement override — 2026-10-29
+
+Owner direction of 2026-10-29: pick the
+[work order of 2026-10-28](../../work-orders/2026-10-28-explicit-ide-requirement-override.md)
+up from `main`, bring it into the 0.3.0 scope and implement it. The order
+was delivered on `main` by PR #303 (`39dbb6ec`) with no implementation
+owner and no release target; this workstream acknowledges it as its task,
+release target 0.3.0, and the release overview's *Scope And Owner Decisions*
+records the ruling. Work on `ws-maintenance/0.3.0-ide-override`, forked from
+`origin/release-0.3.0` (`7545a536`, PR #301's merge), targeting
+`release-0.3.0`, in `/home/devcapsule/worktrees/ide-override`, by Claude
+Code, Claude Fable 5.1. The order's document and its `index.md` line came
+onto the branch as one commit from `main`; nothing else of `main` was
+merged, under the exception that the release branch synchronizes with
+`main` on the owner's word each time.
+
+Judgments taken, for the owner's review in the pull request:
+1. The departure is a value, `RequirementDeparture(policy, capability,
+   replacement)` with the one policy identity `ide-requirement`, carried
+   in memory by the launch's `CheckoutState`; the manifest, the lock and
+   the record are never written with it. Every derivation a launch uses
+   takes the policy with that requirement set aside
+   (`CapabilityPolicy.departing`): pin selection, composition, the usable
+   lock, the listing, the resolution's baseline digest.
+2. The records of the departure: the resolution's
+   `[departures.ide-requirement]` table, the launch listing's IDE row
+   (`this launch (--force); the project requires python-ide`) and note, and
+   the stderr warning. A forced launch that exits 0 records no known-good
+   generation and no proven version set, since it satisfied the developer,
+   not the project. After a forced launch, commands that admit the
+   on-disk resolution (`images build`, the recursive successor) ask for a
+   plain `run`, which is honest and cheap.
+3. `--force` is refused where it would select a replacement itself:
+   without `--ide`, with the required IDE, on a project requiring no IDE;
+   and with `--save`. The `--save` question was the order author's, Codex,
+   not the owner's; on 2026-10-29 the owner ruled the refusal final: the
+   developer must make up her mind, since saving the IDE beside a
+   transient departure leaves a checkout that no longer launches plainly.
+4. A second surface that a remaining capability's closure needs is
+   refused by name in `usable_lock` (`Capability 'x' needs pycharm, an IDE
+   that cannot accompany the selected IDE codium`) instead of the catalog's
+   internal error; no catalog component has such a dependency today, the
+   test monkeypatches one.
+5. The saved-IDE conflict message of `compose_lock` now names the
+   override too; its head is unchanged for the existing test.
+6. `--force` replaces the retired spelling of the same name
+   (`_retired_option`), `--force-config` stays retired.
+
+Tests: `tests/test_ide_requirement_override.py`, 18 tests at the policy,
+plan and CLI boundaries, the eight acceptance items of the order among
+them; the built-executable flag propagation in
+`tests/integration/test_pex_runtime.py`; the help and retired-spelling
+expectations updated. Recorded acceptance session, 2026-10-29, inside this
+capsule with the executable built from `fcf5c4e6`:
+`nox -s ide-smoke -- --display --required-ide` passed in 50.5 s; the
+refusal without force, VSCodium owning the display on the forced launch
+(class `codium codium`, the fixture folder open), the unchanged project
+files and checkout record, the forced plan's `departures` table, then
+PyCharm owning the display on the plain launch (class `jetbrains-pycharm`)
+with a plan without departures; see
+[evidence/2026-10-29-ide-override](evidence/2026-10-29-ide-override/README.md).
+Opened as [PR #304](https://github.com/ccozianu/devcapsule/pull/304) into
+`release-0.3.0`. D-0016 records the owner's choice; R-CONFIG-001 gains the explicit launch
+exception; the CLI reference, the capabilities guide and the IDE page
+describe the flag; the 0.3.0 changelog carries it.
+
+Pre-review gate passed: `nox -s build` and `webconsole` on `fcf5c4e6` with the records uncommitted: mypy clean on 263 source files; 2,559 unit tests passed, 40 deselected, 1 xfailed, 1 xpassed; the local executable built and smoked; 18 packaging tests passed; `docs-contract` 190 pages including 17 aliases passed; 357 web console tests passed, mypy clean on 9 files.
+
+Post-merge gate passed on `3bfb3a16`, the slice with the review's PR #306 merged: mypy clean on 263 source files; 2,574 unit tests passed, 40 deselected, 1 xfailed, 1 xpassed; the executable built and smoked; 18 packaging tests passed; `docs-contract` 192 pages including 18 aliases passed; 357 web console tests passed, mypy clean on 9 files. The owner merged PR #304 into `release-0.3.0` at `cfa45937` on 2026-10-30.
+
+## Diagnostics snapshot and export — 2026-10-27
+
+Owner-directed work on `ws-maintenance/0.3.0-diagnostics-snapshot`, forked
+from `origin/release-0.3.0` (`5585e09d`), targeting `release-0.3.0`, with
+Codex (`gpt-6-astra`) as the review partner under topic 9.11. Recorded
+outcomes of console decision `2026-10-27-session-direction` before removing
+its state file: `next-slice = diagnose-slice` (Deliverable 4 and the manual
+browser-evidence contract of Deliverable 5 in
+[2026-10-08-persistent-session-diagnostics.md](../../work-orders/2026-10-08-persistent-session-diagnostics.md)),
+`checkout-alignment = clean-worktree` (keep `/workspace/301e4208ef81-ChatGPT_Codex`
+untouched on `ws-maintenance/e2e_videos-2` with its pre-existing `.devcapsule/`
+and `.idea/` edits; work in `/home/devcapsule/worktrees/diagnostics-snapshot`),
+and conditional item `workstation-cli-home` skipped as not applicable (#287
+already merged). Under topic 5.4.3, local `main` fast-forwarded cleanly to
+`origin/main` (`0\t219` commits, empty `git cherry main origin/main`, now
+`8afa5f6dfa0cef54e8649f008b5f3f26181bcf59`).
+
+Judgments and scope settled with the owner before implementation:
+1. CLI surface: `devcapsule project diagnose` (`CapsuleAccess.INSPECTS`),
+   supporting `--path <dir>`, `--session <id>` (defaults to the active running
+   session, or the latest ended session when none is running), `--json`
+   (`schema-version: 1`), `--export [PATH]` (atomic mode-`0600` `.tar.gz`),
+   and `--include-ide-logs` (requires `--export`; IDE-native logs `idea.log`,
+   VSCodium `logs/`, and Eclipse `.metadata/.log` are excluded by default
+   because they can contain source excerpts, while `snapshot.json` records
+   their paths, file counts, and byte sizes).
+2. Bounded stdlib-only probing: `devcapsule runtime diagnose-probe` scans
+   `/proc` (supervisor, `Xvnc`, `openbox`, `tint2`, parent `websockify`,
+   `novnc-worker` children, stopped `T` processes, `Z` zombies, and redacted
+   `argv`), reads cgroup v2 (`memory.current`, `memory.max`, `memory.peak`,
+   `memory.events` `oom`/`oom_kill`, `cpu.stat` throttling, `cpu.max`, `pids`),
+   inspects sockets/listeners, and runs 2-second monotonic probes labeled with
+   `User-Agent: devcapsule-diagnose/<version>` and `X-DevCapsule-Diagnostic: 1`
+   on `rfb.sock` (verifying the 12-byte `RFB 003.008\n` greeting), `/vnc.html`,
+   authenticated `/websockify` (WebSocket `101` upgrade plus the first RFB
+   greeting frame, reading `/run/devcapsule-display-token` in memory only),
+   and web console `/` (`X-DevCapsule-Token` in memory). Host collection runs
+   bounded `docker inspect` (3 s, extracting `Config.Env` variable names only,
+   never values, and degrading cleanly when `--rm` removed the container),
+   `docker exec` (5 s), and host-loopback HTTP probes (2 s).
+3. Redaction and honesty boundaries: scrubs `?token=`, URL-encoded `token%3D`,
+   `devcapsule-console-token` cookies, `Authorization`/`Cookie`/`Set-Cookie`/
+   `X-DevCapsule-Token` headers, secret CLI flags, inline secret assignments,
+   and saved checkout Docker environment values across `snapshot.json`,
+   `session.json`, `.log`, and `.log.<n>.gz` files; states explicitly that
+   arbitrary child output and IDE logs are not universally scrubbable; sets
+   `browser_evidence.collected = false` (`mode: "manual-devtools"`) and
+   documents manual DevTools capture in `docs/troubleshooting/diagnostics-and-logs.md`.
+4. Dogfood test-isolation fix included: isolated `runtime_configuration.CHANNEL_PATH`
+   in the synthetic in-capsule fixtures of `tests/test_checkout_commands.py`
+   and `tests/test_version_sets.py` so they do not read the outer rc8 capsule's
+   mounted `/run/devcapsule-configuration/listing.json`.
+
+Pre-review gate passed on `c0bec50d`: `nox -s build` + `webconsole` (`mypy`
+clean on 254 source files and 9 webconsole files; 2,347 unit tests passed, 37
+deselected, 2 xfailed; 17 packaging tests passed; `docs-contract` 189 pages
+passed; 357 webconsole tests passed) plus real-container E2E fault-injection
+test `tests/e2e/test_session_diagnostics.py` (1 passed in 16.73 s: live healthy
+probes, `SIGSTOP` `Xvnc` hang proving `/vnc.html` 200 and socket accept are
+not mistaken for health, `SIGCONT` recovery, Ctrl+C exit 130 + `--rm`, and
+post-mortem mode-`0600` `.tar.gz` with zero token leakage). Opened
+[PR #293](https://github.com/ccozianu/devcapsule/pull/293) against
+`release-0.3.0` and committed the review brief at
+[brief-pr293-1.md](evidence/2026-10-27-diagnostics-snapshot/brief-pr293-1.md).
+
+Codex (`gpt-6-astra`) delivered
+[PR #295](https://github.com/ccozianu/devcapsule/pull/295) (`c190d1cf`),
+accepted without a round and merged into `ws-maintenance/0.3.0-diagnostics-snapshot`
+at `5cc52392`. The review added nine substantive hardenings and 33 new focused
+regression checks (42 total in `test_diagnostics.py` and
+`test_runtime_diagnose.py`):
+1. Extended `_redaction.py` and `_sanitize_plain_bytes` to cover bare `TOKEN`
+   keys, quoted inline values, `%`-bearing encoded tokens, and structured JSON
+   credential fields while keeping non-secret path keys and `token_gate_active`.
+2. Verified live container state across unfinished sessions from newest to
+   oldest so a newer crashed session cannot shadow an older live container.
+3. Replaced manifest text reads with a bounded 1 MiB `O_NOFOLLOW | O_NONBLOCK`
+   regular-file reader refusing FIFOs, symlinks, and oversized manifests.
+4. Added descriptor-pinned `_open_directory` traversal and `.absolute()` path
+   preservation so ancestor symlinks and post-discovery directory-to-symlink
+   swaps are refused on read.
+5. Unified snapshot and archive writes under `_private_output` (`dir_fd`-pinned
+   mode `0600` creation, atomic replacement, guaranteed scratch cleanup).
+6. Bounded IDE log discovery at `MAX_IDE_LOG_ENTRIES = 4096` via lazy
+   `os.scandir` and documented the limit in `docs/troubleshooting/diagnostics-and-logs.md`.
+7. Preserved buffered WebSocket bytes across split or coalesced TCP reads,
+   replied to Ping (`0x9`) with masked Pong (`0x8A`), and rejected malformed or
+   masked server frames.
+8. Anchored archive session identity to validated `session_dir.name` and
+   stripped `.` in `_safe_slot_dir`, closing tar-slip injection from a mutated
+   in-capsule `session.json`.
+9. Converted `OSError` failures in `ProjectDiagnoseCommand.run` into redacted
+   `DiagnosticsError` CLI errors (exit code 2).
+
+Reviewer proposals not implemented (for owner consideration on a future slice):
+1. Add an overall runtime-probe deadline budget that preserves partial probe
+   results when multiple sequential 2 s probes time out inside the 5 s outer
+   `docker exec` timeout.
+2. Distinguish unlimited cgroup v2 `"max"` values from unreadable cgroup limit
+   files in the snapshot schema (both currently serialize as `null`).
+3. Automatic browser-side console/network capture (outside this slice per
+   Deliverable 5's manual DevTools contract).
+
+Post-merge gate passed on `5cc52392`: `nox -s build` + `webconsole` (`mypy`
+clean on 254 source files and 9 webconsole files; 2,380 unit tests passed, 37
+deselected, 1 xfailed, 1 xpassed; 17 packaging tests passed; `docs-contract`
+189 pages including 17 aliases passed; 357 webconsole tests passed) and
+real-container E2E `tests/e2e/test_session_diagnostics.py` against the newly
+built `dist/devcapsule-local.pex` (1 passed in 21.15 s). Slice state:
+integrating; [PR #293](https://github.com/ccozianu/devcapsule/pull/293) is
+ready for the owner's merge into `release-0.3.0`.
 
 ## General saved Docker arguments — 2026-10-23
 
@@ -283,6 +647,173 @@ the release overview as a condition of the final tag. Maintenance does not
 begin the rewrite until project-management assigns it.
 
 ## Current State
+
+**2026-10-28: VS Code as an IDE surface implemented, smoked and reviewed; PR #301 ready.**
+Item 3 of [the scope decision of 2026-10-27](../2026-08-09-project-management/2026-10-27-decision-release-0-3-0-scope-at-rc8.md),
+on `main`: Visual Studio Code joins 0.3.0 as a second provider of
+`frontend-ide`, VSCodium the default, acquired on the developer's machine
+from Microsoft under the `vscode-download` authorization and a D-0011 trust
+channel, never redistributed. Implemented by Antigravity, Gemini 4 Argon
+(High), in a session a power outage cut before its smoke finished, with the
+slice uncommitted; taken over by Claude Code, Claude Fable 5.1, on the
+owner's word, committed in two commits, pushed as `ws-maintenance/0.3.0-vscode`
+from the release tip `9e78dce1`, and opened as
+[PR #301](https://github.com/ccozianu/devcapsule/pull/301) into
+`release-0.3.0`. The slice: the `vscode` component with Microsoft's
+acquisition contract and the vscode-family runtime template at `/opt/vscode`;
+pin 1.143.1 from the stable feed with url and sha256, matrix `embedded-29`,
+`frontend-ide: (codium, vscode)` and `vscode-ide: (vscode)`; `canonical_name`
+accepts a component named by one capability among several providers; the
+usable lock keeps the pinned surface's closure and refuses a missing provider
+by name; a surface without per-file artifacts establishes its channel from
+the lock's own url and sha256; discovery from Microsoft's stable update
+feed; the IDE lists and the docs. The second pair added the per-checkout
+consent a surface's launch needs to the IDE smoke, since the smoke runs
+non-interactively against an empty home and the launcher stops at
+`vscode-download` otherwise. Recorded IDE smoke, run inside this capsule
+from a temporary clone of the branch at `d74666ff`
+(`~/worktrees/vscode-e2e-tmp`) with the executable built from it, on the
+recommended v0.3.0-rc6 base: `nox -s ide-smoke -- --display --surface
+vscode` passed in 87.5 s, Visual Studio Code downloaded from Microsoft and
+verified, the formation built, the desktop and the console answered, an X11
+window of class `code code` titled `… - Visual Studio Code` owned the
+display, 645 distinct colours; the same for `codium` passed in 18.2 s. The
+recording, the screenshot, the facts and the redacted launcher log are under
+[evidence/2026-10-28-vscode](evidence/2026-10-28-vscode/README.md); the
+matrix's verified edge says what that run proved and that no relaunch or
+persistence check has run. The review (PR #302, PR301.1, Antigravity, Gemini
+4 Argon (High), accepted without a round, merged at `241e7b10`) found the
+lock's version, url and sha256 unchecked by `locked_artifacts`; an
+empty-credential or whitespace URL establishing a trust channel, since
+`urlparse` reports an empty username as `""`; the discovery accepting a
+hostless or credentialed URL by prefix; `config ide` reporting the
+recommendation table rather than the composed lock it had written; a
+docstring contradicting the wrapped VS Code tarball; and the IDE lists in
+two orders, with no statement of when the download happens, both fixed.
+Gate on the merged tip `241e7b10`: mypy clean over 261 files and 9 console
+files, 2544 unit tests passed, 38 deselected, one xfail and one xpass,
+packaging 17, the documentation contract 190 pages including 17 aliases
+(the website submodule initialized in the worktree for it), the console
+357; log `/opt/devcapsule-gate/2026-10-28-vscode-merged-build.log`. The
+review partner's print mode was silent for 36 minutes, with progress visible
+only in the engine's own log and the worktree; the owner directed the
+streaming forms and the relay rule, recorded in `WORKFLOW-LOCAL.md` items 4
+and 8 and in the loop document, and a work order in three layers sent to
+project-management as
+`2026-10-28-maintenance-agent-run-supervision.md` (coordination `b04131ea`).
+Judgments for the owner in PR #301: the `vscode-ide` capability beside the
+provider form the order named; the closure generalization in `usable_lock`;
+the channel fallback for surfaces without artifacts. Awaiting the owner's
+merge of PR #301 into `release-0.3.0`; the next candidate carries it, and
+the changelog's next-candidate entry follows at the cut.
+**2026-10-28: the configuration home and the home commands implemented; PR #299 ready.**
+The slice of the [work order of 2026-10-27](../../work-orders/2026-10-27-configuration-home-and-the-home-commands.md),
+designed by the owner in the project-management session and ordered
+there (in PR #297 to `main`), implemented by Codex, gpt-6-astra, with
+Claude Code, Claude Fable 5.1, as the review partner, dispatched from the
+project-management session on the owner's word. `DEVCAPSULE_CONFIG_HOME`
+names the one configuration home; set, data, state and cache are
+subdirectories of it; unset, the four XDG directories as before.
+`settings.toml` holds the defaults and the accepted channels under a
+schema integer and `minimum-devcapsule`, the first file to declare its
+minimum reader; `workstation.toml` and `trust.toml` are not read. The
+`devcapsule home` group holds `show`, `trust list|accept|withdraw` and
+`default`, from any directory; the three mutating spellings under
+`project config` are deleted; a project-less `trust accept` takes the
+channel from the embedded matrix's pin through the one function the lock
+path uses. The word "workstation" is gone from code, docs and D-0011,
+which is amended and renamed. The implementor stopped twice: on the
+order's evidence location, capsule-local and so invisible to the host
+daemon, moved to the host-backed home; and on `packaging`, a dependency
+the PEX does not carry, caught by the packaging gate and replaced by a
+three-integer comparison. The review (PR #300, PR299.1, accepted without
+a round, merged at `e83c0881`) found the launcher exporting the variable
+into the capsule as `/etc/devcapsule/home`, so every launcher-owned write
+inside a capsule, the recursive dogfood's among them, failed under a
+root-owned mount parent, reproduced with `checkout notifications post`;
+now the capsule reads the launcher's settings from the mount until it has
+settings of its own, writes only its own, and names no home, which
+retires the order's in-capsule refusal, a rule change recorded for the
+owner under the pull request's judgments. The review also deleted the
+renderers the one document made dead and an environment reach in
+`atomic_write`; the implementor had already routed session logs and the
+managed bindings through the home before the review was cut. Gates on
+the merged tip: mypy clean over 259 files and 9 console files, 2515
+unit tests, 37 deselected, one xfail and one xpass, packaging 17, the
+documentation contract 190 pages, the console 357. No image, capsule,
+tag or dispatch was used. Awaiting the owner's merge of PR #299 into
+`release-0.3.0`; the next candidate carries it.
+**2026-10-27: diagnostics snapshot and sanitized export ready for merge (#293).**
+Implemented `devcapsule project diagnose` and `devcapsule runtime diagnose-probe`
+on `ws-maintenance/0.3.0-diagnostics-snapshot` targeting `release-0.3.0`
+([PR #293](https://github.com/ccozianu/devcapsule/pull/293)), completing
+Deliverable 4 and the manual browser-evidence contract of Deliverable 5 in
+[2026-10-08-persistent-session-diagnostics.md](../../work-orders/2026-10-08-persistent-session-diagnostics.md).
+Codex (`gpt-6-astra`) review [PR #295](https://github.com/ccozianu/devcapsule/pull/295)
+(`c190d1cf`) was accepted without a round and merged at `5cc52392` (nine
+hardenings, 42 focused checks). Post-merge `nox -s build` + `webconsole` passed
+(`mypy` 254 + 9 files; 2,380 unit, 17 packaging, 189 docs pages, 357 webconsole)
+and real-container E2E `tests/e2e/test_session_diagnostics.py` passed (`21.15 s`).
+Awaiting the owner's merge of PR #293 into `release-0.3.0`.
+**2026-10-27: C20, release documentation automation, implemented; PR #294 ready.**
+The slice of the [work order of 2026-10-27](../../work-orders/2026-10-27-release-documentation-automation.md),
+ordered by project-management on the owner's direction and merged into
+`main` by PR #292, implemented by Codex, gpt-6-astra, with Claude Code,
+Claude Fable 5.1, as the review partner, dispatched from the
+project-management session on the owner's word. One helper,
+`devcapsule-src/scripts/release-docs.py`: `promote` applies the lifecycle
+on the release branch, `check` names every unmet obligation at the tag,
+`notes` prints the release body without its front matter, `published`
+refuses a listed version without a final download; PyYAML joins the
+development dependencies. The release workflow's final-tag path checks
+before it publishes, passes the notes as the body, and dispatches the
+test-site build after; the website workflow runs `published` in both
+modes. The `docs-<version>` rule, the contract's `source-version`
+wording, the runbook and the overview changed with it. The implementor
+found the order's ordering loose: the final tag's commit must equal the
+accepted candidate's, so the promotion, the notes and the `docs-X.Y.Z`
+push go before the last candidate, not merely before the final tag; the
+runbook says so. The review (PR #296, PR294.1, accepted after one round,
+merged at `7bb8883`) fixed two correctness defects: the placeholder rule
+refused the 0.2.14 notes as published, which carry `--path <checkout>` in
+code spans, so a placeholder is now angle-bracketed prose outside code
+and autolinks, wrapped across lines or not but never across a paragraph
+break, the round's correction; and the manifest reader refused a candidate
+listed as `development`, a shape R-DOCS-003 admits, which would have
+failed the website guard on a valid file. The reviewer's gate on the
+merged tip: mypy clean over 249 files, 2430 unit tests passed, 36
+deselected, one xfail and one xpass; packaging integration 17; the
+documentation contract 189 pages; the console mypy clean over 9 files,
+357 tests; the implementor's gate on the merged branch the same. No
+`actionlint` on the capsule: the two workflows were checked by reading,
+by `yaml.safe_load` and by `bash -n` on every run block; the final-only
+steps run for the first time at the final tag, before anything is public.
+Not proven: the content check on a promoted manifest, since `docs-0.3.0`
+does not exist yet; the pinned consumer's parser accepted the promoted
+file on its own. The 0.3.0 sequence the runbook now has: notes and
+`promote 0.3.0` on the release branch, the `docs-0.3.0` push at that
+commit, the merge to `main`, the last candidate, its acceptance, `check
+0.3.0`, the final tag; the owner reads the test site and promotes it.
+Next: the owner merges PR #294 into `release-0.3.0`; the slice rides the
+next candidate; the status line above and the changelog's next-candidate
+entry follow with it.
+
+**2026-10-26: rc8 tagged, published and verified.** The owner merged
+PR #291 at `8afa5f6`; `8d41fab` is an ancestor of `main`; `v0.3.0-rc8` on
+`8d41fab`, the candidate gate `mainline` with no unintegrated commits from
+a detached checkout, the atomic push, run 40271738816 passed, the
+prerelease public with its three assets; downloaded, the checksum
+verified (SHA-256 `5f1f8429…`), the manifest's base reference the
+published recipe-11 digest, `version --json` from an empty directory
+`0.3.0rc8` at `8d41fab`. The downloaded executable migrated a copy of the
+trading sample to schema 2. The overview's rc8 entry and the changelog's
+candidate-8 line record it. Note for the next cut: run the downloaded
+executable directly after `chmod +x`; `python3 -I devcapsule.pex` picked
+up another installation in this capsule and reported a different version.
+The owner's gate of 2026-10-26 is met. Next: the owner regenerates this
+repository's, the website's and the samples' manifests; the diagnostics
+snapshot, image cleanup and C20; the documentation round before the
+final tag.
 
 **2026-10-26: rc8 in preparation.** The owner merged PR #289; the
 release tip is `9e4a2a8`. Full `nox -s build` on it from a separate
@@ -1813,6 +2344,16 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
+Current: owner reviews and merges #317 with the authorized main-metadata
+correction after its hosted checks pass; the full local gate has passed. Pair Review naming and
+its packaged definition are on the release branch through #318. Pending
+documentation batch PRs retain their separate owner review and merge path. The CI work order
+is implemented, reviewed, validated and merged into the release through
+PR #312. Required ci-gate configuration remains an owner action; normal
+release propagation to main remains open. Documentation scheduling records
+reflect the acknowledged 0.3.1 deferral.
+Historical candidate sequencing below must not override this owner direction.
+
 1. The network-node slice, on `ws-maintenance/0.3.0-network-node` from
    the release branch, a pull request into it with the reviewer loop;
    then C10 with its two records filed first; rc2 carries both. Then rc3:
@@ -2050,6 +2591,16 @@ New source fixes require the next immutable candidate and a main disposition.
 Only after owner acceptance of an exact candidate prepare the final JSON/tag.
 
 ## Validation And External State
+
+Gate on `ws-maintenance/0.3.0-vscode` after merging review PR #302
+(`241e7b10`, 2026-10-28, PR #301): `nox -s build` passed end to end: version
+copies agree at `0.3.0`; syntax; mypy clean over 261 files; `2544 passed,
+38 deselected, 1 xfailed, 1 xpassed`; CLI smoke; local and clean PEX built
+and smoked; packaging integration 17; the documentation contract 190 pages
+including 17 aliases; web console mypy clean over 9 files and 357 passed.
+Logs `/opt/devcapsule-gate/2026-10-28-vscode-merged-build.log` and
+`-docs-contract.log`. The recorded IDE smoke of `vscode` and `codium` from
+the temporary clone is under `evidence/2026-10-28-vscode/`.
 
 Gate on `ws-maintenance/e2e_videos-2` after merging review PR #241 (`e17065e`,
 2026-10-22, PR #236): `nox -s build` passed end to end: version copies agree at
@@ -2648,6 +3199,125 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- PR #318 is merged; #317 has no textual conflicts. The owner authorized
+  the main-metadata exception and commit `2e8709ad` applies it. Complete
+  hosted checks, then owner merge of #317; the full local gate passed.
+  Retain the release branch at 0.3.0.
+  No new feature work is implied by this integration.
+
+- CI Pair Review #314 settled without a revision round. Reviewer proposals
+  not implemented: migrate paths-filter v3 to v4 (Node 20 produces a hosted
+  deprecation warning), and replace repository-file fixtures in release-doc
+  tests so more docs changes can skip Python. These are future maintenance
+  choices, not new 0.3.0 requirements or blockers to this approved scope.
+
+- CI slice 2026-10-30: implementation and Pair Review are complete. Next:
+  PR #312 is merged at `9eb500da`; the owner adds required `ci-gate` once
+  the workflow is available on each intended integration branch; then
+  follow normal release propagation to main. No coverage threshold or
+  parallelism decision remains open for 0.3.0. Temporary probe PRs must
+  remain closed without merge. Scratch logs are not canonical records;
+  durable outcomes and GUI evidence are retained in the acceptance record.
+
+- Explicit IDE requirement override, 2026-10-29:
+  [PR #304](https://github.com/ccozianu/devcapsule/pull/304)
+  (`ws-maintenance/0.3.0-ide-override` -> `release-0.3.0`) is open with
+  its judgments and validation. On the owner's word the same day, `main`
+  was merged into `release-0.3.0` at `15d8f9df` (34 files, the version
+  files kept at 0.3.0, gate passed: mypy 261 files, 2,544 unit tests, 17
+  packaging tests, 357 console tests) and the slice branch synchronized
+  with it at `db11e8f1`, then again at `2391705c` after the merge had
+  dropped the release-only `source-version` line of `docs/versions.yaml`,
+  restored on the release branch at `da253875`. The owner then asked for
+  the review-partner loop with Codex, `gpt-6-astra` at high effort, run
+  detached in `/home/devcapsule/worktrees/ide-override-review` with
+  [the brief](evidence/2026-10-29-ide-override/review-brief.md), the first
+  loop on Codex's `exec --json` event stream. Its
+  [PR #306](https://github.com/ccozianu/devcapsule/pull/306) (PR304.1,
+  `6dd56fee`) was accepted without a round and merged at `3bfb3a16`: the
+  software-approval offer now follows the IDE request check, a forced
+  launch reviews its requested environment instead of the saved one (so
+  the advertised override works for a saved IDE that already conflicts
+  with a later requirement), the optional-download recovery and the
+  local-base minimum guards use the launch policy; 15 tests. One proposal
+  not implemented: an old v0.2.11 lock keeps PyCharm beside Codium on an
+  ordinary override, the unfiltered legacy-lock path of `usable_lock`,
+  which predates this slice; filed as
+  [a bug](../../bugs/devcapsule/2026-10-29-legacy-lock-keeps-the-replaced-ide.md).
+  The post-merge gate passed on `3bfb3a16` and the owner merged PR #304
+  at `cfa45937` on 2026-10-30; the records of the loop, the bug and the
+  restored D-0016 sentence follow in a records pull request.
+- The review branch rule: [PR #305](https://github.com/ccozianu/devcapsule/pull/305)
+  adds to topic 9.11 that the loop runs only on the human's request or as
+  the local file's default; merged by the owner at `a1e3b0b2`.
+- Settled 2026-10-29: `--save` with `--force` stays refused, by the
+  owner's ruling. Awaiting the owner: whether any other policy check gets
+  the same explicit escape; the review-partner loop runs only on request
+  (PR #305), so no review is pending for PR #304 unless the owner asks.
+- Weighed and unresolved: a forced launch's resolution on disk makes
+  `images build` and the recursive successor ask for a plain `run` until
+  the next launch; accepted as honest. The `config show` listing of the
+  checkout never shows a departure, by design.
+- Not run: the known-good record path of a successful forced launch on a
+  real capsule, since the smoke stops its sessions with `docker stop`; the
+  unit test covers it.
+- External state preserved: the implementation worktree
+  `/home/devcapsule/worktrees/ide-override`; the raw smoke evidence under
+  its `devcapsule-src/dist/e2e-evidence/ide-smoke/`, removable; the gate
+  scratch `/opt/devcapsule-gate/pytest-ide-override`.
+
+- VS Code slice, 2026-10-28:
+  [PR #301](https://github.com/ccozianu/devcapsule/pull/301)
+  (`ws-maintenance/0.3.0-vscode` -> `release-0.3.0`) awaits the owner's
+  merge; the review [PR #302](https://github.com/ccozianu/devcapsule/pull/302)
+  is accepted without a round and merged at `241e7b10`.
+- Awaiting the owner: the `vscode-ide` capability beside the provider form
+  (judgment 1 of PR #301); whether the generic half of the relay rule goes
+  to the definition, topic 9.11, through project-management.
+- Weighed and unresolved, from PR #302 (PR301.1): the denial remediation
+  text in `configuration/authorization.py` names a raw TOML key instead of
+  `project config authorize vscode-download true`; `config recommend
+  frontend-ide none` leaves a hand-written `codium = "vscode"` alias in
+  place. Both predate the slice.
+- Not run: a relaunch or persistence check of VS Code's user data and
+  extensions; the recursive dogfood lifecycle session, which exercises the
+  PyCharm dogfood lock and not VS Code.
+- External state preserved: the implementation worktree
+  `/home/devcapsule/worktrees/vscode-ide` on `ws-maintenance/0.3.0-vscode`;
+  the temporary clone `/home/devcapsule/worktrees/vscode-e2e-tmp` with the
+  raw smoke evidence under `devcapsule-src/dist/e2e-evidence/ide-smoke/`,
+  removable; the recording also at `~/e2e-videos/`; the review worktree
+  `/home/devcapsule/worktrees/maintenance-review` on
+  `ws-maintenance/0.3.0-vscode-review`, reusable by a reset; the primary
+  mount `/workspace/301e4208ef81-ChatGPT_Codex` untouched on
+  `ws-maintenance/e2e_videos-2`.
+- Deliberately not preserved: the session scratchpad with the Antigravity
+  log and the gate scratch under `/opt/devcapsule-gate`, on the overlay.
+
+- Diagnostics snapshot and export slice, 2026-10-27:
+  [PR #293](https://github.com/ccozianu/devcapsule/pull/293)
+  (`ws-maintenance/0.3.0-diagnostics-snapshot` -> `release-0.3.0`) awaits the
+  owner's merge. Codex (`gpt-6-astra`) review
+  [PR #295](https://github.com/ccozianu/devcapsule/pull/295) (`c190d1cf`) is
+  accepted without a round and merged at `5cc52392`.
+- Weighed and unresolved, from PR #295 (PR293.1):
+  1. Overall runtime-probe deadline budget preserving partial results if
+     several 2 s probes time out sequentially inside the 5 s `docker exec` cap.
+  2. Separate cgroup v2 schema representation for `"max"` (unlimited) vs.
+     unreadable limit files (both currently `null`).
+  3. Automatic browser-side DevTools capture (outside this slice per
+     Deliverable 5).
+- External state preserved: implementation worktree
+  `/home/devcapsule/worktrees/diagnostics-snapshot` on
+  `ws-maintenance/0.3.0-diagnostics-snapshot`; primary mount
+  `/workspace/301e4208ef81-ChatGPT_Codex` left untouched on
+  `ws-maintenance/e2e_videos-2` with its pre-existing `.devcapsule/` and
+  `.idea/` edits; local `main` fast-forwarded to `origin/main` (`8afa5f6d`).
+- Deliberately not preserved: review worktree
+  `/home/devcapsule/worktrees/maintenance-review` and local branch
+  `ws-maintenance/0.3.0-diagnostics-snapshot-review` (removed after merging
+  PR #295); temporary gate/pytest directories under `/opt/devcapsule-gate/`.
+
 - Saved Docker arguments slice, 2026-10-23: PR #253 targets `release-0.3.0`;
   only the human merges it. Reviews #254 and #255 are accepted and merged
   into the slice; #255 took two revision rounds. No real credentials, full
@@ -2987,6 +3657,20 @@ Earlier open-thread history (read against the current scope above):
 
 ## Workstream Document Index
 
+- [User-docs 0.3.0 CLI alignment work order](../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md),
+  [Batch 1 verification ledger](evidence/2026-10-30-docs-batch-1/README.md),
+  [PR319.1 Pair Review brief](evidence/2026-10-30-docs-batch-1/review-brief.md), and
+  [CLI schema-help / migration-hint bug](../../bugs/devcapsule/2026-10-30-config-show-json-help-and-retired-home-command-hints.md): PR #319 / #320, reviewed 0.3.0 documentation alignment slice (`docs/reference/`, `docs/updates/`, `docs/troubleshooting/`).
+
+- [CI Pair Review brief](evidence/2026-10-30-ci-gating/review-brief.md) and
+  [acceptance evidence](evidence/2026-10-30-ci-gating/acceptance.md): PR #312,
+  active review and hosted validation; owner required-check step outstanding.
+
+- [CI path gating and advisory diff coverage](../../work-orders/2026-10-30-ci-path-gating-and-diff-coverage.md): active 0.3.0 slice.
+
+- [Explicit IDE requirement override evidence](evidence/2026-10-29-ide-override/README.md): the recorded acceptance session of 2026-10-29, forced Codium then plain PyCharm, and the review brief.
+- [VS Code smoke evidence](evidence/2026-10-28-vscode/README.md): the recorded IDE smoke of the `vscode` surface, 2026-10-28, and the PR301.1 brief for Antigravity, Gemini 4 Argon (High).
+- [PR #293 review-partner brief (PR293.1)](evidence/2026-10-27-diagnostics-snapshot/brief-pr293-1.md): brief for Codex (`gpt-6-astra`) on the session diagnostics snapshot and sanitized export slice.
 - [PR #236 review-partner brief (PR236.1)](evidence/2026-10-22-pr236-review-brief.md): brief for Claude Fable 5.1 on the E2E scenario video recorder and Eclipse Java debugger demo slice.
 - [Landing-page work order (`Why DevCapsule?`)](../../work-orders/2026-10-18-landing-page-why-devcapsule.md): Deliverables 1–4 completed and verified on `ws-maintenance/e2e_videos`.
 - [Stretch-goal hero video follow-up work order](../../work-orders/2026-10-19-eclipse-java-1brc-hero-video.md): Eclipse/Java 1BRC hero video stretch goal with reusable pipeline preamble and unblocking options.

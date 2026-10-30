@@ -44,11 +44,16 @@ class IdeSurface:
     """A case-insensitive fragment of the IDE's X11 ``WM_CLASS``."""
     ready_timeout: float
     """Seconds to wait for the IDE window after the desktop URL appeared."""
+    consents: tuple[tuple[str, str], ...] = ()
+    """Per-checkout answers given at initialization, as ``(node, value)`` pairs:
+    a vendor download the surface needs, which a fresh home has not trusted."""
 
 
 SURFACES: tuple[IdeSurface, ...] = (
     IdeSurface("eclipse", ("eclipse-ide", "java", "browser-automation"), "eclipse", ready_timeout=420.0),
     IdeSurface("codium", ("frontend-ide", "node"), "codium", ready_timeout=180.0),
+    IdeSurface("vscode", ("vscode-ide", "node"), "code", ready_timeout=180.0,
+               consents=(("vscode-download", "true"),)),
     IdeSurface("pycharm", ("python-ide", "python"), "jetbrains-pycharm", ready_timeout=420.0),
     IdeSurface("rider", ("dotnet-ide", "browser-automation"), "jetbrains-rider", ready_timeout=420.0),
     IdeSurface("intellij", ("java-ide", "java", "browser-automation"), "jetbrains-idea", ready_timeout=420.0),
@@ -160,7 +165,9 @@ def initialize_project(executable: Path, surface: IdeSurface, workspace: Path, e
 
     The project consents to the recommended base, or to the locally built
     base ``DEVCAPSULE_E2E_BASE_IMAGE`` names, as an unverified experiment,
-    and to local-test host networking.
+    to local-test host networking, and to the surface's own consents: a
+    vendor download the launcher would otherwise stop for, since the smoke
+    runs non-interactively and trusts nothing in the home.
     """
     environment = dict(os.environ, BROWSER="true")  # webbrowser runs `true URL`: no tab opens
     built_base = os.environ.get("DEVCAPSULE_E2E_BASE_IMAGE")
@@ -170,6 +177,7 @@ def initialize_project(executable: Path, surface: IdeSurface, workspace: Path, e
          "--creator", CREATOR, "--slug", slug,
          "--authorize", "base-image", "default",
          "--authorize", "network", "host", "Local graphical smoke requires host networking.",
+         *(flag for node, value in surface.consents for flag in ("--authorize", node, value)),
          *(["--unverified"] if built_base else [])],
         cwd=workspace, env=environment, text=True, capture_output=True, stdin=subprocess.DEVNULL,
         check=False, timeout=300.0,
@@ -199,18 +207,22 @@ def stop_session(facts: SessionFacts) -> None:
 
 @contextmanager
 def launched_ide(executable: Path, surface: IdeSurface, workspace: Path,
-                 evidence: Path, container: str, *, own_session: bool = False) -> Iterator[SessionFacts]:
+                 evidence: Path, container: str, *, own_session: bool = False,
+                 run_arguments: tuple[str, ...] = ()) -> Iterator[SessionFacts]:
     """Launch an initialized project, also used for a bounded persistence relaunch.
 
     With ``own_session`` the launcher leads its own process group, as it
     does in a terminal, so that a test can deliver SIGINT to the group the
-    way Ctrl+C does, launcher and docker client alike.
+    way Ctrl+C does, launcher and docker client alike. ``run_arguments``
+    are given to ``project run`` as an adopter would type them, for a
+    launch that departs from the project's saved selection; ``surface`` is
+    then the IDE that launch is expected to run.
     """
     evidence.mkdir(parents=True, exist_ok=True)
     log_path = evidence / "launcher.log"
     with log_path.open("wb") as log:
         launcher = subprocess.Popen(
-            [str(executable), "project", "run", "--no-update-check", "--name", container],
+            [str(executable), "project", "run", "--no-update-check", "--name", container, *run_arguments],
             cwd=workspace, env=dict(os.environ, BROWSER="true"), stdout=log,
             stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, start_new_session=own_session,
         )

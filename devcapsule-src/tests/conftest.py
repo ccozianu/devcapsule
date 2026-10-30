@@ -47,6 +47,7 @@ def private_user_directories(request: pytest.FixtureRequest, tmp_path: Path, mon
 
     if any(request.node.get_closest_marker(marker) for marker in DOCKER_MARKERS):
         return
+    monkeypatch.delenv("DEVCAPSULE_CONFIG_HOME", raising=False)
     # The build tools' caches are content-addressed and shared by the
     # developer's own builds: pex's under PEX_ROOT, and the scie launcher's
     # unpacked Python under SCIE_BASE. Moving them under the scratch made every

@@ -30,7 +30,7 @@ from devcapsule.project import sanitize_name
 from devcapsule.platforms import Platform, UnsupportedPlatformError
 from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix
 
-from .trust import WorkstationTrust
+from .trust import HomeTrust
 from .authorization import (
     AuthorizationDeclaration,
     CURATED_HOST_RECOMMENDATIONS,
@@ -71,7 +71,7 @@ from .storage import (
     load_checkout,
     load_resolution,
     load_toml,
-    load_workstation,
+    load_settings,
     lock_for,
     manifest_for,
     manifest_source_digest,
@@ -220,11 +220,11 @@ def resolve_checkout(start_path: Path) -> ResolveReport:
         atomic_write(input_path, render_checkout(manifest, root, {}, {}))
         registered = input_path
     checkout = load_checkout(input_path, manifest, root)
-    workstation = load_workstation()
-    configuration = Configuration(manifest, lock, checkout, workstation)
+    home = load_settings()
+    configuration = Configuration(manifest, lock, checkout, home)
     configuration.review().require_ready(root)
     resolution = configuration.resolve()
-    base_selection = (authorized_base_selection(lock, checkout, trust=WorkstationTrust.read(workstation))
+    base_selection = (authorized_base_selection(lock, checkout, trust=HomeTrust.read(home))
                       if "base" in lock else None)
     if base_selection is not None and base_selection.local_image_identity is not None:
         local_base = required_local_image(base_selection.reference)
@@ -340,7 +340,7 @@ class InitializeReport:
         else:
             lines.append(
                 "Project initialized. Choose your IDE with 'devcapsule project config ide IDE' "
-                "(python-ide, frontend-ide, java-ide, eclipse-ide or dotnet-ide), then 'devcapsule project run'."
+                "(python-ide, frontend-ide, vscode-ide, java-ide, eclipse-ide or dotnet-ide), then 'devcapsule project run'."
             )
         return "\n".join(lines)
 
@@ -831,7 +831,7 @@ def _reject_undeclared_answers(
 
     ``authoring`` names the curated host recommendations this invocation may
     still record. Such a name is an authorization node only once the project
-    recommends it (``network`` has no workstation default), and the
+    recommends it (``network`` has no home default), and the
     recommendation question consumes the answer that authors it, so an
     ``--authorize`` under one of these names is admitted here.
     """

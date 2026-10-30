@@ -26,7 +26,7 @@ status file; internal WIP/archive documents use the local index in that status.
   - Working with AI: [Choose an agent](docs/working-with-ai/choose-an-agent.md), [Sign in and defaults](docs/working-with-ai/sign-in-and-defaults.md), [Instructions for agents](docs/working-with-ai/instructions-for-agents.md), [Hosted and local models](docs/working-with-ai/hosted-and-local-models.md) (coming soon), [Review and change agents](docs/working-with-ai/review-and-change-agents.md) (coming soon)
   - Everyday development: [Clipboard, keys and browser](docs/everyday-development/clipboard-and-browser.md); coming soon: [IDEs and terminals](docs/everyday-development/ides-and-terminals.md), [Git](docs/everyday-development/git.md), [Run, debug, test](docs/everyday-development/run-debug-test.md), [Previews and ports](docs/everyday-development/previews-and-ports.md)
 - [Configuration](docs/configuration/index.md)
-  - Configuration: [Inspect a checkout](docs/configuration/inspect.md), [Project versus personal](docs/configuration/project-versus-personal.md), [Capabilities and personal choices](docs/configuration/capabilities.md), [Extra tools](docs/configuration/extra-tools.md), [Resource limits](docs/configuration/resource-limits.md), [Software approvals](docs/configuration/software-approvals.md), [IDE preferences](docs/configuration/ide-preferences.md) (coming soon)
+  - Configuration: [The configuration home](docs/configuration/home.md), [Inspect a checkout](docs/configuration/inspect.md), [Project versus personal](docs/configuration/project-versus-personal.md), [Capabilities and personal choices](docs/configuration/capabilities.md), [Extra tools](docs/configuration/extra-tools.md), [Resource limits](docs/configuration/resource-limits.md), [Software approvals](docs/configuration/software-approvals.md), [IDE preferences](docs/configuration/ide-preferences.md) (coming soon)
   - Containment: [The boundary](docs/containment/the-boundary.md), [Granting and withdrawing access](docs/containment/granting-and-withdrawing.md)
   - Sessions: [Start, stop, reconnect](docs/sessions/start-stop-reconnect.md), [What persists](docs/sessions/what-persists.md), [The web console](docs/sessions/web-console.md); coming soon: [Several projects](docs/sessions/several-projects.md), [Another machine](docs/sessions/another-machine.md)
   - Collaboration: [Work in workstreams with humans and agents](docs/collaboration/working-in-workstreams.md)
@@ -107,11 +107,12 @@ status file; internal WIP/archive documents use the local index in that status.
 ## Design Decisions
 
 - [D-0010 Developer-Owned Component Version Sets And Recovery](engineering-docs/decisions/product/d-0010-developer-owned-version-sets.md)
-- [D-0011 Vendor Terms And Trust Are Given Once Per Workstation, Bound To A Verified Channel](engineering-docs/decisions/product/d-0011-vendor-trust-once-per-workstation.md)
+- [D-0011 Vendor Terms And Trust Are Given Once Per Configuration Home, Bound To A Verified Channel](engineering-docs/decisions/product/d-0011-vendor-trust-once-per-configuration-home.md)
 - [D-0012 Host Access Is Asked Only When The Project Recommends The Less Secure Value](engineering-docs/decisions/product/d-0012-host-access-asked-only-when-recommended.md)
 - [D-0013 A Provenance Sidecar Beside Each Checkout Records Which Client Wrote It](engineering-docs/decisions/product/d-0013-provenance-sidecar-for-local-records.md)
 - [D-0014 The IDE Role Stays As It Is, Or Generalizes To An Entry Point That Owns The Container's Lifetime](engineering-docs/decisions/product/d-0014-entry-point-generalizes-the-ide-role.md) (proposed, in scope for V1)
 - [D-0015 A Project Constrains Its Base Directly, Not Through Capabilities Or Components](engineering-docs/decisions/product/d-0015-a-project-constrains-its-base-directly.md) (proposed, in scope for V1)
+- [D-0016 A Required IDE Stays Required; One Launch May Depart From It Explicitly](engineering-docs/decisions/product/d-0016-explicit-launch-departure-from-a-required-ide.md) (accepted 2026-10-28)
 
 - [Decision record template](engineering-docs/decisions/product/_template.md)
 - [D-0001 Capability-First CLI Model](engineering-docs/decisions/product/d-0001-capability-first-cli-model.md)
@@ -292,6 +293,7 @@ history; record current decisions in the active documents above.
 
 ## Bugs
 
+- [An old lock keeps the replaced IDE beside an ordinary IDE override](engineering-docs/bugs/devcapsule/2026-10-29-legacy-lock-keeps-the-replaced-ide.md)
 - [Workstation-scoped commands live under `project config` and need a project](engineering-docs/bugs/devcapsule/2026-10-25-workstation-commands-live-under-project-config.md)
 - [Console link printed on a base without the console](engineering-docs/bugs/devcapsule/2026-10-18-console-link-printed-on-a-base-without-the-console.md)
 - [No test proves old projects launch with new releases](engineering-docs/bugs/devcapsule/2026-10-18-no-test-proves-old-projects-launch-with-new-releases.md)
@@ -361,3 +363,5 @@ history; record current decisions in the active documents above.
 - [Git remote credential manual validation deferred](engineering-docs/completed-tasks/docker4pycharm/2026-06-28-git-remote-validation-deferred.md)
 - [Local Git identity edge-case validation](engineering-docs/completed-tasks/docker4pycharm/2026-06-30-local-git-identity-edge-validation.md)
 - [PyCharm v0 MVP checkpoint](engineering-docs/completed-tasks/docker4pycharm/2026-06-30-pycharm-v0-mvp-checkpoint.md)
+
+- [CI path gating and advisory diff coverage — maintenance, 0.3.0](engineering-docs/work-orders/2026-10-30-ci-path-gating-and-diff-coverage.md)

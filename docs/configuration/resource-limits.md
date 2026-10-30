@@ -1,27 +1,27 @@
 ---
-description: The capsule's memory limit and CPU count, for a checkout, for your whole computer, or as a project's recommendation, and the values a project declares.
+description: The capsule's memory limit and CPU count, for a checkout, for your configuration home, or as a project's recommendation, and the values a project declares.
 weight: 5
-updated: 2026-10-24
+updated: 2026-10-28
 ---
 # Resource limits
 
 The launcher owns two limits of every capsule: its memory and its CPU count.
 For each limit, the launcher uses the first available value in this order:
 the run flag, the checkout answer, the project recommendation, then the
-workstation default. If none supplies a value, DevCapsule sets no limit.
+home default. If none supplies a value, DevCapsule sets no limit.
 
 ```bash
 ~/.local/bin/devcapsule project config set memory 8GiB
 ~/.local/bin/devcapsule project config set cpus 4
-~/.local/bin/devcapsule project config default memory 8GiB
+~/.local/bin/devcapsule home default memory 8GiB
 ~/.local/bin/devcapsule project config recommend memory 6G --because "the test suite builds a 4 GB index"
 ~/.local/bin/devcapsule project run --memory 12g
 ```
 
 - `config set` records the value for this checkout; `config set memory
   default` forgets it.
-- `config default` records your computer's value, used by every project
-  here that recommends none; `config default memory none` removes it.
+- `home default` records the home's value, used by every project
+  launched from it that recommends none; `home default memory none` removes it.
 - `config recommend`, the project owner's, writes the manifest with the
   reason; it applies to every checkout that set nothing.
 - `run --memory` and `run --cpus` apply to one launch; `run --save` records

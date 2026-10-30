@@ -524,6 +524,92 @@ def session_result_text(config: PycharmRunConfig, result: AttachedResult) -> str
     return "\n".join(lines)
 
 
+def _session_display_metadata(config: PycharmRunConfig) -> dict[str, object]:
+    if config.display_transport != CONTAINED_DISPLAY_TRANSPORT:
+        return {"transport": config.display_transport}
+    container_port = (
+        config.runtime_plan.display.port
+        if config.runtime_plan is not None and config.runtime_plan.display is not None
+        else CONTAINER_DISPLAY_PORT
+    )
+    return {
+        "transport": CONTAINED_DISPLAY_TRANSPORT,
+        "host-port": config.display_host_port,
+        "container-port": container_port,
+    }
+
+
+def _session_console_metadata(config: PycharmRunConfig) -> dict[str, object]:
+    if config.console_host_port is None:
+        return {"enabled": False}
+    container_port = (
+        config.runtime_plan.console.port
+        if config.runtime_plan is not None and config.runtime_plan.console is not None
+        else CONTAINER_CONSOLE_PORT
+    )
+    return {
+        "enabled": True,
+        "host-port": config.console_host_port,
+        "container-port": container_port,
+    }
+
+
+def _session_ide_logs(config: PycharmRunConfig) -> list[dict[str, str]]:
+    if not config.interactive_state_mounts:
+        if config.ide_log is None:
+            return []
+        return [{
+            "slot": "pycharm/log",
+            "family": "jetbrains",
+            "host-path": str(config.ide_log),
+            "container-path": "/ide-project-state/log",
+        }]
+    if config.runtime_plan is None:
+        return []
+    mounts = {name: (source, destination) for name, source, destination in config.interactive_state_mounts}
+    component = config.runtime_plan.component
+    configuration = component.configuration
+    if component.adapter == "jetbrains":
+        mapping = configuration.get("state_slot_mapping")
+        local_slot = mapping.get("log") if isinstance(mapping, dict) else None
+        if isinstance(local_slot, str):
+            slot_name = component.slot_name(local_slot)
+            if slot_name in mounts:
+                source, destination = mounts[slot_name]
+                return [{
+                    "slot": slot_name,
+                    "family": "jetbrains",
+                    "host-path": source,
+                    "container-path": destination,
+                }]
+    elif component.adapter == "vscode":
+        mapping = configuration.get("state_slot_mapping")
+        local_slot = mapping.get("user-data") if isinstance(mapping, dict) else None
+        if isinstance(local_slot, str):
+            slot_name = component.slot_name(local_slot)
+            if slot_name in mounts:
+                source, destination = mounts[slot_name]
+                return [{
+                    "slot": slot_name,
+                    "family": "vscode",
+                    "host-path": str(Path(source) / "logs"),
+                    "container-path": f"{destination.rstrip('/')}/logs",
+                }]
+    elif component.adapter == "eclipse":
+        local_slot = configuration.get("workspace_slot")
+        if isinstance(local_slot, str):
+            slot_name = component.slot_name(local_slot)
+            if slot_name in mounts:
+                source, destination = mounts[slot_name]
+                return [{
+                    "slot": slot_name,
+                    "family": "eclipse",
+                    "host-path": str(Path(source) / ".metadata"),
+                    "container-path": f"{destination.rstrip('/')}/.metadata",
+                }]
+    return []
+
+
 def begin_session_logs(config: PycharmRunConfig, env: Mapping[str, str]) -> None:
     """Open the launcher's log, write the session manifest, prune old sessions.
 
@@ -544,6 +630,10 @@ def begin_session_logs(config: PycharmRunConfig, env: Mapping[str, str]) -> None
             session_id=config.session_id, project=config.project, project_mount=config.project_mount,
             image=config.image, container_name=config.name, component=component,
             budget_bytes=config.log_budget_bytes,
+            network_mode=config.network_mode,
+            display=_session_display_metadata(config),
+            console=_session_console_metadata(config),
+            ide_logs=_session_ide_logs(config),
         ))
     except OSError as error:
         print(f"devcapsule launcher: cannot write the session manifest in {directory} ({error})", file=sys.stderr)
@@ -620,17 +710,19 @@ def host_backed_runtime_environment(env: Mapping[str, str]) -> dict[str, str]:
     would arrive empty. Move the staging directory somewhere backed by a mount.
     """
 
+    from devcapsule.platforms import XdgHomes
     runtime_env = dict(env)
+    homes = XdgHomes.from_environment(env)
+    if homes.chosen_by == "DEVCAPSULE_CONFIG_HOME":
+        runtime_env["XDG_RUNTIME_DIR"] = str(homes.state / "runtime")
+        Path(runtime_env["XDG_RUNTIME_DIR"]).mkdir(mode=0o700, parents=True, exist_ok=True)
     if not requires_translation(runtime_env):
         return runtime_env
     container = current_container(runtime_env)
     existing = runtime_env.get("XDG_RUNTIME_DIR")
     if existing and is_host_backed(Path(existing), container):
         return runtime_env
-    data_home = runtime_env.get("XDG_DATA_HOME") or str(
-        Path(runtime_env.get("HOME", "~")).expanduser() / ".local/share"
-    )
-    staging = Path(data_home) / "devcapsule" / "launch-staging"
+    staging = homes.data / "launch-staging"
     try:
         staging.mkdir(parents=True, exist_ok=True)
         staging.chmod(0o700)
@@ -680,9 +772,10 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
             and key not in {"DEVCAPSULE_HOME_DIR", "IMAGE", "DOCKER_MODE", "DOCKER_IN_DOCKER",
                             "GITHUB_TOKEN_FILE", "GITHUB_TOKEN_ENV", "GITHUB_USER"}
         }
-    base_data_dir = Path(
-        env.get("XDG_DATA_HOME") or str(Path(env.get("HOME", "~")).expanduser() / ".local/share")
-    ) / "pycharm-docker"
+    from devcapsule.platforms import XdgHomes
+    homes = XdgHomes.from_environment(env)
+    base_data_dir = (homes.data / "pycharm-docker" if homes.chosen_by == "DEVCAPSULE_CONFIG_HOME"
+                     else homes.data.parent / "pycharm-docker")
     profile = options.profile or env.get("DOCKER4IDES_PYCHARM_PROFILE", "")
     host_user = current_host_user()
 
@@ -774,18 +867,11 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
     global_settings = runtime_plan.global_settings
     project_state = runtime_plan.project_state
 
-    xdg_data_home = Path(
-        env.get("XDG_DATA_HOME") or str(Path(env.get("HOME", "~")).expanduser() / ".local/share")
-    ).expanduser()
-    xdg_state_home = Path(
-        env.get("XDG_STATE_HOME") or str(Path(env.get("HOME", "~")).expanduser() / ".local/state")
-    ).expanduser()
-    xdg_cache_home = Path(
-        env.get("XDG_CACHE_HOME") or str(Path(env.get("HOME", "~")).expanduser() / ".cache")
-    ).expanduser()
-    data_namespace = xdg_data_home / "devcapsule" / "projects" / "by-path" / runtime_plan.project_id
-    state_namespace = xdg_state_home / "devcapsule" / "projects" / "by-path" / runtime_plan.project_id
-    cache_namespace = xdg_cache_home / "devcapsule" / "projects" / "by-path" / runtime_plan.project_id
+    from devcapsule.platforms import XdgHomes
+    homes = XdgHomes.from_environment(env)
+    data_namespace = homes.data / "projects" / "by-path" / runtime_plan.project_id
+    state_namespace = homes.state / "projects" / "by-path" / runtime_plan.project_id
+    cache_namespace = homes.cache / "projects" / "by-path" / runtime_plan.project_id
 
     legacy_global_settings = (
         options.global_settings is not None
@@ -1328,6 +1414,12 @@ def build_docker_args(
             "--mount", f"type=bind,src={config.launch_configuration.directory},dst={CONFIGURATION_PATH},ro",
             "--mount", f"type=bind,src={files.launch_context_file},dst={CONTEXT_PATH},ro",
         ])
+        home = config.launch_configuration.document.get("configuration-home")
+        if home:
+            from devcapsule.runtime_configuration import HOME_PATH
+            settings = Path(str(home)) / "settings.toml"
+            if settings.is_file():
+                args.extend(["--mount", f"type=bind,src={settings},dst={HOME_PATH}/settings.toml,ro"])
         if files.configuration_directory is not None:
             args.extend(["--mount", f"type=bind,src={files.configuration_directory},dst={CHANNEL_PATH}"])
     if config.git_user_name:

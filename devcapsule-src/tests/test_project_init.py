@@ -353,7 +353,7 @@ def test_a_selected_agent_brings_its_own_acquisition_gate(tmp_path: Path, capsys
         # The agent is the developer's; resolving without its vendor's channel names the channel (D-0011).
         assert cli.main(["project", "--path", str(project), "config", "add", "claude-code-agent"]) == 0
         assert run_until_prepared(project) == 3
-        assert "config trust accept claude-code" in capsys.readouterr().err
+        assert "home trust accept claude-code" in capsys.readouterr().err
 
         assert cli.main(["project", "--path", str(project), "config", "authorize", "claude-code-download", "true"]) == 0
         assert run_until_prepared(project) == 0
@@ -1338,7 +1338,7 @@ def test_wrong_family_answer_fails_before_any_prompt_or_write(tmp_path: Path) ->
 def test_curated_host_authorization_is_admitted_before_the_recommendation_exists(
     tmp_path: Path,
 ) -> None:
-    """The curated network recommendation takes precedence over its workstation
+    """The curated network recommendation takes precedence over its home
     default, and the same invocation records consent to that recommendation."""
     project = tmp_path / "project"
     project.mkdir()

@@ -1,4 +1,4 @@
-"""Host-side acquisition and workstation-local component materialization."""
+"""Host-side acquisition and home-local component materialization."""
 
 from __future__ import annotations
 
@@ -168,6 +168,16 @@ SURFACE_MATERIALIZATIONS: dict[str, SurfaceMaterialization] = {
         recipe_version="2",
         installation_path="/opt/codium",
         archive_probes=("codium", "bin/codium", "chrome-sandbox"),
+        requires_variant=False,
+        post_install=(),
+    ),
+    "vscode": SurfaceMaterialization(
+        component_id="vscode",
+        family="vscode",
+        recipe_id="vscode-local-materialization",
+        recipe_version="2",
+        installation_path="/opt/vscode",
+        archive_probes=("code", "bin/code", "chrome-sandbox"),
         requires_variant=False,
         post_install=(),
     ),

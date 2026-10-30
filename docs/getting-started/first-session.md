@@ -4,7 +4,7 @@ role: getting-started
 aliases:
   - /docs/guides/first-session/
 weight: 2
-updated: 2026-10-25
+updated: 2026-10-28
 ---
 # Your first session
 
@@ -36,7 +36,7 @@ for a few decisions. For this exercise:
 
 The prompt identifies the base by its family and recipe, such as
 `ubuntu-24.04@11`, and its exact image digest. This initialization answer
-consents to that image for this checkout. It does not create workstation
+consents to that image for this checkout. It does not create home
 channel trust. [Vendor software and trust](../configuration/software-approvals.md)
 explains the two scopes.
 
