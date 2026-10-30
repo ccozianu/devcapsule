@@ -4,7 +4,7 @@ Mnemonic: `workflow-improvements`
 
 Start date: 2026-08-09
 
-State: paused 2026-10-03 for merge; preamble, information model (work in progress), validation vocabulary, merge-commit rule and the discoverability fix are on the branch and gated; eight intake items taken and undecided; the pair moves to another workstream
+State: active 2026-10-30; Pair Review Loop terminology implemented for 0.3.0; workflow and packaging checks pass; mainline and release integration pending
 
 Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@6ff07c49a7ea
 
@@ -27,13 +27,80 @@ fixed, explicitly deferred, or rejected.
 
 ## Branch Association
 
-`ws-workflow-improvements/v1`, forked from `main` and kept level with it by
-rebasing; nothing unique remains on it after each merge. No outbox: records
-travel this branch and are published live. The branch's earlier names and
-the outbox's history are in the
-[record](2026-09-21-record-tasks-and-decisions-2026-08-16-to-2026-09-21.md).
+`ws-workflow-improvements/v1`, synchronized by fast-forward to `origin/main`
+at `6e509e2d` on 2026-10-30: 0 local-only and 627 mainline-only commits,
+with no `git cherry origin/main ws-workflow-improvements/v1` output.
+The former rebase ruling is retired. This pushed branch merges mainline.
+The active clean worktree is `/home/devcapsule/worktrees/workflow-pair-review`.
+The original project-management checkout retains the user's IDE and sample
+changes and is deliberately untouched by this slice.
 
 ## Current State
+
+### 2026-10-30: Pair Review Loop for 0.3.0
+
+The owner selected this workstream and explicitly assigned the naming change
+to **0.3.0**. The full name is **Pair Review Loop**; **Pair Review** is the
+short name. The current rule, humane explanations, local arrangements,
+development guide and indexes use it. Existing section anchors and file
+paths remain valid. Historical records and the review-partner role keep
+their wording.
+
+The October 22 maintenance notice is acknowledged: root topic 9.11 already
+contains the accepted loop, but the packaged definition did not. Add its
+existing ten rules under the new name to the packaged workflow for 0.3.0.
+The root humane companion explains those rules. This is the bounded
+packaged-copy update authorized by WORKFLOW-LOCAL's definition rule 6;
+the rest of the packaged edition and the installed declaration are unchanged.
+The roles, different-engine requirement, three-round limit and human merge
+authority remain intact. The release branch already carries the October 29
+invocation rule from PR #305: use the loop only on the human's request or
+as the local default. Bring that approved rule and its humane explanation
+into mainline and the packaged section while renaming, so the shipped
+section preserves the current release contract.
+
+Acknowledge the October 30 naming handoff in the same change. The owner's
+subsequent instruction supplies the 0.3.0 target absent from that mail.
+The other 13 intake items remain pending, including the separate C17
+project-operation requirement. This slice does not decide the older backlog.
+
+Open bugs owned here at resumption: build/test discoverability (fixed,
+target still 0.2.16); bootstrap mode choice (confirmed); claim-test timing
+(confirmed). The nested-directory coordination bug is closed. No new bug
+is filed for this terminology change.
+
+### Validation and delivery of the naming slice
+
+The focused workflow tests passed: 29 passed, one expected failure for the
+known full-definition drift and one non-strict XPASS for claim timing.
+All 17 packaged integration tests passed on the final build. A separate
+bootstrap from that executable installed the exact packaged definition,
+including the full name, short name and October 29 invocation rule.
+The ten numbered rules match the release branch byte for byte; the root
+and packaged loop sections are identical. Five old section anchors remain.
+Whitespace checks passed.
+
+The required `nox -s build` gate passed version, syntax and type checks
+(248 files), then stopped after 490 test passes at the known runtime
+configuration-channel isolation failure in `test_checkout_commands.py`.
+PR #293 already fixes that fixture on the release branch; mainline does
+not yet contain it. The full gate is not green, and later gate stages
+were not run by that attempt. Packaging was validated separately above.
+No runtime source or test code changed in this slice.
+
+A nine-file release patch was composed against `origin/release-0.3.0`
+at `cfa45937`. An isolated-index `git apply --cached --check` passed.
+It preserves the release version, the October 29 invocation rule and the
+newer local streaming/progress rules. The only composition overlap was
+the new short-name sentence; it was retained. Maintenance receives the
+patch for its release-branch delivery; no release ref was changed here.
+
+Local validation logs: `/tmp/workflow-pair-review-build.log`,
+`/tmp/workflow-pair-review-focused.log`, and
+`/tmp/workflow-pair-review-packaging-final.log`. These are scratch, not
+acceptance evidence from a released candidate.
+
+### Earlier state (historical)
 
 - Every round through 2026-09-19 is merged: the release rules and vocabulary,
   the reserved `maintenance` workstream and bug frontmatter, the `ws-` branch
@@ -195,10 +262,14 @@ each under its own heading.
 
 ## Next Resumable Task
 
-Decide the eight intake items; several (release-fix propagation, tag-based release records,
-the four 0.2.14 gaps, the bootstrap mode bug and its owner direction) are
-definition changes that belong in the same *Unreleased* entry. Then the
-plate as recorded below.
+Deliver the validated Pair Review Loop naming slice through its mainline
+pull request and maintenance's release-branch patch. The human merges
+into mainline and the release. Verify both remote trees before declaring
+the 0.3.0 task complete; the older full-gate failure remains disclosed.
+Then return to the pending intake and the recorded backlog; the owner's
+naming instruction does not authorize another implementation slice.
+
+The earlier planned work remains:
 
 
 Build `workflow doctor`, item 1 of *Plate, In Order*: one run that reports
@@ -468,6 +539,18 @@ Two parts could not be completed by this workstream and were delivered to
 - routing the tooling implementation, which fits no open workstream's goal.
 
 ## Open Threads
+
+### Current, 2026-10-30
+
+- The Pair Review Loop change must reach both remote `main` and the 0.3.0
+  release before it is complete. The human performs those merges.
+- The 13 unrelated intake items remain pending. C17 still has its own
+  0.3.0 requirement and is not completed by this naming change.
+- The old paused-state, rebase and release-hold statements below are
+  historical; the current branch association and task above govern.
+- No transcript or new runtime experiment is retained. The clean worktree
+  and its validation environment remain for review and integration.
+
 
 Rewritten on 2026-09-16 while active, ahead of the next pause, because the
 resume changed every question. Short by design.
