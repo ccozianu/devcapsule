@@ -26,8 +26,10 @@ cd ~/hello-devcapsule
 ```
 
 This requires Node.js for the project and selects `frontend-ide` (default
-provider VSCodium; `--ide codium` or `--ide vscode` also works) for your
-checkout. Answer the interactive prompts as follows:
+provider VSCodium) for your checkout. The `--ide codium` alias selects the same IDE. Choosing `--ide vscode` instead
+selects Visual Studio Code and adds its vendor download consent question.
+
+Answer the interactive prompts as follows:
 
 | Prompt | What to enter |
 |---|---|
@@ -54,10 +56,10 @@ once.
 ```
 
 Keep this terminal running. On the first launch, DevCapsule pulls the base
-image, downloads VSCodium, and builds the environment image. When the container
-starts, DevCapsule prints:
+image, downloads VSCodium, and builds the environment image. During startup,
+the launcher prints:
 
-- a **desktop URL** (`http://127.0.0.1:<port>/vnc.html?...`) and opens it in
+- a **desktop URL** (`http://127.0.0.1:<port>/vnc.html?...`) and tries to open it in
   your default browser (if no tab opens automatically, copy the full URL into a
   browser on this machine), and
 - on recipe `11` or newer bases, a **web console URL**
@@ -113,9 +115,8 @@ cd ~/hello-devcapsule
 ```
 
 Open the newly printed desktop URL: `hello.js` and your VSCodium layout and
-settings are right where you left them, without re-initializing or answering
-prompts again. Any processes that were running inside the previous container
-stopped when it exited—run `node hello.js` (or any dev server) again when you
+settings persist. You do not need to initialize this checkout again. Processes
+inside the previous container stopped when it exited—run `node hello.js` (or any dev server) again when you
 need it. See [Stop and come back](stop-and-come-back.md) for tab closing and
 `Ctrl+C` behavior.
 

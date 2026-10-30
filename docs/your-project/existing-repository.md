@@ -10,9 +10,9 @@ updated: 2026-10-30
 
 Complete [Install DevCapsule](../getting-started/install.md) first, then run
 the commands below from your repository's root directory on your host. Only
-open repositories you trust to edit their own working tree: the project folder
-is mounted read-write inside the capsule, so commit or stash uncommitted work
-before experimenting.
+open repositories whose code you trust to run. The project folder is mounted
+read-write inside the capsule. Commit or back up work before experimenting;
+the capsule can also change the repository's `.git` directory.
 
 ## A repository that already has `.devcapsule/`
 
@@ -35,9 +35,8 @@ Completing that first review registers this checkout path in your local
 configuration home. If you clone or add a second worktree of the same
 repository on the same computer, it receives its own checkout record and
 isolated state directories without inheriting answers from the first checkout.
-To assign a specific checkout record name before first launch (required before
-running pre-launch `project config` mutations on a second checkout when the
-derived directory name would collide), run:
+To assign a specific checkout record name before first launch (useful before
+running pre-launch `project config` mutations on a second checkout), run:
 
 ```bash
 devcapsule project checkout register my-feature-wt
@@ -48,8 +47,9 @@ registered checkout.
 
 To inspect what a checkout needs before answering anything, run `devcapsule
 project config show` or `devcapsule project config check`; neither writes a
-record on disk. If `.devcapsule/devcapsule.toml` does not exist yet, `project
-run` exits with status `2` and points you to `devcapsule project init`.
+record on disk. `config check` exits with status `3` when decisions remain
+pending. Without `.devcapsule/devcapsule.toml`, all three commands exit with
+status `2` and point you to `devcapsule project init`.
 
 ## A repository without `.devcapsule/`
 
@@ -66,10 +66,8 @@ name):
 | Java with Eclipse IDE | `devcapsule project init --require java --ide eclipse-ide` |
 | .NET with JetBrains Rider | `devcapsule project init --require dotnet --ide dotnet-ide` |
 
-IntelliJ IDEA and Rider use JetBrains's unified distributions (free core
-tier where offered by JetBrains; paid features use your JetBrains account or
-license inside the capsule). Add `--offer browser-automation` when contributors
-run browser tests with Python Playwright and bundled Chromium (exposed via
+Complete any IDE sign-in or license setup inside the capsule. Add
+`--offer browser-automation` when contributors run browser tests with Python Playwright and bundled Chromium (exposed via
 `DEVCAPSULE_PLAYWRIGHT_PYTHON` and `PLAYWRIGHT_BROWSERS_PATH`).
 
 Answer the initialization prompts described in [Your first
@@ -86,7 +84,8 @@ declares](declare-needs.md).
 ## What goes in Git versus what stays local
 
 Commit `.devcapsule/devcapsule.toml` and `.devcapsule/devcapsule.<platform>.lock`
-together so teammates and agents get the same pinned environment. Your host
+together to share the project's pinned base and required or offered tools.
+Each checkout separately pins its personal IDE and added capabilities. Your host
 authorizations, channel trust, private environment variables, agent sign-ins,
 and IDE state stay in your local DevCapsule home outside the repository; see
 [Project versus personal](../configuration/project-versus-personal.md).

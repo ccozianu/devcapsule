@@ -8,9 +8,8 @@ updated: 2026-10-30
 By default, a capsule runs on Docker's `bridge` network: outbound internet
 connections work normally, and only the capsule's per-run desktop port (plus
 the [web console](../sessions/web-console.md) port on base recipe `11` or
-newer) is published on `127.0.0.1` with a one-run token. Application ports
-inside the capsule are isolated from your host network unless you expose one or
-opt into host networking.
+newer) is published on `127.0.0.1` with a one-run token. DevCapsule does not
+publish application ports automatically.
 
 ## Reaching a web server running inside the capsule
 
@@ -18,10 +17,9 @@ Choose the option that matches how much of your host network you want to share:
 
 ### 1. Preview inside the capsule (zero configuration)
 
-Any server started in the IDE terminal (`npm run dev`, `flask run`, `mvn
-spring-boot:run`) is reachable immediately at `http://localhost:<port>` from a
-browser or Playwright test running **inside** the capsule desktop, with no port
-publishing or host authorization.
+Start your server in the IDE terminal. If it listens on the capsule's
+loopback or all interfaces, open `http://localhost:<port>` from a browser or
+Playwright test inside the capsule. This needs no host port publishing.
 
 ### 2. Publish specific ports to `127.0.0.1` on the host (`bridge` network)
 
@@ -38,24 +36,26 @@ devcapsule project config docker-args set -- --publish=127.0.0.1:3000:3000
 devcapsule project run
 ```
 
-Keep two details in mind when publishing over `bridge`:
+When publishing over `bridge`:
 
 - **Always prefix `127.0.0.1:`** (`127.0.0.1:3000:3000`, not `3000:3000`),
-  otherwise Docker binds `0.0.0.0` on your host and exposes the dev server to
-  your local network.
+  to keep the published port local to your computer. Omitting the address
+  normally publishes on all host interfaces.
 - **Bind the server inside the capsule to `0.0.0.0`** (for example, `vite
-  --host 0.0.0.0` or `python3 -m http.server --bind 0.0.0.0 8000`). A server
+  --host 0.0.0.0` or `python3 -m http.server --bind 0.0.0.0 3000`). A server
   listening only on container `127.0.0.1` rejects connections forwarded across
   the Docker bridge.
 - Remember that `docker-args set` replaces the checkout's saved argument list
-  (including saved `config env` entries); place `--publish=...` tokens cleanly
-  and re-check with `devcapsule project config docker-args list` ([Saved Docker
+  (including saved `config env` entries). Inspect it with `devcapsule project
+  config docker-args list` before replacing it, then supply the complete list.
+  Reapply needed environment values with `config env set`. `docker-args clear`
+  also removes all saved arguments and environment entries ([Saved Docker
   arguments](../configuration/project-versus-personal.md#saved-docker-arguments)).
 
 ### 3. Share the host network namespace (`network host`)
 
 When an application opens dynamic callback ports or talks to several local
-services, authorize `network host` for the checkout (or one launch):
+services, authorize `network host` for the checkout:
 
 ```bash
 devcapsule project config authorize network host
@@ -65,17 +65,22 @@ devcapsule project run
 With `network host`, `localhost` inside the capsule is your host's `localhost`:
 servers listening on `127.0.0.1:3000` inside the capsule open directly at
 `http://localhost:3000` in your host browser without `0.0.0.0` binds, and the
-capsule can reach every port listening on your computer. Withdraw it anytime
-with `devcapsule project config deny network` (or `forget network`).
+capsule shares your host's network interfaces. To keep the grant to one
+launch, use `devcapsule project run --authorize network host` instead.
+
+Return to bridge networking on the next launch with `devcapsule project config
+deny network`. `config forget network` removes your answer, so a project
+recommendation can prompt again. Raw `--network` options are refused; use
+`--authorize network host` or `--authorize network bridge`.
 
 ## Running databases, caches, and message brokers
 
-Containers exit and are removed whenever you close the IDE, so choose where
-stateful services run deliberately:
+The capsule stops when you exit the IDE. Keep service data in persistent
+storage, and choose whether services should outlive that session.
 
 ### Option A: Run services on the host (or host Docker Compose)
 
-Start PostgreSQL, Redis, or your `docker compose` stack from a host terminal so
+Start your database or service stack from a host terminal so
 its lifecycle and volumes stay independent of IDE restarts:
 
 - **With `network host`:** connect from the capsule to `localhost:5432` (or
@@ -90,8 +95,8 @@ its lifecycle and volumes stay independent of IDE restarts:
   the host service listens on the Docker bridge interface as well as
   `127.0.0.1` and requires authentication).
 
-Declare connection variables in `.devcapsule/devcapsule.toml` without committing
-credentials:
+Declare your application's connection variables without committing credentials.
+This example uses `localhost` for host networking:
 
 ```bash
 devcapsule project config require postgresql-client --because "migrations and psql run inside the capsule"
@@ -100,9 +105,13 @@ devcapsule project config env set POSTGRES_HOST localhost
 devcapsule project config env set POSTGRES_PASSWORD
 ```
 
-### Option B: Run Testcontainers or Docker Compose from inside the capsule
+For the bridge setup above, set `POSTGRES_HOST` to `host.docker.internal`
+instead. Use the variable names your application expects; declaring a name
+does not configure the application or `psql` automatically.
 
-If your test suite starts containers itself (such as Testcontainers) or you run
+### Option B: Start service containers from inside the capsule
+
+If your test suite starts containers itself or you run
 `docker compose` from the IDE terminal:
 
 1. Require or offer the Docker CLI in the manifest (`devcapsule project config
@@ -127,8 +136,7 @@ Understand two consequences of `docker-daemon host-socket`:
 
 ### Option C: Embedded or user-space databases inside the capsule
 
-Embedded stores such as SQLite and DuckDB—or lightweight user-space dev
-servers—work inside the capsule with zero extra permissions. Keep their data
-files inside your mounted project directory (gitignored) or under
+You can install and run an embedded database with your application's
+dependencies inside the capsule. Keep its data files inside your mounted project directory (gitignored) or under
 `/home/devcapsule` so they survive container replacement; files under `/tmp`
 disappear when the session ends ([What persists](../sessions/what-persists.md)).
