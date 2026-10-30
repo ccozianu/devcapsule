@@ -47,6 +47,21 @@ Acknowledged all three delivered items:
   apply the supplied release patch as the next separate workflow slice
   after the CI review settles. Main PR #309 is already merged.
 
+Implementation judgments: retain the existing hosted runtime suite and its
+separate local console-gate contract; classify unknown paths conservatively;
+use PR head for both measured coverage and annotation coordinates against
+the event base SHA; keep the badge publisher separate. No Docker or new
+hosted console suite is added. Native warnings are capped at ten per step;
+complete reports remain in the artifact. Fifty-six focused tests passed,
+including actual coverage/diff-cover execution below 85% without failure.
+
+GitHub settings inspected 2026-10-30 through the read-only API: the only
+active ruleset is `main: no force push, no deletion` (25144717), with
+`deletion` and `non_fast_forward` rules. Both main and release-0.3.0's
+classic protection endpoints return `Branch not protected`. No existing
+required CI check needs replacement. The owner must add `ci-gate` as required
+after the representative hosted runs succeed; no settings are changed here.
+
 Existing IDE and sample-project changes stay in the original PM checkout.
 Claude availability check returned `claude-fable-5-1`; no API key is used.
 Validation scratch uses `/var/tmp/maintenance-ci` because the configured

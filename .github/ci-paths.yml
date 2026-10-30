@@ -1,0 +1,31 @@
+# dorny/paths-filter v3, predicate-quantifier: every.
+# Everything runs unless its path is a known non-input for that job. New or
+# unclassified paths therefore cannot silently escape verification.
+python:
+  - '!docs/**'
+  - '!README.md'
+  - '!website'
+  - '!website/**'
+  - '!scripts/website.sh'
+  - '!engineering-docs/**'
+  - '!CURRENT-STATUS.md'
+  - '!index.md'
+docs:
+  - '!devcapsule-src/devcapsule/**'
+  - '!devcapsule-src/tests/**'
+  - '!devcapsule-src/scripts/**'
+  - '!devcapsule-src/noxfile.py'
+  - '!devcapsule-src/dev-requirements.txt'
+  - '!devcapsule-webconsole/**'
+  - '!docker4pycharm/**'
+  - '!engineering-docs/wip/**'
+  - '!engineering-docs/archive/**'
+  - '!engineering-docs/work-orders/**'
+  - '!engineering-docs/session-records/**'
+  - '!engineering-docs/bugs/**'
+  - '!CURRENT-STATUS.md'
+  - '!index.md'
+# README, docs, journal, release notes, engineering design notes, the website
+# gitlink, .gitmodules, pyproject version and CI definitions still build docs.
+# Console changes conservatively run the existing hosted Python check; that
+# check does not replace the separate local nox -s webconsole gate.

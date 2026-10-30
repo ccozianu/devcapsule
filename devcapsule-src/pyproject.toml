@@ -26,6 +26,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+  "diff-cover>=9.2,<11",
   "genbadge[coverage]>=1.1,<2",
   "mypy>=2.3,<3",
   "nox>=2025.5,<2027",
@@ -105,7 +106,7 @@ skip_covered = true
 
 [tool.mypy]
 python_version = "3.12"
-files = ["devcapsule", "tests", "noxfile.py", "scripts/bump-version.py", "scripts/release-manifest.py"]
+files = ["devcapsule", "tests", "noxfile.py", "scripts/bump-version.py", "scripts/release-manifest.py", "scripts/ci_gate.py", "scripts/diff_coverage_annotations.py"]
 # Sample projects are independent submodules with their own dependencies. They
 # are checked by their own tooling, not by DevCapsule's gate.
 exclude = "(^|/)tests/resources/sample_projects/"

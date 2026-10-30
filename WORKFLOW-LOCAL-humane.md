@@ -102,6 +102,11 @@ is the owner's voice, released by the owner.
 
 ## Validation Commands
 
+The 0.3.0 CI order adds advisory changed-line coverage to the existing serial
+unit suite. Use the PR's actual target when comparing; low coverage informs
+review without blocking it. Test and reporting failures still block their
+checks. Parallel execution is deliberately deferred beyond 0.3.0.
+
 **Rule.** Every command runs from `devcapsule-src` in its `.venv`; the kinds
 are the definition's; each has a command runnable as written; the gate is
 `nox -s build`.
