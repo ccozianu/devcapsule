@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-10-29; reviewing 0.3.0 completion; the October 25 documentation proposals move to 0.3.1 by owner decision
+State: paused 2026-10-30 at owner direction; the pair moves to workflow-improvements to deliver Pair Review Loop terminology in 0.3.0; remaining release coordination stays recorded
 
 Definition read: WORKFLOW.md@8976f8d5f8f0, WORKFLOW-LOCAL.md@31819cc43359
 
@@ -38,7 +38,9 @@ round limit and human merge authority remain unchanged. Delivered
 workflow-improvements at coordination `d294f1394393` for the definition,
 humane explanation and current guidance. Its acknowledgement and terminology
 update remain pending. Historical quotations and stable links stay intact.
-No new release target or implementation workstream is selected by this name.
+The owner subsequently selected workflow-improvements to implement the name
+and explicitly assigned it to 0.3.0. Project-management pauses for that
+workstream change; its remaining release decisions stay open.
 
 This records-only update retains the October 29 validation limit below;
 the executable inputs are unchanged. Changed-text review and whitespace
@@ -447,6 +449,12 @@ the owner had asked to be written to the user; moved into Part 5 at
 `30ecdca`. Accepted and merged at `eab9ed6`. PR258 awaits the owner.
 
 ## Open Threads
+
+- Pause of 2026-10-30: the owner selected workflow-improvements for the
+  Pair Review Loop terminology change, targeted at 0.3.0. Return to the
+  remaining release coordination only on the owner's direction. Existing
+  IDE and trading-sample changes stay in this checkout; the workflow slice
+  uses a clean worktree. No chat transcript is retained.
 
 - Current, 2026-10-29: the nine remaining documentation proposal decisions,
   the language-review assignment, C17 and candidate acceptance are open.
