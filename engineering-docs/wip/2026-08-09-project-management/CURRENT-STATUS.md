@@ -4,9 +4,9 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: paused 2026-10-30 at owner direction; the pair moves to workflow-improvements to deliver Pair Review Loop terminology in 0.3.0; remaining release coordination stays recorded
+State: active 2026-10-30; returned at owner direction after PR #309 merged; continuing 0.3.0 release coordination
 
-Definition read: WORKFLOW.md@8976f8d5f8f0, WORKFLOW-LOCAL.md@31819cc43359
+Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@0e31c93fe04c
 
 Branch association: `ws-project-management/coordination`
 
@@ -24,6 +24,31 @@ The immutable start date and adoption exception remain in the workstream list.
 
 ## Current State
 
+### Returned 2026-10-30 after PR #309
+
+The owner directed the return to project-management. Verified by SSH fetch:
+PR #309 is merged into `origin/main` at `b026936b`; `git cherry` against
+the delivered workflow branch returned no outstanding patches.
+Workflow-improvements is deliberately paused and has published its handoff.
+
+This checkout is back on `ws-project-management/coordination`. Merged
+mainline at `f3e05faa` to adopt the changed workflow rules. The workstream-list
+conflict was mechanical: keep this branch's project-management row and
+mainline's rows for other workstreams. Existing IDE and trading-sample
+changes remain untouched. The new Pair Review Loop terminology and its
+explicit invocation rule have been read.
+
+Release inclusion remains open: fetched `release-0.3.0` at `c695e376`
+still has the former heading. Maintenance already has the checked release
+patch at coordination `41ee5a2f85f7`. Follow that handoff as part of 0.3.0
+coordination; mainline integration alone does not close release delivery.
+
+The next step remains the outstanding 0.3.0 review listed below. No new
+implementation slice is started by this return. No mail waited. This is a
+records-only transition; whitespace checks passed and the previously
+recorded full-gate limitation remains. No transcript is retained.
+
+
 ### 2026-10-30: name the process Pair Review Loop
 
 Owner decision: call the review-partner loop **Pair Review Loop**, with
@@ -36,8 +61,9 @@ This is a terminology change. Topic 9.11's roles, different-engine review,
 round limit and human merge authority remain unchanged. Delivered
 `2026-10-30-project-management-pair-review-loop-name.md` to
 workflow-improvements at coordination `d294f1394393` for the definition,
-humane explanation and current guidance. Its acknowledgement and terminology
-update remain pending. Historical quotations and stable links stay intact.
+humane explanation and current guidance. The handoff was acknowledged and
+implemented in PR #309, now merged into mainline. Historical quotations
+and stable links stay intact.
 The owner subsequently selected workflow-improvements to implement the name
 and explicitly assigned it to 0.3.0. Project-management pauses for that
 workstream change; its remaining release decisions stay open.
@@ -450,11 +476,10 @@ the owner had asked to be written to the user; moved into Part 5 at
 
 ## Open Threads
 
-- Pause of 2026-10-30: the owner selected workflow-improvements for the
-  Pair Review Loop terminology change, targeted at 0.3.0. Return to the
-  remaining release coordination only on the owner's direction. Existing
-  IDE and trading-sample changes stay in this checkout; the workflow slice
-  uses a clean worktree. No chat transcript is retained.
+- Returned 2026-10-30 at the owner's direction: PR #309 is verified on
+  mainline. Pair Review Loop delivery to 0.3.0 remains with maintenance.
+  The workflow worktree is clean and paused; existing IDE and trading-sample
+  changes remain in this project-management checkout.
 
 - Current, 2026-10-29: the nine remaining documentation proposal decisions,
   the language-review assignment, C17 and candidate acceptance are open.
