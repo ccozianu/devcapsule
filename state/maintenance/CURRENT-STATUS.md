@@ -225,11 +225,17 @@ Key changes:
   keywords, `vscode-download`); see the
   [Batch 3 verification ledger](evidence/2026-10-30-docs-batch-3/README.md).
 - Opened [PR #323](https://github.com/ccozianu/devcapsule/pull/323) against
-  `release-0.3.0` after passing `docs-contract` (`192` pages), `website.sh
-  build && check` (`23` tests, `196` HTML pages, `14,446` links/anchors), and
-  `pytest -q -k release_docs` (`92` passed). Next step: run `Codex
-  (gpt-6-astra)` file-by-file Pair Review (`PR323.1`) under
-  [`review-brief.md`](evidence/2026-10-30-docs-batch-3/review-brief.md).
+  `release-0.3.0`, dispatched `Codex (gpt-6-astra)` under
+  [`review-brief.md`](evidence/2026-10-30-docs-batch-3/review-brief.md),
+  accepted [PR #324](https://github.com/ccozianu/devcapsule/pull/324)
+  (`f218a6d5`, 10 source-verified fixes across all 10 files) without a revision
+  round, and merged it at `18728ce8`.
+- Recorded unimplemented Batch 5 follow-up (`docs/sessions/what-persists.md:8`
+  mount-scope wording); post-merge gate passed (`docs-contract`: `192` pages;
+  `website.sh build && check`: `23` tests, `196` HTML pages, `14,449`
+  links/anchors; `pytest -q -k release_docs`: `92` passed; `nox -s smoke`:
+  passed). Ready for owner merge into `release-0.3.0`; next step: execute Batch
+  4 (`docs/everyday-development/` + `docs/working-with-ai/`, 10 files, 5 stubs).
 
 ## Diagnostics snapshot and export — 2026-10-27
 
