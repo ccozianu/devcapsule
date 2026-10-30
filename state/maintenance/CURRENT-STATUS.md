@@ -3560,8 +3560,9 @@ Earlier open-thread history (read against the current scope above):
 
 ## Workstream Document Index
 
-- [User-docs 0.3.0 CLI alignment work order](../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md) and
-  [Batch 1 verification ledger](evidence/2026-10-30-docs-batch-1/README.md): active 0.3.0 documentation alignment slice (`docs/reference/`, `docs/updates/`, `docs/troubleshooting/`).
+- [User-docs 0.3.0 CLI alignment work order](../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md),
+  [Batch 1 verification ledger](evidence/2026-10-30-docs-batch-1/README.md), and
+  [PR319.1 Pair Review brief](evidence/2026-10-30-docs-batch-1/review-brief.md): PR #319, active 0.3.0 documentation alignment slice (`docs/reference/`, `docs/updates/`, `docs/troubleshooting/`).
 
 - [CI Pair Review brief](evidence/2026-10-30-ci-gating/review-brief.md) and
   [acceptance evidence](evidence/2026-10-30-ci-gating/acceptance.md): PR #312,
