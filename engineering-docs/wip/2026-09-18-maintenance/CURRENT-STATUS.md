@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: in-progress 2026-10-30; user-docs 0.3.0 CLI alignment Batch 1 (PR #319 / review PR #320, 10 files) Pair-Reviewed, validated, and ready for owner merge; proceeding to Batch 2 (`docs/configuration/`, 10 files)
+State: in-progress 2026-10-30; user-docs 0.3.0 CLI alignment Batch 1 (PR #319 / review PR #320, 10 files) Pair-Reviewed and ready for owner merge; release-to-main draft PR #317 open awaiting release synchronization direction
 
 Definition read: WORKFLOW.md@bc1b631d1da6, WORKFLOW-LOCAL.md@450fc42e2234
 
@@ -40,11 +40,42 @@ missing replacement hints on `project config default` and mutating `project
 config trust`) are filed as
 [`2026-10-30-config-show-json-help-and-retired-home-command-hints.md`](../../bugs/devcapsule/2026-10-30-config-show-json-help-and-retired-home-command-hints.md);
 see the [Batch 1 verification ledger](evidence/2026-10-30-docs-batch-1/README.md).
-Next step: complete post-merge validation on PR #319, update its PR body for
-owner merge, and branch Batch 2 (`docs/configuration/`, 10 files) cleanly from
-`origin/release-0.3.0`.
+Next step: owner merge of PR #319 into `release-0.3.0`; Batch 2
+(`docs/configuration/`, 10 files) proceeds on its own slice branch.
+
+## Release-to-main integration — 2026-10-30
+
+Owner requested a PR carrying everything currently on release-0.3.0 to main.
+Opened [PR #317](https://github.com/ccozianu/devcapsule/pull/317), head
+`4PR-10-release-0.3.0`, an untouched copy of the release tip under local
+Release Policy 8. Read-only merge-tree preview against main `ebab228a`
+found two conflicts: WORKFLOW.md (retain the Pair Review short name) and
+the CI work order (retain the implementation evidence). Main's development
+version remains 0.3.1.dev0; its final tree must omit the release-only
+source-version override in docs/versions.yaml.
+
+A temporary integration-branch merge was aborted without committing after
+checking the more specific untouched-copy rule. No main content was merged
+into release-0.3.0. Draft PR records the conflicts and existing release
+validation; it does not claim the unresolved integration tree is validated.
+Pending owner direction: synchronize main into the release under the local
+exception requiring the owner's word each time, or authorize an alternative
+integration method. No final tag or publication was requested. The workflow
+runs ci-gate automatically; required-check enforcement is a separate setting.
 
 ## CI path gating and advisory diff coverage — 2026-10-30
+
+Owner merge verified by GitHub and SSH fetch: PR #312 merged into
+`release-0.3.0` at `9eb500da4177e85aa4c4aa353e936327c2bded10` on
+2026-10-30. Its tree equals the validated PR head `3aba7d04`; final hosted
+run 40990774517 passed Python, website and ci-gate. No repeat gate is
+needed for the unchanged tree. The clean maintenance checkout now selects
+`release-0.3.0`, fast-forwarded to that remote merge; no main synchronization.
+The mainline Pair Review naming change was read but remains the accepted
+separate release patch. Required-check configuration and release propagation
+to main remain open; the PR merge alone does not establish either.
+This post-merge record is committed locally and published on coordination;
+it travels with the next deliverable, with no records-only PR.
 
 Implementation [PR #312](https://github.com/ccozianu/devcapsule/pull/312)
 has received [review PR #314](https://github.com/ccozianu/devcapsule/pull/314),
@@ -62,7 +93,7 @@ Native Files changed placement is observed in a Chromium screenshot from
 closed probe PR #313: a warning on lines 1–2 with 0% diff coverage and green
 CI. Its fixture is absent from the implementation. Evidence is retained in
 [the acceptance record](evidence/2026-10-30-ci-gating/acceptance.md).
-The owner still must add required ci-gate and merge the release-targeted PR.
+The owner still must add required ci-gate; the release-targeted PR is merged.
 No main/release branch was merged by the agent.
 
 
@@ -2263,10 +2294,14 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-Current: implement the CI work order, complete Claude Fable 5.1 Pair Review,
-run the full gate, and hand the release-targeted PR to the human. Then
-apply the accepted naming patch. Documentation scheduling records now
-reflect the acknowledged deferral.
+Current: finish release-to-main PR #317 after the owner resolves the
+synchronization decision above, validate its integration tree, and hand it
+back for merge. Then apply any remaining accepted Pair Review naming and
+packaged-definition patch for 0.3.0 as a separate maintenance slice. The CI work order
+is implemented, reviewed, validated and merged into the release through
+PR #312. Required ci-gate configuration remains an owner action; normal
+release propagation to main remains open. Documentation scheduling records
+reflect the acknowledged 0.3.1 deferral.
 Historical candidate sequencing below must not override this owner direction.
 
 1. The network-node slice, on `ws-maintenance/0.3.0-network-node` from
@@ -3114,6 +3149,11 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- Release-to-main PR #317 is draft with two documented conflicts. Await the
+  owner’s explicit synchronization or integration-method direction; do not
+  silently merge main into release. The untouched copy carries all current
+  release work; no new feature work is implied by this integration request.
+
 - CI Pair Review #314 settled without a revision round. Reviewer proposals
   not implemented: migrate paths-filter v3 to v4 (Node 20 produces a hosted
   deprecation warning), and replace repository-file fixtures in release-doc
@@ -3121,7 +3161,7 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   choices, not new 0.3.0 requirements or blockers to this approved scope.
 
 - CI slice 2026-10-30: implementation and Pair Review are complete. Next:
-  owner merges PR #312 into release-0.3.0 and adds required `ci-gate` once
+  PR #312 is merged at `9eb500da`; the owner adds required `ci-gate` once
   the workflow is available on each intended integration branch; then
   follow normal release propagation to main. No coverage threshold or
   parallelism decision remains open for 0.3.0. Temporary probe PRs must
