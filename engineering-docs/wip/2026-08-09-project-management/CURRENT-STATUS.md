@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-10-30; returned at owner direction after PR #309 merged; continuing 0.3.0 release coordination
+State: active 2026-10-30; CI path gating and advisory diff coverage assigned to maintenance for 0.3.0; continuing release coordination
 
 Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@0e31c93fe04c
 
@@ -23,6 +23,27 @@ This reserved workstream remains open for the lifetime of multiple-stream mode.
 The immutable start date and adoption exception remain in the workstream list.
 
 ## Current State
+
+### 2026-10-30: CI path gating and advisory diff coverage assigned
+
+Reviewed the owner's external draft against mainline `b026936b`, the current
+CI and package layouts, the website pipeline and primary tool documentation.
+The owner selected **1B** (advisory coverage, no blocking percentage) and
+**2B** (serial tests; defer parallelism beyond 0.3.0 with no later target).
+The [issued work order](../../work-orders/2026-10-30-ci-path-gating-and-diff-coverage.md)
+is assigned to maintenance for **0.3.0**; the release-scope decision is amended.
+It corrects the false-green aggregate, unsupported sysmon branch setting,
+path assumptions and annotation acceptance. No CI implementation is included.
+The broader testing-policy intake remains pending. No new workstream opens.
+
+Main synchronization is unnecessary: the branch is zero commits behind and
+both workflow files are current. No mail waited and no open bug is owned by
+project-management. Existing IDE and sample-project changes remain untouched.
+The checkpoint checks documentation links and whitespace; the known full-gate
+limitation recorded below is unchanged and the build is not claimed green.
+No tests are rerun for this records-only change. The owner's decisions are
+recorded here and in the work order before retiring the temporary console page.
+
 
 ### Returned 2026-10-30 after PR #309
 
@@ -259,7 +280,8 @@ of further console work.
 
 Continue the 0.3.0 review with the remaining nine documentation proposal
 decisions, the separate language review, C17 and candidate acceptance.
-Check maintenance's acknowledgement of the October 25 work order's move
+Check maintenance's acknowledgement and implementation plan for the new
+0.3.0 CI work order, and acknowledgement of the October 25 work order's move
 to 0.3.1. Recheck remote delivery before presenting outstanding work;
 published summaries still describe several merged slices as awaiting merge.
 
@@ -476,6 +498,12 @@ the owner had asked to be written to the user; moved into Part 5 at
 
 ## Open Threads
 
+- CI work order, 2026-10-30: owner decisions 1B and 2B are settled.
+  Maintenance acknowledgement, implementation and 0.3.0 acceptance remain
+  outstanding. A future blocking coverage threshold needs a new decision;
+  parallel execution is deferred beyond 0.3.0 without an assigned release.
+  No transcript or benchmark is retained.
+
 - Returned 2026-10-30 at the owner's direction: PR #309 is verified on
   mainline. Pair Review Loop delivery to 0.3.0 remains with maintenance.
   The workflow worktree is clean and paused; existing IDE and trading-sample
@@ -508,6 +536,8 @@ the owner had asked to be written to the user; moved into Part 5 at
   reminder service. Historical handoff and release proposal are retained verbatim.
 
 ## Workstream Document Index
+
+- [CI path gating and advisory diff coverage](../../work-orders/2026-10-30-ci-path-gating-and-diff-coverage.md): assigned to maintenance for 0.3.0; owner decisions 1B and 2B, serial execution and advisory coverage.
 
 - [Scope rechecked at RC8, amended October 29](2026-10-27-decision-release-0-3-0-scope-at-rc8.md): current release scope, including the October 25 documentation work deferred to 0.3.1.
 

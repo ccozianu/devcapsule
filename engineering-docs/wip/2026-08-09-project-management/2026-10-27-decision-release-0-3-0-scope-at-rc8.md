@@ -106,6 +106,23 @@ nine proposal decisions remain open. This decision does not settle them.
 Maintenance receives the decision by coordination mail to update the work
 order, release overview and its own plan on the release branch.
 
+## Amendment: CI routing and advisory diff coverage enter 0.3.0
+
+Owner decisions, 2026-10-30: assign
+[CI path gating and advisory diff coverage](../../work-orders/2026-10-30-ci-path-gating-and-diff-coverage.md)
+to **maintenance**, target **0.3.0**. The owner accepted the reviewed scope
+with decision **1B**, advisory coverage without a blocking percentage, and
+**2B**, serial execution with parallelism deferred beyond 0.3.0. No later
+release is selected for parallelism. Reporting failures and failed tests
+still fail CI; low coverage alone does not.
+
+The work order retains Python 3.12 and branch coverage, corrects the path
+filters and aggregate-check behavior, requires native annotation evidence
+and a safe required-check migration, and preserves existing test-tier policy.
+It opens no workstream and does not settle the pending testing-policy intake.
+Maintenance owns implementation, its release-plan update and acceptance.
+Assignment does not establish receipt, implementation or release delivery.
+
 ## Still open from the same check, for the owner
 
 - Who performs the documentation language review, which pages, in what
