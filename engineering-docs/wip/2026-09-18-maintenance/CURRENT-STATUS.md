@@ -333,11 +333,12 @@ Key changes:
   `antigravity-cli/gemini-api-key` secret bindings, `host-browser`, seeded
   settings), and `instructions-for-agents.md`; see the
   [Batch 4 verification ledger](evidence/2026-10-30-docs-batch-4/README.md).
-- Pre-PR gate passed (`docs-contract`: `192` pages; `website.sh build && check`:
-  `23` tests, `196` HTML pages, `14,467` links/anchors; `pytest -q -k
-  release_docs`: `92` passed). Next step: open Batch 4 PR against
-  `release-0.3.0` and dispatch `Codex (gpt-6-astra)` for file-by-file Pair
-  Review.
+- Opened [PR #325](https://github.com/ccozianu/devcapsule/pull/325) against
+  `release-0.3.0` after passing `docs-contract` (`192` pages), `website.sh
+  build && check` (`23` tests, `196` HTML pages, `14,467` links/anchors), and
+  `pytest -q -k release_docs` (`92` passed). Next step: run `Codex
+  (gpt-6-astra)` file-by-file Pair Review (`PR325.1`) under
+  [`review-brief.md`](evidence/2026-10-30-docs-batch-4/review-brief.md).
 
 ## General saved Docker arguments — 2026-10-23
 
@@ -3627,7 +3628,7 @@ Earlier open-thread history (read against the current scope above):
 - [Diagnostics and logs](../../../docs/troubleshooting/diagnostics-and-logs.md): the user-facing statement of slice 1; open when changing what a session logs.
 - [Session logs acceptance](evidence/2026-10-11-session-logs/README.md): the recipe-12 base, the real session, the rotation; open when a reviewer asks what was proven on a capsule.
 - [PR #172 review](2026-10-08-pr172-review.md): findings, fixes, regression evidence and remaining limits.
-- [Batch 4 verification ledger (`everyday-development`, `working-with-ai`)](evidence/2026-10-30-docs-batch-4/README.md): 10-file 0.3.0 documentation alignment and prose slice on `ws-maintenance/0.3.0-docs-batch-4-everyday-dev-and-ai`.
+- [Batch 4 verification ledger (`everyday-development`, `working-with-ai`)](evidence/2026-10-30-docs-batch-4/README.md) and [PR325.1 review brief](evidence/2026-10-30-docs-batch-4/review-brief.md): 10-file 0.3.0 documentation alignment and prose slice ([PR #325](https://github.com/ccozianu/devcapsule/pull/325)) on `ws-maintenance/0.3.0-docs-batch-4-everyday-dev-and-ai`.
 - [Unpacked cache publication/recovery bug](../../bugs/devcapsule/2026-10-08-unpacked-cache-publication-and-recovery.md): fixed on review branch; close after main integration.
 
 - [Released launchers reject the repository manifest](../../bugs/devcapsule/2026-09-24-released-launchers-reject-repository-manifest.md): blocking, fixed on branch, needs RC2.
