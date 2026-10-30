@@ -124,3 +124,19 @@ the human alone merges PR #312. At most three rounds.
 
 Print the review PR URL as your final line, or NO PR if none, or BLOCKED with
 the exact cause if you cannot proceed. The detached launcher records your exit.
+
+## Pre-launch evidence update
+
+The implementor's full gate passed: 2,630 unit tests (40 deselected, one
+xfail and one XPASS), 18 packaging tests, 357 web-console tests and 192 docs
+pages including aliases. The new hosted website job found a real inherited
+broken anchor: three pages link to `#when-the-project-changes`, renamed by
+the earlier CLI documentation slice to "Changes at the next launch". The
+implementor restored the stable HTML anchor on that existing section in
+`docs/configuration/project-versus-personal.md`, preserving external links
+without changing prose. Review this narrow fix too. The updated branch is
+fast-forwarded into your checkout before launch. Its hosted rerun will verify
+the full site; the local gate checks the content contract, not rendered anchors.
+
+The failing hosted job is 123840779587, run 40987146695. No other new hosted
+failure is known yet. The implementor will monitor it while you review.
