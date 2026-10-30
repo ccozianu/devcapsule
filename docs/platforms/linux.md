@@ -15,7 +15,8 @@ DevCapsule {{tag}} ships as a single executable for **64-bit Intel/AMD Linux
 - **`curl` and `sha256sum`** to download and verify the release executable,
   plus several gigabytes of free disk space for base and IDE image layers.
 
-[Install](../getting-started/install.md) checks all of these in three commands.
+[Install](../getting-started/install.md) starts with three commands to check
+the architecture, Docker daemon, and Buildx.
 ARM Linux (`aarch64` / `linux-arm64`) is not supported in {{tag}}.
 
 DevCapsule is developed and tested on Ubuntu-family desktops using Docker

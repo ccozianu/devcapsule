@@ -16,11 +16,12 @@ Projects with different `creator` and `slug` fields in
 `.devcapsule/devcapsule.toml` are already separate everywhere on your machine:
 
 - Checkout configuration lives under
-  `~/.config/devcapsule/projects/<creator>/<slug>/devcapsule.checkout.toml`.
+  `~/.config/devcapsule/projects/<creator>/<slug>/devcapsule.checkout.toml`
+  (the creator and slug are URL-encoded in these paths).
 - Managed `home`, IDE, agent, log, and cache directories live under
   `projects/by-path/<checkout-id>` inside your XDG data, state, and cache
   roots.
-- Each `devcapsule project run` allocates fresh loopback ports on `127.0.0.1`
+- Each `devcapsule project run` selects available loopback ports on `127.0.0.1`
   and fresh per-run tokens for its desktop and web console.
 
 Open a terminal in each project directory, run `devcapsule project run`, and
@@ -66,6 +67,11 @@ From then on:
   state, session logs) lives under its own `by-path` namespace, so both
   checkouts can run side by side without IDE lock conflicts.
 
+From a host terminal, run `devcapsule project list` to see registered checkout
+names, paths, and record status. Inside a capsule, it reports only that
+capsule’s checkout. It does not list running containers; use `docker ps` for
+that.
+
 Run `devcapsule project info` in any checkout to confirm its `Checkout name`,
 host checkout path, and storage paths.
 
@@ -101,3 +107,18 @@ leave concurrent checkouts on their default per-checkout storage (see
   server fails with `EADDRINUSE`—either run one server on another port or keep
   capsules on default `bridge` networking; see
   [Previews and ports](../everyday-development/previews-and-ports.md).
+
+## Separate configuration homes
+
+Named checkouts normally provide the separation you need. To keep home defaults,
+channel trust, checkout records, and managed storage separate too, select an
+isolated home on the host:
+
+```bash
+DEVCAPSULE_CONFIG_HOME="$HOME/.devcapsule-homes/testing" devcapsule project run
+```
+
+Use the same `DEVCAPSULE_CONFIG_HOME` value for later configuration, listing,
+and launch commands in that home. Its managed data, state, and cache live under
+that directory. Your working tree and the Docker daemon’s image cache remain
+shared; see [Home defaults](../configuration/home.md).

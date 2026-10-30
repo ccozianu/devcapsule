@@ -17,7 +17,8 @@ when the two seem to differ, `WORKFLOW.md` governs.
 Commands run from any directory inside the repository checkout—inside the
 capsule or on the host—on the `ws-<name>/...` branch of the workstream you are
 working in (or pass `--project PROJECT_PATH` and `--workstream NAME`
-explicitly). Every command works identically for a person and for an agent.
+on subcommands that select one workstream, such as `brief` or `claim`).
+Every command works identically for a person and for an agent.
 
 ## The idea in one paragraph
 
@@ -56,7 +57,9 @@ devcapsule workflow mail take
 Commit the taken items on your working branch. Later, decide each item—either
 acknowledging it into your status file or forwarding it to
 `project-management`—in one commit that records the disposition in
-`intake-dispositions.md` and deletes the file from `intake/`.
+`intake-dispositions.md` and deletes the file from `intake/`. Items sent by
+`project-management` cannot be forwarded; acknowledge them, or raise a genuine
+disagreement with the human.
 
 **3. Catch up with `main` when needed.** Synchronizing is mandatory when
 `WORKFLOW.md` or `WORKFLOW-LOCAL.md` changed on `main`, and recommended when
@@ -75,7 +78,9 @@ devcapsule workflow claim "fix the upgrade recovery"
 **5. Work.** Edit, commit, and run your validation checks on your `ws-<name>/`
 branch as usual.
 
-**6. Publish at checkpoints and before you stop.** This pushes your working
+**6. Publish at checkpoints and before you stop.** First update and commit
+your status file with the current state, validation, next task, and Open
+Threads. Take any waiting mail before pausing. Publishing pushes your working
 tree's `CURRENT-STATUS.md` and `intake-dispositions.md` to `state/<name>/` on
 `coordination`:
 
@@ -85,7 +90,8 @@ devcapsule workflow publish
 
 Publishing also stamps your status file (`Definition read:`) with the workflow
 revision you read, which is how `workflow brief` knows whether the rules
-changed before your next session. When a workstream concludes and integrates,
+changed before your next session. Commit that stamp too if publishing changed
+the file. When a workstream concludes and integrates,
 `devcapsule workflow publish --retire` removes its live directory from
 `coordination`.
 

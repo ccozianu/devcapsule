@@ -23,7 +23,7 @@ names) to inspect the exact mounts and host backing paths for your checkout:
 | IDE configuration and plugins (`<ide>/config`, `<ide>/plugins`, `<ide>/user-data`, `<ide>/extensions`) | `durable` | Keymaps, themes, editor settings, and installed plugins or extensions; see [IDE preferences and plugins](../configuration/ide-preferences.md) |
 | Eclipse's `/ide-workspace` (`eclipse/workspace`) | `durable` | Workspace `.metadata/` preferences, imported project references, and local history; keep source files in the project folder |
 | IDE log and system directories (`<ide>/log`, `<ide>/system`, `<ide>/cache`) | `state`, `cache` | IDE logs and reconstructable indexes and caches; caches may be cleared |
-| `/var/log/devcapsule` | `state` | This session's component logs, rotated per component; older session directories are pruned within a per-checkout budget (`50 MiB` by default; see [Diagnostics and logs](../troubleshooting/diagnostics-and-logs.md)) |
+| `/var/log/devcapsule` | `state` | This session's component logs, rotated per component; older session directories are pruned within a per-checkout budget (`256 MiB` by default; see [Diagnostics and logs](../troubleshooting/diagnostics-and-logs.md)) |
 | `~/.cache` | `cache` | Reconstructable user-tool caches |
 | `/tmp`, `/var/tmp`, `/run`, `/dev/shm`, and the container filesystem | `temporary` | Lost as soon as the container is removed |
 
