@@ -224,9 +224,12 @@ Key changes:
   deny` 5-node scope vs. `authorize <vendor>-download false`, `default`/`none`
   keywords, `vscode-download`); see the
   [Batch 3 verification ledger](evidence/2026-10-30-docs-batch-3/README.md).
-- Next step: run documentation and website contract gates, open Batch 3 PR
-  against `release-0.3.0`, and dispatch `Codex (gpt-6-astra)` for file-by-file
-  Pair Review.
+- Opened [PR #323](https://github.com/ccozianu/devcapsule/pull/323) against
+  `release-0.3.0` after passing `docs-contract` (`192` pages), `website.sh
+  build && check` (`23` tests, `196` HTML pages, `14,446` links/anchors), and
+  `pytest -q -k release_docs` (`92` passed). Next step: run `Codex
+  (gpt-6-astra)` file-by-file Pair Review (`PR323.1`) under
+  [`review-brief.md`](evidence/2026-10-30-docs-batch-3/review-brief.md).
 
 ## Diagnostics snapshot and export — 2026-10-27
 
@@ -3622,7 +3625,7 @@ Earlier open-thread history (read against the current scope above):
 - [PR #236 review-partner brief (PR236.1)](evidence/2026-10-22-pr236-review-brief.md): brief for Claude Fable 5.1 on the E2E scenario video recorder and Eclipse Java debugger demo slice.
 - [Landing-page work order (`Why DevCapsule?`)](../../work-orders/2026-10-18-landing-page-why-devcapsule.md): Deliverables 1–4 completed and verified on `ws-maintenance/e2e_videos`.
 - [Stretch-goal hero video follow-up work order](../../work-orders/2026-10-19-eclipse-java-1brc-hero-video.md): Eclipse/Java 1BRC hero video stretch goal with reusable pipeline preamble and unblocking options.
-- [Batch 3 verification ledger (`README`, `getting-started`, `your-project`, `containment`)](evidence/2026-10-30-docs-batch-3/README.md): 10-file 0.3.0 documentation alignment and prose slice on `ws-maintenance/0.3.0-docs-batch-3-onboarding-project-containment`.
+- [Batch 3 verification ledger (`README`, `getting-started`, `your-project`, `containment`)](evidence/2026-10-30-docs-batch-3/README.md) and [PR323.1 review brief](evidence/2026-10-30-docs-batch-3/review-brief.md): 10-file 0.3.0 documentation alignment and prose slice ([PR #323](https://github.com/ccozianu/devcapsule/pull/323)) on `ws-maintenance/0.3.0-docs-batch-3-onboarding-project-containment`.
 - [0.3.0 release overview](../../releases/v0.3.0/README.md): the cut, the checklist, the freshness review, the candidates; open for any release question.
 - [0.3.0 bug table](../../releases/v0.3.0/bugs.md): the records the release carries and their dispositions.
 - [0.3.0 changelog](../../releases/v0.3.0/changelog.md): what is new and fixed since 0.2.15, maintained at every candidate; the prerelease body.
