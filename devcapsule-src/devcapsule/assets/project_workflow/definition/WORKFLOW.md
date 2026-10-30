@@ -341,6 +341,13 @@ Declaration* for what that version means and who keeps it correct.
 Entered on the working branch; the release that ships it stamps this entry
 with its version. Rules changed since 0.2.14:
 
+- **Pair Review Loop.** Formerly the review-partner loop; **Pair Review**
+  is the short name. A slice is built by an implementor pair and a review
+  partner of a different engine through PRn and PRn.1, with a written
+  brief, at most three rounds and the human merging PRn. Run it only on
+  the human's request for a task or session, or as the local default.
+  No migration.
+
 - **Two files for humans.** `PREAMBLE.md`, why the workflow is opinionated
   and for whom, and `INFORMATION-MODEL.md` are installed and refreshed beside
   this file and marked *for humans*: explanation, not rules, which an agent
@@ -1816,6 +1823,57 @@ Throughout the rest of this document, **selected status file** means root
    and preserve the symptoms, logs, and reasoning in the completed-task archive.
 7. Commit coherent units of work when asked, or at natural save points when the
    user wants the session state preserved.
+
+## Pair Review Loop
+
+The Pair Review Loop builds one slice with two agent pairs: the
+implementor pair, and a review partner, an agent of a different engine with
+the human. The human names the slice, the implementor engine and the
+review-partner engine. Run the loop only when the human asks for it, for a
+task or for a session, or when the local workflow file makes it the default
+procedure. A pull request carries every step.
+Use **Pair Review** as the short name.
+
+1. The implementor builds one slice on one branch and opens its pull
+   request, PRn. A stacked slice targets the previous slice's branch;
+   otherwise PRn targets the integration branch. The body of PRn states what
+   changed, the judgments taken for the human's review, and the validation
+   with its counts and limits.
+2. The implementor writes a brief for the review partner as one file. The
+   brief states: the goal; the files to read first, in order; what the
+   change does; what to look for, in this order: correctness, clarity and
+   test coverage of the changed lines; what not to widen; the validation
+   commands, verbatim; the commit authorship rule; the delivery commands;
+   the forbidden actions; the final line to print. The brief is the review
+   partner's only context.
+3. The review partner works in its own checkout with its own environment
+   and its own scratch. It does not touch the implementor's checkout, the
+   status files, the intake, or published state. It does not merge, rebase
+   or force-push. It does not build images or start capsules unless the
+   brief says so.
+4. The review partner delivers PRn.1: a branch off PRn's branch, named
+   with the suffix `-review`, and a pull request against PRn's branch. Its
+   body lists each finding as what was wrong or unclear, where, what
+   changed, and how a test proves it; then what it considered and left
+   alone, with the reason; then the proposals it did not implement; then
+   its validation with counts and limits. If it changed nothing, it says so
+   in its report and opens no empty pull request.
+5. The implementor reads the diff of PRn.1, not only its body. It posts one
+   assessment comment on PRn.1, labelled with its pair. Then it merges
+   PRn.1 into PRn's branch with a merge commit, or it pushes back with a
+   round brief that names the change requested and nothing else.
+6. At most three rounds per slice. After the third, stop and hand PRn to
+   the human with the open findings listed.
+7. After the merge of PRn.1, the implementor runs the full gate on PRn's
+   branch, records the counts in PRn, and hands PRn to the human. Only the
+   human merges PRn.
+8. The next slice starts after PRn.1 settles.
+9. Record the loop: the status file names each round and its outcome; the
+   proposals not implemented become open threads or work items; the
+   assessment comments stay on the pull requests; the briefs are kept where
+   the local file says.
+10. Stop on a blocker: credentials, network, a review partner that cannot
+    proceed. Do not work around it. Report it to the human.
 
 ## Release, Milestone, Stage, Task, And Checkpoint Terminology
 
