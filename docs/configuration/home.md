@@ -67,16 +67,17 @@ download URL. No-op writes leave the file and its modification time untouched.
 
 ## Inside a capsule
 
-When a capsule starts, it mounts the host launcher's `settings.toml` read-only.
+When a capsule starts, it mounts the host launcher's `settings.toml` read-only
+if that file exists.
 While the capsule has no `settings.toml` of its own and
-`DEVCAPSULE_CONFIG_HOME` is unset inside the capsule, `home show` and `home
+`DEVCAPSULE_CONFIG_HOME` is unset or empty inside the capsule, `home show` and `home
 trust list` read that mounted file (and `home show` notes the read-only source).
 The capsule's own home, data, state, and cache still live in the capsule's XDG
-directories: the first `home` write inside the capsule copies the launcher's
-settings into the capsule's own `settings.toml` without touching the host's,
-and subsequent reads use the capsule's copy. Setting `DEVCAPSULE_CONFIG_HOME`
-inside the capsule selects that directory immediately and disables fallback to
-the mounted launcher settings.
+directories. A settings change starts from the mounted settings and writes the
+result to the capsule's own `settings.toml`. It leaves the host's file untouched.
+Subsequent reads use the capsule's copy. A no-op command does not create that
+copy. Setting `DEVCAPSULE_CONFIG_HOME` to a nonempty path inside the capsule
+selects that directory immediately and disables fallback to the mounted settings.
 
 See [Vendor software and trust](software-approvals.md) for channel acceptance
 and [Resource limits](resource-limits.md) for how home defaults interact with

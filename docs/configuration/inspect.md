@@ -19,9 +19,10 @@ devcapsule project info --json
 On the host, `info` describes the next launch. Inside a capsule, it describes
 the running software and shows a separate next-launch selection when the lock on
 disk differs. Both text and JSON (`schema-version: 1`) list component versions,
-declared environment variables, persistent paths, and temporary storage while
-omitting secret values; see [Project info](../reference/project-info.md) for
-the full field reference.
+allowlisted runtime variables such as `HOME` and `PATH`, persistent paths, and
+temporary storage. They omit application secrets. Use `config show` for
+project-declared environment inputs and pending values; see
+[Project info](../reference/project-info.md) for the full field reference.
 
 Project commands discover the project from its root directory or any
 descendant, and inside a capsule inspection commands also fall back to the

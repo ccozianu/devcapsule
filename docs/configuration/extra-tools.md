@@ -21,7 +21,8 @@ vendor's user-space instructions, then link its executable into
 `/opt/xtras/bin`:
 
 ```bash
-ln -s /opt/xtras/gcloud/bin/gcloud /opt/xtras/bin/gcloud
+# Replace my-tool with the directory and executable you installed.
+ln -s /opt/xtras/my-tool/bin/my-tool /opt/xtras/bin/my-tool
 ```
 
 Because `/opt/xtras` lives inside the checkout's `home` slot, each checkout

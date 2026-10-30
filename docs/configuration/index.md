@@ -24,8 +24,10 @@ work on it. That configuration lives in three places:
 
 `devcapsule project run` derives the launch plan from all three records every
 time. Checkout choices override recommendations, while required capabilities
-must stay present and satisfy their minimum versions. If a required choice or
-consent is missing, the launcher stops and asks before starting a container.
+must stay present and satisfy their minimum versions. The explicit exception is
+[replacing a required IDE for one launch](capabilities.md#a-required-ide).
+If a required choice or consent is missing, the launcher asks before starting a
+container. Without a terminal, it exits with status `3` instead.
 The selected IDE opens the project, owns the container's lifetime, and uses the
 capsule's display.
 

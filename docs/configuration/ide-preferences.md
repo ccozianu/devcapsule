@@ -37,7 +37,7 @@ Every capsule also mounts `home` at `/home/devcapsule` (`durable`,
 `credentials`). For Eclipse, per-user installation state and `p2` bundle pools
 live under that persistent `home` directory alongside `eclipse/workspace`.
 
-Notice that every IDE component uses its own namespace (`pycharm/*`,
+Every IDE component uses its own namespace (`pycharm/*`,
 `intellij/*`, `rider/*`, `codium/*`, `vscode/*`, `eclipse/*`). Switching a
 checkout from `codium` to `vscode` (or temporarily launching another IDE with
 `project run --ide ...`) keeps both editors' settings and extensions intact in
@@ -76,7 +76,8 @@ devcapsule project config bind codium/user-data "host-directory:$HOME/.devcapsul
 devcapsule project config bind codium/extensions "host-directory:$HOME/.devcapsule-profiles/codium/extensions"
 ```
 
-Or adopt an existing directory with `state adopt`:
+With PyCharm selected for the checkout, adopt an existing PyCharm configuration
+directory with `state adopt`:
 
 ```bash
 devcapsule project state adopt --from "$HOME/.devcapsule-profiles/pycharm/config" pycharm/config
@@ -87,18 +88,22 @@ How `bind`, `state adopt`, and `unbind` behave:
 - **Direct mount, no copy:** both `config bind <slot> host-directory:PATH` and
   `state adopt --from PATH <slot>` mount `PATH` directly read-write inside the
   capsule on the next `devcapsule project run`. Neither copies files into
-  managed storage, and `PATH` must already exist as a directory on the host.
+  managed storage. `config bind`, `state adopt`, and `init --bind` each reject
+  a missing directory before saving its binding. Resolution checks the path
+  again, so keep the directory available for subsequent launches.
 - **Only active components can be bound:** you can bind or adopt slots declared
   by the IDE and components in your checkout's effective lock (plus `home`). You
   can also pass `--bind <slot> host-directory:PATH` during `devcapsule project
   init` (there is no `--bind` flag on `project run`).
 - **One source per slot:** a slot cannot be both configuration-bound and
-  adopted at the same time. `config bind` prints the slot's sensitivity and
+  adopted at the same time. Run `config unbind <slot>` before changing between
+  these two methods. `config bind` prints the slot's sensitivity and
   concurrency rule on standard error when recording the binding.
 - **Return to managed storage:** run `devcapsule project config unbind <slot>`
   to clear either a `config bind` or a `state adopt` entry. Your external host
   directory stays untouched, and the next launch uses the checkout's private
-  managed directory again.
+  managed directory again. Unbinding does not copy external files back into
+  managed storage. It fails if the slot has no binding or adoption to remove.
 
 ## Concurrency warning when sharing slots
 
@@ -107,11 +112,11 @@ process locks in their configuration and workspace directories and assume a
 single running instance owns their caches and databases:
 
 - **Never share `<ide>/system`, `<ide>/log`, or `eclipse/workspace` across two
-  capsules running at the same time.** Concurrent writes corrupt indexes or
-  fail startup with an IDE lock error.
+  capsules running at the same time.** Concurrent writes can corrupt indexes
+  or cause an IDE lock error.
 - Even for `<ide>/config`, `<ide>/plugins`, `<ide>/user-data`, and
   `<ide>/extensions`, share a bound directory across checkouts only when you
-  run one checkout at a time. When you run parallel workstream checkouts
+  run one checkout at a time. When you run several checkouts
   simultaneously, keep the default per-checkout managed directories.
 
 ## Project-shared settings versus personal preferences

@@ -67,7 +67,7 @@ devcapsule project config drop browser-automation
 
 Minimums use one operator: `NAME>=VERSION` (that version or newer). Quote the
 token in your shell so `>` does not redirect output. Version comparison checks
-dotted integers from left to right, stripping a leading `v` and `+` build
+dotted integers from left to right, stripping a leading `v` and numeric `+` build
 metadata (so `v22.23.1` and `25.0.4+7` compare as `22.23.1` and `25.0.4`).
 Prerelease minimums, upper bounds, ranges, and exact pins in `require` are
 rejected—the platform lock owns exact version pins.
@@ -118,6 +118,7 @@ Provider resolution recommendations take no `--because` flag (the capability's
 `require` or `offer` entry carries the reason), update both the manifest and
 platform lock, and do not accept `--unverified`. Use `recommend frontend-ide
 none` to clear a provider recommendation.
+Recommending a provider does not add that capability to the project.
 
 Resource and host-access recommendations update `.devcapsule/devcapsule.toml`:
 
@@ -144,6 +145,8 @@ devcapsule project config restore codex-agent
 `restore` re-enables an omitted offer. Required project capabilities cannot be
 omitted. `ide`, `add`, `omit`, `restore`, and `use` all accept `--unverified`
 when your checkout combination steps outside verified matrix pairs.
+Omitting an offer keeps its local version pin. A component needed by another
+required capability remains installed.
 
 `config use CAPABILITY COMPONENT` picks a provider when alternatives exist (for
 example, `config use frontend-ide vscode` or `codium`), and `config use
@@ -199,8 +202,9 @@ devcapsule project config check
 `show` lists effective choices, their sources, providers and pending decisions.
 A requirement row includes its minimum and resolved version. `check` validates
 the contract and reports pending host decisions with status 3. Neither command
-downloads components or contacts Docker. Inside a capsule, inspection uses
-the captured launch view; current host decisions need the host launcher.
+downloads components or contacts Docker. Inside a capsule, `show` uses the
+captured launch view. `check` validates the contract on disk; current host
+decisions need the host launcher.
 
 `check --manifest FILE --lock FILE` validates a candidate contract only.
 `config capabilities --recover` repairs an interrupted manifest/lock edit.
