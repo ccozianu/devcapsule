@@ -6,7 +6,7 @@ Start date: 2026-08-09
 
 State: active 2026-10-30; Pair Review Loop terminology implemented for 0.3.0; workflow and packaging checks pass; mainline and release integration pending
 
-Definition read: WORKFLOW.md@a8062953ba89, WORKFLOW-LOCAL.md@6ff07c49a7ea
+Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@0e31c93fe04c
 
 Integration target: `main`
 
@@ -92,8 +92,15 @@ A nine-file release patch was composed against `origin/release-0.3.0`
 at `cfa45937`. An isolated-index `git apply --cached --check` passed.
 It preserves the release version, the October 29 invocation rule and the
 newer local streaming/progress rules. The only composition overlap was
-the new short-name sentence; it was retained. Maintenance receives the
-patch for its release-branch delivery; no release ref was changed here.
+the new short-name sentence; it was retained. Delivered the patch to maintenance as
+`2026-10-30-workflow-improvements-pair-review-loop-030.md` at coordination
+`41ee5a2f85f7`; acknowledgement and release application remain pending.
+No release ref was changed here.
+
+Mainline delivery is [PR #309](https://github.com/ccozianu/devcapsule/pull/309),
+source commit `635ed43f`. It is draft while the disclosed mainline gate
+failure remains. The human performs mainline and release merges under
+WORKFLOW-LOCAL; this slice is implemented, not yet integrated or shipped.
 
 Local validation logs: `/tmp/workflow-pair-review-build.log`,
 `/tmp/workflow-pair-review-focused.log`, and
@@ -262,8 +269,9 @@ each under its own heading.
 
 ## Next Resumable Task
 
-Deliver the validated Pair Review Loop naming slice through its mainline
-pull request and maintenance's release-branch patch. The human merges
+Resume [PR #309](https://github.com/ccozianu/devcapsule/pull/309) after the
+known mainline test-isolation fix lands, rerun the gate, and verify
+maintenance's acknowledgement and release application of the delivered patch. The human merges
 into mainline and the release. Verify both remote trees before declaring
 the 0.3.0 task complete; the older full-gate failure remains disclosed.
 Then return to the pending intake and the recorded backlog; the owner's
@@ -542,8 +550,11 @@ Two parts could not be completed by this workstream and were delivered to
 
 ### Current, 2026-10-30
 
-- The Pair Review Loop change must reach both remote `main` and the 0.3.0
-  release before it is complete. The human performs those merges.
+- PR #309 is draft pending the known mainline test-isolation repair. The
+  change must reach both remote `main` and the 0.3.0 release before it is
+  complete. Maintenance has the checked release patch; the human merges.
+- No new mail waited at the finish check. The original project-management
+  checkout still holds its user changes; continue from the workflow worktree.
 - The 13 unrelated intake items remain pending. C17 still has its own
   0.3.0 requirement and is not completed by this naming change.
 - The old paused-state, rebase and release-hold statements below are
