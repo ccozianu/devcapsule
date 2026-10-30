@@ -132,6 +132,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Work Orders
 
+- [0.3.0 user documentation CLI alignment, full stub authoring, and prose review — maintenance, 0.3.0](engineering-docs/work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md)
 - [Explicit IDE requirement override](engineering-docs/work-orders/2026-10-28-explicit-ide-requirement-override.md)
 - [The manifest's two schemas as classes; `init --regenerate` migrates](engineering-docs/work-orders/2026-10-26-manifest-schemas-as-classes.md)
 - [Orientation, concepts, persistence and recipes in the documentation](engineering-docs/work-orders/2026-10-25-documentation-orientation-and-concepts.md)

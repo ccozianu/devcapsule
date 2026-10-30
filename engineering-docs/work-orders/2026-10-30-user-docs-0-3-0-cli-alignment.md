@@ -1,26 +1,3 @@
-# 0.3.0 user documentation CLI alignment, full stub authoring, and prose review: maintenance assignment
-
-Date: 2026-10-30
-From: project-management
-To: maintenance
-Authority: explicit product-owner assignment and web-console decisions `write-full-pages`, `combine-with-language`, and `direct-wo-pair-batches` (`2026-10-30T02:29:31+00:00`).
-
-## What is handed over and why
-
-The owner assigned `maintenance` on `release-0.3.0` to audit and update every Markdown page in `docs/` (`49` `.md` files on `release-0.3.0`) file by file for **0.3.0**, closing final-tag gate **C16** and the October 24 language-review booking (`2026-10-24-maintenance-docs-language-review-before-0-3-0.md`, now acknowledged and folded in) in one pass:
-
-1. **`write-full-pages`:** Author complete `0.3.0` content for all `12` `status: planned` stubs in `docs/`, leaving zero `"Coming soon"` pages in `0.3.0`, without inventing unshipped commands (automated cleanup stays in `0.3.1`).
-2. **`combine-with-language`:** Check and rewrite every file once for both `0.3.0` CLI/runtime truth and clear human-English prose. Keep the October 25 new-page/recipes proposals (`2026-10-25-documentation-orientation-and-concepts.md`) deferred to `0.3.1`.
-3. **`direct-wo-pair-batches`:** Execute in coherent batches of **at most 10 `docs/*.md` files per pull request** targeting `release-0.3.0`, using **Pair Review** with Antigravity (`Gemini 4 Argon (High)`) as implementor and Codex (`gpt-6-astra`) as review partner on every batch PR. Do not touch `docs/versions.yaml`.
-
-Canonical order: `engineering-docs/work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md` at `b89d947ebc70d7bf6c8aa4e1514f2724273f94f5` (mainline PR [#316](https://github.com/ccozianu/devcapsule/pull/316); merged into `origin/ws-project-management/coordination` at `1304358e7e9cdecd33f83ad15c73e63c699e9857`). The complete binding work order follows below.
-
-## What acknowledging means
-
-Take and acknowledge this order in `maintenance`'s status and `0.3.0` release overview on `release-0.3.0`, and execute the five `<= 10`-file Pair Review batches (`Antigravity` + `Codex / gpt-6-astra`) against `release-0.3.0` using the built `release-0.3.0` executable and an initialized `website` submodule (`npm --prefix website run check:content`). Do not cherry-pick between `release-0.3.0` and workstream branches.
-
----
-
 # Work Order: 0.3.0 User Documentation CLI Alignment, Full Stub Authoring, And Prose Review
 
 Origin: product-owner direction on 2026-10-30 and web-console decisions
