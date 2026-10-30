@@ -360,3 +360,5 @@ history; record current decisions in the active documents above.
 - [Git remote credential manual validation deferred](engineering-docs/completed-tasks/docker4pycharm/2026-06-28-git-remote-validation-deferred.md)
 - [Local Git identity edge-case validation](engineering-docs/completed-tasks/docker4pycharm/2026-06-30-local-git-identity-edge-validation.md)
 - [PyCharm v0 MVP checkpoint](engineering-docs/completed-tasks/docker4pycharm/2026-06-30-pycharm-v0-mvp-checkpoint.md)
+
+- [CI path gating and advisory diff coverage — maintenance, 0.3.0](engineering-docs/work-orders/2026-10-30-ci-path-gating-and-diff-coverage.md)

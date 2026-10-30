@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-30; releasing 0.3.0: the explicit IDE requirement override is on `release-0.3.0`, PR #304 merged by the owner at `cfa45937` after the Codex review (PR #306) and the post-merge gate, the review-branch rule (PR #305) merged at `a1e3b0b2`, the slice's last records following in a records pull request; VS Code (PR #301) and the configuration home (PR #299) await the owner's merge; rc3 tagged, published and verified as downloaded; the diagnostics snapshot merged by PR #293; forced configuration and the schema-version slice move to rc4 with C20; the base is published in the promotion; C17 stays a gate in both halves
+State: active 2026-10-30; implementing CI path gating and advisory diff coverage for 0.3.0 with Claude Fable 5.1 Pair Review
 
 Definition read: WORKFLOW.md@bc1b631d1da6, WORKFLOW-LOCAL.md@b500a24f0736
 
@@ -15,6 +15,42 @@ Delivery method: pull request from `release-0.3.0` to `main` before each candida
 Branch association: `release-0.3.0`, the release branch, the workstream's selection from the cut to the final tag; `ws-maintenance/session-logs` (PR #207) and `ws-maintenance/log-rotation` (PR #209, then #216) are merged to `main` and closed; `ws-maintenance/post-0.2.15` is merged through PR #172 and closed; release-0.2.15 is closed and retained
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`
+
+## CI path gating and advisory diff coverage — 2026-10-30
+
+Owner-selected next slice: implement the
+[work order](../../work-orders/2026-10-30-ci-path-gating-and-diff-coverage.md)
+for 0.3.0 with GPT-6 Codex implementing and Claude Code / Claude Fable 5.1
+reviewing through Pair Review. Owner decisions 1B and 2B bind: advisory
+coverage without a percentage gate; serial tests, no parallelism work.
+The order's mainline PR is #311, pending the human merge. The exact order
+is copied here for release delivery; no mainline source is merged.
+
+Clean checkout `/home/devcapsule/worktrees/maintenance-ci`, from released
+branch tip `000c8656` (PR #310). Main synchronization is forbidden for the
+open release and is not performed. Read the changed mainline naming rule;
+its delivered release patch is a separate accepted task below. The
+owner-requested Pair Review uses a temporary slice branch
+`ws-maintenance/ci-gating-030` targeting `release-0.3.0`, as prior release
+slices did; the release remains maintenance's integration selection. This
+resolves the overlap between topic 11.3's selection and topic 9.11's
+required PR/review branches without reopening a closed maintenance branch.
+The human merges the implementation PR into the release branch.
+
+Acknowledged all three delivered items:
+- CI gating and advisory diff coverage: implement now, then review and
+  validate; reporting errors fail, low coverage does not.
+- October 25 documentation proposals: retain Parts A and B for 0.3.1;
+  update their canonical scheduling records after this slice. The separate
+  language review, C16 and C20 remain 0.3.0 obligations.
+- Pair Review Loop naming and packaged definition: accepted for 0.3.0,
+  apply the supplied release patch as the next separate workflow slice
+  after the CI review settles. Main PR #309 is already merged.
+
+Existing IDE and sample-project changes stay in the original PM checkout.
+Claude availability check returned `claude-fable-5-1`; no API key is used.
+Validation scratch uses `/var/tmp/maintenance-ci` because the configured
+`/opt/devcapsule-gate` is unavailable; no container or service is needed.
 
 ## Goal
 
@@ -2162,6 +2198,11 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
+Current: implement the CI work order, complete Claude Fable 5.1 Pair Review,
+run the full gate, and hand the release-targeted PR to the human. Then
+apply the accepted naming patch and documentation scheduling updates.
+Historical candidate sequencing below must not override this owner direction.
+
 1. The network-node slice, on `ws-maintenance/0.3.0-network-node` from
    the release branch, a pull request into it with the reviewer loop;
    then C10 with its two records filed first; rc2 carries both. Then rc3:
@@ -3007,6 +3048,10 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
+- CI slice 2026-10-30: implementation, Pair Review and hosted acceptance
+  outstanding. Check required-check settings and report the owner migration
+  step. No coverage threshold or parallelism decision remains open for 0.3.0.
+
 - Explicit IDE requirement override, 2026-10-29:
   [PR #304](https://github.com/ccozianu/devcapsule/pull/304)
   (`ws-maintenance/0.3.0-ide-override` -> `release-0.3.0`) is open with
@@ -3444,6 +3489,8 @@ Earlier open-thread history (read against the current scope above):
   release documents and bug records.
 
 ## Workstream Document Index
+
+- [CI path gating and advisory diff coverage](../../work-orders/2026-10-30-ci-path-gating-and-diff-coverage.md): active 0.3.0 slice.
 
 - [Explicit IDE requirement override evidence](evidence/2026-10-29-ide-override/README.md): the recorded acceptance session of 2026-10-29, forced Codium then plain PyCharm, and the review brief.
 - [VS Code smoke evidence](evidence/2026-10-28-vscode/README.md): the recorded IDE smoke of the `vscode` surface, 2026-10-28, and the PR301.1 brief for Antigravity, Gemini 4 Argon (High).
