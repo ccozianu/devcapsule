@@ -240,10 +240,13 @@ file's frontmatter names the release this text ships in; see topic 4.1.
 Entered on the working branch; the release that ships it stamps this entry
 with its version. Rules changed since 0.2.14:
 
-- **The review-partner loop.** Topic 9.11: a slice built by an implementor
+- **Pair Review Loop.** Formerly the review-partner loop; **Pair Review**
+  is the short name. Topic 9.11: a slice built by an implementor
   pair and a review partner of a different engine; PRn and PRn.1; a written
   brief as the partner's only context; at most three rounds; the human
-  merges PRn. No migration.
+  merges PRn. Since 2026-10-29 the loop runs only on the human's request,
+  for a task or for a session, or as the local file's default procedure.
+  No migration.
 - **Hand decisions to the human through capsule state and chat.** Topic 8.8:
   present numbered options and the available console link; prefer chat
   answers for the same item; record outcomes under the existing intake and
@@ -1365,12 +1368,17 @@ changes; next task. Keep it concise.
 6. Update `index.md` for every record added, removed, or renamed. The
    directory README holds the detailed template.
 
-### 9.11 The review-partner loop
+<a id="911-the-review-partner-loop"></a>
 
-The review-partner loop builds one slice with two agent pairs: the
+### 9.11 Pair Review Loop
+
+The Pair Review Loop builds one slice with two agent pairs: the
 implementor pair, and a review partner, an agent of a different engine with
 the human. The human names the slice, the implementor engine and the
-review-partner engine. A pull request carries every step.
+review-partner engine. Run the loop only when the human asks for it, for a
+task or for a session, or when the local workflow file makes it the default
+procedure. A pull request carries every step.
+Use **Pair Review** as the short name.
 
 1. The implementor builds one slice on one branch and opens its pull
    request, PRn. A stacked slice targets the previous slice's branch;

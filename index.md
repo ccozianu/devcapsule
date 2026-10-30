@@ -45,7 +45,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Integration tests](engineering-docs/development/integration-tests.md)
 - [End-to-end tests](engineering-docs/development/e2e-tests.md)
 - [Running E2E scenario recordings from a shell with nox](engineering-docs/development/running-e2e-scenario-recordings.md)
-- [The review-partner loop](engineering-docs/development/review-partner-loop.md)
+- [Pair Review Loop](engineering-docs/development/review-partner-loop.md)
 
 ## Releases
 
@@ -131,6 +131,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Work Orders
 
+- [Structural guardrails for the repository with ast-grep](engineering-docs/work-orders/2026-10-29-ast-grep-guardrails.md)
 - [Explicit IDE requirement override](engineering-docs/work-orders/2026-10-28-explicit-ide-requirement-override.md)
 - [The manifest's two schemas as classes; `init --regenerate` migrates](engineering-docs/work-orders/2026-10-26-manifest-schemas-as-classes.md)
 - [Orientation, concepts, persistence and recipes in the documentation](engineering-docs/work-orders/2026-10-25-documentation-orientation-and-concepts.md)

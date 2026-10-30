@@ -30,3 +30,8 @@ the packaged copies. Packaging
 coverage verifies that a built PEX installs the definition selected from this
 asset directory. The root `CURRENT-STATUS.md`, `.devcapsule/` declaration, and
 `engineering-docs/wip/` records are also DevCapsule-specific instance state.
+
+The 0.3.0 packaged workflow includes the Pair Review Loop under its own
+heading, matching root topic 9.11. The rest of the packaged document keeps
+its existing organization; this terminology slice does not refresh the
+whole definition. The root humane companion explains the same loop rules.
