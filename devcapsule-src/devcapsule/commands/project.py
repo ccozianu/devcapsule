@@ -37,7 +37,7 @@ from devcapsule.commands.framework import (
 from devcapsule.components.catalog import COMPONENTS
 from devcapsule.commands._versions import VersionsGroup
 from devcapsule.commands._upgrade_prompt import offer_upgrades
-from devcapsule.commands._run_flow import RunFlags, launch_listing_document, prepare_launch
+from devcapsule.commands._run_flow import RunFlags, launch_listing_document, load_launch_state, prepare_launch
 from devcapsule.display_client import has_contained_display
 from devcapsule.commands._software_approvals import (
     SOFTWARE_APPROVALS_GUIDE_URL,
@@ -2113,8 +2113,11 @@ class ProjectRunCommand(Command):
                             help="Skip the daily interactive distribution refresh; cached critical notices still allow a decision.")
         parser.add_argument("--print-command", action="store_true",
                             help="Prepare and print the Docker command without launching; inline extra environment values are redacted and comments identify transient dependencies.")
-        for flag in ("--force", "--force-config"):
-            _retired_option(parser, flag, "devcapsule project run")
+        parser.add_argument("--force", action="store_true",
+                            help="Launch with the IDE given by --ide although the project requires another IDE: this launch only, "
+                                 "warned and recorded as a departure from the project's contract; the requirement and the saved IDE "
+                                 "stay unchanged. Consent, artifact integrity and real dependencies are still checked.")
+        _retired_option(parser, "--force-config", "devcapsule project run")
         add_carrier_options(parser, families=("set", "authorize"))
 
     @classmethod
@@ -2135,13 +2138,15 @@ class ProjectRunCommand(Command):
     def _run(cls, arguments: argparse.Namespace, context: object | None,
              command_report: Callable[[str], None] | None = None) -> int:
         start = _project_context(context).start_path()
-        # Software approvals first: new versions of vendor software approved
-        # before are one question at launch, by the owner's direction of
-        # 2026-10-22. Printing the command never asks or writes.
-        if command_report is None and not offer_software_approvals(start):
+        flags = _run_flags(arguments, manifest_for(start)[1])
+        if flags.ide is not None or flags.force:
+            load_launch_state(start, flags)
+        # The bulk offer reviews and saves the checkout's ordinary selection.
+        # A departed launch instead reviews its actual environment in prepare_launch;
+        # that staged review still requires all software approvals and channel trust.
+        if command_report is None and not flags.force and not offer_software_approvals(start):
             print("Launch cancelled; no session was started.")
             return 1
-        flags = _run_flags(arguments, manifest_for(start)[1])
         # The saved Docker arguments and the raw options are validated before
         # anything is asked, so a bad file refuses the launch before a question.
         docker_options = list(arguments.docker_options)
@@ -2157,6 +2162,11 @@ class ProjectRunCommand(Command):
         prepared = prepare_launch(start, flags, print_only=command_report is not None)
         for note in prepared.notes:
             print(note)
+        for departure in prepared.selected.departures:
+            launched = prepared.selected.lock.get("components", {}).get("interactive-surface")
+            print(f"WARNING: --force sets aside the project's required IDE {departure.capability} for this launch; "
+                  f"{departure.replacement} ({launched}) runs. The project's requirement and this checkout's saved IDE "
+                  "are unchanged; the next plain launch uses them.", file=sys.stderr)
         saved_docker_args = read_arguments(arguments_path(prepared.selected.checkout_path))
         _validate_extra_docker_args(saved_docker_args)
         if command_report is None and not offer_upgrades(prepared.selected.root, refresh=not arguments.no_update_check):
@@ -2372,6 +2382,11 @@ class ProjectRunCommand(Command):
         )
         if command_report is not None:
             return exit_code  # Printing is never evidence of successful use.
+        if exit_code == 0 and selected.departures:
+            # A departed launch satisfied the developer, not the project:
+            # it is no known-good generation and no proven version set.
+            print("Not recorded as known-good: this launch departed from the project's required IDE.")
+            return exit_code
         if exit_code == 0 and not degraded_download:
             # D-0008: a zero exit proves this configuration; record it as a
             # known-good generation unless identical content already exists.
@@ -2447,7 +2462,7 @@ def _run_flags(arguments: argparse.Namespace, manifest: Mapping[str, Any]) -> Ru
         ide=arguments.ide, capabilities=tuple(arguments.with_capabilities),
         providers=tuple(uses), memory=memory, cpus=cpus,
         environment=tuple(arguments.env), authorize=tuple(authorize), trust=tuple(arguments.trust),
-        save=arguments.save, allow_unverified=arguments.allow_unverified,
+        save=arguments.save, allow_unverified=arguments.allow_unverified, force=arguments.force,
     )
     return flags
 

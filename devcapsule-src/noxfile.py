@@ -449,7 +449,12 @@ def ide_smoke(session: nox.Session) -> None:
     parser.add_argument("--max-actions", type=int, default=30)
     parser.add_argument("--agent-timeout", type=int, default=900)
     parser.add_argument("--surface", action="append", default=[], help="limit to a surface name; repeatable")
+    parser.add_argument("--required-ide", action="store_true",
+                        help="instead of the surfaces: a project requiring PyCharm launches Codium once with "
+                             "'run --ide codium --force', then PyCharm again plainly (work order of 2026-10-28)")
     options = parser.parse_args(session.posargs)
+    if options.required_ide and (options.surface or options.agent or options.scenario):
+        session.error("--required-ide runs its own two launches; it takes no --surface, --agent or --scenario")
     if options.component_browser and not (options.agent or options.display or options.scenario):
         session.error("--component-browser requires --display, --agent, or --scenario")
     if options.component_browser:
@@ -486,7 +491,7 @@ def ide_smoke(session: nox.Session) -> None:
     session.run(
         "python", "-m", "pytest", "--no-cov", "-m", "ide_smoke",
         *(["-k", " or ".join(options.surface)] if options.surface else []),
-        str(PROJECT_ROOT / "tests" / "e2e" / "test_ide_comes_alive.py"),
+        str(PROJECT_ROOT / "tests" / "e2e" / ("test_required_ide_override.py" if options.required_ide else "test_ide_comes_alive.py")),
         env={PEX_UNDER_TEST_ENV: session.env[PEX_UNDER_TEST_ENV]},
     )
 

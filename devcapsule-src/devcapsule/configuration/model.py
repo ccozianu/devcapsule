@@ -17,6 +17,7 @@ from typing import Any, Mapping
 
 from devcapsule.components.catalog import INTERACTIVE_SURFACES
 
+from .capabilities import RequirementDeparture
 from .authorization import locked_base_reference
 from .file_formats import ConfigurationFileKind, ProjectConfigurationError, canonical_digest, validate_file_format, table
 from .freshness import stale_resolution_inputs
@@ -34,7 +35,8 @@ class Configuration:
     """
 
     def __init__(self, manifest: Mapping[str, Any], lock: Mapping[str, Any],
-                 checkout: Mapping[str, Any], home: Mapping[str, Any] | None = None) -> None:
+                 checkout: Mapping[str, Any], home: Mapping[str, Any] | None = None, *,
+                 departures: tuple[RequirementDeparture, ...] = ()) -> None:
         # The manifest as given is the file's own schema; a checkpoint from
         # before scoped digests recorded its whole digest, kept for freshness.
         self._manifest = current_manifest(manifest, Path("manifest")).document()
@@ -45,6 +47,10 @@ class Configuration:
         self._lock = deepcopy(dict(lock))
         self._checkout = deepcopy(dict(checkout))
         self._home = deepcopy(dict(home or {}))
+        # The launch's named departures from the project's contract; the
+        # resolution says which requirement it set aside, so no record of
+        # the launch claims the project was satisfied.
+        self._departures = tuple(departures)
         validate_file_format(self._lock, ConfigurationFileKind.lock, "platform lock")
         validate_file_format(self._checkout, ConfigurationFileKind.checkout, "checkout")
         if "base" in self._lock:
@@ -53,7 +59,7 @@ class Configuration:
         if any(identity.get(key) != self._manifest["project"][key] for key in ("creator", "slug")):
             raise ProjectConfigurationError("Checkout does not match the project's creator and slug.")
         from .capabilities import CapabilityPolicy, LocalCapabilities
-        policy = CapabilityPolicy.read(self._manifest)
+        policy = CapabilityPolicy.read(self._manifest).departing(self._departures)
         LocalCapabilities.read(self._checkout).validate(policy)
         if policy.minimums and table(self._checkout, "authorization", "base-image").get("image-id"):
             raise ProjectConfigurationError("A local base override cannot establish the project's minimum-version guarantee; select the pinned project base.")
@@ -74,7 +80,7 @@ class Configuration:
             )
         # require_ready is rendered by the file/CLI adapter with its actual path.
         return Resolution(tomllib.loads(render_resolution(
-            self._manifest, self._lock, self._checkout, self._review, self._home,
+            self._manifest, self._lock, self._checkout, self._review, self._home, departures=self._departures,
         )))
 
     def stale_inputs(self, resolution: Resolution) -> tuple[str, ...]:

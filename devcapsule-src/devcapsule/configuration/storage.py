@@ -10,6 +10,7 @@ from typing import Any, Mapping
 from urllib.parse import quote
 from devcapsule.platforms import Platform, UnsupportedPlatformError, XdgHomes
 
+from .capabilities import RequirementDeparture
 from .authorization import locked_base_reference
 from .file_formats import ConfigurationFileKind, ProjectConfigurationError, canonical_digest, legacy_lock, validate_file_format, table, selected_version_lock, render_toml
 from .manifest import current_manifest
@@ -39,6 +40,9 @@ class ResolvedProject:
     checkout: dict[str, Any]
     resolution_path: Path
     resolution: dict[str, Any]
+    # The named departures from the project's contract this launch runs
+    # with (``RequirementDeparture``); empty for an ordinary launch.
+    departures: tuple[RequirementDeparture, ...] = ()
 
 
 def discover_project(path: Path) -> Path:

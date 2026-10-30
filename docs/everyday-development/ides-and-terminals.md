@@ -1,6 +1,6 @@
 ---
 description: The IDEs DevCapsule offers, the terminal inside them, and how the capsule's shell differs from your computer's.
-updated: 2026-10-28
+updated: 2026-10-29
 weight: 1
 ---
 # IDEs and terminals
@@ -29,6 +29,16 @@ checkout with `devcapsule project config authorize vscode-download true`. Both
 consent to downloading Visual Studio Code from Microsoft's HTTPS origin under
 [Microsoft's Visual Studio Code license terms](https://code.visualstudio.com/license);
 see [Vendor software and trust](../configuration/software-approvals.md).
+
+A project may require one IDE, for example because it develops a plugin for
+it. Then every checkout launches that IDE, and `--ide` with another one is
+refused. For one session with another IDE, add `--force`:
+`devcapsule project run --ide codium --force`. The launcher warns which
+required IDE it sets aside, runs the IDE you asked for, and records the
+departure in that launch's plan. The override is not saved: the project's
+requirement and your checkout's IDE are unchanged. The next plain `run`
+applies the ordinary requirements to your saved selection. See
+[a required IDE](../configuration/capabilities.md#a-required-ide).
 
 For Eclipse, run `devcapsule project init --require java --ide eclipse-ide`, then
 `devcapsule project run`. Open the printed desktop link. In Eclipse, choose

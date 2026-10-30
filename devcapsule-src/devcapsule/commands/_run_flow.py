@@ -27,12 +27,13 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 import getpass
 from pathlib import Path
+import shlex
 import sys
 from typing import Any, Callable, Mapping, TextIO
 
 from devcapsule.compat import DecisionPending
 from devcapsule.configuration.authorization import HOME_CAPABILITY_DEFAULTS, authorization_declarations, normalize_authorization_value
-from devcapsule.configuration.capabilities import CapabilityPolicy, LocalCapabilities
+from devcapsule.configuration.capabilities import IDE_REQUIREMENT, CapabilityPolicy, LocalCapabilities, RequirementDeparture
 from devcapsule.configuration.derivation import CheckoutState, Selection, derive_plan, load_state, register_checkout
 from devcapsule.configuration.docker_arguments import arguments_path, read_environment, update_environment, validate_name, validate_value
 from devcapsule.configuration.file_formats import ProjectConfigurationError, render_toml
@@ -62,6 +63,10 @@ class RunFlags:
     trust: tuple[str, ...] = ()  # channel ids, recorded only after every blocking decision is settled
     save: bool = False
     allow_unverified: bool = False
+    # Launch with the IDE given by ``ide`` although the project requires
+    # another: one named departure from the project's contract, for this
+    # launch only, warned and recorded, never saved (work order of 2026-10-28).
+    force: bool = False
 
 
 @dataclass
@@ -75,6 +80,29 @@ class Prepared:
     environment_tokens: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
     home: dict[str, Any] = field(default_factory=dict)
+
+
+def load_launch_state(start: Path, flags: RunFlags) -> CheckoutState:
+    """Load the launch inputs and reject invalid IDE requests before any approval review.
+
+    Departures are applied in memory. The staged launch review still checks
+    consent, trust, dependencies and host access for the requested environment.
+    """
+    if flags.force and flags.ide is None:
+        raise ProjectConfigurationError(
+            "--force names no departure; give the IDE to run instead of the project's required one: --ide IDE --force."
+        )
+    if flags.force and flags.save:
+        # The owner requires a choice: save an allowed IDE or depart for one launch.
+        raise ProjectConfigurationError(
+            "--force applies to one launch and cannot be combined with --save. Launch without --save, "
+            "or save a choice the project allows without --force."
+        )
+    root, manifest = manifest_for(start)
+    state = load_state(root, manifest)
+    if flags.ide is not None:
+        _requested_ide(state, flags)
+    return state
 
 
 def prepare_launch(
@@ -94,8 +122,8 @@ def prepare_launch(
     """
     interactive = sys.stdin.isatty() if interactive is None else interactive
     output = output_stream if output_stream is not None else sys.stdout
-    root, manifest = manifest_for(start)
-    state = load_state(root, manifest)
+    state = load_launch_state(start, flags)
+    root, manifest = state.root, state.manifest
     input_path = register_checkout(state, write=False)
     record = CheckoutRecord.staged(input_path, state.checkout)
     original = deepcopy(record.document)
@@ -226,7 +254,7 @@ def _selected_checkout(state: CheckoutState, document: dict[str, Any], flags: Ru
         return document
     selection = Selection(LocalCapabilities.read(document), state.surfaces)
     if flags.ide is not None:
-        selection.ide = _capability(flags.ide, state.surfaces, "IDE")
+        selection.ide = _requested_ide(state, flags)
     for capability in flags.capabilities:
         name = state.matrix.canonical_name(capability)
         if state.matrix.is_ide(name):
@@ -238,10 +266,47 @@ def _selected_checkout(state: CheckoutState, document: dict[str, Any], flags: Ru
     return state.with_selection(selection, checkout=document, allow_unverified=flags.allow_unverified)
 
 
+def _requested_ide(state: CheckoutState, flags: RunFlags) -> str:
+    """The IDE capability ``--ide`` names, checked against the project's required IDE.
+
+    A component name (``codium``) or a capability name (``frontend-ide``)
+    selects the same surface. Another IDE than the project requires is
+    refused with the explicit override named; with ``--force`` it is one
+    named departure of this launch (:data:`IDE_REQUIREMENT`), and the plan
+    derives from the policy without that requirement. ``--force`` with
+    nothing to set aside is refused: it never selects a replacement itself.
+    """
+    assert flags.ide is not None
+    requested = _capability(flags.ide, state.surfaces, "IDE")
+    required = state.required_ide()
+    conflicts = required is not None and state.matrix.canonical_name(required) != state.matrix.canonical_name(requested)
+    if conflicts:
+        assert required is not None
+        required_component = state.shared_lock.get("components", {}).get("interactive-surface") or state.surfaces[required]
+        if not flags.force:
+            override = shlex.join(["devcapsule", "project", "--path", str(state.root), "run", "--ide", flags.ide.strip(), "--force"])
+            raise ProjectConfigurationError(
+                f"The project requires {required} ({required_component}); {requested} ({state.surfaces[requested]}) is "
+                f"another IDE. To launch it once, setting the requirement aside for that launch only: {override}. "
+                "The project's requirement and this checkout's saved IDE stay as they are."
+            )
+        state.depart(RequirementDeparture(IDE_REQUIREMENT, required, requested))
+    elif flags.force:
+        raise ProjectConfigurationError(
+            f"--force has nothing to set aside: {requested} is the project's required IDE."
+            if required is not None else
+            f"--force has nothing to set aside: the project requires no IDE; '--ide {flags.ide.strip()}' alone launches {requested}."
+        )
+    return requested
+
+
 def launch_listing_document(selected: ResolvedProject) -> dict[str, Any]:
     """The ``config show --json`` document of the launch's checkout, for the capsule's own inspection."""
     from devcapsule.configuration.storage import checkout_name_for
-    listing = load_state(selected.root, selected.manifest).listing(selected.checkout)
+    state = load_state(selected.root, selected.manifest)
+    for departure in selected.departures:
+        state.depart(departure)
+    listing = state.listing(selected.checkout)
     document = listing.document()
     declarations = authorization_declarations(selected.manifest, selected.lock)
     for row in document["rows"]:

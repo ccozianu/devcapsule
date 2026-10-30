@@ -1,7 +1,7 @@
 ---
 description: The command tree of the devcapsule launcher, with one line of intent per command, as the executable prints it.
 weight: 1
-updated: 2026-10-28
+updated: 2026-10-29
 ---
 # Command reference
 
@@ -69,7 +69,7 @@ ask for per-checkout base or vendor consent. For scripts, supply the
 ```text
 devcapsule project run [--ide IDE] [--with CAPABILITY]... [--use CAPABILITY=COMPONENT]... [--memory SIZE] [--cpus N] [--env NAME[=VALUE]]...
                        [--trust CHANNEL]... [--authorize NAME VALUE]... [--set NAME VALUE]... [--save]
-                       [--name NAME] [--no-update-check] [--no-recursive-e2e] [--print-command] [-- DOCKER-RUN-OPTIONS...]
+                       [--name NAME] [--no-update-check] [--no-recursive-e2e] [--print-command] [--force] [-- DOCKER-RUN-OPTIONS...]
 ```
 
 IDE, capability, provider, memory, CPU, environment and host-access flags apply to one launch.
@@ -78,6 +78,17 @@ succeed. `--trust` accepts a channel for this home without needing
 `--save`. A missing required answer prevents that acceptance from being saved.
 `--set` supports only memory and CPUs, including a declared memory alias.
 Use `config set` to record other declared values.
+
+`--ide IDE --force` launches the IDE given although the project requires
+another one. It applies to this launch only. The launcher warns which required
+IDE it sets aside and which IDE runs, and the launch's plan records the
+departure. The project's requirement, the shared lock and the checkout's saved
+IDE stay unchanged; the next plain `run` uses them again, also after a failed
+or interrupted forced launch. The requested IDE's consent, artifact integrity
+and dependency checks still apply. `--force` is refused without `--ide`, when
+the IDE given is the required one or the project requires no IDE, and together
+with `--save`. A forced launch is not recorded as a known-good configuration.
+See [capabilities and components](../configuration/capabilities.md#a-required-ide).
 
 `--name` changes the container name for this launch. `--no-recursive-e2e`
 disables this project's recursive-validation readiness for this launch.
