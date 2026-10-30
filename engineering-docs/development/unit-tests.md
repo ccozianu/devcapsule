@@ -21,11 +21,16 @@ result; the other markers belong to the heavier suites.
 The hosted `tests.yml` workflow selects the existing serial unit suite when
 runtime, test, build or unclassified inputs change. It runs no Docker.
 Planning/status-only PRs skip heavy jobs; website inputs run the website's
-own tests and build. The filters live in `.github/ci-paths.yml`. Root README,
-journal entries and release notes are website inputs, while packaged Markdown
-under `devcapsule-src/` remains a runtime input. Console changes conservatively
-run the hosted Python suite, but its runtime coverage does not measure the
-separate console distribution; the local `nox -s webconsole` gate still applies.
+own tests and build. The filters live in `.github/ci-paths.yml`: each route
+lists the paths proven not to be its inputs, and any other changed path runs
+the job. Root README, journal entries and release notes are website inputs,
+while packaged Markdown under `devcapsule-src/` remains a runtime input, and
+so do `docs/versions.yaml` and the published release notes, which the unit
+suite reads as fixtures. A pull request with more than 3000 changed files
+runs everything, because GitHub's changed-file listing stops there. Console
+changes conservatively run the hosted Python suite, but its runtime coverage
+does not measure the separate console distribution; the local
+`nox -s webconsole` gate still applies.
 
 Main pushes, merge-queue checks and manual runs use full applicable verification.
 PRs into `main` and `release-*` test the PR head SHA. The advisory diff report
