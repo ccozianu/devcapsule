@@ -5,20 +5,16 @@ updated: 2026-10-30
 ---
 # Review and change agents
 
-Autonomous agents move fast inside a capsule because tool-approval prompts are
-off by default. Keep control over what enters your mainline branch by checking
-every change with Git and your test suite—and feel free to combine or swap
-agents as tasks change.
+Review the agent's changes before you commit or merge them. Use Git, your
+IDE, and the project's checks. You can ask another agent to review the work.
 
 ## Reviewing an agent's work before keeping it
 
-1. **Start from a clean branch or checkpoint.** Commit or push your current
-   branch to a remote before handing a large task to an agent. Because the
-   working tree (including `.git`) is mounted read-write inside the capsule, a
-   pushed remote branch—or a separate Git worktree ([Working in
-   workstreams](../collaboration/working-in-workstreams.md))—gives you an
-   untouched recovery point even if an agent runs `git reset` or rewrites local
-   commits.
+1. **Keep a recovery point outside the capsule.** Commit your current work,
+   then push it to a remote or keep an independent backup. A local commit
+   alone is not protected from processes that can write `.git`. A linked
+   Git worktree shares repository data and is not an independent backup.
+   Keep the backup or remote outside the agent's write permissions.
 2. **Inspect every modified and untracked file.** Use your IDE's Git diff tool
    or run these checks in the terminal:
 
@@ -47,8 +43,10 @@ keep more than one enabled on the same checkout—for instance, implementing a
 feature with one agent and asking another to critique the branch.
 
 Manage your checkout's agents from a host terminal in the project directory (or
-queue `add`, `omit`, and `restore` from the running session's [web
-console](../sessions/web-console.md) for the next launch):
+request `add`, `omit`, and `restore` from the running session's [web
+console](../sessions/web-console.md)). The launcher records accepted requests
+immediately. The running environment changes only after you stop the capsule
+and launch it again:
 
 ```bash
 # Try an agent for a single launch without saving it to the checkout
@@ -69,10 +67,15 @@ devcapsule project config restore antigravity-agent
 capabilities declared with `require` in `.devcapsule/devcapsule.toml` cannot be
 omitted.)
 
+Use `restore` only for project offers. To bring back a checkout addition that
+you removed, use `add` again. If an agent has an explicit secret binding,
+remove it with `config unbind` before omitting the agent; see
+[Sign in and defaults](sign-in-and-defaults.md#binding-api-keys-explicitly).
+
 ### Your sign-in and settings stay intact when you switch
 
-Running `devcapsule project config omit <agent>` removes that agent from your
-next container image, **not** from your local storage. Its persistent slot
-under your [configuration home](../configuration/home.md) keeps your OAuth
-sign-in, session history, and custom settings file on disk, so adding or
-restoring the agent later picks up right where you left off.
+Running `devcapsule project config omit <agent>` removes that agent from the
+next environment selection. It does not delete its saved state or old images.
+Its persistent directory under your [configuration home](../configuration/home.md)
+keeps settings and session files for later use. Omitting an agent is not a
+way to revoke its provider credentials or hide files from another agent.

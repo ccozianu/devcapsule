@@ -5,7 +5,7 @@ weight: 1
 ---
 # IDEs and terminals
 
-Choose one desktop IDE for your checkout with `devcapsule project config ide
+In a host terminal, choose one desktop IDE with `devcapsule project config ide
 NAME` (or pass `--ide NAME` during `devcapsule project init`). Your IDE choice
 is stored in your local checkout record rather than committed to the shared
 manifest, so teammates on the same repository can each use their preferred
@@ -22,7 +22,7 @@ editor.
 
 ## Choosing Visual Studio Code
 
-To use Microsoft Visual Studio Code on any project, run:
+To select Microsoft Visual Studio Code when the project permits that IDE, run:
 
 ```bash
 devcapsule project config ide vscode
@@ -54,8 +54,10 @@ devcapsule project run --ide codium --force
 
 The launcher warns which required IDE it set aside, runs your requested editor
 for this session only, and skips recording that departed run as a known-good
-project configuration. Your next plain `devcapsule project run` returns to the
-project's required IDE; see [A required
+project configuration. You cannot combine `--force` with `--save`. Trust,
+download consent, and dependency checks still apply. Your next plain
+`devcapsule project run` checks the project's requirements against your saved
+selection again; see [A required
 IDE](../configuration/capabilities.md#a-required-ide).
 
 ## Eclipse and JetBrains specifics
@@ -86,6 +88,7 @@ The IDE's integrated terminal runs inside the Linux container at
   credentials are not imported.
 - Your shell home is `/home/devcapsule`, which persists per checkout across
   container restarts—along with `~/.bashrc`, language caches (`~/.cache`,
-  `~/.npm`, `~/.nuget`, `~/.m2`), `~/xtras/bin`, and `/opt/xtras` ([Extra tools
+  `~/.npm`, `~/.nuget`, `~/.m2`). `/opt/xtras` is an alias for `~/xtras`,
+  so tools installed there also persist. `/opt/xtras/bin` is on `PATH` ([Extra tools
   in `/opt/xtras`](../configuration/extra-tools.md) and [What
   persists](../sessions/what-persists.md)).

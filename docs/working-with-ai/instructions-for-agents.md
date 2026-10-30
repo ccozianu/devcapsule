@@ -5,17 +5,15 @@ updated: 2026-10-30
 ---
 # Instructions for agents
 
-An agent that starts every session cold either guesses your conventions or
-spends time rediscovering how to build and test the repository. A concise
-instructions file at the project root—committed alongside your source
-code—gives every agent and every contributor's capsule the same starting facts.
+A short instructions file at the project root gives agents the commands and
+rules they need. Commit it with the source so contributors receive the same
+instructions.
 
 ## One source of truth for all three agents
 
-OpenAI Codex and the Antigravity CLI automatically read `AGENTS.md` at the
-repository root. Claude Code reads `CLAUDE.md`. Keep all project rules in
-`AGENTS.md` and commit a two-line `CLAUDE.md` pointer beside it so the two
-files never drift apart:
+Keep shared project rules in `AGENTS.md` at the repository root. Ask each
+agent to read it at session start. For Claude Code, commit a `CLAUDE.md`
+pointer beside it instead of maintaining a second copy of the rules:
 
 ```markdown
 Read and follow AGENTS.md at the repository root. This project keeps shared
@@ -31,7 +29,7 @@ Keep `AGENTS.md` concrete and verifiable:
 - **Exact build, lint, and test commands:** the commands that run inside the
   capsule terminal (for example, `pytest -q`, `npm test`, `mvn verify`) so the
   agent checks its own changes without guessing flags.
-- **Boundaries Requiring Human Confirmation:** generated files not to hand-edit,
+- **Changes that need human confirmation:** generated files not to hand-edit,
   migrations or public contracts not to break silently, and branches never to
   push directly.
 - **Commit and review expectations:** how changes should be scoped, tested, and
@@ -39,10 +37,9 @@ Keep `AGENTS.md` concrete and verifiable:
 - **Where active state lives:** any status or decision log the agent should
   read at session start and update before stopping.
 
-Keep instructions short and delete stale rules promptly—an outdated command in
-`AGENTS.md` misleads every session until fixed. Remember also that instruction
-files guide cooperating models rather than enforcing security: enforce hard
-limits on files, network access, and credentials through the capsule boundary
+Keep instructions short and remove stale rules. Instruction files guide the
+agent; they do not restrict what its processes can access. Use the capsule's
+mounts and host authorizations to control access
 ([The boundary](../containment/the-boundary.md)).
 
 DevCapsule's own project workflow ships a structured `AGENTS.md`, `WORKFLOW.md`,

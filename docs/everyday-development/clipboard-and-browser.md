@@ -50,14 +50,16 @@ bottom panel—or right-click empty desktop background—to bring it forward.
 
 ## Opening links on your host browser
 
-No web browser is installed inside the default base image unless a project adds
-`browser-automation`. When an IDE or CLI agent prints or opens an `http://` or
+The default base image has no standalone web browser. The optional
+`browser-automation` component supplies Chromium for Playwright. When an IDE
+or CLI agent prints or opens an `http://` or
 `https://` link (such as OAuth sign-in or API documentation), you have two
 choices:
 
 - **Copy the URL out** through the left sidebar's clipboard box and open it in
   your host browser, or
-- **Grant the URL-only browser broker** for this checkout (or a single run):
+- **Grant the URL-only browser broker** from a host terminal for this checkout
+  or a single run:
 
   ```bash
   devcapsule project config authorize host-browser true
@@ -68,6 +70,11 @@ choices:
 With `host-browser` enabled, `http://` and `https://` URLs opened through
 `BROWSER` / `xdg-open` inside the capsule ask the launcher on your host to open
 them in your default browser, without exposing your browser profile or display
-session to the container. Withdraw it anytime with `devcapsule project config
-deny host-browser` ([Granting and withdrawing
+session to the container. A printed URL still needs you to open it.
+`host-browser` does not publish application or OAuth callback ports; see
+[Previews and ports](previews-and-ports.md).
+
+Run `devcapsule project config deny host-browser` on the host to withdraw
+access for the next launch. Stop the current capsule to end its existing
+access ([Granting and withdrawing
 access](../containment/granting-and-withdrawing.md)).

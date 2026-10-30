@@ -1,103 +1,85 @@
 ---
-description: Using hosted models through your provider account, and running an open model locally with an agent that supports it.
+description: Use a provider account for hosted models, or connect a compatible coding agent to a model server on your computer.
 weight: 4
 updated: 2026-10-30
 ---
 # Hosted and local models
 
-Capsules have outbound internet access over Docker's `bridge` network by
-default, so hosted frontier models work immediately after signing in—and you
-can also point supported agents at an open-weight model running locally on your
-computer's GPU or CPU.
+DevCapsule installs coding agents, not a model service or an AI subscription.
+Choose a provider through the agent. A model server on your computer is also
+an option when the agent supports its protocol and authentication method.
 
-## Hosted models through your vendor account
+## Hosted models
 
-For hosted providers, authenticate inside the capsule once per checkout as
-described in [Sign in and defaults](sign-in-and-defaults.md):
+Select `claude-code-agent`, `codex-agent`, or `antigravity-agent` for your
+checkout. Start `claude`, `codex login`, or `antigravity` inside the capsule
+and follow its sign-in flow. See [Sign in and defaults](sign-in-and-defaults.md)
+for the persistent directories and permission settings.
 
-- **Subscription sign-in (recommended default):** run `claude`, `codex login`,
-  or `antigravity` in the capsule terminal. Credentials stay in that agent's
-  mode-`0700` persistent checkout slot rather than in container environment
-  variables.
-- **API keys or custom enterprise gateways:** bind declared secret inputs
-  (`devcapsule project config bind codex/openai-api-key
-  host-environment:OPENAI_API_KEY` or `antigravity-cli/gemini-api-key
-  host-environment:GEMINI_API_KEY`) or set gateway variables per checkout with
-  `devcapsule project config env set` (such as a corporate proxy or gateway
-  base URL).
-
-Select models using each CLI's native flag or config—for example, `codex -m
-<model>`, `claude --model <model>`, or `/model` inside an interactive session.
-
-## Running a local open model on your host
-
-Running an inference server such as **Ollama**, **LM Studio**, **vLLM**, or
-**llama.cpp** directly on your host machine keeps model weights and host GPU
-drivers outside the container while letting coding agents inside the capsule
-call its OpenAI-compatible HTTP API.
-
-### Step 1: Make the host model server reachable from the capsule
-
-Because a default `bridge` capsule has its own `localhost`, choose one of two
-network paths depending on how your local server is bound:
-
-1. **Keep the server bound to `127.0.0.1` and share host networking (`network
-   host`):** if Ollama (`127.0.0.1:11434`) or LM Studio (`127.0.0.1:1234`)
-   listens only on host loopback—the safest setting on laptops on shared
-   Wi-Fi—grant `network host` for the session or checkout:
-
-   ```bash
-   devcapsule project run --authorize network host
-   # or save for this checkout:
-   devcapsule project config authorize network host
-   ```
-
-   Inside the capsule, the server is reachable at `http://127.0.0.1:11434`.
-
-2. **Keep `bridge` isolation and route via `host.docker.internal`:** configure
-   the host inference server to listen on your Docker bridge interface as well
-   as `127.0.0.1`, pass `--add-host=host.docker.internal:host-gateway` (`project
-   run -- --add-host=host.docker.internal:host-gateway` or `project config
-   docker-args set`), and connect from the capsule to
-   `http://host.docker.internal:11434`.
-
-### Step 2: Connect OpenAI Codex to the local server
-
-Ensure `codex-agent` is added to your checkout (`devcapsule project config add
-codex-agent`), start your model server on the host (for example, `ollama serve`
-and `ollama pull qwen2.5-coder:14b`), and verify connectivity from the capsule
-terminal:
+For API-key authentication, run these commands from a host terminal after
+selecting the corresponding agents:
 
 ```bash
-curl -fsS http://127.0.0.1:11434/api/tags
+devcapsule project config bind codex/openai-api-key host-environment:OPENAI_API_KEY
+devcapsule project config bind antigravity-cli/gemini-api-key host-environment:GEMINI_API_KEY
 ```
 
-With `network host`, Codex's built-in open-source provider mode talks directly
-to local Ollama or LM Studio without an OpenAI account:
+Export the matching variable before launching the capsule. The binding stores
+only its name. The launcher checks for the variable at launch time.
+For other provider variables, use `devcapsule project config env set NAME`
+and enter the value at the hidden prompt. Use the exact variable name the
+agent documents; DevCapsule does not translate provider settings.
 
-```bash
-codex --oss --local-provider ollama -m qwen2.5-coder:14b
-# or for LM Studio on 127.0.0.1:1234:
-codex --oss --local-provider lmstudio -m <loaded-model-id>
-```
+Choose a model with the agent's own controls, such as `codex --model MODEL`,
+`claude --model MODEL`, or `antigravity --model MODEL`.
 
-To use a `host.docker.internal` URL—or any other OpenAI-compatible server such
-as `vllm` or `llama-server`—declare a custom provider in
-`~/.codex/config.toml` inside the capsule (keeping top-level keys above the
-first `[table]` header):
+## Reach a model server on your computer
 
-```toml
-approval_policy = "never"
-sandbox_mode = "danger-full-access"
-model_provider = "local"
-model = "qwen2.5-coder:14b"
+Start the model server on your host according to its own instructions.
+DevCapsule does not install it or manage its model weights.
+The following examples assume an HTTP server on port 8000. Replace that port
+with the server's actual port.
 
-[model_providers.local]
-name = "Local OpenAI-compatible server"
-base_url = "http://host.docker.internal:11434/v1"
-```
+A default bridge-network capsule has its own loopback interface. Its
+`127.0.0.1` does not reach your host's loopback services. Choose one of these
+routes from your host terminal:
 
-Because `~/.codex/config.toml` lives in your checkout's persistent `codex/home`
-slot, that provider definition survives container restarts and can be switched
-per invocation with `codex -c model_provider="openai"` whenever you want to mix
-local and hosted runs.
+- **Share host networking for one launch:**
+
+  ```bash
+  devcapsule project run --authorize network host
+  ```
+
+  The capsule can then reach a host server at `http://127.0.0.1:8000`.
+  This shares the host's network namespace, including access to other host
+  services. Save that choice with `devcapsule project config authorize
+  network host`, or return to bridge networking with `config deny network`.
+
+- **Keep bridge networking:** configure the server to listen on an address
+  reachable from Docker's bridge. A server bound only to host `127.0.0.1`
+  will not accept this connection. Add a host address at launch:
+
+  ```bash
+  devcapsule project run -- --add-host=host.docker.internal:host-gateway
+  ```
+
+  Use `http://host.docker.internal:8000` inside the capsule. Permit the
+  connection in your host firewall without exposing the server unnecessarily
+  to your local network.
+
+## Configure the agent for that endpoint
+
+Use the agent's documented provider configuration to select the endpoint,
+model identifier, and credentials. Check its installed `--help`; supported
+providers and flags can differ between agent versions. Codex exposes `--oss`
+and `--local-provider` for supported local providers. These flags do not
+establish compatibility with every server that describes itself as
+OpenAI-compatible.
+
+Keep provider settings in the agent's persistent configuration directory.
+For provider-specific environment variables, run `devcapsule project config
+env set NAME VALUE` on the host and launch the capsule again. Replace `NAME`
+with the variable the agent documents and `VALUE` with its endpoint.
+
+For application previews and port publishing in the other direction, see
+[Previews and ports](../everyday-development/previews-and-ports.md).

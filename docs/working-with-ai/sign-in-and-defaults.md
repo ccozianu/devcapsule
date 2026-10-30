@@ -6,9 +6,10 @@ updated: 2026-10-30
 # Sign in and defaults
 
 Agents authenticate from a terminal inside the running capsule using your own
-provider account or API key. Each agent's state directory lives in a dedicated
-mode-`0700` persistent slot for that checkout, so you sign in once per checkout
-and keep that state across container replacements.
+provider account or API key. Each agent's settings and local session files
+live in a persistent directory for that checkout. DevCapsule creates managed
+agent directories with mode `0700`. Processes running as the same capsule
+user can still read them.
 
 ## Signing in interactively
 
@@ -16,7 +17,7 @@ and keep that state across container replacements.
 |---|---|---|
 | Claude Code | `claude` (follow the sign-in flow) | `/home/devcapsule/.claude` (`CLAUDE_CONFIG_DIR`, slot `claude-code/home`) |
 | OpenAI Codex | `codex login` (or `codex login --device-auth`; check with `codex login status`) | `/home/devcapsule/.codex` (`CODEX_HOME`, slot `codex/home`) |
-| Antigravity CLI | `antigravity` (follow its authentication flow) | `/home/devcapsule/.gemini` (slot `antigravity-cli/home`) |
+| Antigravity CLI | `antigravity` (follow its authentication flow) | `/home/devcapsule/.gemini` (settings and sessions, slot `antigravity-cli/home`; credentials use its keyring or arrive per run) |
 
 When an agent prints or opens an OAuth URL:
 
@@ -26,23 +27,31 @@ When an agent prints or opens an OAuth URL:
   browser](../everyday-development/clipboard-and-browser.md)).
 - **With `host-browser` authorized** (`devcapsule project config authorize
   host-browser true` or one-run `devcapsule project run --authorize
-  host-browser true`): links opened by the CLI open directly in your host
-  browser through DevCapsule's URL-only broker.
+  host-browser true`): links opened through `BROWSER` or `xdg-open` reach your
+  host browser through DevCapsule's URL-only broker. A printed URL does not open
+  automatically. This authorization does not forward OAuth callback ports;
+  use the agent's device or code flow, or configure the needed
+  [network access](../everyday-development/previews-and-ports.md).
 
-Interactive sign-in tokens stay inside your local DevCapsule data directory on
-your host (`projects/by-path/<checkout>/components/<agent>/home`), outside the
-repository and out of Git.
+The managed directories above are stored under your local DevCapsule data
+directory (`projects/by-path/<checkout>/components/<agent>/home`). They stay
+outside the repository. A directory you explicitly bind or adopt can live
+elsewhere.
 
 ## Binding API keys explicitly
 
 DevCapsule never forwards `OPENAI_API_KEY`, `GEMINI_API_KEY`, or
-`ANTHROPIC_API_KEY` from your host shell automatically. When you prefer API-key
-billing or headless execution over interactive OAuth:
+`ANTHROPIC_API_KEY` from your host shell automatically. Use an explicit binding
+or environment setting for API-key authentication.
+
+Select the agent first. Run the following `devcapsule` commands in a host
+terminal from the project directory. A binding stores the variable's name,
+not its value. The variable need not exist when you bind it, but it must be
+exported in the host shell that runs `devcapsule project run`.
 
 - **Codex (`OPENAI_API_KEY`):** bind the declared secret input to your host
-  environment variable—or pipe a key once into `codex login --with-api-key`
-  inside the capsule so it is stored in `~/.codex` rather than exported to all
-  container processes:
+  environment variable. Alternatively, `codex login --with-api-key` reads a
+  key from standard input inside the capsule:
 
   ```bash
   devcapsule project config bind codex/openai-api-key host-environment:OPENAI_API_KEY
@@ -61,14 +70,21 @@ billing or headless execution over interactive OAuth:
   ANTHROPIC_API_KEY`) or pass it for one run (`devcapsule project run --env
   ANTHROPIC_API_KEY`).
 
-Keep in mind that any variable delivered through the container environment is
-readable by every process running inside that capsule; interactive sign-in
-inside the agent's `0700` state slot is the lower-exposure default.
+Through the web console, `bind` waits for host confirmation with `config
+console apply ID` or the next interactive launch. `unbind` is recorded
+immediately. Both affect future launches; stop the current capsule to end
+its access to an already supplied key.
+
+Environment delivery exposes keys to capsule processes and Docker inspection.
+Interactive sign-in avoids that environment exposure, but does not hide
+credentials from other agents running as the same user.
 
 ## The defaults DevCapsule seeds
 
 Before an agent's first launch in a checkout, DevCapsule seeds minimal settings
-so tools run without interactive permission prompts inside the container:
+so tools run without interactive permission prompts inside the container.
+These defaults apply to managed state; explicitly bound or adopted
+directories keep their existing contents.
 
 | Agent | File in the capsule | Seeded settings |
 |---|---|---|
@@ -93,8 +109,8 @@ DevCapsule treats these files as initial defaults, never forced overrides:
 - **OpenAI Codex:** `~/.codex/config.toml` is written **once**, only when the
   file does not exist yet. Edit or remove keys (including `use_legacy_landlock`
   if a newer Codex build marks it deprecated) freely. Keep any top-level keys
-  you add **above the first `[table]` header**, because Codex appends `[...]`
-  tables to the end of `config.toml` automatically.
+  you add **above the first `[table]` header**. Keys below a table header
+  belong to that table.
 
 Model entitlements and rate limits come from your vendor account; upgrading an
 agent binary in DevCapsule does not by itself change which models your plan can
