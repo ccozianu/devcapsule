@@ -756,9 +756,12 @@ transcript would be a false record. Decisions, requirements, bugs, and next
 work propagate to their normal files so that no future agent must read a
 session record to find the next task.
 
-### 9.11 The review-partner loop
+<a id="911-the-review-partner-loop"></a>
 
-**Rule.** One slice, two agent pairs of different engines: the implementor
+### 9.11 Pair Review Loop
+
+**Rule.** Call the process **Pair Review Loop**, or **Pair Review** for short.
+One slice, two agent pairs of different engines: the implementor
 opens PRn, writes a brief that is the review partner's only context, and the
 partner answers with PRn.1 from its own checkout, a pull request against
 PRn's branch with findings, evidence and unimplemented proposals; the
@@ -772,7 +775,11 @@ the whole exchange is on the pull requests where anyone can audit it. A
 different engine is chosen on purpose: two models of the same family share
 blind spots.
 
-**Motivation.** The owner ran the pattern by hand on pull requests #170 and
+**Motivation.** The owner chose the name on 2026-10-30: the analogy to pair
+programming is easier to remember, and "Loop" emphasizes iteration. It
+replaces "review-partner loop" without changing the review rules.
+
+The owner ran the pattern by hand on pull requests #170 and
 #171 in October 2026 and on 2026-10-09 directed the agent to orchestrate it
 for the capsule web console. Eleven slices (#184 to #205) each received a
 review pull request from a Codex pair, ten merged without a round and one

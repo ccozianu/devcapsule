@@ -1,8 +1,12 @@
-# The review-partner loop
+# Pair Review Loop
+
+<a id="the-review-partner-loop"></a>
+
+**Pair Review** is the short name. Previously called the review-partner loop.
 
 How a slice is built by two agent pairs of different engines in this
 repository: the rule is topic 9.11 of [`WORKFLOW.md`](../../WORKFLOW.md),
-the local arrangements are *Review Partners In This Checkout* in
+the local arrangements are *Pair Review Loop In This Checkout* in
 [`WORKFLOW-LOCAL.md`](../../WORKFLOW-LOCAL.md). This document carries what
 the rules leave to practice: the brief template, the round brief, the
 assessment comment, the invocation recipes, and the record of the loops
@@ -10,8 +14,8 @@ run so far. Keep it current with every loop.
 
 ## How to ask for it
 
-The human says, in chat: *implement <the slice> with the review-partner
-loop, with <engine, model> as the review partner.* The agent that receives
+The human says, in chat: *implement <the slice> with Pair Review,
+with <engine, model> as the review partner.* The agent that receives
 it is the implementor. It restates the slice, names the open choices, and
 starts when the human says so. Any of the three capsule agents can be
 either side.
