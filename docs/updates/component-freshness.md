@@ -40,12 +40,17 @@ installers:
 | Component | Upstream metadata read | What it covers and its limits |
 |---|---|---|
 | PyCharm | [JetBrains release JSON](https://data.services.jetbrains.com/products/releases?code=PY&latest=true&type=release) | Latest release version, download URL, and SHA-256 link; carries no general support window or security feed. |
+| IntelliJ IDEA | [JetBrains release JSON](https://data.services.jetbrains.com/products/releases?code=IIU&latest=true&type=release) | Latest release version and platform download/checksum links; no general support window or security feed. |
+| Rider | [JetBrains release JSON](https://data.services.jetbrains.com/products/releases?code=RD&latest=true&type=release) | Latest release version and platform download/checksum links; no general support window or security feed. |
+| Eclipse | [Eclipse package index](https://www.eclipse.org/downloads/packages/) | Latest stable Java package for the platform; availability does not establish installed-version support. |
 | VSCodium | [GitHub latest-release JSON](https://api.github.com/repos/VSCodium/vscodium/releases/latest) | Latest stable, non-draft release containing the platform archive. |
 | Visual Studio Code | [Microsoft stable update JSON](https://update.code.visualstudio.com/api/update/linux-x64/stable/latest) | Latest stable `tar.gz` archive URL and SHA-256 checksum for the platform. |
 | Codex | [npm package metadata](https://registry.npmjs.org/@openai%2fcodex) | `latest` dist-tag, exact versions, and npm deprecation strings. Unlisting means absent from npm, not that an already cached copy stops working. |
 | Claude Code | [Anthropic latest pointer](https://downloads.claude.ai/claude-code-releases/latest) and release `manifest.json` | Current `latest` release channel and platform artifact checksums (not the separate `stable` channel). |
 | Antigravity CLI | [Platform updater manifest](https://antigravity-cli-auto-updater-974169037036.us-central1.run.app/manifests/linux_amd64.json) | Current version and download metadata for the platform. |
 | PostgreSQL client | [PostgreSQL version JSON](https://www.postgresql.org/versions.json) | Latest upstream minor version and major-version end-of-life dates. |
+| .NET SDK | [Microsoft release index](https://builds.dotnet.microsoft.com/dotnet/release-metadata/releases-index.json) | Latest stable SDK from active or maintenance channels; selection needs a reviewed lock update. |
+| Playwright | [PyPI package metadata](https://pypi.org/pypi/playwright/json) | Latest release with a non-yanked wheel; selection needs matching wheel and browser pins. |
 
 PostgreSQL client comes from the base image, whose lock records only the major
 version. Because the lock cannot tell which Ubuntu package revision or security
@@ -67,10 +72,11 @@ devcapsule project versions check
 
 `versions show` is completely offline and also works inside a capsule, where it
 separates the running container's software from the host's next-launch
-selection. `versions check` runs on the host and queries the upstream feeds
-above. Interactive `devcapsule project run` also runs this check at most once a
-day; pass `--no-update-check` to skip the live check for one launch while
-keeping cached critical notices active. Non-interactive launches never poll
+selection. `versions check` runs on the host and queries feeds for components
+in your selected lock. It saves observations without changing that selection.
+Interactive `devcapsule project run` refreshes the check after a day, or when
+the selected version set changes. Pass `--no-update-check` to skip the live
+check for one launch while keeping cached critical notices active. Non-interactive launches never poll
 upstream feeds.
 
 To try a newer Codex version on one checkout, follow

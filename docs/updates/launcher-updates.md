@@ -1,16 +1,20 @@
 ---
-description: How the launcher checks for newer DevCapsule releases, how to install one, and what stays untouched when you upgrade.
+description: Where to find a newer DevCapsule launcher, how to install it, and what stays untouched when you upgrade.
 weight: 2
 updated: 2026-10-30
 ---
 # Launcher updates
 
-Once a day, `devcapsule project run` checks whether a newer DevCapsule release
-exists and notifies you interactively. Pass `--no-update-check` to skip the
-network check for one launch; any cached critical notice still stops and asks
-before continuing. Installing a newer release uses the same steps as
-[Install DevCapsule](../getting-started/install.md) with the new release's
-download URL. It replaces the single-file executable and nothing else.
+Check the [DevCapsule releases page](https://github.com/ccozianu/devcapsule/releases)
+for launcher updates. Install a newer release with the steps in
+[Install DevCapsule](../getting-started/install.md), using that release's
+download URL. This replaces the single-file executable.
+
+The daily interactive check in `devcapsule project run` checks component
+channels, not the launcher's release list. `--no-update-check` skips that live
+check. Cached component notices can still ask for a decision in an interactive
+terminal; non-interactive launches report them and continue. See
+[Component freshness](component-freshness.md).
 
 Upgrading the launcher preserves every project's lock, every checkout's
 recorded choices, and your [configuration home](../configuration/home.md)
@@ -22,6 +26,6 @@ If a project updated its manifest or lock in the meantime, or a newly selected
 component requires a channel acceptance or checkout approval, the next launch
 stops and asks, as
 [Project versus personal](../configuration/project-versus-personal.md#when-the-project-changes)
-describes. When a newer launcher writes `settings.toml`, it also records its
-release in `minimum-devcapsule` so an older launcher refuses to modify that
-home rather than misreading newer settings.
+describes. When the launcher creates `settings.toml`, it records its release in
+`minimum-devcapsule`. Later writes preserve an existing minimum. A launcher
+older than that minimum refuses commands that load the home, including reads.

@@ -48,6 +48,19 @@ Key differences between the two modes:
   launchers that did not record storage backing omit those rows and print a
   note advising a relaunch.
 
+## Text sections
+
+The text report starts with `Project`, `Context`, `Checkout`, `Checkout name`,
+and `Source in capsule`. `Components` lists component versions; `Base` shows
+the selected lock's image reference. Inside a capsule, `Next launch components`
+marks the selection as changed or unchanged, or `Next launch unavailable`
+explains why comparison failed.
+
+`Environment` lists each variable's value, purpose, and source. `Persistence`
+lists container paths, host backing paths, scope, storage kind, and lifetime.
+`Temporary` lists paths lost with the container. Notes follow those sections.
+Use `--json` for logical slot names and fields such as `running-selection`.
+
 ## Top-level JSON structure
 
 `devcapsule project info --json` prints a UTF-8 JSON object with
@@ -58,16 +71,16 @@ Key differences between the two modes:
 | `schema-version` | Always | integer | Format version (`1`). |
 | `context` | Always | string | `"host selection (next launch)"` or `"running capsule (captured at launch)"`. |
 | `project` | Always | object | `name`, `creator`, and `slug` from `.devcapsule/devcapsule.toml`. |
-| `checkout` | Always | object | `launcher-path` (host checkout root), `runtime-path` (mount path inside the capsule, such as `/workspace/app`), `name` (`"default"` or the name set with `project checkout register`), and `registered` (`true` when a checkout record exists on disk). |
+| `checkout` | Always | object | `launcher-path` (host checkout root), `runtime-path` (mount path inside the capsule, such as `/workspace/app`), `name` (`"default"` or the name set with `project checkout register`), and `registered` (`true` when a checkout record was loaded; captured at launch inside a capsule, and absent from older snapshots without storage information). |
 | `components` | Always | object | Map of component ID to version string (for example `{"codium": "1.99.2", "claude-code": "2.1.76"}`). |
-| `base` | Always | object | `reference` (OCI image reference with digest) and `build-mnemonic` from the active lock. |
-| `running-selection` | Capsule only | object | Identity metadata of the version set that started this container. |
+| `base` | Always | object | `reference` and `build-mnemonic` from the selected lock; a missing lock field becomes `null`. These fields do not report a checkout-local base override; use `versions show` for that. |
+| `running-selection` | Capsule only | string | Version-set identity that started this container, expressed as a SHA-256 hex string. |
 | `next-launch-components` | Capsule (when readable) | object | Component-to-version map currently selected on the host for the next launch. |
 | `selection-changed` | Capsule (when readable) | boolean | `true` when the host's next-launch lock differs from the running container's lock. |
 | `next-launch-unavailable` | Capsule (on error) | string | Explanation when the host's current lock or checkout selection cannot be evaluated from inside the capsule. |
 | `environment` | Always | array | Ordered list of non-secret environment entries (`name`, `value`, `purpose`, `source`). |
 | `persistence` | Always | array | Persistent mounts in the capsule (`name`, `path`, `backing`, `scope`, `kind`, `lifecycle`). |
-| `temporary` | Always | array | Ephemeral container paths (`/tmp`, `/run`, `/var/tmp`, `/dev/shm`) and their `lifecycle`. |
+| `temporary` | Always | array | Objects with string keys `path` and `lifecycle`, for `/tmp`, `/run`, `/var/tmp`, and `/dev/shm`. |
 | `notes` | Always | array of strings | Plain-language caveats about storage lifetimes, `/opt/xtras`, secret omission, and pre-launch limits. |
 
 ## `environment` entries and secret safety
@@ -96,12 +109,12 @@ removal:
 
 | Key | Values | Meaning |
 |---|---|---|
-| `name` | `project`, `home`, `<component>/<slot>`, `xtras`, `logs` | Logical slot name. `home` and `<component>/<slot>` can be rebound with `project config bind` or populated with `project state adopt`. |
+| `name` | `project`, `home`, `<component>/<slot>`, `xtras`, `logs` | Logical slot name. `home` and `<component>/<slot>` can use an existing host directory through `project config bind` or `project state adopt`; neither copies its contents. |
 | `path` | Absolute container path | Mount point inside the capsule (such as `/workspace/my-app`, `/home/devcapsule`, `/ide-config`, `/opt/xtras`, `/var/log/devcapsule`). |
 | `backing` | Absolute host path | Directory on the host computer holding the data (under `$DEVCAPSULE_CONFIG_HOME` when set, otherwise XDG data, state, or cache directories, or your bound path). |
 | `scope` | `"this checkout"` or `"explicit storage; may be shared"` | Whether the directory is private to this checkout or points to an adopted/bound host directory. |
 | `kind` | `"source"`, `"durable"`, `"state"`, `"cache"` | Storage class: Git checkout (`source`), user data and settings (`durable`), operational state and logs (`state`), or rebuildable caches (`cache`). |
-| `lifecycle` | String | What survives container replacement, whether caches may be cleared, and the active `DEVCAPSULE_LOG_BUDGET` cap on `logs`. |
+| `lifecycle` | String | What survives container replacement, whether caches may be cleared, and the default log-budget guidance. This text does not report the active budget; `session.json` records it, and retention is a target, not a hard cap. |
 
 Compare `persistence` with `temporary` (`/tmp`, `/run`, `/var/tmp`, `/dev/shm`)
 when deciding where to store build outputs or tools: anything written outside

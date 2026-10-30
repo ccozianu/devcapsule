@@ -66,9 +66,9 @@ launcher's and the supervisor's own records carry the level and the process
 id as well.
 
 The IDE keeps its own structured log in its persistent log directory:
-`idea.log` for PyCharm, IntelliJ IDEA, and Rider (under the IDE `logs` slot
-listed by `devcapsule project info`), the `logs/` directory inside VSCodium's
-or Visual Studio Code's `user-data` slot, and `.metadata/.log` inside the
+`idea.log` for PyCharm, IntelliJ IDEA, and Rider (under the IDE `log` slot, such as
+`pycharm/log`, listed by `devcapsule project info --json`), the `logs/` directory
+inside VSCodium's or Visual Studio Code's `user-data` slot, and `.metadata/.log` inside the
 Eclipse `workspace` slot. Those native IDE logs stay in place; the session
 directory captures the IDE process's standard output and error streams.
 
@@ -148,10 +148,11 @@ devcapsule project diagnose
 devcapsule project diagnose --session 20261011-041533-3f9a --json
 ```
 
-When you omit `--session`, the command inspects the active running session, or
-the latest ended session when none is running. Each run writes a private
-(`0600`) `snapshot-<utc>.json` file inside the session's log directory and
-prints a short verdict.
+On the host, omitting `--session` selects the newest running session, or the
+latest session directory when none is running. Inside a capsule, only its
+current session is mounted; inspect other sessions from the host. With a
+writable session directory, each run writes a private (`0600`)
+`snapshot-<utc>.json` file there and prints a short verdict.
 
 For a running container, the command runs bounded checks (`docker inspect` up
 to 3 seconds, in-capsule probe up to 5 seconds, and 2 seconds per protocol

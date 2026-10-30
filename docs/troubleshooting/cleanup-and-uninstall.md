@@ -5,10 +5,10 @@ updated: 2026-10-30
 ---
 # Cleanup and uninstall
 
-DevCapsule stores everything in standard user-owned directories and local
-Docker images. It installs no system services, root files, or background
-daemons, so reclaiming disk space or removing DevCapsule completely uses
-ordinary file and Docker commands.
+DevCapsule keeps checkout configuration and persistent storage in your
+configuration home and uses Docker's local image store. Run the cleanup steps
+below in the host terminal that launches your capsules, with the same
+`DEVCAPSULE_CONFIG_HOME` or XDG settings.
 
 ## See what DevCapsule is using
 
@@ -21,102 +21,117 @@ devcapsule project list
 devcapsule images list --include-legacy
 ```
 
-For a specific checkout, run `devcapsule project info` inside that repository
-(or pass `--path <dir>`) to print the exact host paths of its checkout record,
-persistent IDE/agent state slots, tool cache, and session logs; see
+For one checkout, run these commands inside its repository:
+
+```bash
+devcapsule project config show --json
+devcapsule project info --json
+```
+
+`config show --json` gives the checkout-record path in `checkout.input`.
+`info --json` gives persistent mount paths in `persistence[].backing`,
+including IDE and agent state, caches, and session logs. To select another
+repository, put `--path /path/to/repo` before `config` or `info`; see
 [Project info](../reference/project-info.md).
 
 By default, a DevCapsule home spreads files across four XDG directories
 (`~/.config/devcapsule`, `~/.local/share/devcapsule`,
-`~/.local/state/devcapsule`, and `~/.cache/devcapsule`). When
-`DEVCAPSULE_CONFIG_HOME` is set, configuration sits in that directory and
-persistent data, state, and cache live in its `data/`, `state/`, and `cache/`
-subdirectories; see [The configuration home](../configuration/home.md).
+`~/.local/state/devcapsule`, and `~/.cache/devcapsule`). The corresponding
+`XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `XDG_STATE_HOME`, and `XDG_CACHE_HOME`
+variables can change those roots. When `DEVCAPSULE_CONFIG_HOME` is set,
+configuration sits in that directory. Data, state, and cache use its `data/`,
+`state/`, and `cache/` subdirectories; see
+[The configuration home](../configuration/home.md).
 
 ## Reclaim disk space safely
 
 Most disk usage comes from Docker images and downloaded component archives.
-You can reclaim both without losing your project files, checkout decisions, or
-IDE settings.
+You can remove unused copies while keeping project files and personal state.
+Keep recovery resources when you need offline rollback.
 
 ### Unused Docker images
 
-`devcapsule images list --include-legacy` shows every base image (`base`),
-locally built IDE environment image (`materialized`, tagged
-`devcapsule-local-<ide>:<hash>`), and older transitional image in your local
-Docker store, along with its size and creation date.
+`devcapsule images list --include-legacy` lists managed base images,
+materialized IDE environments, and transitional images with legacy labels.
+Materialized images have tags such as `devcapsule-local-pycharm:<hash>`.
 
-Stop any running capsule sessions you no longer need, then remove old or
-unused image tags with Docker:
+Stop sessions that use an image before removing it. Replace `IMAGE_TAG` below
+with an unused tag from the listing:
 
 ```bash
-docker image rm devcapsule-local-pycharm:<hash>
+docker image rm IMAGE_TAG
 ```
 
-Keep the images your active checkouts currently run if you work offline or
-expect to use `devcapsule project versions rollback` without rebuilding or
-re-downloading; removing an image only means a later launch of that exact
-component version will rebuild or pull it again.
+A later launch can need downloads or a rebuild after you remove an image.
+Keep the base image and either the matching environment image or retained
+archives for offline [rollback](../updates/component-upgrades.md#roll-back-to-a-known-good-set).
+Removing the base image requires `versions rollback --reacquire` even when
+component archives remain.
 
 ### Downloaded component and tool caches
 
-DevCapsule caches verified component downloads under `artifacts/` inside its
-cache root (`~/.cache/devcapsule` by default, or
-`$DEVCAPSULE_CONFIG_HOME/cache`), and stores per-checkout build and tool
-caches under `projects/by-path/<checkout id>/` in the same cache root.
+Verified downloads live under `artifacts/` in the cache root. Per-checkout
+caches live under `projects/by-path/<checkout id>/` in that same root.
+Stop launches and running sessions before clearing caches.
 
-While no session is launching or running, you can delete the cache directory
-to reclaim space:
+For the default XDG home, clear the cache with:
 
 ```bash
 rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}/devcapsule"
 ```
 
-If you use `DEVCAPSULE_CONFIG_HOME`, remove `"$DEVCAPSULE_CONFIG_HOME/cache"`
-instead. Future launches recreate the directory and re-download or rebuild
-only what active checkouts need.
+For a named home, remove `"$DEVCAPSULE_CONFIG_HOME/cache"` instead. Future
+launches recreate needed caches, which can require network access.
+
+Version history and retained recovery archives are separate, under
+`version-sets/<path hash>/` in the state root. `<path hash>` is the full SHA-256
+of the canonical checkout path, without a trailing newline. It differs from
+`<checkout id>` in the storage paths reported by `info`. Deleting that directory
+removes the checkout's upgrade previews, observations, successful-use history,
+and retained archives. Keep it if you want known-good rollback choices.
 
 ### Old session logs
 
-Session logs under `projects/by-path/<checkout id>/logs/` in state storage are
-pruned automatically at each launch to fit `DEVCAPSULE_LOG_BUDGET` (`256M` per
-checkout by default). To tighten retention, launch with a smaller budget (down
-to `16M`), or delete ended `<session id>` subdirectories manually; see
+Session logs use `projects/by-path/<checkout id>/logs/` in the state root.
+At launch, DevCapsule removes eligible old sessions toward the
+`DEVCAPSULE_LOG_BUDGET` target (`256M` by default). Protected sessions can keep
+usage above that target. You can lower it to `16M`, or manually delete ended
+session directories; see
 [Diagnostics and logs](diagnostics-and-logs.md#how-much-disk-this-takes).
 
 ## Reset or remove one checkout
 
-Every checkout keeps its configuration record separate from its persistent IDE
-and agent state, and neither touches your Git working tree.
+Checkout configuration is separate from persistent IDE and agent storage.
+Before removing a clone, inspect it from the host and record the paths above.
 
-1. Run `devcapsule project info` in the checkout (before deleting the working
-   tree, if you plan to remove the clone) and note:
-   - the `checkout-record` path (and the companion `.resolved.toml` file in
-     the same directory), and
-   - the `projects/by-path/<checkout id>/` paths listed under persistent state
-     and logs.
-2. Stop any running session for that checkout (`Ctrl+C` in its launcher
-   terminal, or `docker stop <container>`).
-3. To wipe only the capsule's persistent IDE/agent state, logs, and caches for
-   that checkout while keeping your recorded configuration choices, remove its
-   `projects/by-path/<checkout id>` directories under data, state, and cache
-   (leaving any explicitly bound external directories untouched unless you
-   also want those removed).
-4. To forget the checkout's configuration choices as well, delete its checkout
-   record file (`devcapsule.checkout.toml` or `checkout.<name>.toml`), its
-   `.resolved.toml` companion, and any matching per-checkout subdirectories
-   under `docker-arguments/` and `console-requests/` in the configuration
-   home.
+1. Stop every running session for that checkout with `Ctrl+C` in its launcher
+   terminal, or `docker stop CONTAINER_NAME`.
+2. To reset managed IDE and agent state, remove this checkout's
+   `projects/by-path/<checkout id>/` directories under data, state, and cache.
+   This deletes sign-ins, settings, extra tools under the managed home, and
+   logs. Keep explicitly bound or adopted directories unless you also intend
+   to erase their contents. Keep the source checkout listed as `project`.
+3. To forget configuration choices too, first run
+   `devcapsule project config docker-args clear`. This also clears saved
+   environment entries. Run `devcapsule project config console list` and
+   discard each pending request with `devcapsule project config console discard ID`.
+4. Delete the checkout input file reported by `config show --json` and its
+   resolved companion. The default names are `devcapsule.checkout.toml` and
+   `devcapsule.resolved.toml`. Named checkouts use
+   `checkouts/NAME.checkout.toml` and `checkouts/NAME.resolved.toml` under the
+   project's configuration directory. Other checkouts can share that parent
+   directory; keep their records.
+5. If you also want to remove upgrade history and recovery archives, remove
+   this checkout's `version-sets/<path hash>/` directory described above.
 
 ## Uninstall DevCapsule completely
 
-1. **Stop running capsules.** Press `Ctrl+C` in any open `devcapsule project
-   run` terminal (every session runs with `docker run --rm` and removes its
-   container on exit). Check `docker ps` for any stray container you want to
-   stop manually.
-2. **Remove DevCapsule Docker images.** List managed images with `devcapsule
-   images list --include-legacy` before removing the executable, then pass the
-   tags or image IDs you no longer want to `docker image rm`.
+1. **Stop running capsules.** Press `Ctrl+C` in each `devcapsule project run`
+   terminal. Normal sessions use `docker run --rm`, which removes their
+   containers on exit. Check `docker ps` for containers still running.
+2. **Remove DevCapsule Docker images.** Before deleting the executable, run
+   `devcapsule images list --include-legacy`. Pass unused tags or image IDs
+   to `docker image rm`.
 3. **Remove DevCapsule host directories.** For the default XDG home:
 
    ```bash
@@ -127,12 +142,11 @@ and agent state, and neither touches your Git working tree.
      "${XDG_CACHE_HOME:-$HOME/.cache}/devcapsule"
    ```
 
-   Also remove any custom homes you created with `DEVCAPSULE_CONFIG_HOME` (and
-   `~/.local/share/pycharm-docker` if you used pre-`0.x` transitional builds
-   that created it). Explicit host directories you bound yourself with
-   `config bind` or `state adopt` stay where you put them.
-4. **Remove the executable.** Delete `~/.local/bin/devcapsule` (or whichever
-   path `command -v devcapsule` reports).
+   Also remove custom homes you created with `DEVCAPSULE_CONFIG_HOME`.
+   Bound or adopted directories outside those homes remain in their original
+   locations. Remove them separately only if you intend to delete their data.
+4. **Remove the executable.** Delete `~/.local/bin/devcapsule`, or the path
+   where you installed it. `command -v devcapsule` shows the current command.
 
-Committed `.devcapsule/` files inside Git repositories belong to those
-repositories and stay untouched until a project removes them in Git.
+Committed `.devcapsule/` files belong to their Git repositories. Uninstalling
+the launcher does not remove them.
