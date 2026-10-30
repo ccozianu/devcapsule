@@ -58,10 +58,9 @@ Check the installed version:
 ~/.local/bin/devcapsule version
 ```
 
-Expect `{{tag}}` (release notes: [{{tag}}]({{release_url}})). No host Python
-virtual environment, `pip`, or source checkout is required: the `.pex`
-executable uses a compatible system Python (`3.10` or newer on current Linux
-distributions) automatically.
+Expect `{{tag}}` (release notes: [{{tag}}]({{release_url}})). The release
+executable includes its own Python runtime. You do not need host Python, a
+virtual environment, `pip`, or a source checkout.
 
 The onboarding walkthroughs spell out `~/.local/bin/devcapsule` so they work
 immediately even before `~/.local/bin` is on your shell's `PATH`. Add

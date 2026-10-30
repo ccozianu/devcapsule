@@ -8,9 +8,10 @@ updated: 2026-10-30
 
 DevCapsule runs a desktop IDE and coding agents inside a capsule: a container
 that mounts your project folder, keeps its own per-checkout persistent state,
-and touches nothing else on your computer unless you explicitly grant access.
-These pages describe {{tag}} (the version in this page's URL); use the version
-switcher at the top of the page to inspect another release.
+and leaves your host home directory and desktop unmounted by default.
+The capsule has outbound network access; [The boundary](containment/the-boundary.md)
+explains its limits and the access you can grant.
+These pages describe {{tag}}; use the version switcher to inspect another release.
 
 ## Start in one of three places
 

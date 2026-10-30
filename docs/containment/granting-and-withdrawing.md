@@ -72,7 +72,10 @@ The five host-access nodes—`network`, `docker-daemon`, `development-sudo`,
 the manifest recommends them. Extra `docker run` flags can also follow `--` (or
 be saved via `config docker-args set`), except options owned by the launcher
 such as `--network`, `--memory`, `--cpus`, `--privileged`, and `--shm-size`,
-which are refused with the corresponding `devcapsule` command named.
+which are refused with a reason or a supported alternative. `--shm-size` has
+no user setting; the IDE component declares it. Extra flags such as mounts
+and added Linux capabilities can widen access, so inspect saved flags with
+`devcapsule project config docker-args list`.
 
 ## Deny and forget
 
@@ -92,10 +95,13 @@ devcapsule project config forget network
 
 ## Authorization values at a glance
 
-Every authorization below also accepts `default` (the recommended or pinned
-value), and every deniable node accepts `none` as a synonym for its deny value:
+Every authorization below accepts `default` to select its recommended or pinned
+value. **This is not the secure fallback:** `authorize network default` grants
+`host`, and `authorize docker-daemon default` grants `host-socket`, even without
+a project recommendation. Use the deny values below to withhold access.
+`none` selects a node's deny value; `base-image` has no deny value.
 
-| Authorization | Grant value | Deny / default value | Notes |
+| Authorization | Grant value | Deny value | Notes |
 |---|---|---|---|
 | `network` | `host` | `bridge` (`none` stores `bridge`) | `bridge` is the secure default when unanswered |
 | `docker-daemon` | `host-socket` | `none` | Exposes `/var/run/docker.sock` when set to `host-socket` |
