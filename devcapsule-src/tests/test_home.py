@@ -33,7 +33,8 @@ def test_empty_show_and_list_do_not_create_home(home: Path, capsys) -> None:
     assert not home.exists()
 
 
-def test_setup_show_and_withdraw(home: Path, capsys) -> None:
+def test_setup_show_and_withdraw(home: Path, capsys, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("importlib.metadata.version", lambda name: "0.3.0")
     for channel in ("devcapsule-base", "claude-code"):
         assert cli.main(["home", "trust", "accept", channel, "--yes"]) == 0
     for name, value in (("memory", "8GiB"), ("cpus", "4")):

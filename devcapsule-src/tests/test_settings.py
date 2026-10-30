@@ -24,7 +24,8 @@ def test_empty_and_legacy_files_are_not_read(tmp_path: Path) -> None:
     assert (root / "trust.toml").read_text() == "not valid TOML"
 
 
-def test_round_trip_and_no_rewrite(tmp_path: Path) -> None:
+def test_round_trip_and_no_rewrite(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("importlib.metadata.version", lambda name: "0.3.0")
     env = {"DEVCAPSULE_CONFIG_HOME": str(tmp_path / "home")}
     document = {"defaults": {"cpus": 4, "memory": "8GiB"},
                 "trust": {"channels": {"example": {"vendor": "Example", "origins": ["https://example.test"],
@@ -52,6 +53,7 @@ def test_unsupported_schema(tmp_path: Path, schema: object) -> None:
 
 
 def test_minimum_refusal_precedes_content_and_command_diagnoses(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys) -> None:
+    monkeypatch.setattr("importlib.metadata.version", lambda name: "0.3.0")
     monkeypatch.setenv("DEVCAPSULE_CONFIG_HOME", str(tmp_path))
     path = storage.settings_path()
     path.write_text('minimum-devcapsule = "9.0.0"\ndevcapsule-settings-schema-version = 2\ndefaults = false\n')
