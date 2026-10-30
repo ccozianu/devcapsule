@@ -80,8 +80,9 @@ channel prompt.
 Channel trust binds a vendor, allowed HTTPS/registry origins, an integrity
 method, and a terms URL, while every artifact download is still verified
 against the SHA-256 checksum pinned in the lock. A new origin or changed terms
-URL requires a fresh acceptance (re-accepting preserves previously accepted
-origins alongside the new one).
+URL requires a fresh acceptance. Re-accepting adds origins to the accepted set
+only when the vendor, terms URL, and integrity method remain unchanged.
+Otherwise, the new acceptance replaces the previous entry.
 
 Because channel trust lives in the home's `settings.toml`, anyone launching
 from that home shares its accepted channels. A single checkout can still block
@@ -105,11 +106,12 @@ devcapsule project config approve
 ```
 
 `authorize base-image default` consents to the exact base digest currently
-pinned in the checkout's lock. When a lock update bumps versions of software
-that you authorized per checkout rather than through home channel trust,
-`project config approve` lists the pending version updates, and `project config
-approve claude-code-download` or `project config approve --all` records them
-(provided no non-software authorization decisions are also pending). Matching
-home channel trust satisfies version upgrades automatically without a separate
-`config approve` step; see [Component
-upgrades](../updates/component-upgrades.md).
+pinned in the checkout's lock. It does not accept a channel for the whole home.
+After a lock update changes software authorized per checkout, `project config
+approve` lists pending version approvals. With no names or `--all`, it exits
+with status `1` when approvals remain, or `0` when none remain.
+
+Use `project config approve claude-code-download` or `project config approve
+--all` to record approvals. The command refuses when other required decisions
+also need attention. Matching home channel trust covers version upgrades
+without a separate approval; see [Component upgrades](../updates/component-upgrades.md).

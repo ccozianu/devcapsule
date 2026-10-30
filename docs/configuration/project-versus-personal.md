@@ -36,8 +36,8 @@ checkout unless you explicitly share a directory.
   omit` leaves out a project offer or removes your addition, `config restore`
   restores an omitted offer, and `config use` picks a provider when alternatives
   exist.
-- Separate private files hold your saved `docker run` options and environment
-  variables, while managed per-checkout directories hold the capsule's home,
+- A separate private file holds your saved `docker run` options, including
+  environment variables. Managed per-checkout directories hold the capsule's home,
   IDE preferences, and agent sign-ins. Use `config bind` or `state adopt` (and
   `config unbind`) to point a declared slot at your own host directory; see
   [IDE preferences and plugins](ide-preferences.md) and
@@ -49,7 +49,7 @@ default` clears a provider override, and `config set NAME default` clears a
 value override. Host-access recommendations ask for your decision instead of
 taking effect silently: `project run` shows the project's reason and the access
 requested so you can allow it once, save an allowance or denial, or defer.
-`config forget NAME` clears a saved host-access answer.
+`config forget NAME` clears a saved host-access answer or software consent.
 
 ## Your configuration home
 
@@ -87,8 +87,9 @@ devcapsule project config check
 recommendations. A saved host answer remains in force when its recommendation
 changes. The listing reports the difference.
 
-A required capability must remain present and meet its minimum. Your checkout
-cannot waive it. A launcher upgrade keeps the lock and your saved choices.
+A required capability must remain present and meet its minimum. The explicit
+exception is [replacing a required IDE for one launch](capabilities.md#a-required-ide)
+with `run --ide IDE --force`. A launcher upgrade keeps the lock and your saved choices.
 
 ## Saved Docker arguments
 
@@ -133,8 +134,10 @@ shell's variable through at each launch instead, without storing its value.
 Without a terminal, supply a value or use `--from-host`.
 `env list` shows names and whether each value is saved or comes from the host.
 At a terminal, `run` asks for a missing required value with a hidden prompt.
-A missing host variable also needs an answer when the project requires it.
-Without a terminal, that required input stops launch with status 3.
+A missing variable bound with `--from-host` also needs an answer, even if the
+project does not declare it. Without a terminal, either missing input stops
+launch with status `3`. Set the host variable, save a literal value, or remove
+an unwanted binding with `config env unset NAME`.
 For one launch, use `run --env NAME=VALUE` or `run --env NAME`.
 Add `--save` to record the assignment or host-variable binding.
 
@@ -165,12 +168,25 @@ It also shows later requests and their results; these do not update the snapshot
 Inside the capsule, `devcapsule project config show` reports the same view.
 
 The launcher validates console requests with the corresponding CLI command.
-It can record IDE choices, values, environment variables with a literal
-value, denials and removed bindings.
+It can record IDE choices, values, literal environment assignments, denials,
+and removed bindings. Automatic environment assignments must use exactly
+`env set NAME VALUE`, with neither `NAME` nor `VALUE` starting with `-`.
+Other forms need host confirmation.
 It can also withdraw home trust or clear saved Docker arguments.
 The console accepts `add`, `omit`, `restore` and `use` for capability choices.
 The launcher applies valid requests to the next launch. Adding a vendor
 capability leaves its consent decision for that launch.
+
+The console also applies these restrictive authorization requests without host
+confirmation. Use exactly the three tokens shown, replacing `VALUE`:
+
+| Request | Allowed values |
+|---|---|
+| `authorize network VALUE` | `bridge`, `none` |
+| `authorize docker-daemon VALUE` | `none` |
+| `authorize development-sudo VALUE` | `false`, `none` |
+| `authorize host-browser VALUE` | `false`, `none` |
+| `authorize host-x11 VALUE` | `false`, `none` |
 
 Authorization grants, trust acceptance, bindings, replacement Docker
 arguments, forgotten answers and host-variable bindings need confirmation

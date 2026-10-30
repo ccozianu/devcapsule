@@ -25,8 +25,9 @@ want the newer base recipe on your checkout right away.
 
 `images build --type base` builds from the recipe embedded in your launcher and
 records the launcher's source revision in image provenance labels. Read the
-revision from `devcapsule version` (or copy the launcher's printed command) and
-supply a local `--tag` name, which `images build --type base` requires:
+revision from `devcapsule version` and replace the example revision below.
+Supply a local `--tag` name, which `images build --type base` requires even when
+you copy the launcher's printed build hint:
 
 ```bash
 devcapsule version
@@ -37,19 +38,30 @@ devcapsule images build --type base --recipe ubuntu-24.04 \
 
 Choose a `--tag` that makes the local image clear to you. The first build
 installs OS packages and toolchains and takes several minutes. Add `--network
-host` if your Docker BuildKit network cannot resolve DNS names. When running a
-launcher built from unpublished or modified local source rather than a
-downloaded release, pass `--allow-local-source` instead of
-`--source-revision`.
+host` if your Docker BuildKit network cannot resolve DNS names.
+`--source-revision` must match the revision already embedded in the launcher;
+it does not select different source code.
 
-Verify the built image and its provenance labels in your local Docker store:
+`--allow-local-source` bypasses the public-revision check for a development
+build. It cannot supply missing console source: current base recipes still
+need a full GitHub source identity to install the web console. Use a launcher
+built from a published commit when that identity is missing.
+
+List the built image in your local Docker store:
 
 ```bash
 devcapsule images list
 ```
 
-`images list` reports the recipe (such as `ubuntu-24.04@11`) and the source
-revision it was built from.
+`images list` reports the recipe (such as `ubuntu-24.04@11`), image ID, and tags.
+The build output reports the source revision and source URL. To inspect the
+stored revision later:
+
+```bash
+docker image inspect devcapsule-base-local:recipe-11
+```
+
+Read `devcapsule.source.revision` under `Config.Labels` in the JSON output.
 
 ## Select it for a checkout
 
@@ -90,7 +102,8 @@ your checkout's answers.
 devcapsule project config authorize base-image default
 ```
 
-`default` returns this checkout to the base pinned in the project lock (covered
-either by that exact digest or by your home's `devcapsule-base` channel trust).
+`default` returns this checkout to the base pinned in the project lock and
+records consent for that exact digest. It does not accept the home-wide
+`devcapsule-base` channel.
 The local base image stays in your Docker store until you remove it with
 `docker rmi`.

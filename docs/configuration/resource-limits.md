@@ -26,7 +26,8 @@ devcapsule project run --memory 12g
 
 - `project config set` records the value for this checkout; `project config set
   memory default` (or `cpus default`) forgets your checkout override so project
-  and home defaults apply again.
+  and home defaults apply again. These two limits do not accept `none` as a
+  checkout value.
 - `home default` sets the default for every project launched from your active
   [configuration home](home.md) that has no project recommendation or checkout
   override; `home default memory none` (or `cpus none`) removes it.
@@ -63,7 +64,12 @@ description = "Parallel build jobs; the integration suite needs at least 4."
 Set or clear them with the same checkout command—`devcapsule project config set
 build.workers 4` or `devcapsule project config set build.workers default`—or
 pass `--set build.workers 4` during `project init`. DevCapsule validates each
-value against its declared type. Declared values never grant host access or
+value against its declared type. `default` follows the project's recommendation;
+it does not force the value to be absent. For an optional declared value,
+`project config set build.workers none` explicitly omits it. A declaration with
+`required = true` rejects `none`.
+
+Declared values never grant host access or
 software downloads; see [Granting and
 withdrawing](../containment/granting-and-withdrawing.md) for authorizations.
 
