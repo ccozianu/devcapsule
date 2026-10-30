@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-30; CI path gating and advisory diff coverage merged into release-0.3.0; Pair Review naming patch next
+State: integrating 2026-10-30; release-to-main PR #317 open as draft; two conflicts await explicit release synchronization direction
 
 Definition read: WORKFLOW.md@bc1b631d1da6, WORKFLOW-LOCAL.md@450fc42e2234
 
@@ -15,6 +15,26 @@ Delivery method: pull request from `release-0.3.0` to `main` before each candida
 Branch association: `release-0.3.0`, the release branch, the workstream's selection from the cut to the final tag; `ws-maintenance/session-logs` (PR #207) and `ws-maintenance/log-rotation` (PR #209, then #216) are merged to `main` and closed; `ws-maintenance/post-0.2.15` is merged through PR #172 and closed; release-0.2.15 is closed and retained
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`
+
+## Release-to-main integration — 2026-10-30
+
+Owner requested a PR carrying everything currently on release-0.3.0 to main.
+Opened [PR #317](https://github.com/ccozianu/devcapsule/pull/317), head
+`4PR-10-release-0.3.0`, an untouched copy of the release tip under local
+Release Policy 8. Read-only merge-tree preview against main `ebab228a`
+found two conflicts: WORKFLOW.md (retain the Pair Review short name) and
+the CI work order (retain the implementation evidence). Main's development
+version remains 0.3.1.dev0; its final tree must omit the release-only
+source-version override in docs/versions.yaml.
+
+A temporary integration-branch merge was aborted without committing after
+checking the more specific untouched-copy rule. No main content was merged
+into release-0.3.0. Draft PR records the conflicts and existing release
+validation; it does not claim the unresolved integration tree is validated.
+Pending owner direction: synchronize main into the release under the local
+exception requiring the owner's word each time, or authorize an alternative
+integration method. No final tag or publication was requested. The workflow
+runs ci-gate automatically; required-check enforcement is a separate setting.
 
 ## CI path gating and advisory diff coverage — 2026-10-30
 
@@ -2247,8 +2267,10 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-Current: apply the accepted Pair Review naming and packaged-definition
-patch for 0.3.0 as the next separate maintenance slice. The CI work order
+Current: finish release-to-main PR #317 after the owner resolves the
+synchronization decision above, validate its integration tree, and hand it
+back for merge. Then apply any remaining accepted Pair Review naming and
+packaged-definition patch for 0.3.0 as a separate maintenance slice. The CI work order
 is implemented, reviewed, validated and merged into the release through
 PR #312. Required ci-gate configuration remains an owner action; normal
 release propagation to main remains open. Documentation scheduling records
@@ -3099,6 +3121,11 @@ asset downloads verify publication; no credentialed Actions-run inspection is
 claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
+
+- Release-to-main PR #317 is draft with two documented conflicts. Await the
+  owner’s explicit synchronization or integration-method direction; do not
+  silently merge main into release. The untouched copy carries all current
+  release work; no new feature work is implied by this integration request.
 
 - CI Pair Review #314 settled without a revision round. Reviewer proposals
   not implemented: migrate paths-filter v3 to v4 (Node 20 produces a hosted
