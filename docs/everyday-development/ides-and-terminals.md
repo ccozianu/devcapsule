@@ -1,68 +1,91 @@
 ---
 description: The IDEs DevCapsule offers, the terminal inside them, and how the capsule's shell differs from your computer's.
-updated: 2026-10-29
+updated: 2026-10-30
 weight: 1
 ---
 # IDEs and terminals
 
-Choose one IDE for your checkout with `devcapsule project config ide NAME`.
-This choice stays outside the repository. For a new project, use `init --ide`
-as shown below.
+Choose one desktop IDE for your checkout with `devcapsule project config ide
+NAME` (or pass `--ide NAME` during `devcapsule project init`). Your IDE choice
+is stored in your local checkout record rather than committed to the shared
+manifest, so teammates on the same repository can each use their preferred
+editor.
 
-| Capability | IDE | Development tools |
+| Capability | IDE component | Included toolchains |
 |---|---|---|
-| `python-ide` | PyCharm | Python from the base |
-| `frontend-ide` | VSCodium (default) or Visual Studio Code (`vscode`) | Node.js from the base |
-| `vscode-ide` | Visual Studio Code | Polyglot editor; combine with base or component toolchains |
-| `java-ide` | IntelliJ IDEA | Java and Maven from the base |
-| `eclipse-ide` | Eclipse IDE for Java Developers | Bundled Eclipse runtime; Java and Maven from the base |
-| `dotnet-ide` | JetBrains Rider | .NET SDK selected automatically |
+| `python-ide` | PyCharm (`pycharm`) | Python 3 from the base image |
+| `frontend-ide` | VSCodium (`codium`, default) or Visual Studio Code (`vscode`) | Node.js and npm from the base image |
+| `vscode-ide` | Visual Studio Code (`vscode`) | Polyglot editor; combine with base or component toolchains |
+| `java-ide` | IntelliJ IDEA (`intellij`) | Temurin Java and Maven (`JAVA_HOME`, `MAVEN_HOME`) from the base image |
+| `eclipse-ide` | Eclipse IDE for Java Developers (`eclipse`) | Bundled Eclipse runtime plus Java and Maven from the base image |
+| `dotnet-ide` | JetBrains Rider (`rider`) | `.NET` SDK (`dotnet-sdk`) selected automatically |
 
-For Visual Studio Code on any project, run `devcapsule project config ide vscode`
-(or `vscode-ide`). On a `frontend-ide` checkout, `devcapsule project config use frontend-ide vscode`
-selects Microsoft's distribution instead of VSCodium. DevCapsule does not
-redistribute Visual Studio Code in its images. On the first launch that needs a
-pinned version, local materialization downloads the archive directly from
-Microsoft on your machine and verifies it by SHA-256. Trust the channel once per
-configuration home with `devcapsule home trust accept vscode`, or consent per
-checkout with `devcapsule project config authorize vscode-download true`. Both
-consent to downloading Visual Studio Code from Microsoft's HTTPS origin under
-[Microsoft's Visual Studio Code license terms](https://code.visualstudio.com/license);
-see [Vendor software and trust](../configuration/software-approvals.md).
+## Choosing Visual Studio Code
 
-A project may require one IDE, for example because it develops a plugin for
-it. Then every checkout launches that IDE, and `--ide` with another one is
-refused. For one session with another IDE, add `--force`:
-`devcapsule project run --ide codium --force`. The launcher warns which
-required IDE it sets aside, runs the IDE you asked for, and records the
-departure in that launch's plan. The override is not saved: the project's
-requirement and your checkout's IDE are unchanged. The next plain `run`
-applies the ordinary requirements to your saved selection. See
-[a required IDE](../configuration/capabilities.md#a-required-ide).
+To use Microsoft Visual Studio Code on any project, run:
 
-For Eclipse, run `devcapsule project init --require java --ide eclipse-ide`, then
-`devcapsule project run`. Open the printed desktop link. In Eclipse, choose
-**File > Open Projects from File System** to import the mounted project folder
-(or **File > Import > Maven > Existing Maven Projects** for a Maven project).
-Keep source files in the mounted project folder; Eclipse's workspace at
-`/ide-workspace` stores preferences, project references and local history.
-It persists per checkout, along with Eclipse's user configuration in the
-capsule home. The complete Java Developers package includes JDT, Git, Maven
-and Gradle integration. Existing `java-ide` projects continue to use IntelliJ.
+```bash
+devcapsule project config ide vscode
+```
 
-For a new Rider project, run `devcapsule project init --require dotnet --ide dotnet-ide`, then
-`devcapsule project run`. Open the desktop link printed by the launcher in
-your browser. Rider handles its own JetBrains license or sign-in flow.
-DevCapsule does not activate a trial or supply a license.
+(On a `frontend-ide` checkout, `devcapsule project config use frontend-ide
+vscode` also switches the provider from VSCodium to VS Code.)
 
-The `dotnet` capability also adds the SDK to another IDE. The pinned SDK
-includes the runtime, MSBuild and targeting packs; use `dotnet build` and
-`dotnet run` in the IDE's terminal. Additional workloads are not included.
-SDK telemetry is disabled by default.
+DevCapsule does not redistribute VS Code in published images. On the first
+launch that needs a pinned version, DevCapsule downloads the archive directly
+from Microsoft on your machine and verifies its SHA-256 digest. Trust the
+channel once for your configuration home with `devcapsule home trust accept
+vscode`, or approve it per checkout with `devcapsule project config authorize
+vscode-download true` after reviewing [Microsoft's Visual Studio Code license
+terms](https://code.visualstudio.com/license); see [Vendor software and
+trust](../configuration/software-approvals.md).
 
-That terminal runs inside the capsule. Its tools and SDK are installed there;
-your host's SDK, shell configuration and credentials are not imported.
-NuGet packages and user tools live in the capsule's persistent home. IDE
-settings and plugins also persist, with a separate namespace for each IDE.
-See [what persists](../sessions/what-persists.md) and
-[IDE preferences](../configuration/ide-preferences.md).
+## Overriding a project-required IDE for one launch
+
+When a project requires a specific IDE in `.devcapsule/devcapsule.toml` (for
+example, while developing an IDE plugin), every checkout uses that IDE and
+plain `run --ide` with another editor is refused. To launch a different IDE for
+one session without modifying the manifest or your saved checkout record, add
+`--force`:
+
+```bash
+devcapsule project run --ide codium --force
+```
+
+The launcher warns which required IDE it set aside, runs your requested editor
+for this session only, and skips recording that departed run as a known-good
+project configuration. Your next plain `devcapsule project run` returns to the
+project's required IDE; see [A required
+IDE](../configuration/capabilities.md#a-required-ide).
+
+## Eclipse and JetBrains specifics
+
+- **Eclipse (`eclipse-ide`):** After opening the desktop URL, choose **File →
+  Open Projects from File System** to import `/workspace/<slug>` (or **File →
+  Import → Maven → Existing Maven Projects**). Keep your source files inside
+  `/workspace/<slug>`; Eclipse stores workspace metadata, preferences, and local
+  history separately at `/ide-workspace`, which persists per checkout alongside
+  `/home/devcapsule`.
+- **PyCharm, IntelliJ IDEA, and Rider:** Complete any JetBrains sign-in or
+  license setup inside the capsule; DevCapsule does not supply a license or
+  activate trials automatically. Settings and installed plugins persist per
+  checkout under separate slots for each IDE ([IDE preferences and
+  extensions](../configuration/ide-preferences.md)).
+- **`.NET` with another editor:** Add or require the `dotnet` capability (for
+  example, `devcapsule project config add dotnet` alongside `vscode-ide`) to
+  include the pinned `.NET` SDK, runtime, and MSBuild (`DOTNET_CLI_TELEMETRY_OPTOUT=1`
+  by default) without switching to Rider.
+
+## The terminal inside the capsule
+
+The IDE's integrated terminal runs inside the Linux container at
+`/workspace/<slug>`, not on your host:
+
+- Compilers, runtimes, and agents come from the pinned base image and selected
+  components; your host's `PATH`, shell dotfiles, SSH keys, and cloud
+  credentials are not imported.
+- Your shell home is `/home/devcapsule`, which persists per checkout across
+  container restarts—along with `~/.bashrc`, language caches (`~/.cache`,
+  `~/.npm`, `~/.nuget`, `~/.m2`), `~/xtras/bin`, and `/opt/xtras` ([Extra tools
+  in `/opt/xtras`](../configuration/extra-tools.md) and [What
+  persists](../sessions/what-persists.md)).
