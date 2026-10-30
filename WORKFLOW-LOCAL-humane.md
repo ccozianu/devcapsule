@@ -247,9 +247,12 @@ to use it; the rule makes that standing. It names the exact path so that
 detection is a file test, not a search. It is a local arrangement, a hack of
 this project's own, until the GitHub CLI is a proper DevCapsule component.
 
-## Review Partners In This Checkout
+<a id="review-partners-in-this-checkout"></a>
 
-**Rule.** The engines are the three agent command lines signed in once in the
+## Pair Review Loop In This Checkout
+
+**Rule.** Apply the Pair Review Loop, or Pair Review, in this checkout.
+The engines are the three agent command lines signed in once in the
 capsule; a pair is named by engine and model; the review partner gets a
 worktree under `~/worktrees`, its own venv and its own gate scratch; it runs
 detached with the brief as its prompt, in the recorded form for its engine;
@@ -257,8 +260,8 @@ the GitHub CLI rule applies to it; assessment comments carry one of two
 labels; briefs are committed under the workstream's evidence; the developer
 document holds the template, the recipes and the record.
 
-**Intended effect.** A human can say "implement this with the review-partner
-loop, with that engine as the review partner" and any of the three agents
+**Intended effect.** A human can say "implement this with Pair Review,
+with that engine as the review partner" and any of the three agents
 can run it from the files alone, with the same artifacts as the loops that
 came before.
 
@@ -330,7 +333,7 @@ reasoned, and has an end condition.
 
 **Motivation.** The synchronization of `release-0.3.0` with `main` during
 the cycle, on 2026-10-22 twice, each on the owner's word, exists because the cycle produced workflow rules on `main`,
-the GitHub CLI rule and the review-partner loop, that the release checkout
+the GitHub CLI rule and the Pair Review Loop, that the release checkout
 must follow too, and `main` had received nothing else outside the
 candidate process; the merge kept the release version where `main` carries
 the next development version. The release-fix exception exists because the generic rule's
