@@ -4,9 +4,9 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: integrating 2026-10-30; release-to-main PR #317 open as draft; two conflicts await explicit release synchronization direction
+State: integrating 2026-10-30; authorized main synchronization resolved in PR #318 for owner review; release-to-main PR #317 waits for it
 
-Definition read: WORKFLOW.md@bc1b631d1da6, WORKFLOW-LOCAL.md@450fc42e2234
+Definition read: WORKFLOW.md@bfc91d68cd06, WORKFLOW-LOCAL.md@65501b3407db
 
 Integration target: `main`
 
@@ -27,14 +27,37 @@ the CI work order (retain the implementation evidence). Main's development
 version remains 0.3.1.dev0; its final tree must omit the release-only
 source-version override in docs/versions.yaml.
 
-A temporary integration-branch merge was aborted without committing after
-checking the more specific untouched-copy rule. No main content was merged
-into release-0.3.0. Draft PR records the conflicts and existing release
-validation; it does not claim the unresolved integration tree is validated.
-Pending owner direction: synchronize main into the release under the local
-exception requiring the owner's word each time, or authorize an alternative
-integration method. No final tag or publication was requested. The workflow
-runs ci-gate automatically; required-check enforcement is a separate setting.
+Owner authorized main-to-release synchronization on 2026-10-30 and
+requested a PR to inspect the resolution. [PR #318](https://github.com/ccozianu/devcapsule/pull/318),
+`ws-maintenance/0.3.0-main-sync` into `release-0.3.0`, contains merge
+`fb8d8f10` with parents release `c2742621` and main `ebab228a`. This
+owner-requested review branch is a temporary maintenance slice; the release
+remains the workstream's integration selection. No merge is pushed directly
+to the release branch. `git show --remerge-diff fb8d8f10` isolates the
+resolution edits for the owner:
+- retain the Pair Review short-name sentence and the explicit-trigger rule;
+- retain CI implementation/acceptance evidence, acknowledge #312's merge,
+  and use the local ast-grep proposal link now that its file is present.
+
+The automatic merge carries main's accepted Pair Review naming and packaged
+definition; a separate application of that accepted patch is no longer
+needed after #318 lands. Other incoming work orders retain their own scope
+and owners. All three source-version fields remain 0.3.0; docs/versions.yaml
+keeps its release-only source-version override. No new tests are warranted
+for these textual conflict resolutions. The full combined gate at `fb8d8f10`
+passed: 2,644 unit tests (40 deselected, one xfail and one XPASS), 18 packaging
+tests, 357 web-console tests, type checks, source/PEX smokes and the 192-page
+documentation contract including 18 aliases. Log: local scratch
+`/var/tmp/maintenance-ci/main-sync-gate.log`; counts are preserved here and
+in PR #318. Only status records changed after this gate.
+
+Next: owner reviews and merges #318, then refresh #317's untouched release
+copy. Before handing #317 over for merge, preserve main's 0.3.1.dev0 and
+remove the release-only documentation override from the final main tree;
+merging ancestry alone must not reset main's version. This remains a
+concrete integration follow-up, not a completed validation claim. No final
+tag or publication was requested. Required ci-gate enforcement remains a
+separate GitHub setting.
 
 ## CI path gating and advisory diff coverage — 2026-10-30
 
@@ -2267,10 +2290,10 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-Current: finish release-to-main PR #317 after the owner resolves the
-synchronization decision above, validate its integration tree, and hand it
-back for merge. Then apply any remaining accepted Pair Review naming and
-packaged-definition patch for 0.3.0 as a separate maintenance slice. The CI work order
+Current: owner reviews and merges main-synchronization PR #318. Then
+refresh release-to-main PR #317, settle main-specific version/documentation
+metadata, validate its final tree, and hand it back for merge. The accepted
+Pair Review naming and packaged definition arrive through #318. The CI work order
 is implemented, reviewed, validated and merged into the release through
 PR #312. Required ci-gate configuration remains an owner action; normal
 release propagation to main remains open. Documentation scheduling records
@@ -3122,10 +3145,10 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Release-to-main PR #317 is draft with two documented conflicts. Await the
-  owner’s explicit synchronization or integration-method direction; do not
-  silently merge main into release. The untouched copy carries all current
-  release work; no new feature work is implied by this integration request.
+- Main-to-release synchronization is authorized and resolved in PR #318,
+  pending owner review/merge. PR #317 stays draft until its release copy
+  is refreshed and main-specific metadata is handled. The naming patch
+  comes with #318; no new feature work is implied by this integration.
 
 - CI Pair Review #314 settled without a revision round. Reviewer proposals
   not implemented: migrate paths-filter v3 to v4 (Node 20 produces a hosted

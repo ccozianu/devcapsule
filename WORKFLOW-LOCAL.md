@@ -325,9 +325,11 @@ stands until the GitHub CLI is a DevCapsule component.
    After the human reports a merge, re-verify `main` through an SSH fetch.
 7. Keep this rule until the owner changes it or the component replaces it.
 
-## Review Partners In This Checkout
+<a id="review-partners-in-this-checkout"></a>
 
-Owner direction, 2026-10-22. It applies the review-partner loop, topic 9.11
+## Pair Review Loop In This Checkout
+
+Owner direction, 2026-10-22. It applies the Pair Review Loop, topic 9.11
 of `WORKFLOW.md`, in this checkout.
 
 1. The engines are the agent command lines on the capsule's `PATH`, signed

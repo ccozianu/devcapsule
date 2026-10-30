@@ -3,7 +3,8 @@
 Origin: product-owner draft composed outside the capsule, reviewed against
 the repository on 2026-10-30; owner decisions 1B and 2B the same day.
 Status: implemented and Pair Reviewed in PR #312/#314; local and hosted
-acceptance passed; owner merge and required-check configuration remain open.
+acceptance passed; merged into release-0.3.0 through #312. Required-check
+configuration and propagation to main remain open.
 Evidence: [maintenance acceptance record](../wip/2026-09-18-maintenance/evidence/2026-10-30-ci-gating/acceptance.md).
 Coordination owner: `project-management`. Implementation owner: `maintenance`.
 Target: **0.3.0**. This is repository engineering work, not an adopter feature.
@@ -67,7 +68,7 @@ Read against mainline `b026936b2d476b27d7d81c19670c5e3dc7915cdb`:
   [testing-policy intake](../wip/2026-08-09-project-management/intake/2026-10-10-capsule-webconsole-reconcile-testing-approach-with-practice.md):
   the local build gate is broader than hosted unit testing. This order does
   not silently reconcile that policy difference.
-- [Ast-grep proposal](https://github.com/ccozianu/devcapsule/blob/b026936b2d476b27d7d81c19670c5e3dc7915cdb/engineering-docs/work-orders/2026-10-29-ast-grep-guardrails.md): a separate draft, not
+- [Ast-grep proposal](2026-10-29-ast-grep-guardrails.md): a separate draft, not
   authorization to implement its rules here. Route its configuration inputs
   appropriately if present when this order is executed.
 
