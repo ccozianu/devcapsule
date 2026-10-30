@@ -4,9 +4,9 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: integrating 2026-10-30; release-to-main PR #317 open as draft; two conflicts await explicit release synchronization direction
+State: integrating 2026-10-30; #318 merged and #317 refreshed without conflicts; main-metadata correction awaits exception to untouched-copy rule
 
-Definition read: WORKFLOW.md@bc1b631d1da6, WORKFLOW-LOCAL.md@450fc42e2234
+Definition read: WORKFLOW.md@bfc91d68cd06, WORKFLOW-LOCAL.md@65501b3407db
 
 Integration target: `main`
 
@@ -27,14 +27,49 @@ the CI work order (retain the implementation evidence). Main's development
 version remains 0.3.1.dev0; its final tree must omit the release-only
 source-version override in docs/versions.yaml.
 
-A temporary integration-branch merge was aborted without committing after
-checking the more specific untouched-copy rule. No main content was merged
-into release-0.3.0. Draft PR records the conflicts and existing release
-validation; it does not claim the unresolved integration tree is validated.
-Pending owner direction: synchronize main into the release under the local
-exception requiring the owner's word each time, or authorize an alternative
-integration method. No final tag or publication was requested. The workflow
-runs ci-gate automatically; required-check enforcement is a separate setting.
+Owner authorized main-to-release synchronization on 2026-10-30 and
+requested a PR to inspect the resolution. [PR #318](https://github.com/ccozianu/devcapsule/pull/318),
+`ws-maintenance/0.3.0-main-sync` into `release-0.3.0`, contains merge
+`fb8d8f10` with parents release `c2742621` and main `ebab228a`. This
+owner-requested review branch is a temporary maintenance slice; the release
+remains the workstream's integration selection. No merge is pushed directly
+to the release branch. `git show --remerge-diff fb8d8f10` isolates the
+resolution edits for the owner:
+- retain the Pair Review short-name sentence and the explicit-trigger rule;
+- retain CI implementation/acceptance evidence, acknowledge #312's merge,
+  and use the local ast-grep proposal link now that its file is present.
+
+The automatic merge carries main's accepted Pair Review naming and packaged
+definition; a separate application of that accepted patch is no longer
+needed after #318 lands. Other incoming work orders retain their own scope
+and owners. All three source-version fields remain 0.3.0; docs/versions.yaml
+keeps its release-only source-version override. No new tests are warranted
+for these textual conflict resolutions. The full combined gate at `fb8d8f10`
+passed: 2,644 unit tests (40 deselected, one xfail and one XPASS), 18 packaging
+tests, 357 web-console tests, type checks, source/PEX smokes and the 192-page
+documentation contract including 18 aliases. Log: local scratch
+`/var/tmp/maintenance-ci/main-sync-gate.log`; counts are preserved here and
+in PR #318. Only status records changed after this gate.
+
+Owner merge of #318 verified at `9a412058` by GitHub and SSH fetch.
+Its tree equals tested head `a2485dd4`. PR #317's untouched release copy
+was fast-forwarded to that release tip; main `ebab228a` is an ancestor,
+so the textual conflicts are resolved.
+
+Remaining policy conflict: Version Scheme 4 requires main to retain its
+next development version, but Release Policy 8 says to commit nothing to
+the PR copy. The unmodified release tree would reset main to 0.3.0.
+A four-file patch, prepared and checked with `git apply --check`, restores
+0.3.1.dev0 in pyproject.toml and both workflow frontmatters and removes the
+release-only source-version override from docs/versions.yaml. It is shown
+in PR #317 and kept in scratch `/var/tmp/maintenance-ci/main-metadata.patch`.
+No patch content has been applied. Await owner permission for this one-time
+metadata adjustment on #317's copy; release-0.3.0 would stay unchanged.
+Then apply the standard bump command, remove the override, validate the main
+integration tree and hand #317 back. This project-local rule conflict needs
+clarification before the next release propagation. No final
+tag or publication was requested. Required ci-gate enforcement remains a
+separate GitHub setting.
 
 ## CI path gating and advisory diff coverage — 2026-10-30
 
@@ -404,15 +439,6 @@ was inside the pytest scratch and was removed by pytest; gate logs must be
 outside basetemp. Final validation uses tmpfs scratch and an external log. No merge from main is planned: this is a release slice based on
 the current release tip, whose workflow and approval changes are already
 present. The release branch is not synchronized or rewritten.
-
-## User Documentation 0.3.0 CLI Alignment — Batch 5 (`sessions/`, `collaboration/`, `platforms/`) — 2026-10-30
-
-Slice branch: `ws-maintenance/0.3.0-docs-batch-5-sessions-collab-platforms` (targeting `release-0.3.0`, final batch of [2026-10-30-user-docs-0-3-0-cli-alignment.md](../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md)).
-
-- Updated 9 `docs/*.md` files across `docs/sessions/` (5), `docs/collaboration/` (1), and `docs/platforms/` (3), retiring the final 2 `status: planned` stubs (`docs/sessions/several-projects.md` and `docs/sessions/another-machine.md`) so all 49 `docs/**/*.md` files and all 12 stubs across Batches 1–5 are covered with zero overlaps.
-- Aligned `start-stop-reconnect.md` (fixing the stale host `project info` container-name statement), `what-persists.md` (explicit mount scope and `~/.gemini` credential rules), `web-console.md` (0.3.0 launcher configuration channel, immediate vs deferred `config console` requests, and launch-time `listing.json`), `working-in-workstreams.md` (`workflow` and `bootstrap project` CLI alignment, `aliases` preserved), and `linux.md`, `macos.md`, and `windows-wsl2.md` (`role: windows` and `aliases` preserved).
-- Pre-review validation passed: `docs-contract` (`192` pages), `./scripts/website.sh build && ./scripts/website.sh check` (`23` tests, `196` HTML pages, `14,459` links/assets/anchors), `92` `release_docs` unit tests, and `bash -n` on all 16 shell blocks.
-- Next step: open Batch 5 PR against `release-0.3.0` and run file-by-file Pair Review with `Codex (gpt-6-astra)`.
 
 ## The CLI UX redesign in rc4 — 2026-10-24
 
@@ -2276,10 +2302,10 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-Current: finish release-to-main PR #317 after the owner resolves the
-synchronization decision above, validate its integration tree, and hand it
-back for merge. Then apply any remaining accepted Pair Review naming and
-packaged-definition patch for 0.3.0 as a separate maintenance slice. The CI work order
+Current: #318 is merged and #317 refreshed. Obtain the one-time exception
+for main metadata on the release-copy branch, apply the prepared four-file
+correction, validate, and hand #317 back for merge. Pair Review naming and
+its packaged definition are now on the release branch through #318. The CI work order
 is implemented, reviewed, validated and merged into the release through
 PR #312. Required ci-gate configuration remains an owner action; normal
 release propagation to main remains open. Documentation scheduling records
@@ -3131,10 +3157,11 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Release-to-main PR #317 is draft with two documented conflicts. Await the
-  owner’s explicit synchronization or integration-method direction; do not
-  silently merge main into release. The untouched copy carries all current
-  release work; no new feature work is implied by this integration request.
+- PR #318 is merged; #317 is refreshed and has no textual conflicts.
+  The four-file main-metadata correction is prepared but not applied.
+  It requires an explicit exception to Release Policy 8 (untouched copy)
+  to preserve Version Scheme 4 (main stays on its development version).
+  No new feature work is implied by this integration.
 
 - CI Pair Review #314 settled without a revision round. Reviewer proposals
   not implemented: migrate paths-filter v3 to v4 (Node 20 produces a hosted
@@ -3617,7 +3644,6 @@ Earlier open-thread history (read against the current scope above):
 - [Runtime CLI blocker](../../bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md): next implementation task; blocks 0.2.14.
 - [URL-opening defect](../../bugs/devcapsule/2026-09-24-url-opening-without-browser-handler.md): contained-display triage.
 - [Workflow onboarding](../../work-orders/2026-09-24-workflow-installation-onboarding.md): non-blocking follow-up.
-- [0.3.0 user docs Batch 5 evidence](evidence/2026-10-30-docs-batch-5/README.md): Batch 5 (`sessions/`, `collaboration/`, `platforms/`) scope, validation, and Pair Review record.
 
 - [Legacy launch capability work item](../../work-orders/2026-09-22-legacy-launch-capability-disposition.md): future-release decisions and delivery, blocking V1.
 - [Release overview](../../releases/v0.2.14/README.md): cut, candidates and acceptance checklist.
