@@ -1,6 +1,6 @@
 ---
 status: confirmed
-severity: untriaged
+severity: minor
 target: none
 owner: maintenance
 opened: 2026-10-29
@@ -33,6 +33,11 @@ re-resolve". The checkout's pins lay Codium over such a lock in
 in the components table and reaches the catalog. This rule predates
 PR #304; `git show release-0.3.0:devcapsule-src/devcapsule/configuration/capability_selection.py`
 shows it unchanged.
+
+## Severity
+
+Minor, by the owner's rating on 2026-10-30: it reaches only checkouts whose lock
+predates provider evidence, and a plain launch on them still works.
 
 ## Expected
 
