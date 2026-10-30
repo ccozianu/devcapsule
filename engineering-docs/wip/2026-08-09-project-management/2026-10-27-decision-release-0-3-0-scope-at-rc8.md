@@ -123,11 +123,32 @@ It opens no workstream and does not settle the pending testing-policy intake.
 Maintenance owns implementation, its release-plan update and acceptance.
 Assignment does not establish receipt, implementation or release delivery.
 
+## Amendment: 0.3.0 user documentation CLI-alignment, full authoring and prose pass
+
+Owner decisions, 2026-10-30: assign
+[the 0.3.0 user-documentation CLI-alignment work order](../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md)
+to **maintenance** on `release-0.3.0`, target **0.3.0**, closing final-tag
+gate **C16** and the October 24 language-review booking in one pass. The owner
+selected:
+
+- **`write-full-pages`:** author full `0.3.0` content for all `12`
+  `status: planned` pages in `docs/`, leaving zero `"Coming soon"` stubs in
+  `0.3.0`, without inventing unshipped commands or pulling in `0.3.1`-deferred
+  features (such as automated image/cache cleanup or the October 25 new pages
+  and recipes).
+- **`combine-with-language`:** acknowledge the October 24 language-review
+  intake item (`2026-10-24-maintenance-docs-language-review-before-0-3-0.md`)
+  into this order so every `docs/*.md` file (`49` files on `release-0.3.0`) is
+  audited once, file by file, for both `0.3.0` CLI truth and clear human prose.
+- **`direct-wo-pair-batches`:** issue the work order directly from
+  `project-management` via mainline PR and coordination mail to `maintenance`,
+  and execute all `49` files on `release-0.3.0` in coherent batches of at most
+  `10` `docs/*.md` files per pull request using Pair Review with Antigravity
+  (`Gemini 4 Argon (High)`) as implementor and Codex (`gpt-6-astra`) as review
+  partner.
+
 ## Still open from the same check, for the owner
 
-- Who performs the documentation language review, which pages, in what
-  order, and under which reviewer loop; the mail of 2026-10-24 in this
-  workstream's intake.
 - The remaining nine user-docs proposal decisions and delivery of the C17
   generic half; both remain final-tag obligations while `user-docs` and
   `workflow-improvements` are paused.
