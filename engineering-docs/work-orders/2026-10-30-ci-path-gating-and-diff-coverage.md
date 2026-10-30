@@ -67,7 +67,7 @@ Read against mainline `b026936b2d476b27d7d81c19670c5e3dc7915cdb`:
   [testing-policy intake](../wip/2026-08-09-project-management/intake/2026-10-10-capsule-webconsole-reconcile-testing-approach-with-practice.md):
   the local build gate is broader than hosted unit testing. This order does
   not silently reconcile that policy difference.
-- [Ast-grep proposal](2026-10-29-ast-grep-guardrails.md): a separate draft, not
+- [Ast-grep proposal](https://github.com/ccozianu/devcapsule/blob/b026936b2d476b27d7d81c19670c5e3dc7915cdb/engineering-docs/work-orders/2026-10-29-ast-grep-guardrails.md): a separate draft, not
   authorization to implement its rules here. Route its configuration inputs
   appropriately if present when this order is executed.
 
