@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-29; releasing 0.3.0: the explicit IDE requirement override implemented on `ws-maintenance/0.3.0-ide-override` with its recorded acceptance session, PR #304 into `release-0.3.0` open, awaiting the owner's choice of review partner; VS Code (PR #301) and the configuration home (PR #299) await the owner's merge; rc3 tagged, published and verified as downloaded; the diagnostics snapshot merged by PR #293; forced configuration and the schema-version slice move to rc4 with C20; the base is published in the promotion; C17 stays a gate in both halves
+State: active 2026-10-30; releasing 0.3.0: the explicit IDE requirement override is on `release-0.3.0`, PR #304 merged by the owner at `cfa45937` after the Codex review (PR #306) and the post-merge gate, the review-branch rule (PR #305) merged at `a1e3b0b2`, the slice's last records following in a records pull request; VS Code (PR #301) and the configuration home (PR #299) await the owner's merge; rc3 tagged, published and verified as downloaded; the diagnostics snapshot merged by PR #293; forced configuration and the schema-version slice move to rc4 with C20; the base is published in the promotion; C17 stays a gate in both halves
 
 Definition read: WORKFLOW.md@5c89396f2200, WORKFLOW-LOCAL.md@b500a24f0736
 
@@ -89,6 +89,8 @@ exception; the CLI reference, the capabilities guide and the IDE page
 describe the flag; the 0.3.0 changelog carries it.
 
 Pre-review gate passed: `nox -s build` and `webconsole` on `fcf5c4e6` with the records uncommitted: mypy clean on 263 source files; 2,559 unit tests passed, 40 deselected, 1 xfailed, 1 xpassed; the local executable built and smoked; 18 packaging tests passed; `docs-contract` 190 pages including 17 aliases passed; 357 web console tests passed, mypy clean on 9 files.
+
+Post-merge gate passed on `3bfb3a16`, the slice with the review's PR #306 merged: mypy clean on 263 source files; 2,574 unit tests passed, 40 deselected, 1 xfailed, 1 xpassed; the executable built and smoked; 18 packaging tests passed; `docs-contract` 192 pages including 18 aliases passed; 357 web console tests passed, mypy clean on 9 files. The owner merged PR #304 into `release-0.3.0` at `cfa45937` on 2026-10-30.
 
 ## Diagnostics snapshot and export — 2026-10-27
 
@@ -3012,15 +3014,30 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
   was merged into `release-0.3.0` at `15d8f9df` (34 files, the version
   files kept at 0.3.0, gate passed: mypy 261 files, 2,544 unit tests, 17
   packaging tests, 357 console tests) and the slice branch synchronized
-  with it at `db11e8f1`. The owner then asked for the review-partner loop
-  with Codex, `gpt-6-astra` at high effort; it runs detached in
-  `/home/devcapsule/worktrees/ide-override-review` on
-  `ws-maintenance/0.3.0-ide-override-review` with
+  with it at `db11e8f1`, then again at `2391705c` after the merge had
+  dropped the release-only `source-version` line of `docs/versions.yaml`,
+  restored on the release branch at `da253875`. The owner then asked for
+  the review-partner loop with Codex, `gpt-6-astra` at high effort, run
+  detached in `/home/devcapsule/worktrees/ide-override-review` with
   [the brief](evidence/2026-10-29-ide-override/review-brief.md), the first
-  loop to use Codex's `exec --json` event stream.
+  loop on Codex's `exec --json` event stream. Its
+  [PR #306](https://github.com/ccozianu/devcapsule/pull/306) (PR304.1,
+  `6dd56fee`) was accepted without a round and merged at `3bfb3a16`: the
+  software-approval offer now follows the IDE request check, a forced
+  launch reviews its requested environment instead of the saved one (so
+  the advertised override works for a saved IDE that already conflicts
+  with a later requirement), the optional-download recovery and the
+  local-base minimum guards use the launch policy; 15 tests. One proposal
+  not implemented: an old v0.2.11 lock keeps PyCharm beside Codium on an
+  ordinary override, the unfiltered legacy-lock path of `usable_lock`,
+  which predates this slice; filed as
+  [a bug](../../bugs/devcapsule/2026-10-29-legacy-lock-keeps-the-replaced-ide.md).
+  The post-merge gate passed on `3bfb3a16` and the owner merged PR #304
+  at `cfa45937` on 2026-10-30; the records of the loop, the bug and the
+  restored D-0016 sentence follow in a records pull request.
 - The review branch rule: [PR #305](https://github.com/ccozianu/devcapsule/pull/305)
   adds to topic 9.11 that the loop runs only on the human's request or as
-  the local file's default; awaits the owner's merge.
+  the local file's default; merged by the owner at `a1e3b0b2`.
 - Settled 2026-10-29: `--save` with `--force` stays refused, by the
   owner's ruling. Awaiting the owner: whether any other policy check gets
   the same explicit escape; the review-partner loop runs only on request

@@ -82,7 +82,7 @@ the lock and the checkout's saved IDE are unchanged, no exception is saved,
 and the next plain launch returns to ordinary selection. Force grants no host
 access, accepts no vendor terms, approves no software, skips no artifact
 integrity check and invents no component. The combination with `--save` is
-refused, as the owner's ruling below confirms.
+not defined and is refused until the owner decides it.
 
 ## Rationale
 
