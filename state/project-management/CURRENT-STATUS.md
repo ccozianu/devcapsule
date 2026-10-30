@@ -24,6 +24,26 @@ The immutable start date and adoption exception remain in the workstream list.
 
 ## Current State
 
+### 2026-10-30: name the process Pair Review Loop
+
+Owner decision: call the review-partner loop **Pair Review Loop**, with
+**Pair Review** as its short name. The analogy to pair programming makes
+the name easier to remember; "Loop" emphasizes the iterative development
+and review. The owner rejected "Crosscheck" because it suggests a check
+rather than development.
+
+This is a terminology change. Topic 9.11's roles, different-engine review,
+round limit and human merge authority remain unchanged. Delivered
+`2026-10-30-project-management-pair-review-loop-name.md` to
+workflow-improvements at coordination `d294f1394393` for the definition,
+humane explanation and current guidance. Its acknowledgement and terminology
+update remain pending. Historical quotations and stable links stay intact.
+No new release target or implementation workstream is selected by this name.
+
+This records-only update retains the October 29 validation limit below;
+the executable inputs are unchanged. Changed-text review and whitespace
+checks passed; the full gate was not repeated.
+
 ### Resumed 2026-10-29: release scope and documentation deferral
 
 The owner moved the October 25 documentation proposals to **0.3.1**.
