@@ -4,7 +4,7 @@ Mnemonic: `workflow-improvements`
 
 Start date: 2026-08-09
 
-State: active 2026-10-30; Pair Review Loop terminology implemented for 0.3.0; workflow and packaging checks pass; mainline and release integration pending
+State: paused 2026-10-30 at owner direction; PR #309 merged into main at b026936b; the pair returns to project-management; 0.3.0 release application remains with maintenance
 
 Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@0e31c93fe04c
 
@@ -36,6 +36,16 @@ The original project-management checkout retains the user's IDE and sample
 changes and is deliberately untouched by this slice.
 
 ## Current State
+
+### 2026-10-30: pause after mainline integration
+
+The owner reported PR #309 merged and directed a return to
+project-management. SSH fetch confirms `origin/main` at `b026936b`, the
+merge of #309. `git cherry origin/main ws-workflow-improvements/v1`
+returns no lines. The naming slice is integrated on mainline.
+The fetched release tip is `c695e376`; release application remains with
+maintenance through the previously delivered patch. No new test run is
+needed for this records-only pause; the recorded validation limits stand.
 
 ### 2026-10-30: Pair Review Loop for 0.3.0
 
@@ -269,11 +279,10 @@ each under its own heading.
 
 ## Next Resumable Task
 
-Resume [PR #309](https://github.com/ccozianu/devcapsule/pull/309) after the
-known mainline test-isolation fix lands, rerun the gate, and verify
-maintenance's acknowledgement and release application of the delivered patch. The human merges
-into mainline and the release. Verify both remote trees before declaring
-the 0.3.0 task complete; the older full-gate failure remains disclosed.
+On the next owner-directed resumption, verify maintenance's acknowledgement
+and release application of the delivered Pair Review Loop patch. PR #309
+is merged into mainline; the 0.3.0 inclusion remains to be verified.
+The earlier full-gate failure remains disclosed.
 Then return to the pending intake and the recorded backlog; the owner's
 naming instruction does not authorize another implementation slice.
 
@@ -550,9 +559,10 @@ Two parts could not be completed by this workstream and were delivered to
 
 ### Current, 2026-10-30
 
-- PR #309 is draft pending the known mainline test-isolation repair. The
-  change must reach both remote `main` and the 0.3.0 release before it is
-  complete. Maintenance has the checked release patch; the human merges.
+- PR #309 is merged and verified on mainline. Maintenance has the checked
+  release patch; verify its inclusion in 0.3.0 before closing that task.
+- The owner has returned the pair to project-management. This workstream
+  is deliberately paused; no next implementation task is selected here.
 - No new mail waited at the finish check. The original project-management
   checkout still holds its user changes; continue from the workflow worktree.
 - The 13 unrelated intake items remain pending. C17 still has its own
