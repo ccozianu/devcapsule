@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-10-30; PR #311 merged; 0.3.0 user-docs CLI-alignment work order opened as PR #316 and mailed to maintenance (`2a9f20d56886`)
+State: paused 2026-10-30 at owner direction; PR #316 merged; pair switches to maintenance for 0.3.0 user-docs batches
 
 Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@0e31c93fe04c
 
@@ -23,6 +23,27 @@ This reserved workstream remains open for the lifetime of multiple-stream mode.
 The immutable start date and adoption exception remain in the workstream list.
 
 ## Current State
+
+### Pause 2026-10-30: PR #316 merged and switch to maintenance for 0.3.0 user-docs batches
+
+Verified by fetch that [PR #316](https://github.com/ccozianu/devcapsule/pull/316)
+is merged into `origin/main` at `ebab228a` (`git cherry` empty) and merged
+`origin/main` into `ws-project-management/coordination`. Pre-pause mailbox take
+returned zero waiting items. At explicit owner direction (`#316 is merged
+please do the needful, switch to the right branch, and run with it`),
+`project-management` pauses deliberately while the pair switches to
+`maintenance` on `release-0.3.0` to execute
+[the 0.3.0 user-documentation work order](../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md)
+across the five `<= 10`-file Pair Review batches (`Antigravity` + `Codex /
+gpt-6-astra`).
+
+**Open Threads:** No questions await the human on the `0.3.0` user-docs scope
+or batching. On resuming `project-management`, re-verify `maintenance`'s merged
+documentation batches on `release-0.3.0`, PR #312's required-check migration,
+the remaining nine September 28 documentation proposal decisions, C17, and
+`2026-10-28-maintenance-agent-run-supervision.md` in `intake/`. Deliberately not
+preserved: temporary scratch mail staging outside Git.
+
 
 ### 2026-10-30: 0.3.0 user-documentation CLI-alignment, full authoring and prose work order issued
 
