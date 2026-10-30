@@ -334,11 +334,20 @@ Key changes:
   settings), and `instructions-for-agents.md`; see the
   [Batch 4 verification ledger](evidence/2026-10-30-docs-batch-4/README.md).
 - Opened [PR #325](https://github.com/ccozianu/devcapsule/pull/325) against
-  `release-0.3.0` after passing `docs-contract` (`192` pages), `website.sh
-  build && check` (`23` tests, `196` HTML pages, `14,467` links/anchors), and
-  `pytest -q -k release_docs` (`92` passed). Next step: run `Codex
-  (gpt-6-astra)` file-by-file Pair Review (`PR325.1`) under
-  [`review-brief.md`](evidence/2026-10-30-docs-batch-4/review-brief.md).
+  `release-0.3.0`, dispatched `Codex (gpt-6-astra)` under
+  [`review-brief.md`](evidence/2026-10-30-docs-batch-4/review-brief.md),
+  accepted [PR #326](https://github.com/ccozianu/devcapsule/pull/326)
+  (`5f734995`, 15 source-verified fixes across all 10 files) without a revision
+  round, and merged it at `65fa4958`.
+- Recorded unimplemented proposals (residual `_launcher.py` `GIT_USER_NAME` /
+  `GIT_USER_EMAIL` forwarding under `inherit_legacy_configuration=False`, Batch
+  5 follow-up on `docs/sessions/what-persists.md:18` Antigravity credential
+  scope, and `bash -n` docs-contract check); post-merge gate passed
+  (`docs-contract`: `192` pages; `website.sh build && check`: `23` tests, `196`
+  HTML pages, `14,471` links/anchors; `pytest -q -k release_docs`: `92` passed;
+  `nox -s smoke`: passed). Ready for owner merge into `release-0.3.0`; next
+  step: execute final Batch 5 (`docs/sessions/`, `docs/collaboration/`,
+  `docs/platforms/`, 9 files, 2 stubs).
 
 ## General saved Docker arguments — 2026-10-23
 
