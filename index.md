@@ -131,6 +131,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Work Orders
 
+- [CI path gating and advisory diff coverage — maintenance, 0.3.0](engineering-docs/work-orders/2026-10-30-ci-path-gating-and-diff-coverage.md)
 - [Structural guardrails for the repository with ast-grep](engineering-docs/work-orders/2026-10-29-ast-grep-guardrails.md)
 - [Explicit IDE requirement override](engineering-docs/work-orders/2026-10-28-explicit-ide-requirement-override.md)
 - [The manifest's two schemas as classes; `init --regenerate` migrates](engineering-docs/work-orders/2026-10-26-manifest-schemas-as-classes.md)
