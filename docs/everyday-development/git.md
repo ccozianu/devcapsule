@@ -12,12 +12,15 @@ capsule are immediately present in the same repository on your computer.
 
 ## What is deliberately not imported
 
-To keep personal credentials out of autonomous sessions by default, `devcapsule
-project run` **does not** mount:
+By default, `devcapsule project run` does not mount:
 
 - your host `~/.gitconfig` or `~/.config/git`,
 - your host `~/.ssh` private keys or `SSH_AUTH_SOCK` agent socket, or
 - your host `~/.netrc`, keyring, or Git credential helper state.
+
+The launcher can pass your host's global author name and email as
+`GIT_USER_NAME` and `GIT_USER_EMAIL`. These are not credentials, and they do
+not replace Git's `user.name` and `user.email` settings inside the capsule.
 
 ## Setting your Git author identity
 
@@ -40,7 +43,7 @@ uses a separate work email.
 Choose the remote authentication workflow that fits how much access you want
 inside the capsule:
 
-### 1. Push and pull from a host terminal (zero credentials in the capsule)
+### 1. Push and pull from a host terminal
 
 Because `/workspace/<slug>` is a live bind mount of your host checkout, the
 capsule never needs remote credentials at all for ordinary feature work:
@@ -50,15 +53,15 @@ capsule never needs remote credentials at all for ordinary feature work:
 3. Run `git fetch`, `git pull`, and `git push` on your host using your existing
    SSH keys, hardware security key, or OS credential manager.
 
-This keeps remote push privileges—including force-push or tag permissions—100%
-outside the container while giving tools inside the capsule full local Git
-history.
+This avoids giving the capsule remote credentials. Review commits before
+pushing: processes inside the capsule can change the working tree and local
+Git history.
 
 ### 2. Forward your host SSH agent for a session
 
 When you want `git push` and `git pull` over SSH inside the capsule without
-copying private key files into the container, forward `SSH_AUTH_SOCK` at launch
-time:
+copying private key files into the container, run this from your host terminal.
+First check that `SSH_AUTH_SOCK` names a live agent socket:
 
 ```bash
 devcapsule project run -- \
@@ -85,3 +88,16 @@ key** scoped strictly to that repository and store it inside the checkout's
 persistent `/home/devcapsule` (for example under `/home/devcapsule/.ssh/`,
 which DevCapsule creates with mode `0700`). Avoid placing broad personal tokens
 that grant access to unrelated repositories inside a capsule.
+
+## Crediting an agent in a commit
+
+Keep your own Git author identity. If your project credits agent contributions,
+put a co-author trailer after a blank line at the end of the commit message:
+
+```text
+Explain the change
+
+Co-authored-by: Agent Name <agent@example.invalid>
+```
+
+Replace the example name and address with the attribution your project uses.
