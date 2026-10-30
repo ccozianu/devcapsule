@@ -17,12 +17,15 @@ This slice implements Batch 5 (the final batch) of [2026-10-30-user-docs-0-3-0-c
 ## Validation
 
 - Changed `docs/*.md` files against `origin/release-0.3.0`: `9` (`<= 10` limit respected; `docs/versions.yaml` and `website/CONTRACT.md` untouched).
-- Cross-batch union check across Batches 1–5: `49 / 49` `docs/**/*.md` files covered with zero overlaps, zero missing pages, and zero `status: planned` stubs remaining.
-- Shell syntax check (`bash -n`) across all 16 fenced `bash`/`sh` blocks in Batch 5: passed.
+- Cross-batch union check across Batches 1–5 (`#319`, `#321`, `#323`, `#325`, `#327`): `49 / 49` `docs/**/*.md` files covered with zero overlaps, zero missing pages, and zero `status: planned` stubs remaining.
+- Shell syntax check (`bash -n`) across all 17 fenced `bash`/`sh` blocks in Batch 5: passed.
 - `devcapsule-src/.venv/bin/nox -s docs-contract`: passed (`192 pages including 18 aliases; versions devel (0.3.0): development, 49 pages`).
-- `./scripts/website.sh build && ./scripts/website.sh check`: passed (`23` promotion/check tests, `196` HTML pages, `14,459` links/assets/anchors).
+- `./scripts/website.sh build && ./scripts/website.sh check`: passed (`23` promotion/check tests, `196` HTML pages, `14,462` links/assets/anchors).
 - `devcapsule-src/.venv/bin/pytest -q -k "release_docs"`: `92 passed`.
+- `devcapsule-src/.venv/bin/nox -s smoke`: passed.
 
 ## Pair Review
 
-Pending Pair Review with `Codex (gpt-6-astra)` under `WORKFLOW.md` topic 9.11.
+- **Slice PR:** [PR #327](https://github.com/ccozianu/devcapsule/pull/327) (`4cc5e10a`, brief at [review-brief.md](review-brief.md) `77726397`).
+- **Review PR:** [PR #328](https://github.com/ccozianu/devcapsule/pull/328) (`PR327.1` by `Codex / gpt-6-astra`, commit `59bc1bae`).
+- **Outcome:** Accepted without a revision round after independent verification against `devcapsule-src/` (`logs.py`, `values.py`, `storage.py`, `platforms.py`, `commands/project.py`, `commands/_console_channel.py`, `configuration/console_channel.py`, `display_client.py`, `workflow_coordination.py`) and `devcapsule-webconsole/` (`security.py`), and merged at `edcab618`. Unimplemented runtime proposal (port/instance-isolated console auth cookies on `127.0.0.1`) recorded in `CURRENT-STATUS.md`.
