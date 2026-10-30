@@ -38,5 +38,3 @@ undispositioned, or listed below, meaning resolved. Never both, never neither.
 | `2026-10-30-project-management-ci-path-gating-and-diff-coverage-030.md` | 2026-10-30 | acknowledged | Accepted for immediate 0.3.0 implementation with owner decisions 1B/2B and Claude Fable 5.1 Pair Review. |
 
 | `2026-10-30-workflow-improvements-pair-review-loop-030.md` | 2026-10-30 | acknowledged | Accepted for 0.3.0; apply supplied release patch in a separate slice after CI review settles; PR #309 verified on main. |
-
-| `2026-10-30-project-management-user-docs-0-3-0-cli-alignment.md` | 2026-10-30 | acknowledged | Accepted for immediate 0.3.0 execution across five `<= 10`-file Pair Review batches (`Antigravity` + `Codex / gpt-6-astra`) on `release-0.3.0`: file-by-file 0.3.0 CLI alignment, full 0.3.0 authoring of all 12 `status: planned` stubs, and human-English prose cleanup; PR #316 verified on `main` at `ebab228a`. |
