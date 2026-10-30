@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: in-progress 2026-10-30; user-docs 0.3.0 CLI alignment and prose review Batch 1 (`docs/reference/`, `docs/updates/`, `docs/troubleshooting/`, 10 files) implemented and entering Pair Review with Codex (`gpt-6-astra`)
+State: in-progress 2026-10-30; user-docs 0.3.0 CLI alignment Batch 1 (PR #319 / review PR #320, 10 files) Pair-Reviewed, validated, and ready for owner merge; proceeding to Batch 2 (`docs/configuration/`, 10 files)
 
 Definition read: WORKFLOW.md@bc1b631d1da6, WORKFLOW-LOCAL.md@450fc42e2234
 
@@ -18,25 +18,31 @@ Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`
 
 ## User documentation 0.3.0 CLI alignment and prose review (Batch 1) — 2026-10-30
 
-Owner-selected slice: execute Batch 1 of
+Implementation [PR #319](https://github.com/ccozianu/devcapsule/pull/319)
+(`ws-maintenance/0.3.0-docs-batch-1-reference-updates-troubleshooting` ->
+`release-0.3.0`) received Pair Review [PR #320](https://github.com/ccozianu/devcapsule/pull/320)
+from `Codex (gpt-6-astra)`, accepted at `71243a0c` without a revision round and
+merged at `0c0006c4`.
+
+Batch 1 covers all 10 files in `docs/reference/` (3), `docs/updates/` (4), and
+`docs/troubleshooting/` (3) under
 [`2026-10-30-user-docs-0-3-0-cli-alignment.md`](../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md)
 (merged to `main` in PR #316 at `ebab228a` and acknowledged from coordination
-mail at `2d4aa223`) on `ws-maintenance/0.3.0-docs-batch-1-reference-updates-troubleshooting`
-from `release-0.3.0` (`9eb500da`, after PR #312 merged). Antigravity (`Gemini
-4 Argon (High)`) implements and Codex (`gpt-6-astra`) reviews through Pair
-Review.
-
-Batch 1 updates all 10 files in `docs/reference/` (3), `docs/updates/` (4),
-and `docs/troubleshooting/` (3), retiring two `status: planned` stubs
+mail at `2d4aa223`), retiring two `status: planned` stubs
 (`docs/reference/project-info.md` and
 `docs/troubleshooting/cleanup-and-uninstall.md`) and folding in the human-prose
 pass from `2026-10-24-maintenance-docs-language-review-before-0-3-0.md`.
-Pre-review validation passed `nox -s docs-contract` (192 pages),
-`scripts/website.sh build` and `scripts/website.sh check` (23 website tests,
-196 HTML pages, 14,437 local links/anchors), and 92 `release_docs` unit tests;
+Codex ran 106 CLI `--help` and isolated `DEVCAPSULE_CONFIG_HOME` probes across
+all 10 files, confirming `supported-versions.md` and applying 13 source-verified
+fixes across the other 9 files; two unimplemented CLI help/migration-hint gaps
+(`STABLE_JSON_HELP` schema-1 string on schema-2 `config show --json`, and
+missing replacement hints on `project config default` and mutating `project
+config trust`) are filed as
+[`2026-10-30-config-show-json-help-and-retired-home-command-hints.md`](../../bugs/devcapsule/2026-10-30-config-show-json-help-and-retired-home-command-hints.md);
 see the [Batch 1 verification ledger](evidence/2026-10-30-docs-batch-1/README.md).
-Next step: open the Batch 1 PR against `release-0.3.0`, commit the Pair Review
-brief, and invoke Codex (`gpt-6-astra`) in an isolated review worktree.
+Next step: complete post-merge validation on PR #319, update its PR body for
+owner merge, and branch Batch 2 (`docs/configuration/`, 10 files) cleanly from
+`origin/release-0.3.0`.
 
 ## CI path gating and advisory diff coverage — 2026-10-30
 
@@ -3561,8 +3567,9 @@ Earlier open-thread history (read against the current scope above):
 ## Workstream Document Index
 
 - [User-docs 0.3.0 CLI alignment work order](../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md),
-  [Batch 1 verification ledger](evidence/2026-10-30-docs-batch-1/README.md), and
-  [PR319.1 Pair Review brief](evidence/2026-10-30-docs-batch-1/review-brief.md): PR #319, active 0.3.0 documentation alignment slice (`docs/reference/`, `docs/updates/`, `docs/troubleshooting/`).
+  [Batch 1 verification ledger](evidence/2026-10-30-docs-batch-1/README.md),
+  [PR319.1 Pair Review brief](evidence/2026-10-30-docs-batch-1/review-brief.md), and
+  [CLI schema-help / migration-hint bug](../../bugs/devcapsule/2026-10-30-config-show-json-help-and-retired-home-command-hints.md): PR #319 / #320, reviewed 0.3.0 documentation alignment slice (`docs/reference/`, `docs/updates/`, `docs/troubleshooting/`).
 
 - [CI Pair Review brief](evidence/2026-10-30-ci-gating/review-brief.md) and
   [acceptance evidence](evidence/2026-10-30-ci-gating/acceptance.md): PR #312,

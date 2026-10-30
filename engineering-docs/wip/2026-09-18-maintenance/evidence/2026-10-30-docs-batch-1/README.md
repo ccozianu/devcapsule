@@ -29,3 +29,11 @@ Review partner: Codex (`gpt-6-astra`)
 - `(cd devcapsule-src && .venv/bin/python -m nox -s docs-contract)`: passed (`192 pages including 18 aliases; devel (0.3.0): 49 pages`).
 - `./scripts/website.sh build` and `./scripts/website.sh check`: passed (`23/23` website tests, `196` HTML pages, `14,437` local links/assets/anchors).
 - `(cd devcapsule-src && PYTEST_ADDOPTS="--basetemp=/var/tmp/dc-docs-batch1/pytest" .venv/bin/python -m pytest -q -k release_docs)`: `92 passed`.
+
+## Pair Review Sign-Off (`Codex / gpt-6-astra`, PR #320 -> PR #319)
+
+- Review brief: [`review-brief.md`](review-brief.md).
+- Reviewer PR: [PR #320](https://github.com/ccozianu/devcapsule/pull/320) (`71243a0c`), accepted without a revision round and merged into `ws-maintenance/0.3.0-docs-batch-1-reference-updates-troubleshooting` at `0c0006c4`.
+- Scope audited: all `10` Batch 1 `docs/*.md` files in full plus `106` CLI `--help` and scratch `DEVCAPSULE_CONFIG_HOME` invocations (`supported-versions.md` confirmed accurate as written; `9` files tightened with `13` source-verified corrections).
+- Unimplemented CLI proposals filed as [`2026-10-30-config-show-json-help-and-retired-home-command-hints.md`](../../../../bugs/devcapsule/2026-10-30-config-show-json-help-and-retired-home-command-hints.md) (`STABLE_JSON_HELP` schema-1 help string on schema-2 `config show --json`, and missing replacement hints on `project config default` and mutating `project config trust`).
+- Post-merge validation: `nox -s docs-contract` (`192` pages), `./scripts/website.sh build` and `./scripts/website.sh check` (`23` website tests, `196` HTML pages, `14,441` local links/assets/anchors), and `nox -s smoke` + `release_docs` unit tests passed.
