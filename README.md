@@ -122,3 +122,5 @@ the right first message.
 ---
 
 [Documentation](docs/README.md) · [For developers](DEVELOPING.md) · [Apache-2.0 license](LICENSE)
+
+<!-- Temporary website routing acceptance probe; do not merge. -->
