@@ -9,6 +9,8 @@ on:
       - main
   pull_request:
     branches:
+      # Temporary acceptance base only; never merged into the implementation.
+      - ws-maintenance/ci-gating-030-routing-base
       - main
       - release-*
   merge_group:
