@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: active 2026-10-30; CI path gating and advisory diff coverage assigned to maintenance for 0.3.0; continuing release coordination
+State: paused 2026-10-30 at owner direction; work-order PR #311 open; pair switches to maintenance for CI implementation
 
 Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@0e31c93fe04c
 
@@ -23,6 +23,23 @@ This reserved workstream remains open for the lifetime of multiple-stream mode.
 The immutable start date and adoption exception remain in the workstream list.
 
 ## Current State
+
+### Pause 2026-10-30: work-order PR #311 and maintenance implementation
+
+The owner explicitly requested a PR for the work order, overriding topic 8.6's
+normal records-only delivery rule for this order. Opened
+[PR #311](https://github.com/ccozianu/devcapsule/pull/311) from
+`ws-project-management/ci-work-order` at `dbd57a9a` into main: the order,
+index entry and scope amendments, without unrelated pending intake or source.
+The owner then selected maintenance to implement it with Pair Review using
+Claude Code / Claude Fable 5.1 as reviewer. This workstream pauses deliberately.
+
+On resumption verify PR #311 and maintenance's delivery; return to the release
+coordination questions below. No new questions await the owner about advisory
+coverage or serial execution. Existing IDE and sample-project changes remain
+untouched in this checkout. The implementation uses a clean maintenance
+checkout, not these unrelated local changes. No transcript is retained.
+
 
 ### 2026-10-30: CI path gating and advisory diff coverage assigned
 
@@ -506,6 +523,10 @@ the owner had asked to be written to the user; moved into Part 5 at
 `30ecdca`. Accepted and merged at `eab9ed6`. PR258 awaits the owner.
 
 ## Open Threads
+
+- Paused at owner direction, 2026-10-30: PR #311 awaits the human merge.
+  Maintenance implementation and its Claude Fable 5.1 Pair Review are next.
+  The previous release questions remain open; no further PM work is implied.
 
 - CI work order, 2026-10-30: owner decisions 1B and 2B are settled.
   Maintenance acknowledgement, implementation and 0.3.0 acceptance remain
