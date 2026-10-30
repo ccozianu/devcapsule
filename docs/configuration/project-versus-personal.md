@@ -56,6 +56,8 @@ uses the same acquisition rules as other capabilities. Its component owns
 its terms, consent, sign-in and persistent directories.
 [Vendor software and trust](software-approvals.md) explains channel acceptance.
 
+<a id="when-the-project-changes"></a>
+
 ## Changes at the next launch
 
 `devcapsule project run` derives a launch from all three records each time.

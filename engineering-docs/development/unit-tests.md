@@ -18,14 +18,58 @@ unit suite; the heavier suites are chosen by marker, never by accident. The
 `flaky` marker runs a test for visibility with a temporarily non-blocking
 result; the other markers belong to the heavier suites.
 
-The hosted runner runs exactly this: the GitHub Actions workflow
-`tests.yml` installs the locked environment, runs `pytest tests/` with
-coverage and publishes the summary, on every push to `main` and on every
-pull request against `main` or a `release-*` branch, so the result and the
-coverage are there before the merge; the badge is published from `main`
-alone. It runs no Docker, by
-the owner's standing rule, so everything the unit suite proves it proves
-with fakes and files.
+The hosted `tests.yml` workflow selects the existing serial unit suite when
+runtime, test, build or unclassified inputs change. It runs no Docker.
+Planning/status-only PRs skip heavy jobs; website inputs run the website's
+own tests and build. The filters live in `.github/ci-paths.yml`: each route
+lists the paths proven not to be its inputs, and any other changed path runs
+the job. Root README, journal entries and release notes are website inputs,
+while packaged Markdown under `devcapsule-src/` remains a runtime input, and
+so do `docs/versions.yaml` and the published release notes, which the unit
+suite reads as fixtures. A pull request with more than 3000 changed files
+runs everything, because GitHub's changed-file listing stops there. Console
+changes conservatively run the hosted Python suite, but its runtime coverage
+does not measure the separate console distribution; the local
+`nox -s webconsole` gate still applies.
+
+Main pushes, merge-queue checks and manual runs use full applicable verification.
+PRs into `main` and `release-*` test the PR head SHA. The advisory diff report
+compares that same revision against the merge base with the event's base SHA,
+so warning coordinates refer to the code the author changed. Coverage
+artifacts and the main-only badge remain available.
+
+### Advisory changed-line coverage
+
+From `devcapsule-src`, using the locked development environment:
+
+```sh
+.venv/bin/python -m pytest tests/ --cov-report=xml:coverage.xml
+.venv/bin/diff-cover coverage.xml --compare-branch=origin/main \
+  --format markdown:diff-cover.md,json:diff-cover.json
+```
+
+Fetch the actual target branch first and substitute it for `origin/main`
+when appropriate, for example `origin/release-0.3.0`. The reports measure
+changed executable lines in the runtime package, not changed-branch coverage.
+No percentage blocks a PR. Tests, invalid routing and failed reporting still
+fail CI. No measured executable lines means not applicable, not 100% coverage.
+
+The annotation bridge publishes at most ten warning ranges per step, escapes
+GitHub command fields, and directs the reader to the complete uploaded report
+when inline output is truncated. The summary has a size budget too; an oversized
+table remains available in the artifact. Native annotation placement must be
+checked on a real PR, not inferred from the command's exit status.
+
+### Required-check rollout
+
+Establish `ci-gate` on a representative PR before making it required. The
+owner changes repository settings: replace an existing required `Python 3.12`
+check with `ci-gate`, preserving other required checks, or add `ci-gate` when
+no CI check is currently required. YAML changes do not change branch protection.
+The aggregate requires successful routing and every selected verification job;
+unselected jobs may be skipped. A reporting failure is not a coverage warning.
+Keep the implementation PR's acceptance record explicit about the settings
+migration and the hosted cases verified.
 
 ## What is in the suite
 

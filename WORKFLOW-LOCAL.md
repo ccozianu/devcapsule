@@ -118,6 +118,11 @@ in [`INFORMATION-MODEL.md`](devcapsule-src/devcapsule/assets/project_workflow/de
 - **Unit tests**: `.venv/bin/python -m nox -s tests`, with coverage. One
   module while working: `.venv/bin/python -m pytest -q tests/<module>.py`.
   See [unit tests](engineering-docs/development/unit-tests.md).
+- **Advisory diff coverage**: from `devcapsule-src`, run
+  `.venv/bin/python -m pytest tests/ --cov-report=xml:coverage.xml`, then
+  `.venv/bin/diff-cover coverage.xml --compare-branch=origin/main`.
+  Fetch and name the actual target branch. Keep execution serial. Do not
+  apply a failing coverage percentage. See [unit tests](engineering-docs/development/unit-tests.md).
 - **Integration tests**: `.venv/bin/python -m nox -s integration`. It runs
   the built executable and subprocesses without Docker. `nox -s typecheck`
   and `nox -s docs-contract` are integration checks too. See
