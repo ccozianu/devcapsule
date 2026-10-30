@@ -4,7 +4,7 @@ Mnemonic: `project-management`
 
 Start date: 2026-08-09
 
-State: paused 2026-10-30 at owner direction; work-order PR #311 open; pair switches to maintenance for CI implementation
+State: active 2026-10-30; PR #311 merged; 0.3.0 user-docs CLI-alignment work order opened as PR #316 and mailed to maintenance (`2a9f20d56886`)
 
 Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@0e31c93fe04c
 
@@ -23,6 +23,50 @@ This reserved workstream remains open for the lifetime of multiple-stream mode.
 The immutable start date and adoption exception remain in the workstream list.
 
 ## Current State
+
+### 2026-10-30: 0.3.0 user-documentation CLI-alignment, full authoring and prose work order issued
+
+Resumed on `ws-project-management/coordination` at owner direction and merged
+`origin/main` (`27f24fc6`, integrating [PR #311](https://github.com/ccozianu/devcapsule/pull/311))
+at `208a1740`. Audited `docs/` and the `0.3.0` CLI command surface on
+`origin/release-0.3.0` (`000c8656`): `49` `.md` files (`37` authored pages and
+`12` eight-line `status: planned` stubs), `docs/configuration/home.md` present
+only on `release-0.3.0`, `devcapsule project diagnose` missing from
+`docs/reference/cli.md`, `14` pages untouched since `2026-09-28`, and a silent
+skip in `nox -s docs-contract` when the `website` submodule is uninitialized.
+
+Presented three scope decisions on the capsule web console; at
+`2026-10-30T02:29:31+00:00` the owner selected:
+
+- **`write-full-pages`:** author full `0.3.0` documentation for all `12`
+  `status: planned` stubs in `docs/`, leaving zero `"Coming soon"` pages in
+  `0.3.0`, without inventing `0.3.1`-deferred commands (such as automated
+  cleanup).
+- **`combine-with-language`:** acknowledge and fold
+  `2026-10-24-maintenance-docs-language-review-before-0-3-0.md` into this pass
+  (recorded in `intake-dispositions.md` and deleted in `b89d947e`) so every
+  file is checked once for both `0.3.0` CLI truth and clear human prose, while
+  [the October 25 proposals](../../work-orders/2026-10-25-documentation-orientation-and-concepts.md)
+  remain in `0.3.1`.
+- **`direct-wo-pair-batches`:** issue
+  [the work order](../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md)
+  directly now via [PR #316](https://github.com/ccozianu/devcapsule/pull/316)
+  (`ws-project-management/user-docs-0-3-0-work-order` at `b89d947e` into
+  `main`, merged into `ws-project-management/coordination` at `1304358e`) and
+  coordination mail
+  `2026-10-30-project-management-user-docs-0-3-0-cli-alignment.md` to
+  `maintenance` at `2a9f20d56886`. `maintenance` executes all `49` files on
+  `release-0.3.0` in coherent batches of `<= 10` `docs/*.md` files per pull
+  request using Pair Review with Antigravity (`Gemini 4 Argon (High)`) as
+  implementor and Codex (`gpt-6-astra`) as review partner.
+
+All `334` local non-submodule Markdown links across the changed files (`20` in
+the new work order) and `git diff --check` passed. Outcomes were committed
+before deleting the temporary console decision and answer files. Execution on
+`release-0.3.0` belongs to `maintenance`; under `WORKFLOW.md` topic 7.9,
+switching checkouts or workstreams to start Batch 1 awaits explicit owner
+instruction.
+
 
 ### Pause 2026-10-30: work-order PR #311 and maintenance implementation
 
@@ -304,12 +348,14 @@ of further console work.
 
 ## Planned Next Step
 
-Continue the 0.3.0 review with the remaining nine documentation proposal
-decisions, the separate language review, C17 and candidate acceptance.
-Check maintenance's acknowledgement and implementation plan for the new
-0.3.0 CI work order, and acknowledgement of the October 25 work order's move
-to 0.3.1. Recheck remote delivery before presenting outstanding work;
-published summaries still describe several merged slices as awaiting merge.
+Await owner merge of [PR #316](https://github.com/ccozianu/devcapsule/pull/316)
+or owner instruction to switch to `maintenance` (`release-0.3.0`) to execute
+Batch 1 of
+[the 0.3.0 user-documentation work order](../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md)
+with Pair Review (`Antigravity` + `Codex / gpt-6-astra`). Continue the `0.3.0`
+review with the remaining nine documentation proposal decisions, C17, and
+candidate acceptance; verify `maintenance`'s acknowledgement and delivery of
+the CI and user-documentation work orders and the October 25 move to `0.3.1`.
 
 Items 7 (mycodespace/checkout naming), 8 (OpenCode evaluation) and 12 (routine
 documentation cleanup) are recorded in the [pre-V1 backlog](coordination-backlog.md#pre-v1-work-tentatively-09-excluded-from-030).
