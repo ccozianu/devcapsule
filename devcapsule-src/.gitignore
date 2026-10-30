@@ -19,4 +19,3 @@ dist/
 .coverage.*
 diff-cover.json
 diff-cover.md
-diff-cover-out.txt

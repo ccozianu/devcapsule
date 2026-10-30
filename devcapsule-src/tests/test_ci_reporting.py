@@ -66,16 +66,39 @@ def test_routing_failure_with_skipped_children_cannot_pass() -> None:
         GATE.check(jobs)
 
 
+def picomatch_like(path: str, glob: str) -> bool:
+    """Mirror picomatch with dot: true for the grammar .github/ci-paths.yml uses.
+
+    Literal segments, `*` within one segment, and `**` for any number of
+    segments including none, so `a/**` matches `a` itself. Checked against
+    picomatch 2.3.1, the version paths-filter v3.0.4 bundles.
+    """
+    def match(parts: list[str], segments: list[str]) -> bool:
+        if not segments:
+            return not parts
+        if segments[0] == '**':
+            return any(match(parts[i:], segments[1:]) for i in range(len(parts) + 1))
+        return bool(parts) and fnmatch.fnmatchcase(parts[0], segments[0]) and match(parts[1:], segments[1:])
+    return match(path.split('/'), glob.split('/'))
+
+
 @pytest.mark.parametrize(('path', 'python', 'docs'), [
     ('engineering-docs/wip/a/CURRENT-STATUS.md', False, False),
     ('engineering-docs/work-orders/new.md', False, False),
     ('CURRENT-STATUS.md', False, False),
     ('README.md', False, True),
     ('docs/guide.md', False, True),
+    ('docs/README.md', False, True),
+    ('docs/getting-started/first-session.md', False, True),
+    ('docs/versions.yaml', True, True),  # read by tests/test_release_docs.py
     ('engineering-docs/blog/new.md', False, True),
-    ('engineering-docs/releases/v0.3.0/notes.md', False, True),
+    ('engineering-docs/blog/assets/demo/poster.png', False, True),
+    ('engineering-docs/README.md', False, True),
+    ('engineering-docs/releases/v0.2.14/notes.md', True, True),  # read by tests/test_release_docs.py
     ('engineering-docs/design-notes/devcapsule/competitive-comparison.md', False, True),
+    ('engineering-docs/new-subtree/note.md', True, True),
     ('website', False, True),
+    ('website/README.md', False, True),
     ('scripts/website.sh', False, True),
     ('devcapsule-src/devcapsule/assets/project_workflow/definition/WORKFLOW.md', True, False),
     ('devcapsule-src/tests/a.py', True, False),
@@ -86,19 +109,59 @@ def test_routing_failure_with_skipped_children_cannot_pass() -> None:
     ('.github/workflows/tests.yml', True, True),
     ('.github/ci-paths.yml', True, True),
     ('.ast-grep/new.yml', True, True),
+    ('WORKFLOW.md', True, True),  # read by tests/test_workflow_bootstrap.py
     ('unknown/new-input', True, True),
 ])
 def test_known_exemptions_and_conservative_unknown_paths(path: str, python: bool, docs: bool) -> None:
     filters = yaml.safe_load((ROOT / '.github/ci-paths.yml').read_text())
-    # These exclusions use only literal prefixes and a terminal **, for which
-    # fnmatch and picomatch's dot-enabled every-predicate agree.
     for route, expected in [('python', python), ('docs', docs)]:
         patterns = filters[route]
-        assert all(p.startswith('!') and not any(c in p for c in '?[]{}()') for p in patterns)
-        assert all(not fnmatch.fnmatchcase(path, p[1:]) for p in patterns) is expected
+        # Every pattern is a negation within picomatch_like's grammar.
+        assert all(p.startswith('!') and not any(c in p[1:] for c in '?[]{}()!') for p in patterns)
+        assert all(not picomatch_like(path, p[1:]) for p in patterns) is expected
     workflow = yaml.safe_load((ROOT / '.github/workflows/tests.yml').read_text())
     filters_step = next(s for s in workflow['jobs']['changes']['steps'] if s.get('id') == 'filter')
     assert filters_step['with']['predicate-quantifier'] == 'every'
+
+
+def route_step(tmp_path: Path, **env: str) -> tuple[int, dict[str, str]]:
+    """Run the workflow's route script as GitHub's bash would, returning its outputs."""
+    workflow = yaml.safe_load((ROOT / '.github/workflows/tests.yml').read_text())
+    step = next(s for s in workflow['jobs']['changes']['steps'] if s.get('id') == 'route')
+    output = tmp_path / 'github-output'
+    output.touch()
+    result = subprocess.run(['bash', '--noprofile', '--norc', '-eo', 'pipefail', '-c', step['run']],
+                            env={'PATH': os.environ['PATH'], 'GITHUB_OUTPUT': str(output), **env},
+                            capture_output=True, text=True)
+    lines = output.read_text().splitlines()
+    return result.returncode, dict(line.split('=', 1) for line in lines)
+
+
+def test_route_step_passes_valid_filters_and_runs_everything_otherwise(tmp_path: Path) -> None:
+    pr = {'EVENT_NAME': 'pull_request', 'PYTHON_CHANGED': 'false'}
+    assert route_step(tmp_path, **pr, CHANGED_FILES='17', DOCS_CHANGED='true') == (
+        0, {'python': 'false', 'docs': 'true'})
+    assert route_step(tmp_path, **pr, CHANGED_FILES='3000', DOCS_CHANGED='false') == (
+        0, {'python': 'false', 'docs': 'false'})
+    # The filter never sees files beyond GitHub's 3000-file listing.
+    assert route_step(tmp_path, **pr, CHANGED_FILES='3001', DOCS_CHANGED='false') == (
+        0, {'python': 'true', 'docs': 'true'})
+    for event in ['push', 'merge_group', 'workflow_dispatch']:
+        assert route_step(tmp_path, EVENT_NAME=event, PYTHON_CHANGED='', DOCS_CHANGED='') == (
+            0, {'python': 'true', 'docs': 'true'})
+
+
+@pytest.mark.parametrize('env', [
+    {'PYTHON_CHANGED': '', 'DOCS_CHANGED': 'true'},
+    {'PYTHON_CHANGED': 'true', 'DOCS_CHANGED': 'TRUE'},
+    {'PYTHON_CHANGED': 'true'},
+    {'PYTHON_CHANGED': 'true', 'DOCS_CHANGED': 'true', 'CHANGED_FILES': ''},
+    {'PYTHON_CHANGED': 'true', 'DOCS_CHANGED': 'true', 'CHANGED_FILES': 'many'},
+])
+def test_route_step_fails_without_valid_inputs(tmp_path: Path, env: dict[str, str]) -> None:
+    code, outputs = route_step(tmp_path, **{'EVENT_NAME': 'pull_request', 'CHANGED_FILES': '17', **env})
+    assert code == 1
+    assert outputs == {}
 
 
 def report(lines: list[int], covered: list[int] | None = None) -> dict[str, Any]:
@@ -167,27 +230,27 @@ def test_missing_report_fails_cli(tmp_path: Path) -> None:
 
 
 def test_real_diff_cover_json_paths_and_advisory_exit(tmp_path: Path) -> None:
-    """Use actual coverage + diff-cover on an unexecuted changed line in Git."""
+    """Use actual coverage + diff-cover on an unexecuted changed line in a nested package path."""
     root = tmp_path / 'repo'; root.mkdir()
-    package = root / 'devcapsule-src/devcapsule'; package.mkdir(parents=True)
+    package = root / 'devcapsule-src/devcapsule/nested'; package.mkdir(parents=True)
     env = {**os.environ, 'GIT_AUTHOR_NAME': 'Test', 'GIT_COMMITTER_NAME': 'Test',
            'GIT_AUTHOR_EMAIL': 'test@example.invalid', 'GIT_COMMITTER_EMAIL': 'test@example.invalid'}
     def run(*args: str, cwd: Path = root) -> subprocess.CompletedProcess[str]:
         return subprocess.run(args, cwd=cwd, env=env, text=True, capture_output=True, check=True)
     run('git', 'init', '-b', 'main')
-    (package / '__init__.py').write_text('')
+    (package.parent / '__init__.py').write_text(''); (package / '__init__.py').write_text('')
     source = package / 'sample.py'; source.write_text('x = 0\n')
     run('git', 'add', '.'); run('git', 'commit', '-m', 'base')
     base = run('git', 'rev-parse', 'HEAD').stdout.strip()
     source.write_text('x = 0\nif x:\n    print("not run")\n')
     run('git', 'add', '.'); run('git', 'commit', '-m', 'change')
-    working = package.parent
+    working = root / 'devcapsule-src'
     run(sys.executable, '-m', 'coverage', 'run', '--branch', '--source=devcapsule',
-        'devcapsule/sample.py', cwd=working)
+        'devcapsule/nested/sample.py', cwd=working)
     run(sys.executable, '-m', 'coverage', 'xml', cwd=working)
     run(sys.executable, '-m', 'diff_cover.diff_cover_tool', 'coverage.xml',
         f'--compare-branch={base}', '--format=json:diff-cover.json,markdown:diff-cover.md', cwd=working)
     data = json.loads((working / 'diff-cover.json').read_text())
     warnings, _ = REPORT.build_annotations(data)
-    assert any('file=devcapsule-src/devcapsule/sample.py,line=3' in w for w in warnings)
+    assert any('file=devcapsule-src/devcapsule/nested/sample.py,line=3,endLine=3' in w for w in warnings)
     assert data['total_percent_covered'] < 85
