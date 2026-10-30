@@ -21,10 +21,28 @@ Review partner: `Codex (gpt-6-astra)`
 | 9 | `docs/working-with-ai/hosted-and-local-models.md` | **Yes** (`status: planned` removed) | Authored complete `0.3.0` page covering hosted vendor accounts/secret bindings and running local open models on the host (Ollama, LM Studio, vLLM, `llama.cpp`) via `network host` (`127.0.0.1:11434`) or `bridge` + `--add-host=host.docker.internal:host-gateway`, with concrete verified `codex --oss --local-provider ollama`/`lmstudio` and `~/.codex/config.toml` `[model_providers.local]` configuration. | Verified against `codex --help`, `components/codex.py`, and `_launcher.py` |
 | 10 | `docs/working-with-ai/review-and-change-agents.md` | **Yes** (`status: planned` removed) | Authored complete `0.3.0` page covering pre-commit Git diff/status/test review, external remote/worktree checkpoints, combining or switching agents with `run --with`, `config add`, `config omit`, and `config restore` (and web-console requests), and preservation of persistent `~/.claude`, `~/.codex`, and `~/.gemini` slots when omitted. | Verified against `commands/project.py`, `capability_commands.py`, and `console_channel.py` |
 
-## Pre-PR Validation Gate
+## Pair Review (`PR325.1` / PR #326)
+
+- **Review brief:** [`review-brief.md`](review-brief.md)
+- **Review PR:** [PR #326](https://github.com/ccozianu/devcapsule/pull/326) (`Codex + gpt-6-astra`, commit `5f734995`), accepted without a revision round (`#issuecomment-6521374825`) and merged at `65fa4958`.
+- **Accepted improvements (all 10 files audited and refined):**
+  1. `docs/everyday-development/git.md`: noted that `_launcher.py` (`784, 966, 1425`) still passes host `GIT_USER_NAME` / `GIT_USER_EMAIL` env vars while generic `container_runtime` does not configure Git from them, added commit review and generic `Co-authored-by:` trailer guidance, and reminded users to verify `SSH_AUTH_SOCK` on the host before forwarding.
+  2. `docs/everyday-development/git.md`, `docs/working-with-ai/choose-an-agent.md`, and `review-and-change-agents.md`: clarified that linked Git worktrees share `.git` common data and all capsule processes run as one runtime UID (`container_runtime/identity.py:11`), so mode-`0700` agent directories do not isolate co-running agents from each other.
+  3. `docs/everyday-development/ides-and-terminals.md`: added that `run --ide ... --force` cannot combine with `--save` and still enforces trust, download consent, and dependencies (`_run_flow.py:85, 269`), and clarified that `/opt/xtras` is a symlink to `/home/devcapsule/xtras` with `/opt/xtras/bin` on `PATH` (`materialization.py:627`).
+  4. `docs/everyday-development/run-debug-test.md`: listed all three Playwright env vars (`DEVCAPSULE_PLAYWRIGHT_PYTHON`, `PLAYWRIGHT_BROWSERS_PATH`, `DEVCAPSULE_PLAYWRIGHT_WHEELS`), distinguished Rider Debug configurations from terminal `dotnet`, noted `postgresql-client` base coverage, and qualified `--cap-add=SYS_PTRACE` and `exit 137` diagnostics.
+  5. `docs/everyday-development/previews-and-ports.md` & `clipboard-and-browser.md`: added `-p` short form and `docker-args clear` (`docker_arguments.py:74, 124`), noted Docker ignores `--publish` under `network host`, and clarified that `host-browser` handles `BROWSER`/`xdg-open` HTTP(S) URLs rather than printed URLs or OAuth callback ports (`host_open.py:41`).
+  6. `docs/working-with-ai/choose-an-agent.md`, `sign-in-and-defaults.md`, and `review-and-change-agents.md`: clarified immediate console recording (`add`/`omit`/`restore`/`unbind`) vs. deferred `bind` (`console_channel.py:70, 90`), `restore` applying only to project `offer`s (`project.py:1740`), `config unbind` required before `omit`ting an agent with an explicit secret binding (`bindings.py:131`), managed-only `_seed_component_state` (`project.py:2638`), and Antigravity origin-ownership note (`trust.py:144`) and keyring/per-run credential scope (`antigravity_cli.py:147`).
+  7. `docs/working-with-ai/instructions-for-agents.md` & `hosted-and-local-models.md`: documented `config env set NAME [VALUE]`, fixed `<loaded-model-id>` shell syntax so all 16 `sh`/`bash` blocks pass `bash -n`, and tightened conditional local-endpoint guidance.
+- **Proposals not implemented:**
+  - Residual `_launcher.py` `GIT_USER_NAME` / `GIT_USER_EMAIL` host-config read under `inherit_legacy_configuration=False` (`project.py:2344`, `_launcher.py:784, 1425`) while `container_runtime/entrypoint.py:45` does not consume them — recorded for post-`0.3.0` cleanup.
+  - Recheck `docs/sessions/what-persists.md:18` grouping of agent sign-ins vs. Antigravity's keyring/per-run credential distinction (`antigravity_cli.py:147`) — queued for Batch 5 (`docs/sessions/`).
+  - Consider adding `bash -n` shell-block syntax checks to the documentation contract (`0.3.1` tooling enhancement).
+
+## Post-Merge Validation Gate (`65fa4958`)
 
 - `git diff --name-only origin/release-0.3.0 -- docs/`: 10 files (`<= 10` batch limit satisfied; `docs/versions.yaml` untouched).
 - `git grep -n '^status: planned' -- docs/everyday-development/ docs/working-with-ai/`: 0 matches (all 5 stubs retired).
 - `(cd devcapsule-src && .venv/bin/python -m nox -s docs-contract)`: passed (`192` pages including `18` aliases).
-- `./scripts/website.sh build && ./scripts/website.sh check`: passed (`23` website tests, `196` HTML pages, `14,467` local links/assets/anchors).
+- `./scripts/website.sh build && ./scripts/website.sh check`: passed (`23` website tests, `196` HTML pages, `14,471` local links/assets/anchors).
 - `(cd devcapsule-src && .venv/bin/pytest -q -k "release_docs")`: `92 passed`.
+- `(cd devcapsule-src && .venv/bin/python -m nox -s smoke)`: passed.
