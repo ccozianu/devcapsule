@@ -48,6 +48,6 @@ was therefore not exercised here, the unit tests cover it. The launcher logs
 have the run tokens redacted. The raw evidence directory was
 `devcapsule-src/dist/e2e-evidence/ide-smoke/20261029T013240Z-49b3af-required-ide`.
 
-`review-brief.md` is the brief for the review partner of this slice's pull
-request, topic 9.11; the pair is the owner's choice and the brief's header
-names the proposal.
+`review-brief.md` is the brief Codex, gpt-6-astra at high effort, received
+for PR304.1 (PR #306) on standard input, run as `codex exec --json`; the
+review was accepted without a round and merged at `3bfb3a16`.
