@@ -70,11 +70,14 @@ The **Configuration** page shows the snapshot the launcher captured when this
 session started, pre-fills pending `config` commands, and lets you submit
 `devcapsule project config` requests to the launcher over a mounted per-run
 channel. Requests never mutate the running container; they prepare the **next**
-launch, and the launcher classifies each one before acting:
+launch, and the launcher classifies each one before acting. Console
+`trust accept` and `trust withdraw` requests change the host home’s channel
+trust, so they affect other projects using that home too:
 
 - **Recorded immediately for the next launch:** checkout choices and changes
   that keep or narrow host access—`ide`, `add`, `omit`, `restore`, `use`,
-  `set`, `deny`, `unbind`, literal `env set NAME VALUE`, `env unset`,
+  `set`, `deny`, `unbind`, literal `env set NAME VALUE` (neither argument
+  starting with `-`), `env unset`,
   `trust withdraw`, `docker-args clear`, and narrowing `authorize` settings
   (`network bridge` or `none`, `docker-daemon none`, and `false` or `none` for
   `development-sudo`, `host-browser`, and `host-x11`). The launcher runs the
@@ -82,8 +85,8 @@ launch, and the launcher classifies each one before acting:
   the CLI's error).
 - **Deferred until you confirm on the host:** requests that widen what the next
   launch can reach or trust—widening `authorize` grants, `trust accept`,
-  `bind`, `forget`, `env set` from the host (`--from-host`), and `docker-args
-  set`. Because any process inside the capsule can write to the mounted channel
+  `bind`, `forget`, `env set` from the host (`--from-host`), other `env set`
+  forms, and `docker-args set`. Because any process inside the capsule can write to the mounted channel
   directory, widenings are never applied unconfirmed. The launcher saves them
   beside the checkout record so you can confirm or discard them interactively
   at the next `devcapsule project run`, or from a host terminal with:
@@ -104,10 +107,14 @@ Every request to the console—pages, JSON endpoints, and static assets—requir
 this run's random token. The launcher writes the token to a private temporary
 file, bind-mounts it read-only into the container, and deletes it when the
 session ends. Opening the printed `?token=…` link stores the token in a
-`SameSite=Strict` cookie for that port's origin so internal navigation works
-cleanly; state-changing `POST` requests also verify the console's own `Origin`
-header. Stopping the capsule invalidates the token, and the next run uses a new
-port and token.
+`HttpOnly; SameSite=Strict` cookie so internal navigation works. State-changing
+`POST` requests also verify the console's own `Origin` header. Stopping the capsule invalidates the token, and the next run uses a new
+token and selects an available port.
+
+Cookies are shared across ports on the same hostname. Opening another capsule’s
+console at `127.0.0.1` in the same browser profile replaces this cookie. If a
+console then refuses a request, reopen its full tokened link. Use separate
+browser profiles to keep several consoles authenticated at once.
 
 The console binds only to `127.0.0.1` on the host, so other machines on your
 network cannot reach it directly.

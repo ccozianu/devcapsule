@@ -30,8 +30,8 @@ this launch:
 One page opens automatically in your default browser once its listener is
 ready—the desktop when the session has a contained desktop, or the web console
 otherwise—and the other link stays printed in the terminal. If no browser tab
-opens, copy and paste the full URL yourself. Every run allocates new loopback
-ports and new tokens; treat the printed URLs as private keys to the live
+opens, copy and paste the full URL yourself. Every run selects available loopback
+ports and generates new tokens; treat the printed URLs as private keys to the live
 session.
 
 ## Reconnect

@@ -69,7 +69,7 @@ the capsule running so you can reconnect at the same URL.
 
 1. Check that Docker Desktop is still running and that you pasted the full URL
    from the **current** `devcapsule project run` output (every launch uses a
-   new port and token).
+   new token and selects an available port).
 2. Test from inside WSL2 (`curl -I "http://127.0.0.1:PORT/"` using the printed
    port) to see whether the listener answers inside Linux before troubleshooting
    WSL2-to-Windows `localhost` forwarding.

@@ -34,10 +34,11 @@ Nothing outside the repository working tree is pushed to Git or copied
 automatically:
 
 - **Home settings and channel trust** (`~/.config/devcapsule/settings.toml`):
-  your [home defaults](../configuration/home.md) (`ide`, `memory`, `cpus`) and
+  your [home defaults](../configuration/home.md) (`memory`, `cpus`) and
   accepted vendor or DevCapsule download channels.
 - **Per-checkout configuration**
-  (`~/.config/devcapsule/projects/<creator>/<slug>/`): your chosen IDE (when
+  (`~/.config/devcapsule/projects/<creator>/<slug>/`, with URL-encoded creator
+  and slug): your chosen IDE (when
   the project leaves the choice open), added or omitted optional capabilities,
   host-access authorizations, saved `config env` variables, secret bindings,
   and extra `docker run` arguments.
