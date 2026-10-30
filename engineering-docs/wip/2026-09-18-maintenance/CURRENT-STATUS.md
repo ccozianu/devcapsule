@@ -121,6 +121,35 @@ Claude availability check returned `claude-fable-5-1`; no API key is used.
 Validation scratch uses `/var/tmp/maintenance-ci` because the configured
 `/opt/devcapsule-gate` is unavailable; no container or service is needed.
 
+## User documentation 0.3.0 CLI alignment and prose review (Batch 2) — 2026-10-30
+
+Slice branch `ws-maintenance/0.3.0-docs-batch-2-configuration` (from
+`origin/release-0.3.0` at `c2742621`) updates all 10 `docs/configuration/*.md`
+files under
+[`2026-10-30-user-docs-0-3-0-cli-alignment.md`](../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md)
+and folds in the human-prose pass from
+`2026-10-24-maintenance-docs-language-review-before-0-3-0.md`.
+
+Key changes:
+- Authored `docs/configuration/ide-preferences.md` in full (`status: planned`
+  retired) covering declared slots across `pycharm`, `intellij`, `rider`,
+  `codium`, `vscode`, and `eclipse`, per-checkout XDG / `DEVCAPSULE_CONFIG_HOME`
+  paths, `config bind` / `state adopt` / `init --bind` / `config unbind`
+  direct-mount behavior, and `concurrent = false` sharing hazards.
+- Fixed `docs/configuration/software-approvals.md` (`antigravity-cli` downloads
+  from `https://storage.googleapis.com` rather than `"a bare Cloud Run host"`),
+  `docs/configuration/local-base.md` (`--tag` required on `images build --type
+  base`), `docs/configuration/index.md` (added all 4 missing sibling guide
+  links), `docs/configuration/home.md` and `docs/configuration/capabilities.md`
+  (removed leaked internal RC/candidate notes, documented `--unverified` and
+  component-name IDE aliases), `docs/configuration/inspect.md`,
+  `docs/configuration/resource-limits.md`, `docs/configuration/extra-tools.md`,
+  and `docs/configuration/project-versus-personal.md`; see the
+  [Batch 2 verification ledger](evidence/2026-10-30-docs-batch-2/README.md).
+- Next step: run documentation and website contract gates, open Batch 2 PR
+  against `release-0.3.0`, and dispatch `Codex (gpt-6-astra)` for file-by-file
+  Pair Review.
+
 ## Goal
 
 Own defects no open workstream covers and drive maintenance releases. This
@@ -3586,6 +3615,7 @@ Earlier open-thread history (read against the current scope above):
 - [CI path gating and advisory diff coverage](../../work-orders/2026-10-30-ci-path-gating-and-diff-coverage.md): active 0.3.0 slice.
 
 - [Explicit IDE requirement override evidence](evidence/2026-10-29-ide-override/README.md): the recorded acceptance session of 2026-10-29, forced Codium then plain PyCharm, and the review brief.
+- [Batch 2 verification ledger (`docs/configuration/`)](evidence/2026-10-30-docs-batch-2/README.md): 10-file 0.3.0 documentation alignment and prose slice on `ws-maintenance/0.3.0-docs-batch-2-configuration`.
 - [VS Code smoke evidence](evidence/2026-10-28-vscode/README.md): the recorded IDE smoke of the `vscode` surface, 2026-10-28, and the PR301.1 brief for Antigravity, Gemini 4 Argon (High).
 - [PR #293 review-partner brief (PR293.1)](evidence/2026-10-27-diagnostics-snapshot/brief-pr293-1.md): brief for Codex (`gpt-6-astra`) on the session diagnostics snapshot and sanitized export slice.
 - [PR #236 review-partner brief (PR236.1)](evidence/2026-10-22-pr236-review-brief.md): brief for Claude Fable 5.1 on the E2E scenario video recorder and Eclipse Java debugger demo slice.

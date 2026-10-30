@@ -1,47 +1,55 @@
 ---
-description: Which choices belong to the project and travel in Git, which are yours and stay on your computer, which belong to your configuration home, and what happens when the project changes.
+description: Which choices belong to the project in Git, which stay on your checkout, which belong to your configuration home, and how changes apply at launch.
 weight: 2
-updated: 2026-10-28
+updated: 2026-10-30
 ---
 # Project versus personal
 
-The project, your checkout and your home each hold part of the
-configuration. [Configuration](index.md) introduces these three records.
+The project, your checkout, and your configuration home each hold a distinct
+part of the launch configuration. [Configuration](index.md) introduces all
+three records.
 
 ## The project, in Git
 
 The **manifest**, `.devcapsule/devcapsule.toml`, declares required and offered
-capabilities, environment inputs, and recommendations. A requirement can
-include a minimum, such as `java>=21`. A resolution recommendation names the
-component that should provide a capability. The **platform lock** pins the
-base image and resolved component versions. Commit both files.
-[Capabilities](capabilities.md) describes `require`, `offer`, `drop` and
+capabilities, environment inputs, and recommendations. Requirements can carry a
+minimum version such as `java>=21`, and resolution recommendations name a
+preferred component provider. The **platform lock**,
+`.devcapsule/devcapsule.<platform>.lock`, pins the base image and resolved
+component versions. Commit both files together; [Capabilities and
+components](capabilities.md) covers `require`, `offer`, `drop`, and
 `recommend`.
 
 ## Your checkout, on your computer
 
-The **checkout record** holds your IDE, added capabilities, omissions,
-provider choices and local component pins. It also holds host-access answers,
-values, directory bindings and secret bindings. These choices do not travel
-in Git or apply to another checkout by default.
+The **checkout record** holds your IDE choice, added and omitted capabilities,
+provider choices, local component pins, host-access answers, values, and
+directory or secret bindings. None of these travel in Git or affect another
+checkout unless you explicitly share a directory.
 
-`config ide` chooses the IDE capability. Its component owns the container's
-lifetime and can use the display. `config add` adds a capability, including
-a coding agent. `config omit` leaves out an offer or removes your addition.
-`config use` chooses a provider when alternatives exist.
+- `config ide` chooses your IDE by capability (`python-ide`, `frontend-ide`,
+  `vscode-ide`, `java-ide`, `eclipse-ide`, `dotnet-ide`) or component name
+  (`pycharm`, `codium`, `vscode`, `intellij`, `eclipse`, `rider`). Its
+  component opens the project, owns the container's lifetime, and uses the
+  display.
+- `config add` adds a personal capability (such as a coding agent), `config
+  omit` leaves out a project offer or removes your addition, `config restore`
+  restores an omitted offer, and `config use` picks a provider when alternatives
+  exist.
+- Separate private files hold your saved `docker run` options and environment
+  variables, while managed per-checkout directories hold the capsule's home,
+  IDE preferences, and agent sign-ins. Use `config bind` or `state adopt` (and
+  `config unbind`) to point a declared slot at your own host directory; see
+  [IDE preferences and plugins](ide-preferences.md) and
+  [What persists](../sessions/what-persists.md).
 
-Private files hold your saved Docker arguments and environment variables.
-Managed directories hold the capsule's home, IDE settings and component
-sign-ins. Explicit directory bindings can share storage between checkouts.
-[What persists](../sessions/what-persists.md) lists the directories.
-
-A project recommendation supplies a default when you have no local choice.
-`config show` names that source. `config use CAPABILITY default` removes a
-provider choice. `config set NAME default` removes a value override.
-
-A host-access recommendation asks for your decision. `run` shows the project's
-reason and the access it would grant. You can allow it once, save an allowance
-or denial, or defer it. `config forget NAME` removes your saved answer.
+Project recommendations supply defaults whenever you have no checkout choice.
+`config show` reports where each active value came from; `config use CAPABILITY
+default` clears a provider override, and `config set NAME default` clears a
+value override. Host-access recommendations ask for your decision instead of
+taking effect silently: `project run` shows the project's reason and the access
+requested so you can allow it once, save an allowance or denial, or defer.
+`config forget NAME` clears a saved host-access answer.
 
 ## Your configuration home
 
@@ -137,13 +145,16 @@ Replace the list with unambiguous arguments, with environment options first.
 Use separate `--env NAME=VALUE` tokens. Short-option clusters such as
 `-te NAME=value` are not recognized or masked by these helpers.
 
-The private store is under `$XDG_CONFIG_HOME/devcapsule/docker-arguments/`
-(normally `~/.config/devcapsule/docker-arguments/`), keyed by project and
-checkout, with owner-only permissions, outside Git and outside anything
-mounted into a capsule. DevCapsule masks inline environment values in launch
-narration, in the session log and in printed commands; Docker receives the
-originals. Processes with Docker inspection access can see those values.
-Other options, such as labels, are shown as supplied; keep credentials out of them.
+The private store lives under `docker-arguments/` in your configuration home
+(`$XDG_CONFIG_HOME/devcapsule/docker-arguments/`, normally
+`~/.config/devcapsule/docker-arguments/`, or
+`$DEVCAPSULE_CONFIG_HOME/docker-arguments/` when `DEVCAPSULE_CONFIG_HOME` is
+set), keyed by project and checkout, with owner-only permissions, outside Git
+and outside anything mounted into a capsule. DevCapsule masks inline
+environment values in launch narration, session logs, and printed commands;
+Docker receives the originals, so processes with Docker inspection access can
+still read them. Other options, such as labels, appear as supplied—keep
+credentials out of them.
 
 ## From the console
 

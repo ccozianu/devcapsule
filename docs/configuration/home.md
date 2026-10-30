@@ -1,17 +1,17 @@
 ---
-description: Select one DevCapsule configuration home for settings, checkout records, persistent data, state and cache.
+description: Select one DevCapsule configuration home for settings, checkout records, persistent data, state, and cache.
 weight: 3
-updated: 2026-10-28
+updated: 2026-10-30
 ---
 # The configuration home
 
-A DevCapsule home holds the settings shared by launches from that home.
-You can use separate homes with the same executable. The executable's location
-does not select the home.
+A DevCapsule home holds the settings shared by launches from that home. You can
+use separate homes with the same executable; the executable's file path does
+not select the home.
 
-By default, the configuration directory is `$XDG_CONFIG_HOME/devcapsule`,
-or `$HOME/.config/devcapsule` when that XDG variable is empty or unset.
-Data, state and cache keep their separate XDG directories:
+By default, configuration lives in `$XDG_CONFIG_HOME/devcapsule` (or
+`$HOME/.config/devcapsule` when `XDG_CONFIG_HOME` is unset or empty), and
+persistent data, state, and cache use their own XDG directories:
 
 | Purpose | XDG directory | Default |
 |---|---|---|
@@ -20,7 +20,7 @@ Data, state and cache keep their separate XDG directories:
 | State | `$XDG_STATE_HOME/devcapsule` | `$HOME/.local/state/devcapsule` |
 | Cache | `$XDG_CACHE_HOME/devcapsule` | `$HOME/.cache/devcapsule` |
 
-Set `DEVCAPSULE_CONFIG_HOME` to keep these together:
+Set `DEVCAPSULE_CONFIG_HOME` to keep all four under one root:
 
 ```sh
 export DEVCAPSULE_CONFIG_HOME="$HOME/devcapsule-homes/learning"
@@ -32,52 +32,52 @@ devcapsule home default memory 8GiB
 devcapsule home default cpus 4
 ```
 
-The named directory holds configuration. Its `data/`, `state/` and `cache/`
-subdirectories hold the other three kinds of storage, including managed
-checkout data. Explicit storage bindings still name the directories you chose.
-An empty variable keeps the XDG defaults. A relative path starts from the
-current directory. A leading `~` expands to your user home.
+The named directory holds configuration, while its `data/`, `state/`, and
+`cache/` subdirectories hold persistent data, operational state, and caches
+(including managed per-checkout storage). Explicit host-directory bindings
+still point to the paths you chose. An empty `DEVCAPSULE_CONFIG_HOME` keeps the
+XDG defaults, a relative path resolves from the current working directory, and
+a leading `~` expands to your user home.
 
-These commands need no project. `home show` prints the selected path and its
-source. It also prints the format, minimum reader, defaults and accepted
-channels. `home trust list` lists the accepted channels and their dates.
-Neither command creates an empty home. The first write creates the home
-with mode `0700` and its settings file with mode `0600`.
+`devcapsule home` commands need no project directory. `home show` prints the
+selected path, how it was chosen, schema metadata, defaults, and accepted
+channels; `home trust list` prints accepted channels and dates. Neither read
+command creates directories on disk—the first write creates the home with mode
+`0700` and `settings.toml` with mode `0600`.
 
 ## One settings document
 
-`settings.toml` holds resource defaults under `[defaults]` and accepted
-channels under `[trust.channels]`. Each channel records its vendor, product,
-origins, integrity method, acceptance date and terms URL when applicable.
-Checkout records live separately under `projects/` in the same configuration
-directory. Saved Docker arguments and console requests have their own stores.
+`settings.toml` stores resource defaults under `[defaults]` and accepted
+distribution channels under `[trust.channels]`. Each channel entry records its
+vendor, product, origins, integrity method, acceptance date, and terms URL when
+applicable. Checkout records live under `projects/` in the same configuration
+directory, while saved Docker arguments (`docker-arguments/`) and pending
+web-console requests (`console-requests/`) keep their own subdirectories.
 
-Two header fields describe the settings file:
+Two header fields guard `settings.toml`:
 
-- `devcapsule-settings-schema-version` is the format number. This launcher reads format `1`.
-- `minimum-devcapsule` is the lowest launcher release that can read the document.
+- `devcapsule-settings-schema-version`: format version (`1` in {{tag}}).
+- `minimum-devcapsule`: lowest launcher release allowed to load the home.
 
-A new file uses the launcher's release version without its candidate suffix.
-An older launcher refuses the home before changing it. Its message names
-the home, both versions and the release download location.
-An unchanged write preserves the existing file and its modification time.
-
-Earlier candidates used two separate settings records. This launcher ignores
-those files and leaves them in place. Set defaults and accept channels again.
-Released clients before this feature did not create those records.
+When a launcher creates `settings.toml`, it sets `minimum-devcapsule` to its
+own release version (without any candidate or development suffix), and later
+writes preserve an existing minimum. Launchers older than `minimum-devcapsule`
+refuse to read or modify that home and print the required version and release
+download URL. No-op writes leave the file and its modification time untouched.
 
 ## Inside a capsule
 
-The capsule receives the launcher's settings file read-only. While the
-capsule has no settings of its own, `home show` and `home trust list` read
-that view, and `home show` says so. The capsule's own home, with its data,
-state and cache, stays in the capsule's XDG directories: the first write
-inside the capsule starts from the launcher's settings and creates the
-capsule's own there, never changing the launcher's, and from then on the
-capsule reads its own. That is the home a launcher run inside the capsule
-uses. Set `DEVCAPSULE_CONFIG_HOME` inside the capsule
-when you want that home somewhere else.
+When a capsule starts, it mounts the host launcher's `settings.toml` read-only.
+While the capsule has no `settings.toml` of its own and
+`DEVCAPSULE_CONFIG_HOME` is unset inside the capsule, `home show` and `home
+trust list` read that mounted file (and `home show` notes the read-only source).
+The capsule's own home, data, state, and cache still live in the capsule's XDG
+directories: the first `home` write inside the capsule copies the launcher's
+settings into the capsule's own `settings.toml` without touching the host's,
+and subsequent reads use the capsule's copy. Setting `DEVCAPSULE_CONFIG_HOME`
+inside the capsule selects that directory immediately and disables fallback to
+the mounted launcher settings.
 
-[Vendor software and trust](software-approvals.md) explains channel acceptance.
-[Resource limits](resource-limits.md) explains how defaults interact with project
-recommendations and checkout choices.
+See [Vendor software and trust](software-approvals.md) for channel acceptance
+and [Resource limits](resource-limits.md) for how home defaults interact with
+project recommendations and checkout overrides.
