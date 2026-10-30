@@ -1,0 +1,5 @@
+who: Costin Cozianu
+branch: release-0.3.0
+slice: Implement 0.3.0 CI gating and advisory diff coverage with Claude Fable 5.1 Pair Review
+since: 2026-10-30T01:29:53+00:00
+expires: 2026-10-30T13:29:53+00:00
