@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: in-progress 2026-10-30; user-docs 0.3.0 CLI alignment Batch 1 (PR #319 / review PR #320, 10 files) Pair-Reviewed and ready for owner merge; release-to-main draft PR #317 open awaiting release synchronization direction
+State: integrating 2026-10-30; release-to-main PR #317 open as draft; two conflicts await explicit release synchronization direction
 
 Definition read: WORKFLOW.md@bc1b631d1da6, WORKFLOW-LOCAL.md@450fc42e2234
 
@@ -15,33 +15,6 @@ Delivery method: pull request from `release-0.3.0` to `main` before each candida
 Branch association: `release-0.3.0`, the release branch, the workstream's selection from the cut to the final tag; `ws-maintenance/session-logs` (PR #207) and `ws-maintenance/log-rotation` (PR #209, then #216) are merged to `main` and closed; `ws-maintenance/post-0.2.15` is merged through PR #172 and closed; release-0.2.15 is closed and retained
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`
-
-## User documentation 0.3.0 CLI alignment and prose review (Batch 1) — 2026-10-30
-
-Implementation [PR #319](https://github.com/ccozianu/devcapsule/pull/319)
-(`ws-maintenance/0.3.0-docs-batch-1-reference-updates-troubleshooting` ->
-`release-0.3.0`) received Pair Review [PR #320](https://github.com/ccozianu/devcapsule/pull/320)
-from `Codex (gpt-6-astra)`, accepted at `71243a0c` without a revision round and
-merged at `0c0006c4`.
-
-Batch 1 covers all 10 files in `docs/reference/` (3), `docs/updates/` (4), and
-`docs/troubleshooting/` (3) under
-[`2026-10-30-user-docs-0-3-0-cli-alignment.md`](../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md)
-(merged to `main` in PR #316 at `ebab228a` and acknowledged from coordination
-mail at `2d4aa223`), retiring two `status: planned` stubs
-(`docs/reference/project-info.md` and
-`docs/troubleshooting/cleanup-and-uninstall.md`) and folding in the human-prose
-pass from `2026-10-24-maintenance-docs-language-review-before-0-3-0.md`.
-Codex ran 106 CLI `--help` and isolated `DEVCAPSULE_CONFIG_HOME` probes across
-all 10 files, confirming `supported-versions.md` and applying 13 source-verified
-fixes across the other 9 files; two unimplemented CLI help/migration-hint gaps
-(`STABLE_JSON_HELP` schema-1 string on schema-2 `config show --json`, and
-missing replacement hints on `project config default` and mutating `project
-config trust`) are filed as
-[`2026-10-30-config-show-json-help-and-retired-home-command-hints.md`](../../bugs/devcapsule/2026-10-30-config-show-json-help-and-retired-home-command-hints.md);
-see the [Batch 1 verification ledger](evidence/2026-10-30-docs-batch-1/README.md).
-Next step: owner merge of PR #319 into `release-0.3.0`; Batch 2
-(`docs/configuration/`, 10 files) proceeds on its own slice branch.
 
 ## Release-to-main integration — 2026-10-30
 
@@ -147,6 +120,35 @@ Existing IDE and sample-project changes stay in the original PM checkout.
 Claude availability check returned `claude-fable-5-1`; no API key is used.
 Validation scratch uses `/var/tmp/maintenance-ci` because the configured
 `/opt/devcapsule-gate` is unavailable; no container or service is needed.
+
+## User documentation 0.3.0 CLI alignment and prose review (Batch 2) — 2026-10-30
+
+Slice branch `ws-maintenance/0.3.0-docs-batch-2-configuration` (from
+`origin/release-0.3.0` at `c2742621`) updates all 10 `docs/configuration/*.md`
+files under
+[`2026-10-30-user-docs-0-3-0-cli-alignment.md`](../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md)
+and folds in the human-prose pass from
+`2026-10-24-maintenance-docs-language-review-before-0-3-0.md`.
+
+Key changes:
+- Authored `docs/configuration/ide-preferences.md` in full (`status: planned`
+  retired) covering declared slots across `pycharm`, `intellij`, `rider`,
+  `codium`, `vscode`, and `eclipse`, per-checkout XDG / `DEVCAPSULE_CONFIG_HOME`
+  paths, `config bind` / `state adopt` / `init --bind` / `config unbind`
+  direct-mount behavior, and `concurrent = false` sharing hazards.
+- Fixed `docs/configuration/software-approvals.md` (`antigravity-cli` downloads
+  from `https://storage.googleapis.com` rather than `"a bare Cloud Run host"`),
+  `docs/configuration/local-base.md` (`--tag` required on `images build --type
+  base`), `docs/configuration/index.md` (added all 4 missing sibling guide
+  links), `docs/configuration/home.md` and `docs/configuration/capabilities.md`
+  (removed leaked internal RC/candidate notes, documented `--unverified` and
+  component-name IDE aliases), `docs/configuration/inspect.md`,
+  `docs/configuration/resource-limits.md`, `docs/configuration/extra-tools.md`,
+  and `docs/configuration/project-versus-personal.md`; see the
+  [Batch 2 verification ledger](evidence/2026-10-30-docs-batch-2/README.md).
+- Next step: run documentation and website contract gates, open Batch 2 PR
+  against `release-0.3.0`, and dispatch `Codex (gpt-6-astra)` for file-by-file
+  Pair Review.
 
 ## Goal
 
@@ -3606,11 +3608,6 @@ Earlier open-thread history (read against the current scope above):
 
 ## Workstream Document Index
 
-- [User-docs 0.3.0 CLI alignment work order](../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md),
-  [Batch 1 verification ledger](evidence/2026-10-30-docs-batch-1/README.md),
-  [PR319.1 Pair Review brief](evidence/2026-10-30-docs-batch-1/review-brief.md), and
-  [CLI schema-help / migration-hint bug](../../bugs/devcapsule/2026-10-30-config-show-json-help-and-retired-home-command-hints.md): PR #319 / #320, reviewed 0.3.0 documentation alignment slice (`docs/reference/`, `docs/updates/`, `docs/troubleshooting/`).
-
 - [CI Pair Review brief](evidence/2026-10-30-ci-gating/review-brief.md) and
   [acceptance evidence](evidence/2026-10-30-ci-gating/acceptance.md): PR #312,
   active review and hosted validation; owner required-check step outstanding.
@@ -3618,6 +3615,7 @@ Earlier open-thread history (read against the current scope above):
 - [CI path gating and advisory diff coverage](../../work-orders/2026-10-30-ci-path-gating-and-diff-coverage.md): active 0.3.0 slice.
 
 - [Explicit IDE requirement override evidence](evidence/2026-10-29-ide-override/README.md): the recorded acceptance session of 2026-10-29, forced Codium then plain PyCharm, and the review brief.
+- [Batch 2 verification ledger (`docs/configuration/`)](evidence/2026-10-30-docs-batch-2/README.md): 10-file 0.3.0 documentation alignment and prose slice on `ws-maintenance/0.3.0-docs-batch-2-configuration`.
 - [VS Code smoke evidence](evidence/2026-10-28-vscode/README.md): the recorded IDE smoke of the `vscode` surface, 2026-10-28, and the PR301.1 brief for Antigravity, Gemini 4 Argon (High).
 - [PR #293 review-partner brief (PR293.1)](evidence/2026-10-27-diagnostics-snapshot/brief-pr293-1.md): brief for Codex (`gpt-6-astra`) on the session diagnostics snapshot and sanitized export slice.
 - [PR #236 review-partner brief (PR236.1)](evidence/2026-10-22-pr236-review-brief.md): brief for Claude Fable 5.1 on the E2E scenario video recorder and Eclipse Java debugger demo slice.
