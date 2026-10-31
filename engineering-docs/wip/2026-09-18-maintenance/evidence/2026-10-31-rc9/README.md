@@ -217,3 +217,92 @@ and check passed: 252 pages and 21,031 links/assets/anchors. The browser test
 is marked `ide_smoke` so the standard non-browser E2E suite excludes it;
 run it explicitly with the command above. The cookie-delivery hold is
 resolved; owner release/main integration precedes the candidate tag.
+
+## Downloaded RC9 verification
+
+[RC9](https://github.com/ccozianu/devcapsule/releases/tag/v0.3.0-rc9) was
+published successfully by [run 41181720227](https://github.com/ccozianu/devcapsule/actions/runs/41181720227)
+after #331 merged into main `4b59b10d`. The annotated candidate tag points
+to release `475427da033633ff5ee0e44e09face700630bf36`; the mainline candidate
+gate reports no unintegrated commits. Publicly downloaded assets match
+[the release manifest](published/release-manifest.json), version `0.3.0rc9`,
+mnemonic `v0.3.0-rc9` and PEX SHA-256
+`413b1d45bac9c39b6fa5fab68090e43550c9e255108de48b387c50a715c4fcf2`.
+[Verification ledger](published/verification.json).
+
+With DEVCAPSULE_PEX_UNDER_TEST selecting that downloaded PEX, the nox e2e
+session passed **8 tests**, 15 deselected, in 129.38 seconds. It covers
+component-cache reuse/invalidation, exact launcher delivery, external runtime
+removal, runtime/display lifecycle and self-contained execution on a clean
+machine without Python/network. Build networking was explicitly host; the
+base and early-exit image overrides selected the published fixed-base digest.
+
+The separately selected concurrent-auth test passed **1 test** in 22.90
+seconds, using the default catalog base without an override. It repeats the
+shared-browser checks above against the downloaded release, not a local PEX.
+[Browser facts](published/concurrent-auth/facts.json),
+[base lineage](published/concurrent-auth/base-lineage.json), and
+[cleanup A](published/concurrent-auth/cleanup-a.json) /
+[cleanup B](published/concurrent-auth/cleanup-b.json) retain the result.
+Both test project records were also removed.
+
+| Capsule | Authenticated console | Reconnected desktop |
+|---|---|---|
+| A | [Console](published/concurrent-auth/console-0.png) | [Desktop](published/concurrent-auth/desktop-0.png) |
+| B | [Console](published/concurrent-auth/console-1.png) | [Desktop](published/concurrent-auth/desktop-1.png) |
+
+The host-network/overview-probe limits above still apply. This closes the
+cookie bug's delivery and regression criteria, not final release acceptance
+or all provider/editor workflows. Existing locks are not automatically
+rewritten. Raw launcher logs, cookies and tokened URLs are not retained.
+
+## Final promotion audit — 2026-10-31
+
+The owner requested final publication after successfully restarting on RC9
+and the new base. The initial restart had retained a saved RC0 local-base
+override; `project config authorize base-image default` on the host corrected
+it. [Live restart evidence](final-audit/live-restart.json) verifies the actual
+base layers and installed security-module checksum as well as the RC9 PEX.
+The session uses host-X11; the earlier two-capsule test supplies noVNC proof.
+No project configuration was edited by the agent.
+
+Additional checks against the published RC9:
+
+- [Runtime inspection](final-audit/runtime-inspection.json): `config show`,
+  `versions show` and `info` emit valid JSON from root, descendant and `/opt`;
+  the unknown-subcommand diagnostic precedes the launcher guard.
+- [Recursive proof](final-audit/recursive.log): the existing attached-successor
+  regression passes in 8.66 seconds. [Adapter](final-audit/recursive-published.py)
+  selects the downloaded PEX for every CLI operation and uses its supported
+  `init --regenerate` to prepare an isolated fresh clone with this capsule's
+  choices. Existing lifecycle/inspection/cleanup assertions are unchanged.
+- [Packaged regressions](final-audit/packaged-tests.log): 18 passed, comprising
+  all 17 unpacked-cache tests and the universal-network-node regression.
+  PEX interpreter mode pre-imported the packaged `devcapsule-0.3.0rc9` wheel;
+  only pytest and its dependencies came from the development environment.
+- [Fresh Codium network proof](final-audit/network-runonce.log): saved network
+  access denied, no project recommendation, one-time `--authorize network host`
+  accepted, real IDE window and host network inspected, container/project
+  cleaned. [Driver](final-audit/network-runonce.py). Initial harness attempts
+  failed before launch because init adds a justified recommendation and the
+  helper has no cwd argument; the final driver removes the recommendation
+  with the CLI and selects the project with `--path`. No product fix needed.
+- [Freshness](final-audit/freshness.json): retain RC9's exact tested pins;
+  newly available Claude 2.1.316 is a 0.3.1 follow-up. The other two feeds
+  still match RC9. Documentation check passes and notes/docs match the tag.
+
+Final scope is still awaiting the owner's explicit disposition of C17 and
+the nine September 28 proposal decisions, separately from the already deferred
+October 25 work. Provider/editor acceptance beyond the established coverage
+also needs an explicit outcome. The prepared promotion record remains a draft
+outside Git; no final tag exists. No credentials or tokened URLs are retained.
+
+## Owner acceptance — 2026-10-31
+
+After requesting final publication, the owner answered "Yes to both questions,
+let's move ahead" to the remaining scope/provider dispositions. C17 and the
+nine September 28 documentation proposals move to 0.3.1 planning. RC9 is
+accepted with the documented provider/editor limits, without asserting
+additional unobserved actions. This supersedes the pending final-audit
+paragraph above. [Canonical promotion record](../../../../releases/v0.3.0.json).
+Final publication follows its human-merged mainline integration.

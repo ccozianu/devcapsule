@@ -1,6 +1,6 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-31. Stage: **RC9 preparation ready for owner merge of #329; fixed base published/pinned and combined concurrent-session verification passes**.
+Updated: 2026-10-31. Stage: **RC9 accepted with documented limits; mainline acceptance PR required before final publication**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Release notes](notes.md) ·
@@ -14,6 +14,62 @@ Update this file as decisions and evidence arrive. Chat highlights changes
 and questions; the bug records remain authoritative for individual status,
 ownership and technical evidence; the maintenance status file links here
 for resumption.
+
+## Final acceptance — 2026-10-31
+
+Costin Cozianu answered "Yes to both questions, let's move ahead" after
+requesting final publication. Exact RC9 is accepted with the documented
+provider/editor verification limits. This does not claim unobserved
+provider actions or editor flows. C17 and the nine undecided September 28
+documentation proposals move to **0.3.1 planning**, retaining their owners
+and item-level decisions; they no longer gate 0.3.0. This supersedes the
+older explicit gates and pending questions below. October 25's separate
+work order remains scheduled for 0.3.1 as already decided.
+
+[The promotion record](../v0.3.0.json) binds source
+`475427da033633ff5ee0e44e09face700630bf36` and candidate SHA-256
+`413b1d45bac9c39b6fa5fab68090e43550c9e255108de48b387c50a715c4fcf2`.
+The six fixed maintenance records close on their RC9 verification and owner
+acceptance; the cookie fix was already verified on the rebuilt published base.
+All required downloaded-executable checks pass. The notes, documentation
+manifest and docs branch match the candidate. Claude 2.1.316 is held for a
+0.3.1 review; the accepted source retains tested 2.1.314.
+
+Next: owner merges the acceptance PR to main, then publish v0.3.0 from
+RC9's source, verify final assets and the test-site deployment. No new
+publication approval is needed. The owner promotes the site to production.
+Main remains 0.3.1.dev0; preparation for 0.3.1 follows final delivery.
+
+## RC9 verification — 2026-10-31
+
+[#331](https://github.com/ccozianu/devcapsule/pull/331) merged at main
+`4b59b10d`. [RC9](https://github.com/ccozianu/devcapsule/releases/tag/v0.3.0-rc9)
+is published from release `475427da`; its three assets, checksum and embedded
+identity agree. Downloaded PEX verification passes eight ordinary E2E tests
+and the shared-browser authentication regression. The blocking cookie bug
+is closed, including delivery through the rebuilt default base.
+[Evidence and limits](../../wip/2026-09-18-maintenance/evidence/2026-10-31-rc9/README.md#downloaded-rc9-verification).
+
+Next: owner acceptance of this candidate and completion of the remaining
+release obligations, then the formal acceptance record and promotion under
+the runbook. These smoke results do not authorize the final tag.
+
+## Final promotion audit — 2026-10-31
+
+The owner requests 0.3.0 publication and then 0.3.1 preparation. The restarted
+capsule now uses the verified fixed base after removing its saved local-base
+override. Runtime inspection, attached recursive lifecycle, 18 packaged
+cache/network cases and a real fresh-project run-once network launch pass.
+[Audit evidence](../../wip/2026-09-18-maintenance/evidence/2026-10-31-rc9/README.md#final-promotion-audit--2026-10-31).
+Final vendor recheck found Claude 2.1.316; retain tested RC9's 2.1.314 for
+this promotion and review the new version in 0.3.1. Other agent feeds match.
+
+The October 27 scope record still explicitly gates C17 and the nine
+September 28 proposal decisions. The owner has been asked to move these to
+0.3.1 planning or keep them before 0.3.0, and to confirm provider acceptance
+or accept its documented limits. No disposition is inferred. On resolution,
+commit the formal acceptance record and obtain its mainline PR merge before
+tagging the exact RC9 source. The published executable remains unchanged.
 
 ## Headline
 
@@ -293,8 +349,8 @@ replacement.
 - [x] The shared lock regenerated on 2026-10-22 by `project config capabilities` on a fresh clone inside the capsule, where the command runs for any project but the capsule's own; committed on the release branch at `0c1a555`, gated (1672 unit tests), proven by the recursive attached launch from a fresh clone; merges to `main` with the next pre-candidate merge.
 - [x] `v0.3.0-rc0` tagged on the release branch at `53ebc17`; backend run
   passed; the three assets downloaded, checksum and version verified.
-- [ ] Local proofs against the download: clean machine, component cache,
-  runtime session on the pinned base.
+- [x] Local proofs against downloaded RC9: clean machine, component cache,
+  runtime session on the pinned base; see the acceptance record.
 - [ ] The dogfooding slices, each merged to `main` before the next
   candidate tag; the bug records closed on candidates.
 - [ ] The gates before the final tag; `notes.md`; the acceptance record;
