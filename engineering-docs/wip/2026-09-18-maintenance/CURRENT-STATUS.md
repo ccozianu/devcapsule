@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: integrating 2026-10-30; #318 merged and #317 refreshed without conflicts; user-docs 0.3.0 CLI alignment Batches 1–5 (#319, #321, #323, #325, #327; 49/49 files, 12/12 stubs retired) Pair-Reviewed and ready for owner merge; main-metadata correction awaits exception to untouched-copy rule
+State: integrating 2026-10-31; #319, #321, #323, #325, #327 merged into release-0.3.0 (338f94ab) and #317 merged into main (ce08ebad); 0.3.0 web-console port-scoped cookie fix validated and ready for owner merge; recipe-11 published base pin refresh remains before final v0.3.0 tag
 
 Definition read: WORKFLOW.md@bfc91d68cd06, WORKFLOW-LOCAL.md@65501b3407db
 
@@ -14,7 +14,48 @@ Delivery method: pull request from `release-0.3.0` to `main` before each candida
 
 Branch association: `release-0.3.0`, the release branch, the workstream's selection from the cut to the final tag; `ws-maintenance/session-logs` (PR #207) and `ws-maintenance/log-rotation` (PR #209, then #216) are merged to `main` and closed; `ws-maintenance/post-0.2.15` is merged through PR #172 and closed; release-0.2.15 is closed and retained
 
-Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`
+Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`, `R-CONSOLE-001`
+
+## Web-console port-scoped authentication cookie fix for 0.3.0 — 2026-10-31
+
+SSH fetch verified owner merges of all five `0.3.0` user-documentation batches
+into `release-0.3.0` at `338f94ab` (`#319` at `add23bb0`, `#321` at `031de0a5`,
+`#323` at `b28af13d`, `#327` at `6a5d9803`, `#325` at `338f94ab`) and of
+`4PR-10-release-0.3.0` (`#317`) into `main` at `ce08ebad`.
+
+At the owner's direction on `2026-10-31`, filed and fixed blocking `0.3.0` bug
+[`2026-10-31-webconsole-cookie-collides-across-ports.md`](../../bugs/devcapsule/2026-10-31-webconsole-cookie-collides-across-ports.md)
+(`status: fixed`, `severity: blocking`, `target: 0.3.0`, `owner: maintenance`,
+`requirements: [R-CONSOLE-001]`) on `ws-maintenance/0.3.0-webconsole-port-cookie`
+targeting `release-0.3.0`:
+
+- `devcapsule-webconsole/devcapsule_webconsole/security.py`: scopes session
+  cookie names to the browser-facing port in the HTTP `Host` header
+  (`devcapsule-console-token-<port>`, falling back to `devcapsule-console-token`
+  when portless) so concurrent capsules on `127.0.0.1` no longer overwrite one
+  another's cookie under RFC 6265 §8.5, and reads `;` cookie pairs directly
+  across all `Cookie` headers so non-RFC2109 cookies set on `127.0.0.1` by
+  sibling local applications cannot abort credential parsing.
+- `devcapsule-src/devcapsule/_redaction.py`: widens `_CONSOLE_COOKIE_RE` to
+  scrub suffixed `devcapsule-console-token-<port>=` cookies while keeping the
+  cookie name and port readable in diagnostic exports.
+- `docs/sessions/web-console.md`, `docs/sessions/several-projects.md`,
+  `docs/troubleshooting/diagnostics-and-logs.md`, and
+  `devcapsule-webconsole/README.md`: replace the multi-profile workaround note
+  with the port-scoped `0.3.0` cookie behavior.
+- Local validation passed: `374` web-console tests (up from `357`, including
+  dual-port cookie jar isolation, live two-`uvicorn` + `http.cookiejar`
+  loopback proof, IPv6/portless/malformed `Host` handling, HTTP/2 split
+  `Cookie` headers, and sibling localhost cookies) and strict `mypy` (`9`
+  files); runtime `mypy` (`264` files), syntax checks, CLI and PEX smokes, `18`
+  packaging/install integration tests, `2,644` unit tests (`40` deselected, `1`
+  `xfail`, `1` `XPASS`), `192`-page `docs-contract` (`18` aliases), and website
+  build/check (`196` HTML pages, `14,636` links/assets/anchors, `23` tests).
+- Next step: owner review and merge into `release-0.3.0`, propagation to `main`,
+  and before the final `v0.3.0` tag, rebuilding and re-pinning the published
+  `ubuntu-24.04@11` base image in `resolution_matrix.py` from a `0.3.0`
+  candidate carrying this commit so non-self-hosting adopters receive the
+  updated `/opt/devcapsule-webconsole` without building a local base.
 
 ## User documentation 0.3.0 CLI alignment and prose review (Batch 1) — 2026-10-30
 
@@ -3800,6 +3841,7 @@ Earlier open-thread history (read against the current scope above):
 - [Runtime CLI blocker](../../bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md): next implementation task; blocks 0.2.14.
 - [URL-opening defect](../../bugs/devcapsule/2026-09-24-url-opening-without-browser-handler.md): contained-display triage.
 - [Workflow onboarding](../../work-orders/2026-09-24-workflow-installation-onboarding.md): non-blocking follow-up.
+- [Web-console port-scoped cookie bug (`0.3.0`)](../../bugs/devcapsule/2026-10-31-webconsole-cookie-collides-across-ports.md): fixed on `ws-maintenance/0.3.0-webconsole-port-cookie`; close after `release-0.3.0` merge, `main` propagation, and published recipe-11 base pin refresh.
 - [0.3.0 user docs Batch 5 evidence](evidence/2026-10-30-docs-batch-5/README.md): Batch 5 (`sessions/`, `collaboration/`, `platforms/`) scope, validation, and Pair Review record.
 - [PR #327 review-partner brief (PR327.1)](evidence/2026-10-30-docs-batch-5/review-brief.md): brief for `Codex (gpt-6-astra)` on Batch 5 (`#327`/`#328`).
 
