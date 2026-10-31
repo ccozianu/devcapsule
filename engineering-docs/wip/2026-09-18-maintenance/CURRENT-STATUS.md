@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: integrating 2026-10-30; #318 merged and #317 refreshed without conflicts; user-docs 0.3.0 CLI alignment Batches 1–5 (#319, #321, #323, #325, #327; 49/49 files, 12/12 stubs retired) Pair-Reviewed and ready for owner merge; main-metadata correction awaits exception to untouched-copy rule
+State: active 2026-10-31; preparing intended final candidate rc9 with owner-selected agent upgrades and IDE update checks
 
 Definition read: WORKFLOW.md@bfc91d68cd06, WORKFLOW-LOCAL.md@65501b3407db
 
@@ -15,6 +15,41 @@ Delivery method: pull request from `release-0.3.0` to `main` before each candida
 Branch association: `release-0.3.0`, the release branch, the workstream's selection from the cut to the final tag; `ws-maintenance/session-logs` (PR #207) and `ws-maintenance/log-rotation` (PR #209, then #216) are merged to `main` and closed; `ws-maintenance/post-0.2.15` is merged through PR #172 and closed; release-0.2.15 is closed and retained
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`
+
+## Intended final candidate RC9 — 2026-10-31
+
+Owner requests the intended final candidate after all PRs merge. Verified
+main `ce08ebad` includes #317; release `338f94ab` includes all five user-docs
+batches. Those documentation batches still need pre-candidate main integration.
+The next unused tag is v0.3.0-rc9; no tag has been created. The owner selected
+**upgrade** in `2026-10-31-rc9-agent-pins`, answered 00:50:18 UTC, and asked
+also to check IDE updates because of security fixes. The choice and note
+are preserved here before the console decision state is removed.
+
+Current slice: `ws-maintenance/0.3.0-rc9-preparation`, based on release
+`338f94ab`, for the required component pin updates, release notes and docs
+promotion. The release remains the integration selection. Main has no newer
+workflow definition to import; do not merge main into the release without
+a new owner direction. The approved main-metadata adjustment is already
+merged through #317 and must be preserved in subsequent main delivery.
+
+Selected vendor stable versions: Codex 0.166.0, Claude Code 2.1.314,
+Antigravity 1.4.12; PyCharm/IntelliJ/Rider 2026.2.4, VSCodium 1.143.17232,
+VS Code 1.144.0. Eclipse Java stays 2026-09-R. Downloads and digest checks
+are in progress in the persistent cache (198 GiB available at start);
+/var/tmp is a 1 GiB tmpfs and is used only for small logs. The existing
+recipe-11 base is available locally; no base upgrade is planned.
+
+Notes drafted; release-docs promote/check pass, with 0.3.0 current,
+0.2.15 deprecated and 0.2.14/0.2.12 unsupported. A repository-manifest test
+was coupled to pre-promotion 0.2.15; its scratch promotion now uses a
+synthetic future version. All 92 release-docs tests pass. The documentation
+ref has not yet been created or pushed. Complete artifact/runtime checks,
+review the prepared release changes, run the full gate and website check,
+and integrate into main before tagging. The human merges the delivery PRs.
+Final acceptance still needs the downloaded RC checks and disposition of
+the remaining C17/nine-doc-proposal obligations in the October 27 scope
+record; this candidate request does not silently close them.
 
 ## User documentation 0.3.0 CLI alignment and prose review (Batch 1) — 2026-10-30
 
@@ -2449,15 +2484,12 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-Current: #318 is merged and #317 refreshed. Obtain the one-time exception
-for main metadata on the release-copy branch, apply the prepared four-file
-correction, validate, and hand #317 back for merge. Pair Review naming and
-its packaged definition are now on the release branch through #318. The CI work order
-is implemented, reviewed, validated and merged into the release through
-PR #312. Required ci-gate configuration remains an owner action; normal
-release propagation to main remains open. Documentation scheduling records
-reflect the acknowledged 0.3.1 deferral.
-Historical candidate sequencing below must not override this owner direction.
+Current: finish RC9 agent/IDE freshness verification and pin updates, prepare
+and validate release notes and documentation promotion, then deliver the
+release preparation and pre-candidate main integration for owner merge.
+Tag v0.3.0-rc9 only after the candidate gate proves its main disposition.
+The owner selected upgrades; no freshness decision remains pending.
+Historical candidate sequencing below must not override this direction.
 
 1. The network-node slice, on `ws-maintenance/0.3.0-network-node` from
    the release branch, a pull request into it with the reviewer loop;
@@ -3303,6 +3335,12 @@ asset downloads verify publication; no credentialed Actions-run inspection is
 claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
+
+- RC9: upgrade the three agent pins and check/update stable IDE pins as the
+  owner requested; verify artifacts and runtime behavior before recording
+  acceptance. Provider/tool and GUI acceptance must be explicit about limits.
+- Pre-last-candidate documentation promotion and notes are prepared, but
+  docs-0.3.0 and the pre-candidate main merge remain outstanding.
 
 - PR #318 is merged; #317 is refreshed and has no textual conflicts.
   The four-file main-metadata correction is prepared but not applied.

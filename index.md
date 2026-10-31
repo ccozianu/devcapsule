@@ -49,6 +49,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Releases
 
+- [0.3.0 release notes](engineering-docs/releases/v0.3.0/notes.md)
 - [0.2.15 release notes](engineering-docs/releases/v0.2.15/notes.md)
 - [0.2.14 release notes](engineering-docs/releases/v0.2.14/notes.md)
 

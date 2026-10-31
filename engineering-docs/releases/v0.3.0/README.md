@@ -1,8 +1,9 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-26. Stage: **candidate 8 published and verified as downloaded; `init --regenerate` migrates a schema-1 manifest to schema 2, the owner's gate of 2026-10-26 met; the owner's regeneration of the repository's own manifests next, then the diagnostics snapshot, image cleanup and C20**.
+Updated: 2026-10-31. Stage: **preparing intended final candidate 9; documentation batches merged into the release branch, release notes and documentation promotion being validated; agent and IDE refresh selected; pre-candidate main integration pending**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
+[Release notes](notes.md) ·
 [Changelog since 0.2.15](changelog.md) ·
 [Bug table](bugs.md) ·
 [Work order](../../work-orders/2026-10-18-release-0-3-0.md) ·
@@ -296,6 +297,39 @@ replacement.
   candidate tag; the bug records closed on candidates.
 - [ ] The gates before the final tag; `notes.md`; the acceptance record;
   the final tag; delivery verified; `docs/versions.yaml` promoted on `main`.
+
+## RC9 preparation — 2026-10-31
+
+The owner requested the intended final release candidate after all open PRs
+merged. PR #317 is on main at `ce08ebad`; documentation batches #319, #321,
+#323, #325 and #327 are on release tip `338f94ab` but not yet on main.
+All 49 guides were reviewed; all 12 planned stubs were authored. The next
+unused tag is `v0.3.0-rc9`; it has not been created.
+
+Preparation: write the adopter notes, promote docs/versions.yaml with the
+C20 helper, establish docs-0.3.0, run the full local gate and website build,
+and integrate the resulting release source into main before tagging. The
+owner merges the integration PR. No final release or candidate acceptance
+is claimed by this preparation.
+
+Freshness recheck, 2026-10-31: vendor latest pointers offer Codex 0.166.0,
+Claude Code 2.1.314 and Antigravity CLI 1.4.12, compared with the existing
+pins 0.163.0, 2.1.302 and 1.4.2. Sources are the same vendor endpoints in
+the freshness table. The owner selected **upgrade** in decision `2026-10-31-rc9-agent-pins`
+(answered 2026-10-31 at 00:50:18 UTC) and additionally requested IDE updates
+because of security fixes. Stable vendor feeds select PyCharm, IntelliJ IDEA
+and Rider 2026.2.4, VSCodium 1.143.17232 and VS Code 1.144.0; Eclipse Java
+2026-09-R is unchanged. Artifact acquisition/digest checks and runtime
+validation are in progress. Existing pins remain available for old locks.
+Do not claim a particular security fix from version age alone; the vendor
+security table did not return usable advisory rows during this check.
+
+Final acceptance still needs downloaded-artifact verification, the remaining
+fixed-bug/provider checks, and an explicit disposition of the C17 generic
+half and nine documentation proposal decisions left open in the October 27
+scope record. Candidate preparation does not silently close those items.
+Automated cleanup and empty-cache IDE reuse are out by that record, despite
+older historical candidate plans below.
 
 ## Candidates
 
