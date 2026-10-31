@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-31; 0.3.0 final artifacts and production website verified; release complete; 0.3.1 maintenance preparation ready
+State: paused 2026-10-31 at owner direction for travel; 0.3.0 complete; 0.3.1 preparation and queue preserved
 
 Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@65501b3407db
 
@@ -15,6 +15,19 @@ Delivery method: ordinary maintenance PRs to `main`; owner merges. No records-on
 Branch association: `ws-maintenance/0.3.1-preparation` from main 31d44fa4; `release-0.3.0` closed after final publication and retained with its tags; `ws-maintenance/0.3.0-acceptance` merged through #332 and closed; earlier slice branches are historical
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`, `R-CONSOLE-001`
+
+## Paused for travel — 2026-10-31
+
+The owner requested a travel break. Maintenance is deliberately paused on
+ws-maintenance/0.3.1-preparation. Final 0.3.0 artifacts and production website
+are independently verified, the production handoff is complete, and no
+release operation remains. The 0.3.1 queue below is preserved; implementation
+has not started. No waiting mail was present at pause. Records are committed,
+pushed and published; the active claim is released.
+
+Resume only on the owner's return. Read Open Threads and the 0.3.1 preparation
+queue, recheck remote/main and live coordination state, then settle the first
+slice. Release-independent test fixtures remain the proposed starting point.
 
 ## 0.3.0 delivery complete — 2026-10-31
 
@@ -3683,6 +3696,17 @@ asset downloads verify publication; no credentialed Actions-run inspection is
 claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
+
+- Paused for owner travel on 2026-10-31. No work continues during the break.
+- On return, confirm the first 0.3.1 slice; release-independent test fixtures
+  are proposed. The nine documentation proposals still need item-level
+  decisions with project-management; C17 belongs to workflow-improvements.
+- No unresolved 0.3.0 release operation remains. Final artifacts, accepted
+  source and production website provenance are preserved in release records.
+- Scratch caches and raw logs are reproducible and not required to resume.
+  Credentials, tokened links and deleted console decision state are deliberately
+  not preserved in Git. All consequential decisions are in normal records.
+
 
 - Final 0.3.0 and its production website are published and independently
   verified. The owner promotion handoff is complete; no release action remains.
