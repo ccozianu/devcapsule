@@ -294,6 +294,8 @@ history; record current decisions in the active documents above.
 
 ## Bugs
 
+- [Release-dependent test fixtures cause avoidable release PR churn](engineering-docs/bugs/devcapsule/2026-10-31-release-dependent-test-fixtures.md)
+
 - [Concurrent web consoles on `127.0.0.1` overwrite one another's authentication cookie across ports](engineering-docs/bugs/devcapsule/2026-10-31-webconsole-cookie-collides-across-ports.md)
 - [`project config show --help` advertises JSON schema 1 while emitting schema 2, and retired `project config default|trust` spellings print no replacement hint](engineering-docs/bugs/devcapsule/2026-10-30-config-show-json-help-and-retired-home-command-hints.md)
 - [An old lock keeps the replaced IDE beside an ordinary IDE override](engineering-docs/bugs/devcapsule/2026-10-29-legacy-lock-keeps-the-replaced-ide.md)

@@ -57,6 +57,14 @@ targeting `release-0.3.0`:
   candidate carrying this commit so non-self-hosting adopters receive the
   updated `/opt/devcapsule-webconsole` without building a local base.
 
+## 0.3.1 test maintenance follow-up — 2026-10-31
+
+Owner requested [release-independent behavioral fixtures](../../bugs/devcapsule/2026-10-31-release-dependent-test-fixtures.md)
+for 0.3.1. Next action after 0.3.0: isolate generic CLI/contract tests from
+current production pins and the repository lock; demonstrate reduced changed-file
+count on a representative pin refresh while preserving independent assertions
+and historical compatibility coverage. This does not expand the RC9 code slice.
+
 ## Intended final candidate RC9 — 2026-10-31
 
 **Cookie fix integration, 2026-10-31:** SSH fetch confirms
