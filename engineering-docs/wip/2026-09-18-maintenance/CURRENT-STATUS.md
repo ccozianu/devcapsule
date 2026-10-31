@@ -538,6 +538,15 @@ outside basetemp. Final validation uses tmpfs scratch and an external log. No me
 the current release tip, whose workflow and approval changes are already
 present. The release branch is not synchronized or rewritten.
 
+## User Documentation 0.3.0 CLI Alignment — Batch 5 (`sessions/`, `collaboration/`, `platforms/`) — 2026-10-30
+
+Slice branch: `ws-maintenance/0.3.0-docs-batch-5-sessions-collab-platforms` ([PR #327](https://github.com/ccozianu/devcapsule/pull/327) targeting `release-0.3.0`, final batch of [2026-10-30-user-docs-0-3-0-cli-alignment.md](../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md)).
+
+- Updated 9 `docs/*.md` files across `docs/sessions/` (5), `docs/collaboration/` (1), and `docs/platforms/` (3), retiring the final 2 `status: planned` stubs (`docs/sessions/several-projects.md` and `docs/sessions/another-machine.md`) so all 49 `docs/**/*.md` files and all 12 stubs across Batches 1–5 (`#319`, `#321`, `#323`, `#325`, `#327`) are complete with zero overlaps.
+- Pair Review [PR #328](https://github.com/ccozianu/devcapsule/pull/328) (`PR327.1` by `Codex / gpt-6-astra`, `59bc1bae`) reviewed all 9 pages against `devcapsule-src/` and `devcapsule-webconsole/`, verified `macos.md` clean, and fixed 8 pages (`256 MiB` default log budget in `what-persists.md`, `HomeDefaults` keys `memory`/`cpus` and URL-encoded `<creator>/<slug>` paths in `another-machine.md`, `project list` host vs runtime scope and `DEVCAPSULE_CONFIG_HOME` isolated homes in `several-projects.md`, home-wide console `trust` scope, `env set` leading-dash rule, and `HttpOnly; SameSite=Strict` RFC 6265 host-shared cookie behavior in `web-console.md`, `--workstream` subcommand scope and `project-management` non-forwardability in `working-in-workstreams.md`, and ephemeral port wording / 3-command check scope in `start-stop-reconnect.md`, `linux.md`, and `windows-wsl2.md`). Verified independently, accepted without a round, and merged (`edcab618`).
+- Unimplemented runtime proposal from PR #328 (out of scope for docs slice): isolate web-console authentication cookies per console instance/port so multiple consoles opened on `127.0.0.1` in one browser profile do not overwrite `devcapsule_console_token`.
+- Post-merge validation passed: `docs-contract` (`192` pages), `./scripts/website.sh build && ./scripts/website.sh check` (`23` tests, `196` HTML pages, `14,462` links/assets/anchors), `92` `release_docs` unit tests, `nox -s smoke`, and `bash -n` on all 17 shell blocks. Ready for owner review and merge alongside PRs `#319`, `#321`, `#323`, and `#325`.
+
 ## The CLI UX redesign in rc4 — 2026-10-24
 
 The owner answered the
@@ -3750,6 +3759,8 @@ Earlier open-thread history (read against the current scope above):
 - [Runtime CLI blocker](../../bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md): next implementation task; blocks 0.2.14.
 - [URL-opening defect](../../bugs/devcapsule/2026-09-24-url-opening-without-browser-handler.md): contained-display triage.
 - [Workflow onboarding](../../work-orders/2026-09-24-workflow-installation-onboarding.md): non-blocking follow-up.
+- [0.3.0 user docs Batch 5 evidence](evidence/2026-10-30-docs-batch-5/README.md): Batch 5 (`sessions/`, `collaboration/`, `platforms/`) scope, validation, and Pair Review record.
+- [PR #327 review-partner brief (PR327.1)](evidence/2026-10-30-docs-batch-5/review-brief.md): brief for `Codex (gpt-6-astra)` on Batch 5 (`#327`/`#328`).
 
 - [Legacy launch capability work item](../../work-orders/2026-09-22-legacy-launch-capability-disposition.md): future-release decisions and delivery, blocking V1.
 - [Release overview](../../releases/v0.2.14/README.md): cut, candidates and acceptance checklist.
