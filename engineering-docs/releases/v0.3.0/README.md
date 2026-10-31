@@ -1,6 +1,6 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-31. Stage: **preparing intended final candidate 9; agent/IDE refresh, release notes and documentation promotion validated; owner release/main integration pending**.
+Updated: 2026-10-31. Stage: **RC9 held for the critical concurrent-capsule cookie-isolation fix; owner holds PR #329 pending reconciliation and combined verification**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Release notes](notes.md) ·
@@ -301,6 +301,15 @@ replacement.
   the final tag; delivery verified; `docs/versions.yaml` promoted on `main`.
 
 ## RC9 preparation — 2026-10-31
+
+**Release blocker added by the owner:** the parallel session is fixing cookie
+collisions between capsules sharing a host but using different ports, affecting
+both console and noVNC authentication. Hold PR #329 and candidate publication
+until the fix and this preparation are reconciled, conflicts resolved, and two
+simultaneous capsules work in the same browser profile through switching,
+refreshing and reconnecting. Earlier sequential startup checks do not cover
+this regression. Verify that any base-shipped console changes are included in
+the candidate's pinned base. The fix remains with the parallel session.
 
 The owner requested the intended final release candidate after all open PRs
 merged. PR #317 is on main at `ce08ebad`; documentation batches #319, #321,
