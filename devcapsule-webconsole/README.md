@@ -11,8 +11,11 @@ imports none of the runtime's internals. Its API is the runtime CLI's
 ## Boundaries
 
 - Every request carries the run token or is refused. The token arrives once
-  in the URL the launcher prints, and the console answers with a cookie so
-  the pages' links and requests carry it from then on.
+  in the URL the launcher prints, and the console answers with a port-scoped
+  cookie (`devcapsule-console-token-<port>`, or `devcapsule-console-token`
+  when the origin carries no explicit port) so the pages' links and requests
+  carry it from then on without colliding across concurrent capsules on
+  `127.0.0.1`.
 - File reads resolve inside the project mount only. A path that escapes
   it, by `..`, by an absolute path or by a symbolic link, is refused.
 - The console writes only into the capsule's state: the answer to a

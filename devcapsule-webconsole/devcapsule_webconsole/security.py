@@ -1,35 +1,106 @@
 """The two boundaries of the console: the run token and the project mount.
 
 Every request carries the token or is refused; the token arrives in the URL
-the launcher prints and is kept in a cookie from then on. Every file the
-console reads lies inside the project mount; a path that escapes it is
+the launcher prints and is kept in a port-scoped cookie from then on. Every
+file the console reads lies inside the project mount; a path that escapes it is
 refused before its contents are read.
 """
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from contextlib import ExitStack
 import errno
-from http.cookies import CookieError, SimpleCookie
 import os
 from pathlib import Path
 import secrets
 import stat
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlsplit
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 TOKEN_QUERY_PARAMETER = "token"
 TOKEN_COOKIE = "devcapsule-console-token"
 TOKEN_HEADER = "x-devcapsule-token"
+TOKEN_HEADER_BYTES = TOKEN_HEADER.encode("ascii")
 REFUSAL_BODY = b"devcapsule web console: missing or invalid run token\n"
+
+
+def token_cookie_name(port: int | None = None) -> str:
+    """Cookie name for ``port``, or ``TOKEN_COOKIE`` when the origin carries no port.
+
+    RFC 6265 §8.5 shares cookies across every port of ``127.0.0.1``. Naming the
+    cookie after the browser-facing port keeps concurrent capsules' consoles
+    from overwriting one another's credential in the same browser profile.
+    """
+    if port is not None and not isinstance(port, bool) and 0 < port < 65536:
+        return f"{TOKEN_COOKIE}-{port}"
+    return TOKEN_COOKIE
+
+
+def _scope_port(scope: Scope) -> int | None:
+    raw_headers: Sequence[tuple[bytes, bytes]] = scope.get("headers", ())
+    hosts = [value.decode("latin-1").strip() for name, value in raw_headers if name.lower() == b"host"]
+    if len(hosts) == 1:
+        host = hosts[0]
+        if not host or any(ord(c) <= 0x20 or ord(c) >= 0x7F or c in ";,\\\"'" for c in host):
+            return None
+        try:
+            parsed = urlsplit(f"//{host}")
+            if (
+                parsed.hostname
+                and parsed.username is None
+                and parsed.password is None
+                and not parsed.path
+                and not parsed.query
+                and not parsed.fragment
+            ):
+                return parsed.port
+        except ValueError:
+            return None
+        return None
+    if not hosts:
+        server = scope.get("server")
+        if (
+            isinstance(server, (tuple, list))
+            and len(server) == 2
+            and isinstance(server[1], int)
+            and not isinstance(server[1], bool)
+            and server[1] not in (80, 443)
+        ):
+            return server[1]
+    return None
+
+
+def _cookie_values(raw_headers: Sequence[tuple[bytes, bytes]], cookie_name: str) -> list[str]:
+    """Values of ``cookie_name`` across ``Cookie`` headers, isolated from neighbor cookies.
+
+    Browsers send every cookie stored for ``127.0.0.1`` to every port on
+    ``127.0.0.1`` (RFC 6265 §8.5). ``http.cookies.SimpleCookie.load`` aborts on
+    JSON or bracketed cookies set by unrelated local applications, discarding
+    later credentials in the same header; console tokens are unquoted RFC 6265
+    cookie-octets (``settings.read_token``), so reading ``;`` pairs directly
+    keeps ``cookie_name`` working alongside arbitrary neighbor cookies.
+    """
+    values: list[str] = []
+    for name, raw_value in raw_headers:
+        if name.lower() != b"cookie":
+            continue
+        for chunk in raw_value.decode("latin-1").split(";"):
+            if "=" not in chunk:
+                continue
+            key, value = chunk.split("=", 1)
+            if key.strip() == cookie_name:
+                values.append(value.strip())
+    return values
 
 
 class TokenGate:
     """ASGI middleware: admit a request that carries the token, refuse the rest.
 
-    A valid token in the query string is answered with the cookie, so a page
-    opened from the printed URL can follow its own links. A valid cookie or
+    A valid token in the query string is answered with the port-scoped cookie,
+    so a page opened from the printed URL can follow its own links without
+    clobbering another capsule's console on ``127.0.0.1``. A valid cookie or
     header is accepted as is. Comparison is constant-time.
     """
 
@@ -44,27 +115,25 @@ class TokenGate:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-        headers = {name.decode("latin-1").lower(): value.decode("latin-1") for name, value in scope["headers"]}
+        raw_headers: Sequence[tuple[bytes, bytes]] = scope.get("headers", ())
+        cookie_name = token_cookie_name(_scope_port(scope))
         query = parse_qs(scope.get("query_string", b"").decode("latin-1"))
         from_query = query.get(TOKEN_QUERY_PARAMETER, [None])[0]
         if self._matches(from_query):
-            await self.app(scope, receive, _setting_cookie(send, self.token))
+            await self.app(scope, receive, _setting_cookie(send, cookie_name, self.token))
             return
-        cookies = SimpleCookie()
-        try:
-            cookies.load(headers.get("cookie", ""))
-        except CookieError:
-            # A malformed cookie supplies no credential; a valid header still can.
-            cookies.clear()
-        from_cookie = cookies[TOKEN_COOKIE].value if TOKEN_COOKIE in cookies else None
-        if self._matches(from_cookie) or self._matches(headers.get(TOKEN_HEADER)):
+        if any(self._matches(candidate) for candidate in _cookie_values(raw_headers, cookie_name)):
+            await self.app(scope, receive, send)
+            return
+        header_tokens = [value.decode("latin-1") for name, value in raw_headers if name.lower() == TOKEN_HEADER_BYTES]
+        if len(header_tokens) == 1 and self._matches(header_tokens[0]):
             await self.app(scope, receive, send)
             return
         await _refuse(send)
 
 
-def _setting_cookie(send: Send, token: str) -> Send:
-    cookie = f"{TOKEN_COOKIE}={token}; Path=/; HttpOnly; SameSite=Strict"
+def _setting_cookie(send: Send, cookie_name: str, token: str) -> Send:
+    cookie = f"{cookie_name}={token}; Path=/; HttpOnly; SameSite=Strict"
 
     async def send_with_cookie(message: Message) -> None:
         if message["type"] == "http.response.start":

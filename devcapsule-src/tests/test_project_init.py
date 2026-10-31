@@ -938,12 +938,12 @@ def test_init_unverified_resolves_past_the_matrix_with_a_gentle_warning(
         # exists, and the strict form discloses the gap and the experiment.
         assert cli.main(need) == 2
         refusal = capsys.readouterr().err
-        assert "Not yet validated: antigravity-cli 1.4.2 on base v0.3.0-rc6." in refusal
+        assert "Not yet validated: antigravity-cli 1.4.12 on base v0.3.0-local-linux-x86_64." in refusal
         assert "Run it as an experiment with --unverified" in refusal
 
         assert cli.main([*need, "--unverified"]) == 0
         warning = capsys.readouterr().err
-        assert "Running as an experiment. Not yet validated: antigravity-cli 1.4.2 on base v0.3.0-rc6." in warning
+        assert "Running as an experiment. Not yet validated: antigravity-cli 1.4.12 on base v0.3.0-local-linux-x86_64." in warning
 
     # The required capability records its unvalidated combination in the shared lock.
     lock = read_toml(project / ".devcapsule" / "devcapsule.linux-amd64.lock")
@@ -1053,7 +1053,7 @@ def test_antigravity_capability_requires_the_acquisition_answer(
         assert record["authorization"]["antigravity-download"]["value"] is True
         from devcapsule.configuration.storage import lock_for
         lock = lock_for(project, read_toml(project / ".devcapsule" / "devcapsule.toml"))[1]
-        assert lock["components"]["antigravity-cli"]["version"] == "1.4.2"
+        assert lock["components"]["antigravity-cli"]["version"] == "1.4.12"
 
 
 def test_noninteractive_need_without_an_agent_stays_explicit(tmp_path: Path) -> None:
@@ -1234,7 +1234,7 @@ def test_local_selection_offers_and_accepts_the_experiment_lever(tmp_path: Path,
 
         assert cli.main(select) == 2
         refusal = capsys.readouterr().err
-        assert "Not yet validated: antigravity-cli 1.4.2 on base v0.3.0-rc6." in refusal
+        assert "Not yet validated: antigravity-cli 1.4.12 on base v0.3.0-local-linux-x86_64." in refusal
         assert "--unverified" in refusal
         manifest = read_toml(project / ".devcapsule" / "devcapsule.toml")
         assert manifest["capabilities"]["required"] == ["python"]

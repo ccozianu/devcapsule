@@ -49,6 +49,7 @@ status file; internal WIP/archive documents use the local index in that status.
 
 ## Releases
 
+- [0.3.0 release notes](engineering-docs/releases/v0.3.0/notes.md)
 - [0.2.15 release notes](engineering-docs/releases/v0.2.15/notes.md)
 - [0.2.14 release notes](engineering-docs/releases/v0.2.14/notes.md)
 
@@ -293,6 +294,10 @@ history; record current decisions in the active documents above.
 
 ## Bugs
 
+- [Release-dependent test fixtures cause avoidable release PR churn](engineering-docs/bugs/devcapsule/2026-10-31-release-dependent-test-fixtures.md)
+
+- [Concurrent web consoles on `127.0.0.1` overwrite one another's authentication cookie across ports](engineering-docs/bugs/devcapsule/2026-10-31-webconsole-cookie-collides-across-ports.md)
+- [`project config show --help` advertises JSON schema 1 while emitting schema 2, and retired `project config default|trust` spellings print no replacement hint](engineering-docs/bugs/devcapsule/2026-10-30-config-show-json-help-and-retired-home-command-hints.md)
 - [An old lock keeps the replaced IDE beside an ordinary IDE override](engineering-docs/bugs/devcapsule/2026-10-29-legacy-lock-keeps-the-replaced-ide.md)
 - [Workstation-scoped commands live under `project config` and need a project](engineering-docs/bugs/devcapsule/2026-10-25-workstation-commands-live-under-project-config.md)
 - [Console link printed on a base without the console](engineering-docs/bugs/devcapsule/2026-10-18-console-link-printed-on-a-base-without-the-console.md)
