@@ -310,8 +310,9 @@ unused tag is `v0.3.0-rc9`; it has not been created.
 
 Preparation: write the adopter notes, promote docs/versions.yaml with the
 C20 helper, establish docs-0.3.0, run the full local gate and website build,
-and integrate the resulting release source into main before tagging. The
-owner merges the integration PR. No final release or candidate acceptance
+and integrate the resulting release source into main before tagging.
+`docs-0.3.0` is published at promotion commit `68b21a18` for hosted PR checks.
+The owner merges the integration PR. No final release or candidate acceptance
 is claimed by this preparation.
 
 Freshness recheck, 2026-10-31: vendor latest pointers offer Codex 0.166.0,

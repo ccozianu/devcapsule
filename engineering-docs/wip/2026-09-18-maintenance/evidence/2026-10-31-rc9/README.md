@@ -120,9 +120,10 @@ a saved edit, account entitlement, licensing, or persistence after relaunch.
 ## Release obligations
 
 The preparation promotes 0.3.0 documentation, deprecates 0.2.15 and marks
-0.2.14/0.2.12 unsupported. Adopter notes accompany the promotion. A local
-`docs-0.3.0` ref supports build checks; publication follows integration of
-its promotion commit into the release. The docs tree must match the accepted
+0.2.14/0.2.12 unsupported. Adopter notes accompany the promotion. `docs-0.3.0` is published at promotion commit `68b21a18`. The promotion
+is carried by a release review slice; its documentation ref must exist
+before hosted PR checks, which fetch docs-* refs. This ordering makes the
+source available to CI while owner release integration remains pending. The docs tree must match the accepted
 final tag.
 
 The human merges the preparation into release and its main propagation.
