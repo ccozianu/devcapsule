@@ -1,5 +1,5 @@
 who: Costin Cozianu
-branch: ws-maintenance/0.3.0-rc9-preparation
-slice: Prepare rc9 agent/IDE refresh, release notes and docs promotion; verify before tagging
-since: 2026-10-31T00:55:34+00:00
-expires: 2026-10-31T12:55:34+00:00
+branch: ws-maintenance/0.3.0-webconsole-port-cookie
+slice: 0.3.0 web console port-scoped auth cookie fix
+since: 2026-10-31T01:23:28+00:00
+expires: 2026-10-31T13:23:28+00:00
