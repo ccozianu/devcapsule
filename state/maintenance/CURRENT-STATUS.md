@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: awaiting owner acceptance 2026-10-31; RC9 published; downloaded executable passes 8 E2E tests and shared-browser regression; cookie bug closed
+State: finalization 2026-10-31; owner requests 0.3.0; final audit passes; explicit scope/provider dispositions pending before acceptance integration and tag
 
 Definition read: WORKFLOW.md@bfc91d68cd06, WORKFLOW-LOCAL.md@65501b3407db
 
@@ -15,6 +15,45 @@ Delivery method: pull request from `release-0.3.0` to `main` before each candida
 Branch association: `release-0.3.0`, the release branch, the workstream's selection from the cut to the final tag; `ws-maintenance/session-logs` (PR #207) and `ws-maintenance/log-rotation` (PR #209, then #216) are merged to `main` and closed; `ws-maintenance/post-0.2.15` is merged through PR #172 and closed; release-0.2.15 is closed and retained
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`, `R-CONSOLE-001`
+
+## Final promotion requested — 2026-10-31
+
+The owner requests final 0.3.0 publication and then preparation for 0.3.1.
+After the host cleared the saved RC0 local-base override, the live capsule
+matches RC9 and the new published base, including the exact fixed console
+security code. Nine runtime inspection probes, unknown-subcommand diagnosis,
+18 packaged cache/network regression cases, the published-PEX attached
+recursive successor and a fresh Codium run-once host-network proof all pass.
+See [final audit](evidence/2026-10-31-rc9/README.md#final-promotion-audit--2026-10-31).
+The active checkout is still maintenance on release-0.3.0. Main remains
+4b59b10d; its workflow difference is only the intentional development-version
+frontmatter, so no synchronization is needed or allowed for this promotion.
+
+A reviewable promotion draft with RC9 identity/checksum and ancestry baseline
+3c91183ffd2130f6c7b40d2f9e3fd41588f977eb passes the protocol validator. It
+remains outside Git until the explicit final-tag obligations are resolved.
+Decision `2026-10-31-final-030-dispositions` is pending in capsule state:
+(1) move C17 and nine undecided September 28 documentation proposals to 0.3.1
+planning, or retain their 0.3.0 gate; (2) owner-confirm provider actions,
+accept the documented coverage limits, or request further verification.
+The October 27 scope record explicitly retains these obligations; the
+October 25 deferral does not decide them. Do not infer an answer from the
+request to release or from elapsed time. No final tag has been created.
+
+Final freshness recheck: Codex 0.166.0 and Antigravity 1.4.12 still current;
+Claude offers 2.1.316. Preserve tested RC9's 2.1.314 for this requested
+promotion and record the newer version for 0.3.1. The existing 0.3.1 plate
+includes release-independent test fixtures and October 25 documentation.
+No 0.3.1 implementation or workstream switch has occurred yet.
+
+Once dispositions arrive: persist them, generate the canonical acceptance
+record with prepare-promotion.py, deliver it and these audit records on a
+main-derived maintenance acceptance branch (separate record delivery allowed
+by the release guide, preserving main's 0.3.1.dev0 metadata), and create the
+PR. The owner merges into main under WORKFLOW-LOCAL.md; verify it, tag exact
+RC9 source, await publication, download/check final assets, and verify the
+test-site dispatch. The current user instruction authorizes final tagging
+once those conditions hold; do not ask for publication approval again.
 
 ## RC9 published and downloaded verification — 2026-10-31
 
@@ -2671,11 +2710,12 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-Current: the owner evaluates the published RC9. Complete outstanding final
-acceptance obligations (fixed-bug/provider/editor checks and C17/nine-proposal
-dispositions), record acceptance of this exact candidate if approved, integrate
-that acceptance through the owner-merged main PR, then promote under the
-runbook. No final v0.3.0 tag is authorized by these smoke results alone.
+Current: receive the two pending final scope/provider dispositions in
+2026-10-31-final-030-dispositions; then create the canonical acceptance record
+and mainline acceptance PR. After the owner merges, publish final 0.3.0 from
+the exact RC9 source and verify delivery, then resume maintenance from main
+for 0.3.1 preparation. Final audit evidence is complete; do not repeat it
+without a relevant change or new concern.
 Historical candidate sequencing below must not override this direction.
 
 1. The network-node slice, on `ws-maintenance/0.3.0-network-node` from
@@ -3522,6 +3562,18 @@ asset downloads verify publication; no credentialed Actions-run inspection is
 claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
+
+- Final publication is requested. The explicit scope/provider decision above
+  remains unanswered; the console decision and answer must stay outside Git.
+  If capsule state is lost, ask the same two items using the durable wording
+  above. A draft promotion record is at /var/tmp/maintenance-final/v0.3.0.draft.json;
+  it is reproducible from the retained RC9 identity/evidence, not canonical.
+- The acceptance PR must reach main before tagging; the human merges. Use
+  the runbook's separate acceptance delivery to preserve main's metadata.
+- Post-candidate release records remain local until that integration;
+  their latest status is published to coordination. Keep release and RC9
+  tags immutable. No final release or 0.3.1 branch has been created.
+
 
 - RC9 is published from release 475427da and integrated through #331 at
   main 4b59b10d. Eight downloaded E2E checks and the shared-browser regression
