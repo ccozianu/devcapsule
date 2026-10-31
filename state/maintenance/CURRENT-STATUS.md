@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: awaiting owner release integration 2026-10-31; RC9 agent/IDE refresh, notes and documentation promotion validated
+State: blocked 2026-10-31 on parallel cookie-isolation fix; owner holds PR #329 and RC9 publication
 
 Definition read: WORKFLOW.md@bfc91d68cd06, WORKFLOW-LOCAL.md@65501b3407db
 
@@ -17,6 +17,26 @@ Branch association: `release-0.3.0`, the release branch, the workstream's select
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`
 
 ## Intended final candidate RC9 — 2026-10-31
+
+**Owner hold, 2026-10-31:** [PR #329](https://github.com/ccozianu/devcapsule/pull/329)
+and RC9 publication wait for the critical cookie-isolation fix being developed
+in a parallel session. The owner reports cookie collisions between concurrent
+capsules on one host because cookies do not isolate by port; both web console
+and noVNC authentication can be affected. The parallel session owns the fix;
+its bug/PR reference has not yet been supplied. Do not duplicate implementation.
+
+Once the fix is available, reconcile it with this preparation, resolve any
+conflicts and validate the combined source before owner merge and tagging.
+Regression evidence must use two simultaneous capsules and the same browser
+profile/cookie jar, exercising both consoles and noVNC while alternating,
+refreshing and reconnecting. Confirm that each endpoint still rejects the
+other session's credentials. The earlier sequential startup checks and green
+CI do not establish this concurrent-session property. If the fix changes the
+base-shipped console, verify that the candidate's pinned base includes it.
+
+Main ce08ebad and release 338f94ab are unchanged at this checkpoint. Their
+workflow difference is the already accepted version metadata; no branch
+synchronization is needed for this record-only hold.
 
 Owner requests the intended final candidate after all PRs merge. Verified
 main `ce08ebad` includes #317; release `338f94ab` includes all five user-docs
@@ -2505,11 +2525,12 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-Current: owner merge of the validated RC9 preparation branch into release;
-docs-0.3.0 is already published at 68b21a18. Then deliver the untouched
-release-to-main copy.
-After owner main merge, run the candidate gate, tag v0.3.0-rc9, and verify the
-published downloaded PEX. No freshness decision remains pending.
+Current: wait for the parallel cookie-isolation fix; hold PR #329 and RC9.
+When the fix is available, reconcile the preparation, resolve conflicts and
+validate concurrent consoles/noVNC in one browser profile. Then obtain owner
+release integration, propagate to main, and run the candidate/tag/download
+checks. docs-0.3.0 is already published at 68b21a18. No freshness decision
+remains pending.
 Historical candidate sequencing below must not override this direction.
 
 1. The network-node slice, on `ws-maintenance/0.3.0-network-node` from
@@ -3356,6 +3377,10 @@ asset downloads verify publication; no credentialed Actions-run inspection is
 claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
+
+- Owner holds PR #329 and RC9 for the parallel cookie-isolation fix. Await
+  its bug/PR reference and completed source; reconcile conflicts and verify
+  two simultaneous capsules in one browser profile before release approval.
 
 - RC9 preparation is validated and awaits owner release/main integration.
   docs-0.3.0 is published at its promotion commit; no candidate tag exists yet.
