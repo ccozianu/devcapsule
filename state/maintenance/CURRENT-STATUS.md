@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: integrating 2026-10-31; #329 merged at 475427da; #331 main integration correction prepared; applying it to the release copy awaits owner exception
+State: integrating 2026-10-31; owner approved #331 correction; validated integration published for hosted checks and owner main merge
 
 Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@65501b3407db
 
@@ -69,7 +69,7 @@ and historical compatibility coverage. This does not expand the RC9 code slice.
 
 SSH fetch verified #329 merged into release at
 `475427da033633ff5ee0e44e09face700630bf36`. Its tree matches tested preparation
-head b6dd2335. Main remains ce08ebad. Created [draft PR #331](https://github.com/ccozianu/devcapsule/pull/331)
+head b6dd2335. Main remains ce08ebad. Created [PR #331](https://github.com/ccozianu/devcapsule/pull/331)
 from `4PR-11-release-0.3.0`, an untouched copy at the release tip.
 
 Prepared main integration on this maintenance working branch. Resolved three
@@ -87,14 +87,18 @@ type/syntax checks, CLI/PEX smoke and documentation contract. Website
 build/check passed (252 pages, 21,031 links/assets/anchors). Manual
 resolution touches only the three metadata files. The main version
 frontmatters, pyproject version and existing fixture fixes match origin/main.
-The prepared correction is retained as a local merge commit on the
-maintenance working branch and a patch in `/var/tmp/maintenance-ci/rc9-main/`;
-#331's remote copy still points unchanged to 475427da.
+The prepared correction is merge commit `cf34b85e95cea697428cc616e0a3a48704173ef2`.
+The owner approved applying it in chat on 2026-10-31: "Approved go ahead".
+This answers decision `2026-10-31-rc9-main-integration` and grants the narrow
+exception to WORKFLOW-LOCAL.md Release Policy 8 for #331. Publish that tested
+merge and this approval record to `4PR-11-release-0.3.0`; keep release at
+475427da and main at 0.3.1.dev0. The copy is now an integration branch under
+the explicit exception; never reset it back to the release tip.
 
-Applying this prepared correction to #331 awaits a narrow owner exception to
-WORKFLOW-LOCAL.md Release Policy 8, "Commit nothing to the copy". The #317
-exception was PR-specific. This request concerns only the integration copy;
-it does not authorize changing the release or tagging before main disposition.
+Local gate evidence remains applicable: after cf34b85e only the root and
+maintenance status records change. Hosted checks and the owner's main merge
+remain before the candidate tag. Candidate acceptance uses the downloaded
+published executable.
 
 ## Intended final candidate RC9 — 2026-10-31
 
@@ -2636,9 +2640,8 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-Current: obtain owner authorization to apply the prepared and validated
-main-integration correction to #331's release-copy branch, then complete
-hosted checks and owner main merge. Verify the merged main disposition before
+Current: complete hosted checks on #331 with the owner-approved integration
+correction, then owner main merge. Verify the merged main disposition before
 tagging RC9, then run downloaded-candidate acceptance. #329 is merged and
 the fixed base/shared-browser verification are complete.
 Historical candidate sequencing below must not override this direction.
@@ -3488,9 +3491,9 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- #329 is merged at 475427da. Draft #331 is an untouched release copy.
-  Its prepared metadata resolution awaits the narrow owner exception;
-  release-copy correction, hosted checks and owner main merge precede RC9.
+- #329 is merged at 475427da. The owner authorized #331's correction
+  in chat on 2026-10-31. The tested merge and approval record are published
+  for hosted checks and owner main merge before RC9.
   The base/concurrency hold is resolved; no candidate tag exists yet.
 - docs-0.3.0 includes the cookie-fix guides at 7a813b80 and matches this
   release docs tree. Main intentionally omits the devel source-version override.
