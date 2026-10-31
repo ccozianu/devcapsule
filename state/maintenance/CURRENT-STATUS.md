@@ -4,17 +4,57 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: finalization 2026-10-31; owner requests 0.3.0; final audit passes; explicit scope/provider dispositions pending before acceptance integration and tag
+State: integrating final acceptance 2026-10-31; owner accepts RC9 with recorded limits; C17/nine proposals move to 0.3.1; acceptance PR precedes final tag
 
-Definition read: WORKFLOW.md@bfc91d68cd06, WORKFLOW-LOCAL.md@65501b3407db
+Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@65501b3407db
 
 Integration target: `main`
 
 Delivery method: pull request from `release-0.3.0` to `main` before each candidate tag, as the runbook rules; the owner merges; `gh` authorized to create, update and consult pull requests since 2026-10-08
 
-Branch association: `release-0.3.0`, the release branch, the workstream's selection from the cut to the final tag; `ws-maintenance/session-logs` (PR #207) and `ws-maintenance/log-rotation` (PR #209, then #216) are merged to `main` and closed; `ws-maintenance/post-0.2.15` is merged through PR #172 and closed; release-0.2.15 is closed and retained
+Branch association: `release-0.3.0` (retained release); `ws-maintenance/0.3.0-acceptance` (temporary mainline acceptance delivery), the release branch, the workstream's selection from the cut to the final tag; `ws-maintenance/session-logs` (PR #207) and `ws-maintenance/log-rotation` (PR #209, then #216) are merged to `main` and closed; `ws-maintenance/post-0.2.15` is merged through PR #172 and closed; release-0.2.15 is closed and retained
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`, `R-CONSOLE-001`
+
+## Final acceptance decision — 2026-10-31
+
+The owner answered "Yes to both questions, let's move ahead" to decision
+`2026-10-31-final-030-dispositions`. Recorded outcomes:
+
+1. Move C17's remaining generic project-operation instructions and the nine
+   undecided September 28 documentation proposals to 0.3.1 planning. They
+   no longer gate 0.3.0. The proposals still require item-level decisions;
+   this is not approval to implement all nine. Existing owners remain.
+2. Accept exact RC9 with the documented provider/editor verification limits.
+   Do not invent additional Claude/Antigravity authenticated tool actions or
+   full IDE editor acceptance from this answer. Codex/PyCharm live use and
+   the recorded automated, browser and lifecycle proofs remain the evidence.
+
+Scheduling notice delivered to project-management, workflow-improvements and
+user-docs through coordination mail at 6fe8ac4cfbb9. Their records remain
+their own to reconcile.
+
+This supersedes the older pending scope/acceptance statements below.
+The six fixed maintenance bugs now close on their RC9 verification and this
+acceptance; the cookie bug was already closed. Generated the machine-checked
+[acceptance record](../../releases/v0.3.0.json) with prepare-promotion.py,
+which independently downloads and checksum-verifies RC9. Its source remains
+475427da033633ff5ee0e44e09face700630bf36. Mainline ancestry holds at 4b59b10d.
+
+Delivery uses the release guide's separate acceptance-record path: commit
+on the release branch, then carry only acceptance/audit records on
+ws-maintenance/0.3.0-acceptance from origin/main. This avoids merging the
+release's 0.3.0 metadata over main's 0.3.1.dev0. No release code or tag moves.
+The machine-consumed acceptance record is a required promotion deliverable,
+not an administrative records-only PR. The human merges this PR into main.
+After verification of that merge, final tagging/publication is already
+authorized. The owner then promotes the verified test website to production.
+
+The 0.3.1 planning plate includes release-independent test fixtures, the
+October 25 documentation order, C17/nine proposal decisions with their owners,
+and a Claude 2.1.316 freshness review. Start ordinary 0.3.1 maintenance on a
+fresh main-derived branch after final delivery; do not develop on the closed
+release branch. This stays within the user-selected maintenance workstream.
 
 ## Final promotion requested — 2026-10-31
 
@@ -2710,12 +2750,12 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-Current: receive the two pending final scope/provider dispositions in
-2026-10-31-final-030-dispositions; then create the canonical acceptance record
-and mainline acceptance PR. After the owner merges, publish final 0.3.0 from
-the exact RC9 source and verify delivery, then resume maintenance from main
-for 0.3.1 preparation. Final audit evidence is complete; do not repeat it
-without a relevant change or new concern.
+Current: deliver the accepted RC9 promotion record and final audit through
+the mainline acceptance PR. The owner merges; then verify remote main,
+check accepted-source docs, tag v0.3.0 at RC9's exact source, await hosted
+publication, download/check final assets and inspect the test-site dispatch.
+No further publication approval is needed. Continue to 0.3.1 maintenance
+preparation only after this final delivery.
 Historical candidate sequencing below must not override this direction.
 
 1. The network-node slice, on `ws-maintenance/0.3.0-network-node` from
@@ -3563,17 +3603,14 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Final publication is requested. The explicit scope/provider decision above
-  remains unanswered; the console decision and answer must stay outside Git.
-  If capsule state is lost, ask the same two items using the durable wording
-  above. A draft promotion record is at /var/tmp/maintenance-final/v0.3.0.draft.json;
-  it is reproducible from the retained RC9 identity/evidence, not canonical.
-- The acceptance PR must reach main before tagging; the human merges. Use
-  the runbook's separate acceptance delivery to preserve main's metadata.
-- Post-candidate release records remain local until that integration;
-  their latest status is published to coordination. Keep release and RC9
-  tags immutable. No final release or 0.3.1 branch has been created.
-
+- Final scope and acceptance are settled by the owner's "Yes to both"
+  response, recorded above. The ephemeral decision has been removed only
+  after preserving its outcomes here. Do not ask these choices again.
+- Mainline acceptance integration is pending. The human must merge the PR
+  under WORKFLOW-LOCAL.md; final tagging after that is already authorized.
+- Release records are retained locally; the acceptance branch carries their
+  delivery and coordination carries live status. RC9's tag and published
+  source are unchanged. No final tag or 0.3.1 development branch exists yet.
 
 - RC9 is published from release 475427da and integrated through #331 at
   main 4b59b10d. Eight downloaded E2E checks and the shared-browser regression
