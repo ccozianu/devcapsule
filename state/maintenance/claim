@@ -1,5 +1,5 @@
 who: Costin Cozianu
-branch: release-0.3.0
-slice: Prepare final 0.3.0 candidate rc9: notes, documentation promotion, validation and main integration
-since: 2026-10-31T00:46:08+00:00
-expires: 2026-10-31T12:46:08+00:00
+branch: ws-maintenance/0.3.0-rc9-preparation
+slice: Prepare rc9 agent/IDE refresh, release notes and docs promotion; verify before tagging
+since: 2026-10-31T00:55:34+00:00
+expires: 2026-10-31T12:55:34+00:00
