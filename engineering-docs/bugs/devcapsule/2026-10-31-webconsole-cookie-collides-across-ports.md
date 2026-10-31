@@ -1,5 +1,5 @@
 ---
-status: fixed
+status: closed
 severity: blocking
 target: 0.3.0
 owner: maintenance
@@ -139,3 +139,19 @@ Two real fresh-project capsules on the new default base passed the shared
 browser test: tokenless console navigation/reload, noVNC reload/reconnect,
 and refusal of sibling console and desktop credentials. Published-base layer
 lineage and cleanup passed. See the [concurrent-authentication evidence](../../wip/2026-09-18-maintenance/evidence/2026-10-31-rc9/README.md#published-base-and-concurrent-authentication).
+
+## Closed — 2026-10-31
+
+The fix is in release `475427da` and main `4b59b10d` through #329/#331.
+Published RC9 embeds source `475427da033633ff5ee0e44e09face700630bf36` and
+selects the rebuilt base above. Its downloaded PEX checksum is
+`413b1d45bac9c39b6fa5fab68090e43550c9e255108de48b387c50a715c4fcf2`.
+The shared-browser regression passes against that exact downloaded artifact
+on two fresh non-self-hosting projects using the default catalog pin.
+Both consoles remain authenticated on tokenless navigation/reload; both
+noVNC sessions reconnect; sibling cookies and URL/WebSocket tokens are
+refused. Containers and project records were removed after the check.
+[Sanitized evidence](../../wip/2026-09-18-maintenance/evidence/2026-10-31-rc9/README.md#downloaded-rc9-verification)
+includes base layer lineage. The browser test uses host networking;
+Host-header cases remain separately covered by the automated console tests.
+NoVNC uses its own WebSocket token URL; it does not use the console cookie.

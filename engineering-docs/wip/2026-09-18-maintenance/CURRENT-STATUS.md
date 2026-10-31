@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: integrating 2026-10-31; owner approved #331 correction; validated integration published for hosted checks and owner main merge
+State: integrating final acceptance 2026-10-31; PR #332 awaits owner merge; RC9 accepted with limits; final publication authorized after main integration
 
 Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@65501b3407db
 
@@ -12,9 +12,137 @@ Integration target: `main`
 
 Delivery method: pull request from `release-0.3.0` to `main` before each candidate tag, as the runbook rules; the owner merges; `gh` authorized to create, update and consult pull requests since 2026-10-08
 
-Branch association: `release-0.3.0`, the release branch, the workstream's selection from the cut to the final tag; `ws-maintenance/session-logs` (PR #207) and `ws-maintenance/log-rotation` (PR #209, then #216) are merged to `main` and closed; `ws-maintenance/post-0.2.15` is merged through PR #172 and closed; release-0.2.15 is closed and retained
+Branch association: `release-0.3.0` (retained release); `ws-maintenance/0.3.0-acceptance` (temporary mainline acceptance delivery), the release branch, the workstream's selection from the cut to the final tag; `ws-maintenance/session-logs` (PR #207) and `ws-maintenance/log-rotation` (PR #209, then #216) are merged to `main` and closed; `ws-maintenance/post-0.2.15` is merged through PR #172 and closed; release-0.2.15 is closed and retained
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`, `R-CONSOLE-001`
+
+## Acceptance delivery PR #332 — 2026-10-31
+
+[PR #332](https://github.com/ccozianu/devcapsule/pull/332),
+ws-maintenance/0.3.0-acceptance -> main, delivers the canonical acceptance
+record and accumulated post-tag audit. Initial head a5d88954. The promotion
+helper redownloaded and verified RC9; protocol identity/ancestry validation
+passes. Main's product code, build inputs, workflow files and docs are
+unchanged; main remains 0.3.1.dev0. No repeat product suite is warranted
+for this acceptance/evidence-only delivery; prior exact-artifact evidence
+is retained. The release-side acceptance commit is 4aedfb74 (local only).
+The main-derived branch avoids propagating release-only version metadata.
+
+The owner merges #332. Then fetch and validate the record on remote main,
+tag v0.3.0 at 475427da (not this PR's commit), and verify final publication.
+No renewed acceptance or tag approval is needed. The temporary decision
+state was removed after the durable outcome commit. Scheduling mail was
+already sent; no other workstream files were edited.
+
+## Final acceptance decision — 2026-10-31
+
+The owner answered "Yes to both questions, let's move ahead" to decision
+`2026-10-31-final-030-dispositions`. Recorded outcomes:
+
+1. Move C17's remaining generic project-operation instructions and the nine
+   undecided September 28 documentation proposals to 0.3.1 planning. They
+   no longer gate 0.3.0. The proposals still require item-level decisions;
+   this is not approval to implement all nine. Existing owners remain.
+2. Accept exact RC9 with the documented provider/editor verification limits.
+   Do not invent additional Claude/Antigravity authenticated tool actions or
+   full IDE editor acceptance from this answer. Codex/PyCharm live use and
+   the recorded automated, browser and lifecycle proofs remain the evidence.
+
+Scheduling notice delivered to project-management, workflow-improvements and
+user-docs through coordination mail at 6fe8ac4cfbb9. Their records remain
+their own to reconcile.
+
+This supersedes the older pending scope/acceptance statements below.
+The six fixed maintenance bugs now close on their RC9 verification and this
+acceptance; the cookie bug was already closed. Generated the machine-checked
+[acceptance record](../../releases/v0.3.0.json) with prepare-promotion.py,
+which independently downloads and checksum-verifies RC9. Its source remains
+475427da033633ff5ee0e44e09face700630bf36. Mainline ancestry holds at 4b59b10d.
+
+Delivery uses the release guide's separate acceptance-record path: commit
+on the release branch, then carry only acceptance/audit records on
+ws-maintenance/0.3.0-acceptance from origin/main. This avoids merging the
+release's 0.3.0 metadata over main's 0.3.1.dev0. No release code or tag moves.
+The machine-consumed acceptance record is a required promotion deliverable,
+not an administrative records-only PR. The human merges this PR into main.
+After verification of that merge, final tagging/publication is already
+authorized. The owner then promotes the verified test website to production.
+
+The 0.3.1 planning plate includes release-independent test fixtures, the
+October 25 documentation order, C17/nine proposal decisions with their owners,
+and a Claude 2.1.316 freshness review. Start ordinary 0.3.1 maintenance on a
+fresh main-derived branch after final delivery; do not develop on the closed
+release branch. This stays within the user-selected maintenance workstream.
+
+## Final promotion requested — 2026-10-31
+
+The owner requests final 0.3.0 publication and then preparation for 0.3.1.
+After the host cleared the saved RC0 local-base override, the live capsule
+matches RC9 and the new published base, including the exact fixed console
+security code. Nine runtime inspection probes, unknown-subcommand diagnosis,
+18 packaged cache/network regression cases, the published-PEX attached
+recursive successor and a fresh Codium run-once host-network proof all pass.
+See [final audit](evidence/2026-10-31-rc9/README.md#final-promotion-audit--2026-10-31).
+The active checkout is still maintenance on release-0.3.0. Main remains
+4b59b10d; its workflow difference is only the intentional development-version
+frontmatter, so no synchronization is needed or allowed for this promotion.
+
+A reviewable promotion draft with RC9 identity/checksum and ancestry baseline
+3c91183ffd2130f6c7b40d2f9e3fd41588f977eb passes the protocol validator. It
+remains outside Git until the explicit final-tag obligations are resolved.
+Decision `2026-10-31-final-030-dispositions` is pending in capsule state:
+(1) move C17 and nine undecided September 28 documentation proposals to 0.3.1
+planning, or retain their 0.3.0 gate; (2) owner-confirm provider actions,
+accept the documented coverage limits, or request further verification.
+The October 27 scope record explicitly retains these obligations; the
+October 25 deferral does not decide them. Do not infer an answer from the
+request to release or from elapsed time. No final tag has been created.
+
+Final freshness recheck: Codex 0.166.0 and Antigravity 1.4.12 still current;
+Claude offers 2.1.316. Preserve tested RC9's 2.1.314 for this requested
+promotion and record the newer version for 0.3.1. The existing 0.3.1 plate
+includes release-independent test fixtures and October 25 documentation.
+No 0.3.1 implementation or workstream switch has occurred yet.
+
+Once dispositions arrive: persist them, generate the canonical acceptance
+record with prepare-promotion.py, deliver it and these audit records on a
+main-derived maintenance acceptance branch (separate record delivery allowed
+by the release guide, preserving main's 0.3.1.dev0 metadata), and create the
+PR. The owner merges into main under WORKFLOW-LOCAL.md; verify it, tag exact
+RC9 source, await publication, download/check final assets, and verify the
+test-site dispatch. The current user instruction authorizes final tagging
+once those conditions hold; do not ask for publication approval again.
+
+## RC9 published and downloaded verification — 2026-10-31
+
+Owner merge of [#331](https://github.com/ccozianu/devcapsule/pull/331) verified
+at main `4b59b10daede8b77ff7c7aee753b9df483d62458`; release remains
+`475427da033633ff5ee0e44e09face700630bf36`. Returned this clean checkout to
+`release-0.3.0`. No main-to-release synchronization: the approved integration
+preserves main's development metadata, and the release source is already an
+ancestor of main. The candidate gate passes with no unintegrated commits.
+
+Tagged and published [v0.3.0-rc9](https://github.com/ccozianu/devcapsule/releases/tag/v0.3.0-rc9)
+at that release source. [Hosted publication](https://github.com/ccozianu/devcapsule/actions/runs/41181720227)
+passed. Downloaded all three public assets and verified checksum, manifest,
+version `0.3.0rc9`, mnemonic and source SHA. PEX SHA-256:
+`413b1d45bac9c39b6fa5fab68090e43550c9e255108de48b387c50a715c4fcf2`.
+
+Downloaded-artifact validation: ordinary E2E suite **8 passed** (129.38 s),
+including component cache, exact executable delivery, runtime lifecycle and
+clean-machine execution; shared-browser regression **1 passed** (22.90 s).
+Two fresh projects use the fixed default base with one browser context;
+tokenless console navigation/reload and noVNC reconnection pass, sibling
+credentials are refused, and containers/project records are removed.
+The blocking cookie bug is closed on this evidence. Existing locks still
+require explicit refresh; noVNC uses a WebSocket token URL, not the console
+cookie. See [downloaded verification evidence](evidence/2026-10-31-rc9/README.md#downloaded-rc9-verification).
+
+These post-tag records are committed locally and published on coordination;
+they travel with the acceptance integration, without a records-only PR.
+The immutable RC9 tag stays at 475427da. This is candidate verification,
+not final-release acceptance. Historical preparation statements below are
+superseded by this checkpoint.
 
 ## Web-console port-scoped authentication cookie fix for 0.3.0 — 2026-10-31
 
@@ -2640,10 +2768,11 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-Current: complete hosted checks on #331 with the owner-approved integration
-correction, then owner main merge. Verify the merged main disposition before
-tagging RC9, then run downloaded-candidate acceptance. #329 is merged and
-the fixed base/shared-browser verification are complete.
+Current: owner merges acceptance PR #332. Then verify remote main,
+check accepted-source docs, tag v0.3.0 at RC9's exact source, await hosted
+publication, download/check final assets and inspect the test-site dispatch.
+No further publication approval is needed. Continue to 0.3.1 maintenance
+preparation only after this final delivery.
 Historical candidate sequencing below must not override this direction.
 
 1. The network-node slice, on `ws-maintenance/0.3.0-network-node` from
@@ -3491,12 +3620,25 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- #329 is merged at 475427da. The owner authorized #331's correction
-  in chat on 2026-10-31. The tested merge and approval record are published
-  for hosted checks and owner main merge before RC9.
-  The base/concurrency hold is resolved; no candidate tag exists yet.
-- docs-0.3.0 includes the cookie-fix guides at 7a813b80 and matches this
-  release docs tree. Main intentionally omits the devel source-version override.
+- Final scope and acceptance are settled by the owner's "Yes to both"
+  response, recorded above. The ephemeral decision has been removed only
+  after preserving its outcomes here. Do not ask these choices again.
+- Mainline acceptance integration is pending in PR #332. The human must merge the PR
+  under WORKFLOW-LOCAL.md; final tagging after that is already authorized.
+- Release records are retained locally; the acceptance branch carries their
+  delivery and coordination carries live status. RC9's tag and published
+  source are unchanged. No final tag or 0.3.1 development branch exists yet.
+
+- RC9 is published from release 475427da and integrated through #331 at
+  main 4b59b10d. Eight downloaded E2E checks and the shared-browser regression
+  pass; the cookie bug is closed. Owner final acceptance remains pending.
+- Post-tag evidence/closure records are committed locally on release-0.3.0,
+  with live status published on coordination; carry them in the acceptance
+  integration. The tag and remote release source remain at 475427da.
+- docs-0.3.0 at 7a813b80 matches the release docs tree. Main retains its
+  development metadata; do not undo the approved #331 resolution.
+- Raw launcher logs, credentials and tokened URLs are deliberately excluded
+  from durable evidence. Sanitized facts, screenshots and cleanup survive.
 - Downloaded-candidate provider/tool actions, JetBrains editor acceptance and
   the remaining release obligations are not replaced by startup checks.
 - The owner must configure ci-gate as required if enforcement is desired;
