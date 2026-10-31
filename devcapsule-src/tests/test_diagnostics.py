@@ -332,6 +332,8 @@ def test_project_diagnose_export_redacts_logs_gz_excludes_ide_logs_by_default_an
         "2026-10-27T12:30:01Z GET /vnc.html?token=deadbeefcafe1234567890abcdef1234\n"
         "2026-10-27T12:30:02Z redirect token%3Dencoded_secret_token_99887766\n"
         "2026-10-27T12:30:03Z Cookie: devcapsule-console-token=console_cookie_secret_554433\n"
+        "2026-10-27T12:30:03Z debug cookie devcapsule-console-token=bare_cookie_secret_443322\n"
+        "2026-10-27T12:30:03Z debug port cookie devcapsule-console-token-41273=port_cookie_secret_665544\n"
         "2026-10-27T12:30:04Z Authorization: Bearer bearer_secret_value_776655\n",
         encoding="utf-8",
     )
@@ -382,6 +384,8 @@ def test_project_diagnose_export_redacts_logs_gz_excludes_ide_logs_by_default_an
         "deadbeefcafe1234567890abcdef1234",
         "encoded_secret_token_99887766",
         "console_cookie_secret_554433",
+        "bare_cookie_secret_443322",
+        "port_cookie_secret_665544",
         "bearer_secret_value_776655",
         "saved_docker_secret_val_999",
         "sk-proj-secret-value-123456789",

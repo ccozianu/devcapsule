@@ -1,6 +1,6 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-31. Stage: **RC9 held for the critical concurrent-capsule cookie-isolation fix; owner holds PR #329 pending reconciliation and combined verification**.
+Updated: 2026-10-31. Stage: **RC9 preparation reconciles merged cookie fix #330; base refresh and combined concurrent-session verification remain**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Release notes](notes.md) ·
@@ -302,14 +302,20 @@ replacement.
 
 ## RC9 preparation — 2026-10-31
 
-**Release blocker added by the owner:** the parallel session is fixing cookie
-collisions between capsules sharing a host but using different ports, affecting
-both console and noVNC authentication. Hold PR #329 and candidate publication
-until the fix and this preparation are reconciled, conflicts resolved, and two
-simultaneous capsules work in the same browser profile through switching,
-refreshing and reconnecting. Earlier sequential startup checks do not cover
-this regression. Verify that any base-shipped console changes are included in
-the candidate's pinned base. The fix remains with the parallel session.
+**Cookie fix merged:** PR #330 is on `release-0.3.0` at `36b5e660`,
+carrying fix `3af21584`. PR #329 incorporates it; the only merge conflict
+was the maintenance status State line, resolved while retaining both sessions'
+records. Console cookies now use the browser-facing port in their name.
+noVNC authenticates through its WebSocket token URL, not this console cookie.
+
+The current recipe-11 base pin still contains the old console. The owner
+must select the base-refresh sequence (`2026-10-31-rc9-base-refresh`):
+build and publish from clean public source before RC9, or use RC9 as a
+bootstrap builder and cut a later final candidate after re-pinning. Keep
+publication held until that sequence and concurrent browser verification
+are complete. Verify two simultaneous capsules in one browser profile,
+switching, refreshing and reconnecting both services. Earlier sequential
+startup checks do not cover this regression.
 
 The owner requested the intended final release candidate after all open PRs
 merged. PR #317 is on main at `ce08ebad`; documentation batches #319, #321,
@@ -320,7 +326,8 @@ unused tag is `v0.3.0-rc9`; it has not been created.
 Preparation: write the adopter notes, promote docs/versions.yaml with the
 C20 helper, establish docs-0.3.0, run the full local gate and website build,
 and integrate the resulting release source into main before tagging.
-`docs-0.3.0` is published at promotion commit `68b21a18` for hosted PR checks.
+`docs-0.3.0` was published at promotion commit `68b21a18`; docs-only commit
+`7a813b80` now includes #330's three guide corrections for hosted PR checks.
 The owner merges the integration PR. No final release or candidate acceptance
 is claimed by this preparation.
 

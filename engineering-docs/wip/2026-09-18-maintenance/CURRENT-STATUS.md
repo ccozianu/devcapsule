@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: blocked 2026-10-31 on parallel cookie-isolation fix; owner holds PR #329 and RC9 publication
+State: waiting 2026-10-31; #330 reconciled into #329 and combined gate passes; owner base-refresh decision and concurrent-session verification remain before RC9
 
 Definition read: WORKFLOW.md@bfc91d68cd06, WORKFLOW-LOCAL.md@65501b3407db
 
@@ -14,29 +14,73 @@ Delivery method: pull request from `release-0.3.0` to `main` before each candida
 
 Branch association: `release-0.3.0`, the release branch, the workstream's selection from the cut to the final tag; `ws-maintenance/session-logs` (PR #207) and `ws-maintenance/log-rotation` (PR #209, then #216) are merged to `main` and closed; `ws-maintenance/post-0.2.15` is merged through PR #172 and closed; release-0.2.15 is closed and retained
 
-Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`
+Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`, `R-CONSOLE-001`
+
+## Web-console port-scoped authentication cookie fix for 0.3.0 — 2026-10-31
+
+SSH fetch verified owner merges of all five `0.3.0` user-documentation batches
+into `release-0.3.0` at `338f94ab` (`#319` at `add23bb0`, `#321` at `031de0a5`,
+`#323` at `b28af13d`, `#327` at `6a5d9803`, `#325` at `338f94ab`) and of
+`4PR-10-release-0.3.0` (`#317`) into `main` at `ce08ebad`.
+
+At the owner's direction on `2026-10-31`, filed and fixed blocking `0.3.0` bug
+[`2026-10-31-webconsole-cookie-collides-across-ports.md`](../../bugs/devcapsule/2026-10-31-webconsole-cookie-collides-across-ports.md)
+(`status: fixed`, `severity: blocking`, `target: 0.3.0`, `owner: maintenance`,
+`requirements: [R-CONSOLE-001]`) on `ws-maintenance/0.3.0-webconsole-port-cookie`
+targeting `release-0.3.0`:
+
+- `devcapsule-webconsole/devcapsule_webconsole/security.py`: scopes session
+  cookie names to the browser-facing port in the HTTP `Host` header
+  (`devcapsule-console-token-<port>`, falling back to `devcapsule-console-token`
+  when portless) so concurrent capsules on `127.0.0.1` no longer overwrite one
+  another's cookie under RFC 6265 §8.5, and reads `;` cookie pairs directly
+  across all `Cookie` headers so non-RFC2109 cookies set on `127.0.0.1` by
+  sibling local applications cannot abort credential parsing.
+- `devcapsule-src/devcapsule/_redaction.py`: widens `_CONSOLE_COOKIE_RE` to
+  scrub suffixed `devcapsule-console-token-<port>=` cookies while keeping the
+  cookie name and port readable in diagnostic exports.
+- `docs/sessions/web-console.md`, `docs/sessions/several-projects.md`,
+  `docs/troubleshooting/diagnostics-and-logs.md`, and
+  `devcapsule-webconsole/README.md`: replace the multi-profile workaround note
+  with the port-scoped `0.3.0` cookie behavior.
+- Local validation passed: `374` web-console tests (up from `357`, including
+  dual-port cookie jar isolation, live two-`uvicorn` + `http.cookiejar`
+  loopback proof, IPv6/portless/malformed `Host` handling, HTTP/2 split
+  `Cookie` headers, and sibling localhost cookies) and strict `mypy` (`9`
+  files); runtime `mypy` (`264` files), syntax checks, CLI and PEX smokes, `18`
+  packaging/install integration tests, `2,644` unit tests (`40` deselected, `1`
+  `xfail`, `1` `XPASS`), `192`-page `docs-contract` (`18` aliases), and website
+  build/check (`196` HTML pages, `14,636` links/assets/anchors, `23` tests).
+- Next step: owner review and merge into `release-0.3.0`, propagation to `main`,
+  and before the final `v0.3.0` tag, rebuilding and re-pinning the published
+  `ubuntu-24.04@11` base image in `resolution_matrix.py` from a `0.3.0`
+  candidate carrying this commit so non-self-hosting adopters receive the
+  updated `/opt/devcapsule-webconsole` without building a local base.
 
 ## Intended final candidate RC9 — 2026-10-31
 
-**Owner hold, 2026-10-31:** [PR #329](https://github.com/ccozianu/devcapsule/pull/329)
-and RC9 publication wait for the critical cookie-isolation fix being developed
-in a parallel session. The owner reports cookie collisions between concurrent
-capsules on one host because cookies do not isolate by port; both web console
-and noVNC authentication can be affected. The parallel session owns the fix;
-its bug/PR reference has not yet been supplied. Do not duplicate implementation.
+**Cookie fix integration, 2026-10-31:** SSH fetch confirms
+[PR #330](https://github.com/ccozianu/devcapsule/pull/330) merged to release at
+`36b5e660`, carrying fix `3af21584`. Merged the release into this preparation
+branch; the only conflict was this file's State line. Both the RC9
+preparation and the parallel session's fix/verification records are retained. Workflow
+files are identical to the preparation branch, so no definition update is
+needed. The release branch itself is not synchronized or rewritten.
 
-Once the fix is available, reconcile it with this preparation, resolve any
-conflicts and validate the combined source before owner merge and tagging.
-Regression evidence must use two simultaneous capsules and the same browser
-profile/cookie jar, exercising both consoles and noVNC while alternating,
-refreshing and reconnecting. Confirm that each endpoint still rejects the
-other session's credentials. The earlier sequential startup checks and green
-CI do not establish this concurrent-session property. If the fix changes the
-base-shipped console, verify that the candidate's pinned base includes it.
+The console source now isolates cookies by browser-facing port. The noVNC
+runtime uses a token in the WebSocket URL through websockify's TokenFile
+plugin; it does not use the console's authentication cookie. Concurrent
+browser verification must still cover both services on two capsules sharing
+one browser profile, with switching, refresh/reconnect and wrong credentials.
 
-Main ce08ebad and release 338f94ab are unchanged at this checkpoint. Their
-workflow difference is the already accepted version metadata; no branch
-synchronization is needed for this record-only hold.
+The published recipe-11 pin still contains the old console. The base-refresh
+sequence is pending owner decision `2026-10-31-rc9-base-refresh`: build/publish
+from clean public source before RC9, or use RC9 as a bootstrap builder and
+cut a later final candidate after re-pinning. No image build/publication or
+candidate tag is started while that choice is pending. Combined source validation passed: 2,644 unit tests, 18 packaging tests,
+374 console tests, type/syntax/CLI/PEX/documentation checks, and the website
+check (252 pages, 21,031 links/assets/anchors). Prior sequential IDE startup checks do not prove
+concurrent authentication or delivery of the fixed console in the pinned base.
 
 Owner requests the intended final candidate after all PRs merge. Verified
 main `ce08ebad` includes #317; release `338f94ab` includes all five user-docs
@@ -71,8 +115,9 @@ provider authentication and editor use are not claimed. See the
 [evidence ledger](evidence/2026-10-31-rc9/README.md).
 
 Notes and documentation promotion are ready: 0.3.0 current, 0.2.15 deprecated,
-0.2.14/0.2.12 unsupported. `docs-0.3.0` is published at promotion commit `68b21a18`, before
-review integration so the hosted website check can fetch its source. The
+0.2.14/0.2.12 unsupported. `docs-0.3.0` was published at promotion commit `68b21a18`; docs-only commit
+`7a813b80` adds #330's guide corrections, and its docs tree matches this
+preparation branch. The
 promotion itself remains on the release review slice until the owner merges. Deliver `ws-maintenance/0.3.0-rc9-preparation` into
 `release-0.3.0`, then use the prescribed untouched release copy for the main
 PR. The human merges both. Tag only after main disposition passes, then
@@ -2525,12 +2570,11 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-Current: wait for the parallel cookie-isolation fix; hold PR #329 and RC9.
-When the fix is available, reconcile the preparation, resolve conflicts and
-validate concurrent consoles/noVNC in one browser profile. Then obtain owner
-release integration, propagate to main, and run the candidate/tag/download
-checks. docs-0.3.0 is already published at 68b21a18. No freshness decision
-remains pending.
+Current: #329 reconciliation, the combined full gate and published guide
+corrections are complete. Resolve the base-refresh sequence with the owner,
+then verify two simultaneous capsules
+in one browser profile using the selected base. Owner release/main merges
+and candidate gate still precede any tag.
 Historical candidate sequencing below must not override this direction.
 
 1. The network-node slice, on `ws-maintenance/0.3.0-network-node` from
@@ -3378,12 +3422,17 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Owner holds PR #329 and RC9 for the parallel cookie-isolation fix. Await
-  its bug/PR reference and completed source; reconcile conflicts and verify
-  two simultaneous capsules in one browser profile before release approval.
+- #330 is merged at 36b5e660 and reconciled into #329. Its three guide
+  corrections are published on docs-0.3.0 at 7a813b80. Base-refresh sequence awaits the owner
+  (`2026-10-31-rc9-base-refresh`); concurrent browser acceptance follows.
 
-- RC9 preparation is validated and awaits owner release/main integration.
-  docs-0.3.0 is published at its promotion commit; no candidate tag exists yet.
+- The source fix is merged; the publication hold remains until the updated
+  base and combined concurrent-session checks satisfy the selected sequence.
+
+- The component refresh passed its original checks. Combined source checks
+  pass after #330; base delivery and concurrent browser
+  acceptance still precede owner release/main integration.
+  docs-0.3.0 includes the cookie-fix guidance; no candidate tag exists yet.
 - Downloaded-candidate provider/tool actions, JetBrains editor acceptance and
   the remaining release obligations are not replaced by startup checks.
 - The owner must configure ci-gate as required if enforcement is desired;
@@ -3886,6 +3935,7 @@ Earlier open-thread history (read against the current scope above):
 - [Runtime CLI blocker](../../bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md): next implementation task; blocks 0.2.14.
 - [URL-opening defect](../../bugs/devcapsule/2026-09-24-url-opening-without-browser-handler.md): contained-display triage.
 - [Workflow onboarding](../../work-orders/2026-09-24-workflow-installation-onboarding.md): non-blocking follow-up.
+- [Web-console port-scoped cookie bug (`0.3.0`)](../../bugs/devcapsule/2026-10-31-webconsole-cookie-collides-across-ports.md): fixed on `ws-maintenance/0.3.0-webconsole-port-cookie`; close after `release-0.3.0` merge, `main` propagation, and published recipe-11 base pin refresh.
 - [0.3.0 user docs Batch 5 evidence](evidence/2026-10-30-docs-batch-5/README.md): Batch 5 (`sessions/`, `collaboration/`, `platforms/`) scope, validation, and Pair Review record.
 - [PR #327 review-partner brief (PR327.1)](evidence/2026-10-30-docs-batch-5/review-brief.md): brief for `Codex (gpt-6-astra)` on Batch 5 (`#327`/`#328`).
 

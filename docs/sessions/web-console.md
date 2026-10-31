@@ -1,7 +1,7 @@
 ---
 description: "The web console: inspect your running capsule, answer agent decisions, read records, and queue configuration changes for the next launch."
 weight: 5
-updated: 2026-10-30
+updated: 2026-10-31
 ---
 # The web console
 
@@ -107,14 +107,13 @@ Every request to the console—pages, JSON endpoints, and static assets—requir
 this run's random token. The launcher writes the token to a private temporary
 file, bind-mounts it read-only into the container, and deletes it when the
 session ends. Opening the printed `?token=…` link stores the token in a
-`HttpOnly; SameSite=Strict` cookie so internal navigation works. State-changing
-`POST` requests also verify the console's own `Origin` header. Stopping the capsule invalidates the token, and the next run uses a new
-token and selects an available port.
-
-Cookies are shared across ports on the same hostname. Opening another capsule’s
-console at `127.0.0.1` in the same browser profile replaces this cookie. If a
-console then refuses a request, reopen its full tokened link. Use separate
-browser profiles to keep several consoles authenticated at once.
+port-scoped `HttpOnly; SameSite=Strict` session cookie
+(`devcapsule-console-token-<port>`) so internal navigation works and several
+running capsules can keep their consoles open side by side in the same browser
+profile without overwriting one another's cookie. State-changing `POST`
+requests also verify the console's own `Origin` header. Stopping the capsule
+invalidates the token, and the next run uses a new token and selects an
+available port.
 
 The console binds only to `127.0.0.1` on the host, so other machines on your
 network cannot reach it directly.

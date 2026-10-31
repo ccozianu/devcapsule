@@ -1,7 +1,7 @@
 ---
 description: Where every component of a session writes its log, how to capture a diagnostic snapshot or sanitized export bundle, how to collect browser evidence, and what to include when asking for help.
 weight: 2
-updated: 2026-10-30
+updated: 2026-10-31
 ---
 # Diagnostics and logs
 
@@ -193,7 +193,8 @@ devcapsule project diagnose --export ./my-session.tar.gz --include-ide-logs
   path you give) atomically with file permissions `0600`.
 - Known credentials are redacted across `snapshot.json`, `session.json`, plain
   `.log` files, and compressed `.log.<n>.gz` segments: `?token=` query values,
-  URL-encoded tokens, `devcapsule-console-token` cookies, `Authorization`,
+  URL-encoded tokens, `devcapsule-console-token` and port-scoped
+  `devcapsule-console-token-<port>` cookies, `Authorization`,
   `Cookie`, and `X-DevCapsule-Token` headers, secret command flags, and saved
   inline Docker environment values.
 - IDE-native logs (`idea.log`, VSCodium and Visual Studio Code `logs/`,

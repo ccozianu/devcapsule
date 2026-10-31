@@ -131,3 +131,25 @@ Only after that disposition is resolved may rc9 be tagged and the published
 PEX downloaded and checked. C17, the remaining nine documentation proposals,
 and downloaded-candidate acceptance retain their recorded dispositions;
 preparing a candidate does not silently close them.
+
+## Cookie fix reconciliation
+
+PR #330 merged to release at `36b5e660`, carrying `3af21584`. Merging that
+release tip into the preparation branch conflicted only in the maintenance
+status State line; both sessions' records are retained. No source conflict
+needed resolution. The full combined `nox -s build` gate passed: 2,644 unit
+tests (40 deselected, one expected failure, one non-strict unexpected pass),
+18 packaging tests, 374 console tests, type/syntax checks, CLI/PEX smoke and
+documentation contract. Scratch was `/opt/devcapsule-gate/rc9-cookie`.
+
+Docs-only commit `7a813b80` publishes the fix's three guide corrections on
+`docs-0.3.0`. Its docs tree equals this preparation branch's docs tree. The
+website build/check passed: 252 pages and 21,031 links/assets/anchors.
+
+These are source-level results. The pinned rc6 recipe-11 base still contains
+the old console, so they do not prove delivery to ordinary capsules or
+concurrent browser acceptance. Owner decision `2026-10-31-rc9-base-refresh`
+remains unanswered; no base build/publication or candidate tag was started.
+After rebuilding/pinning the base, verify both console and noVNC on two
+simultaneous capsules in one browser profile. Console authentication uses
+port-suffixed cookies; noVNC authentication uses its WebSocket token URL.
