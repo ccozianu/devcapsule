@@ -16,7 +16,8 @@ use the same capability and configuration model.
   versions, processes and resource use; read project records; answer decisions
   prepared by an agent; and read checkout notifications. The console requires
   a compatible base. Older bases remain usable and receive a clear notice
-  instead of a console link that cannot work.
+  instead of a console link that cannot work. Several consoles can stay
+  authenticated side by side in the same browser profile.
 - **Logs that survive a session.** Each launch writes per-component logs to a
   directory on the launcher host. Files rotate and share a per-checkout budget.
   The terminal stays focused on startup, readiness, warnings and the final
@@ -67,6 +68,8 @@ silently replace a project's lock or a developer's selected versions.
 To migrate a schema-1 manifest to schema 2 and refresh its lock, run
 `devcapsule project init --regenerate`, review the `.devcapsule/` diff, and
 commit the manifest and platform lock together. Do not hand-edit a lock.
+The concurrent-console fix requires the rebuilt recipe-11 base; updating
+only the launcher leaves an older locked base unchanged.
 
 Scripts using retired configuration commands must move to the current CLI:
 `config show` replaces `config list`; project requirements use `require`,

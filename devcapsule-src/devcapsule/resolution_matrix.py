@@ -81,7 +81,7 @@ class ResolutionError(ProjectConfigurationError):
     """
 
 
-_MATRIX_VERSION = "embedded-30"
+_MATRIX_VERSION = "embedded-31"
 
 
 # --------------------------------------------------------------------------
@@ -120,6 +120,8 @@ class _BasePin:
     recipe: int = 0
     display: str = HOST_X11_ONLY_DISPLAY
     runtime: str = LAUNCHER_SUPPLIED_RUNTIME
+    source_revision: str | None = None
+    # A clean public-source builder need not have a release tag.
 
     @property
     def contract(self) -> BaseContract:
@@ -135,6 +137,7 @@ class _BasePin:
             reference=str(self.lock_table["reference"]),
             built=Provenance(
                 builder=str(self.lock_table.get("build-mnemonic", "unknown")),
+                source_revision=self.source_revision,
                 recipe_path=str(self.lock_table.get("recipe-source", LEGACY_RECIPE_SOURCE_PATH)),
             ),
         )
@@ -813,6 +816,34 @@ _V0_3_0_RC6_BASE = _BasePin(
     },
 )
 
+# Recipe-11 rebuild from clean public source 12a30fa60322de585810048881ee166fcdb26854,
+# published 2026-10-31 before RC9 under the owner's base-first decision. The
+# console layer contains #330's browser-port cookie isolation; the other five
+# filesystem layers match the rc6 base. The launcher still supplies the runtime.
+# The mnemonic is the builder's real identity, not an invented candidate tag.
+# Keep the rc6 pin for existing locks; new resolutions select this last pin.
+_V0_3_0_COOKIE_FIX_BASE = _BasePin(
+    mnemonic="v0.3.0-local-linux-x86_64",
+    source_revision="12a30fa60322de585810048881ee166fcdb26854",
+    base_family=_BASE_FAMILY_UBUNTU_24_04,
+    satisfies={
+        "python": "3.12", "docker-cli": None, "node": NODE_VERSION,
+        "java": TEMURIN_VERSION, "maven": MAVEN_VERSION, "postgresql-client": None,
+    },
+    recipe=11,
+    display=CONTAINED_DISPLAY,
+    runtime=LAUNCHER_SUPPLIED_RUNTIME,
+    lock_table={
+        "reference": (
+            "docker.io/mycodespaceai/devcapsule-base"
+            "@sha256:d7047ced8556cd35964fcc058a1101cf2b5b202f7a5daa2fdd434dcda5ed82c9"
+        ),
+        "build-mnemonic": "v0.3.0-local-linux-x86_64",
+        "contract": "ubuntu-24.04@11",
+        "recipe-source": RECIPE_SOURCE_PATH,
+    },
+)
+
 # Vendor release metadata and complete archive checksums verified 2026-10-04.
 _DOTNET_SDK_10_0_401 = _ComponentPin(
     component_id="dotnet-sdk", version="10.0.401",
@@ -1392,7 +1423,7 @@ _POSTGRESQL_CLIENT_16 = _ComponentPin(
 _LINUX_AMD64_MATRIX = ResolutionMatrix(
     platform=Platform.LINUX_AMD64,
     matrix_version=_MATRIX_VERSION,
-    bases=(_V0_2_8_BASE, _V0_2_10_BASE, _V0_2_12_BASE, _V0_3_0_RC6_BASE),
+    bases=(_V0_2_8_BASE, _V0_2_10_BASE, _V0_2_12_BASE, _V0_3_0_RC6_BASE, _V0_3_0_COOKIE_FIX_BASE),
     components={
         "pycharm": (_PYCHARM_2026_2_0_1, _PYCHARM_2026_2_4),
         "intellij": (_INTELLIJ_2026_2_3, _INTELLIJ_2026_2_4),

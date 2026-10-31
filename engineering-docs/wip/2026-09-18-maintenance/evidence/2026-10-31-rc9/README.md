@@ -132,7 +132,7 @@ PEX downloaded and checked. C17, the remaining nine documentation proposals,
 and downloaded-candidate acceptance retain their recorded dispositions;
 preparing a candidate does not silently close them.
 
-## Cookie fix reconciliation
+## Cookie fix reconciliation checkpoint
 
 PR #330 merged to release at `36b5e660`, carrying `3af21584`. Merging that
 release tip into the preparation branch conflicted only in the maintenance
@@ -146,10 +146,74 @@ Docs-only commit `7a813b80` publishes the fix's three guide corrections on
 `docs-0.3.0`. Its docs tree equals this preparation branch's docs tree. The
 website build/check passed: 252 pages and 21,031 links/assets/anchors.
 
-These are source-level results. The pinned rc6 recipe-11 base still contains
-the old console, so they do not prove delivery to ordinary capsules or
-concurrent browser acceptance. Owner decision `2026-10-31-rc9-base-refresh`
-remains unanswered; no base build/publication or candidate tag was started.
-After rebuilding/pinning the base, verify both console and noVNC on two
-simultaneous capsules in one browser profile. Console authentication uses
-port-suffixed cookies; noVNC authentication uses its WebSocket token URL.
+At this checkpoint the base refresh still awaited the owner; these source
+checks alone did not prove delivery to ordinary capsules or concurrent
+browser acceptance. The subsequent base-first decision and delivery below
+resolve that gap. Console authentication uses port-suffixed cookies; noVNC
+authentication uses its WebSocket token URL.
+
+## Published base and concurrent authentication
+
+The owner selected **base-first** at 02:14:16 UTC on 2026-10-31. The strict
+public-source builder embeds commit `12a30fa60322de585810048881ee166fcdb26854`.
+The supported `images build --type base --recipe ubuntu-24.04 --network host`
+command verified that public source and fetched the console from it. No
+`--allow-local-source` flag was used for this public base. The builder's
+`v0.3.0-local-linux-x86_64` mnemonic denotes an untagged build; its source
+revision is known and public. No candidate tag was invented.
+
+Published tag: `mycodespaceai/devcapsule-base:v0.3.0-base-20261031`.
+Registry digest: `sha256:d7047ced8556cd35964fcc058a1101cf2b5b202f7a5daa2fdd434dcda5ed82c9`.
+The registry pull matches the built image ID. The installed console security
+module matches the fixed source byte-for-byte. Of six filesystem layers,
+only the console layer differs from rc6. [Base identity](base-refresh.json)
+retains the builder identity, PEX checksum, labels, layer digests and console
+checksum. Catalog embedded-31 retains old pins and selects this one for new
+resolutions. The builder commit also supplies the catalog's recipe-source
+permalink, since the builder has no release tag.
+
+The first full gate found that the catalog invariant test assumed every pin
+had a higher recipe number. The test now requires identical contracts for
+same-recipe rebuilds and retains the additive rule across recipe versions.
+The provenance regression check ensures the new pin links to its exact
+public builder commit. The 112 focused catalog, initialization and contract
+tests pass.
+
+The opt-in [concurrent authentication regression test](../../../../../devcapsule-src/tests/e2e/test_concurrent_auth.py)
+passed on two ordinary fresh VSCodium projects using the new default pin,
+with no base override and host networking. It ran with the ide-smoke Python
+environment, `pytest --no-cov -m e2e tests/e2e/test_concurrent_auth.py`, and
+`DEVCAPSULE_PEX_UNDER_TEST` selecting the captured local validation PEX.
+The runtime PEX differs from the public base builder: its catalog includes
+the newly published digest, and its dirty-source identity is explicitly
+`unknown`. This is pre-candidate validation, not downloaded-RC acceptance.
+
+[Browser facts](concurrent-auth/facts.json) record distinct console ports and
+cookie names, one shared browser context, repeated tokenless console
+navigation/reload, noVNC reload/disconnect/reconnect, and refusal of sibling
+console cookies, console URL tokens and WebSocket tokens. Both desktops
+remained connected. [Layer lineage](concurrent-auth/base-lineage.json)
+confirms that both materialized environments contain every layer of the
+published base. [Cleanup A](concurrent-auth/cleanup-a.json) and
+[cleanup B](concurrent-auth/cleanup-b.json) confirm container removal.
+No launcher log, cookie value or tokened URL is retained here.
+
+| Capsule | Console after authentication checks | Connected desktop |
+|---|---|---|
+| A | [Console](concurrent-auth/console-0.png) | [VSCodium desktop](concurrent-auth/desktop-0.png) |
+| B | [Console](concurrent-auth/console-1.png) | [VSCodium desktop](concurrent-auth/desktop-1.png) |
+
+Console screenshots establish authenticated page rendering; they do not
+establish completion of every overview probe or acceptance of every console
+feature. The browser run verifies host-network sessions; automated console
+Host-header tests separately cover browser ports differing from internal
+ports. Main propagation and downloaded-candidate acceptance remain.
+
+Final validation after the pin/provenance/test corrections: full build gate
+passed with 2,645 unit tests (41 deselected, one expected failure and one
+non-strict unexpected pass), 18 packaging tests, 374 console tests,
+type/syntax checks, CLI/PEX smoke and documentation contract. Website build
+and check passed: 252 pages and 21,031 links/assets/anchors. The browser test
+is marked `ide_smoke` so the standard non-browser E2E suite excludes it;
+run it explicitly with the command above. The cookie-delivery hold is
+resolved; owner release/main integration precedes the candidate tag.

@@ -85,15 +85,15 @@ port arrives on every HTTP request in the `Host` header (`127.0.0.1:<host_port>`
    image (`docker.io/mycodespaceai/devcapsule-base`, where `/opt/devcapsule-webconsole`
    is installed at base-image build time from the runtime's source revision;
    self-hosting DevCapsule checkouts already mount `devcapsule-webconsole/`
-   live), rebuild and pin the published recipe-11 base from a `0.3.0` candidate
-   containing this fix before cutting the final `v0.3.0` tag, and verify on a
-   downloaded `0.3.0` candidate.
+   live), rebuild and pin the published recipe-11 base from clean public source
+   containing this fix before RC9 under the owner's 2026-10-31 **base-first**
+   decision, and verify on a downloaded `0.3.0` candidate.
 
 ## Close criteria
 
 - Fix merged into `release-0.3.0` and propagated to `main` under the `0.3.0`
   release flow.
-- Published `ubuntu-24.04@11` base pin updated from a candidate revision
+- Published `ubuntu-24.04@11` base pin updated from clean public source
   carrying the updated `devcapsule-webconsole/` (so non-self-hosting projects
   receive the port-scoped cookie without building a local base), and verified
   before the final `v0.3.0` tag.
@@ -115,3 +115,27 @@ Implemented on `ws-maintenance/0.3.0-webconsole-port-cookie` targeting
   `docs/troubleshooting/diagnostics-and-logs.md`, and
   `devcapsule-webconsole/README.md`: replaced the multi-profile workaround note
   with the port-scoped cookie behavior.
+
+## Base delivery — 2026-10-31
+
+The owner chose **base-first** at 02:14:16 UTC in decision
+`2026-10-31-rc9-base-refresh`, replacing the bootstrap-candidate sequence
+above. The supported strict-public-source PEX builder identifies commit
+`12a30fa60322de585810048881ee166fcdb26854`; `images build --type base`
+verified that commit on GitHub and fetched the console from that exact SHA.
+The image is published as `mycodespaceai/devcapsule-base:v0.3.0-base-20261031`,
+digest `sha256:d7047ced8556cd35964fcc058a1101cf2b5b202f7a5daa2fdd434dcda5ed82c9`.
+A registry pull resolves to the built image ID. Its installed console security
+module matches the fixed source byte-for-byte. Only the console filesystem
+layer differs from the rc6 base. Catalog embedded-31 selects it for new
+resolutions and retains the rc6 pin for existing locks. Existing capsules
+must be relaunched with the updated base; installing a launcher does not
+rewrite an existing lock.
+
+[Base identity evidence](../../wip/2026-09-18-maintenance/evidence/2026-10-31-rc9/base-refresh.json).
+Main propagation and downloaded-candidate acceptance remain release gates.
+
+Two real fresh-project capsules on the new default base passed the shared
+browser test: tokenless console navigation/reload, noVNC reload/reconnect,
+and refusal of sibling console and desktop credentials. Published-base layer
+lineage and cleanup passed. See the [concurrent-authentication evidence](../../wip/2026-09-18-maintenance/evidence/2026-10-31-rc9/README.md#published-base-and-concurrent-authentication).

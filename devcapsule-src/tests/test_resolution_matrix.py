@@ -141,7 +141,7 @@ def test_minimal_need_generates_a_complete_pycharm_lock() -> None:
     assert lock["base"]["reference"].startswith(
         "docker.io/mycodespaceai/devcapsule-base@sha256:"
     )
-    assert lock["base"]["build-mnemonic"] == "v0.3.0-rc6"
+    assert lock["base"]["build-mnemonic"] == "v0.3.0-local-linux-x86_64"
     assert lock["components"]["interactive-surface"] == "pycharm"
     assert lock["components"]["pycharm"]["version"] == "2026.2.4"
     assert lock["materialization"]["recipe"] == "jetbrains-local-materialization"
@@ -165,7 +165,7 @@ def test_frontend_need_generates_a_complete_codium_lock() -> None:
     assert lock["materialization"]["recipe"] == "vscode-local-materialization"
     assert set(lock["components"]) == {"interactive-surface", "codium"}
     # The newest base in the validated family wins.
-    assert lock["base"]["build-mnemonic"] == "v0.3.0-rc6"
+    assert lock["base"]["build-mnemonic"] == "v0.3.0-local-linux-x86_64"
 
 
 def test_base_selection_follows_each_needs_verified_edges() -> None:
@@ -176,17 +176,17 @@ def test_base_selection_follows_each_needs_verified_edges() -> None:
     synthetic matrices below cover the sparse case.
     """
 
-    assert parse(rendered(["node", "frontend-ide"]))["base"]["build-mnemonic"] == "v0.3.0-rc6"
-    assert parse(rendered(["python", "python-ide"]))["base"]["build-mnemonic"] == "v0.3.0-rc6"
+    assert parse(rendered(["node", "frontend-ide"]))["base"]["build-mnemonic"] == "v0.3.0-local-linux-x86_64"
+    assert parse(rendered(["python", "python-ide"]))["base"]["build-mnemonic"] == "v0.3.0-local-linux-x86_64"
     assert (
         parse(rendered(["node", "frontend-ide", "codex-agent"]))["base"]["build-mnemonic"]
-        == "v0.3.0-rc6"
+        == "v0.3.0-local-linux-x86_64"
     )
     assert (
         parse(rendered(["python", "python-ide", "antigravity-agent", "codex-agent"]))["base"][
             "build-mnemonic"
         ]
-        == "v0.3.0-rc6"
+        == "v0.3.0-local-linux-x86_64"
     )
 
 
@@ -196,7 +196,7 @@ def test_formation_reports_capabilities_and_provenance() -> None:
     assert isinstance(formation, Formation)
     assert formation.capabilities == ("python", "python-ide")
     assert "pycharm 2026.2.4" in formation.provenance
-    assert "base v0.3.0-rc6" in formation.provenance
+    assert "base v0.3.0-local-linux-x86_64" in formation.provenance
 
 
 # ---------------------------------------------------------------------------

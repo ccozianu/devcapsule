@@ -1,6 +1,6 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-31. Stage: **RC9 preparation reconciles merged cookie fix #330; base refresh and combined concurrent-session verification remain**.
+Updated: 2026-10-31. Stage: **RC9 preparation ready for owner merge of #329; fixed base published/pinned and combined concurrent-session verification passes**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Release notes](notes.md) ·
@@ -308,12 +308,21 @@ was the maintenance status State line, resolved while retaining both sessions'
 records. Console cookies now use the browser-facing port in their name.
 noVNC authenticates through its WebSocket token URL, not this console cookie.
 
-The current recipe-11 base pin still contains the old console. The owner
-selected **base-first** in `2026-10-31-rc9-base-refresh`, answered at
-02:14:16 UTC: build and publish from clean public source, re-pin the fixed
-base, then verify two simultaneous capsules in one browser profile before
-RC9, including switching, refreshing and reconnecting both services.
-Earlier sequential startup checks do not cover this regression.
+The owner selected **base-first** in `2026-10-31-rc9-base-refresh` at
+02:14:16 UTC. It is complete: the strict public-source builder at `12a30fa6`
+produced `mycodespaceai/devcapsule-base:v0.3.0-base-20261031`, published and
+pinned at `sha256:d7047ced8556cd35964fcc058a1101cf2b5b202f7a5daa2fdd434dcda5ed82c9`.
+The installed console matches the fix, and only its layer changed from rc6.
+Catalog embedded-31 retains old pins and selects the fixed base for new
+resolutions. Existing locks require an explicit base refresh.
+
+Two ordinary fresh-project capsules on the new default pin passed one shared
+browser context: tokenless console navigation/reload, noVNC reload/reconnect,
+and refusal of each other's console and desktop credentials. Both test
+containers were removed. Full local gate passes (2,645 unit, 18 packaging,
+374 console tests, type/syntax/CLI/PEX/docs), as do 112 focused tests and the
+website check. The base/concurrency hold is resolved. Owner release/main
+merges, the candidate gate and downloaded-RC9 acceptance remain.
 
 The owner requested the intended final release candidate after all open PRs
 merged. PR #317 is on main at `ce08ebad`; documentation batches #319, #321,

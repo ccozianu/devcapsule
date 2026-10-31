@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-31; owner selected base-first; rebuilding and publishing fixed base before RC9, then concurrent browser verification
+State: integrating 2026-10-31; fixed base published and pinned, concurrent browser check and full gate pass; PR #329 awaits owner merge
 
 Definition read: WORKFLOW.md@bfc91d68cd06, WORKFLOW-LOCAL.md@65501b3407db
 
@@ -67,20 +67,31 @@ preparation and the parallel session's fix/verification records are retained. Wo
 files are identical to the preparation branch, so no definition update is
 needed. The release branch itself is not synchronized or rewritten.
 
-The console source now isolates cookies by browser-facing port. The noVNC
-runtime uses a token in the WebSocket URL through websockify's TokenFile
-plugin; it does not use the console's authentication cookie. Concurrent
-browser verification must still cover both services on two capsules sharing
-one browser profile, with switching, refresh/reconnect and wrong credentials.
+The owner selected **base-first** in decision
+`2026-10-31-rc9-base-refresh`, answered 2026-10-31 at 02:14:16 UTC.
+That sequence is complete: recipe 11 was rebuilt with the supported strict
+public-source builder from commit `12a30fa60322de585810048881ee166fcdb26854`,
+published as `mycodespaceai/devcapsule-base:v0.3.0-base-20261031`, and pinned
+at `sha256:d7047ced8556cd35964fcc058a1101cf2b5b202f7a5daa2fdd434dcda5ed82c9`
+in catalog embedded-31. Registry pull matches the built image. Only the
+console layer differs from rc6, and its security module matches the merged
+fix byte-for-byte. Old pins remain valid; existing locks are not rewritten.
 
-The published recipe-11 pin still contains the old console. The owner selected **base-first** in decision
-`2026-10-31-rc9-base-refresh`, answered 2026-10-31 at 02:14:16 UTC:
-build and publish from clean public source, re-pin the fixed base, and verify
-concurrent browser use before RC9. No bootstrap candidate is needed.
-Main remains ce08ebad and release 36b5e660; no new synchronization is needed. Combined source validation passed: 2,644 unit tests, 18 packaging tests,
-374 console tests, type/syntax/CLI/PEX/documentation checks, and the website
-check (252 pages, 21,031 links/assets/anchors). Prior sequential IDE startup checks do not prove
-concurrent authentication or delivery of the fixed console in the pinned base.
+Two real fresh-project capsules on that default pin passed one shared-browser
+check: tokenless console navigation/reload, noVNC reload/reconnect, and refusal
+of sibling credentials. Console cookies use browser-facing port suffixes;
+noVNC uses its WebSocket token URL. Both test containers and their project
+records were cleaned up. Evidence retains image lineage, sanitized facts
+and screenshots. The base/concurrency hold on #329 is resolved.
+
+Final local validation: full build gate passed (2,645 unit tests, 18 packaging
+tests, 374 console tests, type/syntax/CLI/PEX/documentation checks), 112 focused
+catalog/init/contract tests, concurrent browser regression (1 passed), and
+website build/check (252 pages, 21,031 links/assets/anchors). The first gate
+exposed a test assumption that every retained base pin increases the recipe
+number; corrected to require identical contracts for same-recipe rebuilds.
+The new pin's exact builder SHA supplies its recipe-source permalink.
+Main remains ce08ebad and release 36b5e660; no new synchronization is needed.
 
 Owner requests the intended final candidate after all PRs merge. Verified
 main `ce08ebad` includes #317; release `338f94ab` includes all five user-docs
@@ -100,11 +111,12 @@ merged through #317 and must be preserved in subsequent main delivery.
 Selected vendor stable versions: Codex 0.166.0, Claude Code 2.1.314,
 Antigravity 1.4.12; PyCharm/IntelliJ/Rider 2026.2.4, VSCodium 1.143.17232,
 VS Code 1.144.0. Eclipse Java stays 2026-09-R. All nine full downloads passed
-vendor integrity checks. Catalog embedded-30 keeps prior pins for old locks.
-No base or repository configuration migration was made. The running rc8
+vendor integrity checks. Catalog embedded-31 keeps prior pins for old locks.
+The base refresh above supersedes the initial embedded-30 preparation.
+No repository configuration migration was made. The running rc8
 baseline validates the repository's existing schema-1 manifest and lock.
 
-Validation: full build gate passed (2,644 unit tests, 18 packaging tests,
+Initial component-refresh validation: full build gate passed (2,644 unit tests, 18 packaging tests,
 type/syntax/CLI/PEX/docs checks, 357 console tests); 101 focused catalog/init
 tests; 92 release-document tests; website check (252 pages and 21,031 links).
 All three agents passed recipe-11 startup/seed checks. All five updated IDEs
@@ -2570,11 +2582,11 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-Current: #329 reconciliation, the combined full gate and published guide
-corrections are complete. Build/publish/re-pin the fixed base under the owner's base-first decision,
-then verify two simultaneous capsules
-in one browser profile using the selected base. Owner release/main merges
-and candidate gate still precede any tag.
+Current: owner merges PR #329 into release-0.3.0. The fixed base is published
+and pinned; the combined full gate, concurrent browser check and website
+check pass. Then deliver release to main with its documented metadata
+resolution, satisfy the candidate gate, tag RC9, and verify the downloaded
+artifact. Main propagation and downloaded-candidate acceptance remain.
 Historical candidate sequencing below must not override this direction.
 
 1. The network-node slice, on `ws-maintenance/0.3.0-network-node` from
@@ -3422,17 +3434,11 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- #330 is merged at 36b5e660 and reconciled into #329. Its three guide
-  corrections are published on docs-0.3.0 at 7a813b80. Owner selected base-first
-  (`2026-10-31-rc9-base-refresh`, 02:14:16 UTC); concurrent browser acceptance follows.
-
-- The source fix is merged; the publication hold remains until the updated
-  base and combined concurrent-session checks satisfy the selected sequence.
-
-- The component refresh passed its original checks. Combined source checks
-  pass after #330; base delivery and concurrent browser
-  acceptance still precede owner release/main integration.
-  docs-0.3.0 includes the cookie-fix guidance; no candidate tag exists yet.
+- PR #329 awaits owner merge. #330 is reconciled, the base-first decision is
+  implemented, and the shared-browser/full-gate/website checks pass. The
+  base/concurrency hold is resolved; no candidate tag exists yet.
+- docs-0.3.0 includes the cookie-fix guides at 7a813b80 and matches this
+  branch's docs tree. Release-to-main propagation follows owner merge.
 - Downloaded-candidate provider/tool actions, JetBrains editor acceptance and
   the remaining release obligations are not replaced by startup checks.
 - The owner must configure ci-gate as required if enforcement is desired;
