@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: blocked 2026-10-31 on parallel cookie-isolation fix; owner holds PR #329 and RC9 publication
+State: integrating 2026-10-31; #319, #321, #323, #325, #327 merged into release-0.3.0 (338f94ab) and #317 merged into main (ce08ebad); 0.3.0 web-console port-scoped cookie fix validated and ready for owner merge; recipe-11 published base pin refresh remains before final v0.3.0 tag
 
 Definition read: WORKFLOW.md@bfc91d68cd06, WORKFLOW-LOCAL.md@65501b3407db
 
@@ -14,83 +14,48 @@ Delivery method: pull request from `release-0.3.0` to `main` before each candida
 
 Branch association: `release-0.3.0`, the release branch, the workstream's selection from the cut to the final tag; `ws-maintenance/session-logs` (PR #207) and `ws-maintenance/log-rotation` (PR #209, then #216) are merged to `main` and closed; `ws-maintenance/post-0.2.15` is merged through PR #172 and closed; release-0.2.15 is closed and retained
 
-Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`
+Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`, `R-CONSOLE-001`
 
-## Intended final candidate RC9 — 2026-10-31
+## Web-console port-scoped authentication cookie fix for 0.3.0 — 2026-10-31
 
-**Owner hold, 2026-10-31:** [PR #329](https://github.com/ccozianu/devcapsule/pull/329)
-and RC9 publication wait for the critical cookie-isolation fix being developed
-in a parallel session. The owner reports cookie collisions between concurrent
-capsules on one host because cookies do not isolate by port; both web console
-and noVNC authentication can be affected. The parallel session owns the fix;
-its bug/PR reference has not yet been supplied. Do not duplicate implementation.
+SSH fetch verified owner merges of all five `0.3.0` user-documentation batches
+into `release-0.3.0` at `338f94ab` (`#319` at `add23bb0`, `#321` at `031de0a5`,
+`#323` at `b28af13d`, `#327` at `6a5d9803`, `#325` at `338f94ab`) and of
+`4PR-10-release-0.3.0` (`#317`) into `main` at `ce08ebad`.
 
-Once the fix is available, reconcile it with this preparation, resolve any
-conflicts and validate the combined source before owner merge and tagging.
-Regression evidence must use two simultaneous capsules and the same browser
-profile/cookie jar, exercising both consoles and noVNC while alternating,
-refreshing and reconnecting. Confirm that each endpoint still rejects the
-other session's credentials. The earlier sequential startup checks and green
-CI do not establish this concurrent-session property. If the fix changes the
-base-shipped console, verify that the candidate's pinned base includes it.
+At the owner's direction on `2026-10-31`, filed and fixed blocking `0.3.0` bug
+[`2026-10-31-webconsole-cookie-collides-across-ports.md`](../../bugs/devcapsule/2026-10-31-webconsole-cookie-collides-across-ports.md)
+(`status: fixed`, `severity: blocking`, `target: 0.3.0`, `owner: maintenance`,
+`requirements: [R-CONSOLE-001]`) on `ws-maintenance/0.3.0-webconsole-port-cookie`
+targeting `release-0.3.0`:
 
-Main ce08ebad and release 338f94ab are unchanged at this checkpoint. Their
-workflow difference is the already accepted version metadata; no branch
-synchronization is needed for this record-only hold.
-
-Owner requests the intended final candidate after all PRs merge. Verified
-main `ce08ebad` includes #317; release `338f94ab` includes all five user-docs
-batches. Those documentation batches still need pre-candidate main integration.
-The next unused tag is v0.3.0-rc9; no tag has been created. The owner selected
-**upgrade** in `2026-10-31-rc9-agent-pins`, answered 00:50:18 UTC, and asked
-also to check IDE updates because of security fixes. The choice and note
-are preserved here before the console decision state is removed.
-
-Current slice: `ws-maintenance/0.3.0-rc9-preparation`, based on release
-`338f94ab`, for the required component pin updates, release notes and docs
-promotion. The release remains the integration selection. Main has no newer
-workflow definition to import; do not merge main into the release without
-a new owner direction. The approved main-metadata adjustment is already
-merged through #317 and must be preserved in subsequent main delivery.
-
-Selected vendor stable versions: Codex 0.166.0, Claude Code 2.1.314,
-Antigravity 1.4.12; PyCharm/IntelliJ/Rider 2026.2.4, VSCodium 1.143.17232,
-VS Code 1.144.0. Eclipse Java stays 2026-09-R. All nine full downloads passed
-vendor integrity checks. Catalog embedded-30 keeps prior pins for old locks.
-No base or repository configuration migration was made. The running rc8
-baseline validates the repository's existing schema-1 manifest and lock.
-
-Validation: full build gate passed (2,644 unit tests, 18 packaging tests,
-type/syntax/CLI/PEX/docs checks, 357 console tests); 101 focused catalog/init
-tests; 92 release-document tests; website check (252 pages and 21,031 links).
-All three agents passed recipe-11 startup/seed checks. All five updated IDEs
-passed desktop/console/window/pixel startup checks. Rider's SDK built and ran
-the C# fixture; Rider/IntelliJ component browsers rendered HTML. JetBrains
-screenshots stop at first-use agreements, VS Code at welcome/sign-in;
-provider authentication and editor use are not claimed. See the
-[evidence ledger](evidence/2026-10-31-rc9/README.md).
-
-Notes and documentation promotion are ready: 0.3.0 current, 0.2.15 deprecated,
-0.2.14/0.2.12 unsupported. `docs-0.3.0` is published at promotion commit `68b21a18`, before
-review integration so the hosted website check can fetch its source. The
-promotion itself remains on the release review slice until the owner merges. Deliver `ws-maintenance/0.3.0-rc9-preparation` into
-`release-0.3.0`, then use the prescribed untouched release copy for the main
-PR. The human merges both. Tag only after main disposition passes, then
-verify the downloaded published PEX. Final acceptance still needs the
-fixed-bug/provider checks and the C17/nine-doc-proposal dispositions from
-the October 27 scope record. No candidate or final release is tagged yet.
-
-Read-only merge-tree preview against main ce08ebad finds three record conflicts:
-root CURRENT-STATUS.md, docs/versions.yaml, and this status file. Keep current
-RC9 progress plus nonconflicting main history; use the promoted documentation
-list but omit devel's release-only source-version on main. Main's authored
-0.3.1.dev0 versions merge unchanged. Resolve the delivery method after release
-integration: the prescribed untouched copy cannot receive correction commits
-without owner direction (the #317 exception was specific to that PR).
-
-Live main rules checked 2026-10-31: deletion and non-fast-forward prevention,
-no required status check. `ci-gate` enforcement still requires the owner's
-repository setting; workflow propagation did not configure it.
+- `devcapsule-webconsole/devcapsule_webconsole/security.py`: scopes session
+  cookie names to the browser-facing port in the HTTP `Host` header
+  (`devcapsule-console-token-<port>`, falling back to `devcapsule-console-token`
+  when portless) so concurrent capsules on `127.0.0.1` no longer overwrite one
+  another's cookie under RFC 6265 §8.5, and reads `;` cookie pairs directly
+  across all `Cookie` headers so non-RFC2109 cookies set on `127.0.0.1` by
+  sibling local applications cannot abort credential parsing.
+- `devcapsule-src/devcapsule/_redaction.py`: widens `_CONSOLE_COOKIE_RE` to
+  scrub suffixed `devcapsule-console-token-<port>=` cookies while keeping the
+  cookie name and port readable in diagnostic exports.
+- `docs/sessions/web-console.md`, `docs/sessions/several-projects.md`,
+  `docs/troubleshooting/diagnostics-and-logs.md`, and
+  `devcapsule-webconsole/README.md`: replace the multi-profile workaround note
+  with the port-scoped `0.3.0` cookie behavior.
+- Local validation passed: `374` web-console tests (up from `357`, including
+  dual-port cookie jar isolation, live two-`uvicorn` + `http.cookiejar`
+  loopback proof, IPv6/portless/malformed `Host` handling, HTTP/2 split
+  `Cookie` headers, and sibling localhost cookies) and strict `mypy` (`9`
+  files); runtime `mypy` (`264` files), syntax checks, CLI and PEX smokes, `18`
+  packaging/install integration tests, `2,644` unit tests (`40` deselected, `1`
+  `xfail`, `1` `XPASS`), `192`-page `docs-contract` (`18` aliases), and website
+  build/check (`196` HTML pages, `14,636` links/assets/anchors, `23` tests).
+- Next step: owner review and merge into `release-0.3.0`, propagation to `main`,
+  and before the final `v0.3.0` tag, rebuilding and re-pinning the published
+  `ubuntu-24.04@11` base image in `resolution_matrix.py` from a `0.3.0`
+  candidate carrying this commit so non-self-hosting adopters receive the
+  updated `/opt/devcapsule-webconsole` without building a local base.
 
 ## User documentation 0.3.0 CLI alignment and prose review (Batch 1) — 2026-10-30
 
@@ -2525,13 +2490,15 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-Current: wait for the parallel cookie-isolation fix; hold PR #329 and RC9.
-When the fix is available, reconcile the preparation, resolve conflicts and
-validate concurrent consoles/noVNC in one browser profile. Then obtain owner
-release integration, propagate to main, and run the candidate/tag/download
-checks. docs-0.3.0 is already published at 68b21a18. No freshness decision
-remains pending.
-Historical candidate sequencing below must not override this direction.
+Current: #318 is merged and #317 refreshed. Obtain the one-time exception
+for main metadata on the release-copy branch, apply the prepared four-file
+correction, validate, and hand #317 back for merge. Pair Review naming and
+its packaged definition are now on the release branch through #318. The CI work order
+is implemented, reviewed, validated and merged into the release through
+PR #312. Required ci-gate configuration remains an owner action; normal
+release propagation to main remains open. Documentation scheduling records
+reflect the acknowledged 0.3.1 deferral.
+Historical candidate sequencing below must not override this owner direction.
 
 1. The network-node slice, on `ws-maintenance/0.3.0-network-node` from
    the release branch, a pull request into it with the reviewer loop;
@@ -3378,21 +3345,11 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Owner holds PR #329 and RC9 for the parallel cookie-isolation fix. Await
-  its bug/PR reference and completed source; reconcile conflicts and verify
-  two simultaneous capsules in one browser profile before release approval.
-
-- RC9 preparation is validated and awaits owner release/main integration.
-  docs-0.3.0 is published at its promotion commit; no candidate tag exists yet.
-- Downloaded-candidate provider/tool actions, JetBrains editor acceptance and
-  the remaining release obligations are not replaced by startup checks.
-- The owner must configure ci-gate as required if enforcement is desired;
-  main's live rules currently require no status check.
-- The approved #317 correction is merged on main at ce08ebad; preserve main's
-  0.3.1.dev0 metadata and absence of the release-only docs source override.
-- Scratch download/setup attempts are not durable project records. The
-  artifact digests, successful probe, screenshots/facts and validation limits
-  are retained in the RC9 evidence ledger; caches and built PEX remain local.
+- PR #318 is merged; #317 is refreshed and has no textual conflicts.
+  The four-file main-metadata correction is prepared but not applied.
+  It requires an explicit exception to Release Policy 8 (untouched copy)
+  to preserve Version Scheme 4 (main stays on its development version).
+  No new feature work is implied by this integration.
 
 - CI Pair Review #314 settled without a revision round. Reviewer proposals
   not implemented: migrate paths-filter v3 to v4 (Node 20 produces a hosted
@@ -3846,8 +3803,6 @@ Earlier open-thread history (read against the current scope above):
 
 ## Workstream Document Index
 
-- [RC9 preparation and component verification](evidence/2026-10-31-rc9/README.md).
-
 - [User-docs 0.3.0 CLI alignment work order](../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md),
   [Batch 1 verification ledger](evidence/2026-10-30-docs-batch-1/README.md),
   [PR319.1 Pair Review brief](evidence/2026-10-30-docs-batch-1/review-brief.md), and
@@ -3886,6 +3841,7 @@ Earlier open-thread history (read against the current scope above):
 - [Runtime CLI blocker](../../bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md): next implementation task; blocks 0.2.14.
 - [URL-opening defect](../../bugs/devcapsule/2026-09-24-url-opening-without-browser-handler.md): contained-display triage.
 - [Workflow onboarding](../../work-orders/2026-09-24-workflow-installation-onboarding.md): non-blocking follow-up.
+- [Web-console port-scoped cookie bug (`0.3.0`)](../../bugs/devcapsule/2026-10-31-webconsole-cookie-collides-across-ports.md): fixed on `ws-maintenance/0.3.0-webconsole-port-cookie`; close after `release-0.3.0` merge, `main` propagation, and published recipe-11 base pin refresh.
 - [0.3.0 user docs Batch 5 evidence](evidence/2026-10-30-docs-batch-5/README.md): Batch 5 (`sessions/`, `collaboration/`, `platforms/`) scope, validation, and Pair Review record.
 - [PR #327 review-partner brief (PR327.1)](evidence/2026-10-30-docs-batch-5/review-brief.md): brief for `Codex (gpt-6-astra)` on Batch 5 (`#327`/`#328`).
 
