@@ -4,9 +4,9 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: integrating 2026-10-30; #318 merged and #317 refreshed without conflicts; user-docs 0.3.0 CLI alignment Batches 1–5 (#319, #321, #323, #325, #327; 49/49 files, 12/12 stubs retired) Pair-Reviewed and ready for owner merge; main-metadata correction applied; #317 local gate passed and ready for owner review
+State: awaiting owner release integration 2026-10-31; RC9 agent/IDE refresh, notes and documentation promotion validated
 
-Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@65501b3407db
+Definition read: WORKFLOW.md@bfc91d68cd06, WORKFLOW-LOCAL.md@65501b3407db
 
 Integration target: `main`
 
@@ -15,6 +15,54 @@ Delivery method: pull request from `release-0.3.0` to `main` before each candida
 Branch association: `release-0.3.0`, the release branch, the workstream's selection from the cut to the final tag; `ws-maintenance/session-logs` (PR #207) and `ws-maintenance/log-rotation` (PR #209, then #216) are merged to `main` and closed; `ws-maintenance/post-0.2.15` is merged through PR #172 and closed; release-0.2.15 is closed and retained
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`
+
+## Intended final candidate RC9 — 2026-10-31
+
+Owner requests the intended final candidate after all PRs merge. Verified
+main `ce08ebad` includes #317; release `338f94ab` includes all five user-docs
+batches. Those documentation batches still need pre-candidate main integration.
+The next unused tag is v0.3.0-rc9; no tag has been created. The owner selected
+**upgrade** in `2026-10-31-rc9-agent-pins`, answered 00:50:18 UTC, and asked
+also to check IDE updates because of security fixes. The choice and note
+are preserved here before the console decision state is removed.
+
+Current slice: `ws-maintenance/0.3.0-rc9-preparation`, based on release
+`338f94ab`, for the required component pin updates, release notes and docs
+promotion. The release remains the integration selection. Main has no newer
+workflow definition to import; do not merge main into the release without
+a new owner direction. The approved main-metadata adjustment is already
+merged through #317 and must be preserved in subsequent main delivery.
+
+Selected vendor stable versions: Codex 0.166.0, Claude Code 2.1.314,
+Antigravity 1.4.12; PyCharm/IntelliJ/Rider 2026.2.4, VSCodium 1.143.17232,
+VS Code 1.144.0. Eclipse Java stays 2026-09-R. All nine full downloads passed
+vendor integrity checks. Catalog embedded-30 keeps prior pins for old locks.
+No base or repository configuration migration was made. The running rc8
+baseline validates the repository's existing schema-1 manifest and lock.
+
+Validation: full build gate passed (2,644 unit tests, 18 packaging tests,
+type/syntax/CLI/PEX/docs checks, 357 console tests); 101 focused catalog/init
+tests; 92 release-document tests; website check (252 pages and 21,031 links).
+All three agents passed recipe-11 startup/seed checks. All five updated IDEs
+passed desktop/console/window/pixel startup checks. Rider's SDK built and ran
+the C# fixture; Rider/IntelliJ component browsers rendered HTML. JetBrains
+screenshots stop at first-use agreements, VS Code at welcome/sign-in;
+provider authentication and editor use are not claimed. See the
+[evidence ledger](evidence/2026-10-31-rc9/README.md).
+
+Notes and documentation promotion are ready: 0.3.0 current, 0.2.15 deprecated,
+0.2.14/0.2.12 unsupported. A local `docs-0.3.0` ref at promotion commit
+`68b21a18` supports the website build; push it after that commit reaches the
+release branch. Deliver `ws-maintenance/0.3.0-rc9-preparation` into
+`release-0.3.0`, then use the prescribed untouched release copy for the main
+PR. The human merges both. Tag only after main disposition passes, then
+verify the downloaded published PEX. Final acceptance still needs the
+fixed-bug/provider checks and the C17/nine-doc-proposal dispositions from
+the October 27 scope record. No candidate or final release is tagged yet.
+
+Live main rules checked 2026-10-31: deletion and non-fast-forward prevention,
+no required status check. `ci-gate` enforcement still requires the owner's
+repository setting; workflow propagation did not configure it.
 
 ## User documentation 0.3.0 CLI alignment and prose review (Batch 1) — 2026-10-30
 
@@ -83,33 +131,18 @@ Its tree equals tested head `a2485dd4`. PR #317's untouched release copy
 was fast-forwarded to that release tip; main `ebab228a` is an ancestor,
 so the textual conflicts are resolved.
 
-The owner explicitly authorized the four-file main-metadata correction on
-#317's branch on 2026-10-30, a one-time exception to Release Policy 8.
-Commit `2e8709ad` on `4PR-10-release-0.3.0` applies it: standard
-`nox -s bump -- 0.3.1.dev0` updates pyproject.toml and both workflow
-frontmatters; docs/versions.yaml loses its release-only source-version
-override. The exact prepared patch was verified by reverse apply-check.
-The release branch remains at `def205a4` with version 0.3.0. This copy is
-now a main integration branch by the owner's exception; do not overwrite
-its correction by resetting it to the release tip. This project-local rule
-conflict needs clarification before the next release propagation.
-
-The first main-version gate exposed three existing tests with hard-coded
-0.3.0 launcher expectations (home display, settings round-trip, refusal
-message). Runtime behavior correctly normalizes 0.3.1.dev0 to 0.3.1 and is
-already covered by the release-comparison matrix. Commit `580b4ce0` gives
-those three tests explicit 0.3.0 launcher inputs; both affected modules pass
-39 tests. No runtime behavior changes. The final full gate at `580b4ce0`
-passed: 2,644 unit tests (40 deselected, one xfail and one XPASS), 18 packaging
-tests, 357 web-console tests, type checks, source/PEX smokes and the 192-page
-documentation contract including 18 aliases, with devel correctly identified
-as 0.3.1.dev0. Log: `/var/tmp/maintenance-ci/main-metadata-final.log`.
-The earlier three-failure run is retained in `main-metadata-gate.log`.
-Only status records changed after the successful gate. Hosted CI is linked
-from #317; website verification passed and Python was still running at this
-checkpoint. PR #317 is ready for owner review and merge after its checks pass. Existing documentation batch
-status and dispositions from coordination have been preserved; these pending
-PRs are not silently folded into this integration. No final
+Remaining policy conflict: Version Scheme 4 requires main to retain its
+next development version, but Release Policy 8 says to commit nothing to
+the PR copy. The unmodified release tree would reset main to 0.3.0.
+A four-file patch, prepared and checked with `git apply --check`, restores
+0.3.1.dev0 in pyproject.toml and both workflow frontmatters and removes the
+release-only source-version override from docs/versions.yaml. It is shown
+in PR #317 and kept in scratch `/var/tmp/maintenance-ci/main-metadata.patch`.
+No patch content has been applied. Await owner permission for this one-time
+metadata adjustment on #317's copy; release-0.3.0 would stay unchanged.
+Then apply the standard bump command, remove the override, validate the main
+integration tree and hand #317 back. This project-local rule conflict needs
+clarification before the next release propagation. No final
 tag or publication was requested. Required ci-gate enforcement remains a
 separate GitHub setting.
 
@@ -198,6 +231,37 @@ Claude availability check returned `claude-fable-5-1`; no API key is used.
 Validation scratch uses `/var/tmp/maintenance-ci` because the configured
 `/opt/devcapsule-gate` is unavailable; no container or service is needed.
 
+## User documentation 0.3.0 CLI alignment and prose review (Batch 2) — 2026-10-30
+
+Implementation [PR #321](https://github.com/ccozianu/devcapsule/pull/321)
+(`ws-maintenance/0.3.0-docs-batch-2-configuration` -> `release-0.3.0`) received
+Pair Review [PR #322](https://github.com/ccozianu/devcapsule/pull/322) from
+`Codex (gpt-6-astra)`, accepted at `a082a710` without a revision round and
+merged at `b7849132`.
+
+Batch 2 updates all 10 `docs/configuration/*.md` files under
+[`2026-10-30-user-docs-0-3-0-cli-alignment.md`](https://github.com/ccozianu/devcapsule/blob/main/engineering-docs/work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md)
+(merged to `main` in PR #316 at `ebab228a`) and folds in the human-prose pass
+from `2026-10-24-maintenance-docs-language-review-before-0-3-0.md`, retiring
+`status: planned` on `docs/configuration/ide-preferences.md` (complete 22-slot
+IDE storage reference across `pycharm`, `intellij`, `rider`, `codium`, `vscode`,
+and `eclipse`) and correcting `antigravity-cli` channel origin, `images build
+--type base --tag`, missing `docs/configuration/index.md` guide links, and
+leaked internal RC notes. Codex ran 46 `--help` calls and 68 isolated scratch
+CLI probes across all 10 files and applied 11 source-verified refinements
+(required-IDE `--force` links, console auto-applied restrictive authorizations,
+`project info` runtime allowlist vs. `config show` declared inputs, `default`
+vs. `none` value omission, `images list` columns vs. `devcapsule.source.revision`
+label, and immediate directory checks on `bind`/`adopt`/`init --bind`); see the
+[Batch 2 verification ledger](evidence/2026-10-30-docs-batch-2/README.md).
+Two unimplemented CLI hint proposals surfaced during review are recorded for a
+separate code slice: `_launcher.py:160-163` omits required `--tag` in the
+printed `images build --type base` hint, and `project.py:1138` still prints
+retired `config resolve` when non-software decisions accompany `config approve`.
+Next step: owner merge of PR #321 into `release-0.3.0`; Batch 3 (`docs/README.md`,
+`docs/getting-started/`, `docs/your-project/`, `docs/containment/` — 10 files)
+proceeds on its own slice branch.
+
 ## Goal
 
 Own defects no open workstream covers and drive maintenance releases. This
@@ -273,6 +337,46 @@ describe the flag; the 0.3.0 changelog carries it.
 Pre-review gate passed: `nox -s build` and `webconsole` on `fcf5c4e6` with the records uncommitted: mypy clean on 263 source files; 2,559 unit tests passed, 40 deselected, 1 xfailed, 1 xpassed; the local executable built and smoked; 18 packaging tests passed; `docs-contract` 190 pages including 17 aliases passed; 357 web console tests passed, mypy clean on 9 files.
 
 Post-merge gate passed on `3bfb3a16`, the slice with the review's PR #306 merged: mypy clean on 263 source files; 2,574 unit tests passed, 40 deselected, 1 xfailed, 1 xpassed; the executable built and smoked; 18 packaging tests passed; `docs-contract` 192 pages including 18 aliases passed; 357 web console tests passed, mypy clean on 9 files. The owner merged PR #304 into `release-0.3.0` at `cfa45937` on 2026-10-30.
+
+## User documentation 0.3.0 CLI alignment and prose review (Batch 3) — 2026-10-30
+
+Slice branch `ws-maintenance/0.3.0-docs-batch-3-onboarding-project-containment`
+(from `origin/release-0.3.0` at `c2742621`) updates 10 `docs/*.md` files across
+`docs/README.md` (1), `docs/getting-started/` (3), `docs/your-project/` (4), and
+`docs/containment/` (2) under
+[`2026-10-30-user-docs-0-3-0-cli-alignment.md`](https://github.com/ccozianu/devcapsule/blob/main/engineering-docs/work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md)
+and folds in the human-prose pass from
+`2026-10-24-maintenance-docs-language-review-before-0-3-0.md`.
+
+Key changes:
+- Authored `docs/your-project/declare-needs.md` and
+  `docs/your-project/services-and-ports.md` in full (`status: planned` retired
+  on both), covering schema-2 manifests and platform locks, all 17 catalog
+  capabilities, `require`/`offer`/`drop`/`recommend`, `init --regenerate`,
+  `config check --manifest --lock`, loopback `--publish=127.0.0.1:PORT:PORT` vs.
+  `network host`, and host/Testcontainers/embedded service patterns.
+- Updated `docs/README.md` (retired `"coming soon"` notice, refreshed section
+  links), `docs/getting-started/install.md`, `first-session.md` (exact `0.3.0`
+  `project init` prompts including `antigravity-agent` default and recipe-11+
+  web console URL), `stop-and-come-back.md` (corrected container process
+  restart wording), `existing-repository.md` and `new-project.md` (added
+  `eclipse-ide`, `dotnet-ide`, component-name IDE aliases, and `checkout
+  register`), and `the-boundary.md` / `granting-and-withdrawing.md` (`config
+  deny` 5-node scope vs. `authorize <vendor>-download false`, `default`/`none`
+  keywords, `vscode-download`); see the
+  [Batch 3 verification ledger](evidence/2026-10-30-docs-batch-3/README.md).
+- Opened [PR #323](https://github.com/ccozianu/devcapsule/pull/323) against
+  `release-0.3.0`, dispatched `Codex (gpt-6-astra)` under
+  [`review-brief.md`](evidence/2026-10-30-docs-batch-3/review-brief.md),
+  accepted [PR #324](https://github.com/ccozianu/devcapsule/pull/324)
+  (`f218a6d5`, 10 source-verified fixes across all 10 files) without a revision
+  round, and merged it at `18728ce8`.
+- Recorded unimplemented Batch 5 follow-up (`docs/sessions/what-persists.md:8`
+  mount-scope wording); post-merge gate passed (`docs-contract`: `192` pages;
+  `website.sh build && check`: `23` tests, `196` HTML pages, `14,449`
+  links/anchors; `pytest -q -k release_docs`: `92` passed; `nox -s smoke`:
+  passed). Ready for owner merge into `release-0.3.0`; next step: execute Batch
+  4 (`docs/everyday-development/` + `docs/working-with-ai/`, 10 files, 5 stubs).
 
 ## Diagnostics snapshot and export — 2026-10-27
 
@@ -386,6 +490,46 @@ built `dist/devcapsule-local.pex` (1 passed in 21.15 s). Slice state:
 integrating; [PR #293](https://github.com/ccozianu/devcapsule/pull/293) is
 ready for the owner's merge into `release-0.3.0`.
 
+## User documentation 0.3.0 CLI alignment and prose review (Batch 4) — 2026-10-30
+
+Slice branch `ws-maintenance/0.3.0-docs-batch-4-everyday-dev-and-ai` (from
+`origin/release-0.3.0` at `c2742621`) updates 10 `docs/*.md` files across
+`docs/everyday-development/` (5) and `docs/working-with-ai/` (5) under
+[`2026-10-30-user-docs-0-3-0-cli-alignment.md`](https://github.com/ccozianu/devcapsule/blob/main/engineering-docs/work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md)
+and folds in the human-prose pass from
+`2026-10-24-maintenance-docs-language-review-before-0-3-0.md`.
+
+Key changes:
+- Authored all 5 `status: planned` stubs in full (`status: planned` retired):
+  `docs/everyday-development/git.md`, `docs/everyday-development/run-debug-test.md`,
+  `docs/everyday-development/previews-and-ports.md`,
+  `docs/working-with-ai/hosted-and-local-models.md`, and
+  `docs/working-with-ai/review-and-change-agents.md`.
+- Updated `ides-and-terminals.md` (`config ide`, `use frontend-ide vscode`,
+  `run --ide codium --force` departure behavior, Eclipse `/ide-workspace`,
+  Rider/`dotnet`), `clipboard-and-browser.md` (`host-browser` broker and `F11`
+  fullscreen), `choose-an-agent.md` (`role: agents` preserved, retired stale
+  pre-`0.3.0` personal-agent trust limit, added web-console `add` and writable
+  `.git` guidance), `sign-in-and-defaults.md` (`codex/openai-api-key` and
+  `antigravity-cli/gemini-api-key` secret bindings, `host-browser`, seeded
+  settings), and `instructions-for-agents.md`; see the
+  [Batch 4 verification ledger](evidence/2026-10-30-docs-batch-4/README.md).
+- Opened [PR #325](https://github.com/ccozianu/devcapsule/pull/325) against
+  `release-0.3.0`, dispatched `Codex (gpt-6-astra)` under
+  [`review-brief.md`](evidence/2026-10-30-docs-batch-4/review-brief.md),
+  accepted [PR #326](https://github.com/ccozianu/devcapsule/pull/326)
+  (`5f734995`, 15 source-verified fixes across all 10 files) without a revision
+  round, and merged it at `65fa4958`.
+- Recorded unimplemented proposals (residual `_launcher.py` `GIT_USER_NAME` /
+  `GIT_USER_EMAIL` forwarding under `inherit_legacy_configuration=False`, Batch
+  5 follow-up on `docs/sessions/what-persists.md:18` Antigravity credential
+  scope, and `bash -n` docs-contract check); post-merge gate passed
+  (`docs-contract`: `192` pages; `website.sh build && check`: `23` tests, `196`
+  HTML pages, `14,471` links/anchors; `pytest -q -k release_docs`: `92` passed;
+  `nox -s smoke`: passed). Ready for owner merge into `release-0.3.0`; next
+  step: execute final Batch 5 (`docs/sessions/`, `docs/collaboration/`,
+  `docs/platforms/`, 9 files, 2 stubs).
+
 ## General saved Docker arguments — 2026-10-23
 
 The owner broadened PR #253 before merge, then requested the same reviewer
@@ -481,6 +625,15 @@ was inside the pytest scratch and was removed by pytest; gate logs must be
 outside basetemp. Final validation uses tmpfs scratch and an external log. No merge from main is planned: this is a release slice based on
 the current release tip, whose workflow and approval changes are already
 present. The release branch is not synchronized or rewritten.
+
+## User Documentation 0.3.0 CLI Alignment — Batch 5 (`sessions/`, `collaboration/`, `platforms/`) — 2026-10-30
+
+Slice branch: `ws-maintenance/0.3.0-docs-batch-5-sessions-collab-platforms` ([PR #327](https://github.com/ccozianu/devcapsule/pull/327) targeting `release-0.3.0`, final batch of [2026-10-30-user-docs-0-3-0-cli-alignment.md](../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md)).
+
+- Updated 9 `docs/*.md` files across `docs/sessions/` (5), `docs/collaboration/` (1), and `docs/platforms/` (3), retiring the final 2 `status: planned` stubs (`docs/sessions/several-projects.md` and `docs/sessions/another-machine.md`) so all 49 `docs/**/*.md` files and all 12 stubs across Batches 1–5 (`#319`, `#321`, `#323`, `#325`, `#327`) are complete with zero overlaps.
+- Pair Review [PR #328](https://github.com/ccozianu/devcapsule/pull/328) (`PR327.1` by `Codex / gpt-6-astra`, `59bc1bae`) reviewed all 9 pages against `devcapsule-src/` and `devcapsule-webconsole/`, verified `macos.md` clean, and fixed 8 pages (`256 MiB` default log budget in `what-persists.md`, `HomeDefaults` keys `memory`/`cpus` and URL-encoded `<creator>/<slug>` paths in `another-machine.md`, `project list` host vs runtime scope and `DEVCAPSULE_CONFIG_HOME` isolated homes in `several-projects.md`, home-wide console `trust` scope, `env set` leading-dash rule, and `HttpOnly; SameSite=Strict` RFC 6265 host-shared cookie behavior in `web-console.md`, `--workstream` subcommand scope and `project-management` non-forwardability in `working-in-workstreams.md`, and ephemeral port wording / 3-command check scope in `start-stop-reconnect.md`, `linux.md`, and `windows-wsl2.md`). Verified independently, accepted without a round, and merged (`edcab618`).
+- Unimplemented runtime proposal from PR #328 (out of scope for docs slice): isolate web-console authentication cookies per console instance/port so multiple consoles opened on `127.0.0.1` in one browser profile do not overwrite `devcapsule_console_token`.
+- Post-merge validation passed: `docs-contract` (`192` pages), `./scripts/website.sh build && ./scripts/website.sh check` (`23` tests, `196` HTML pages, `14,462` links/assets/anchors), `92` `release_docs` unit tests, `nox -s smoke`, and `bash -n` on all 17 shell blocks. Ready for owner review and merge alongside PRs `#319`, `#321`, `#323`, and `#325`.
 
 ## The CLI UX redesign in rc4 — 2026-10-24
 
@@ -2344,15 +2497,11 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-Current: owner reviews and merges #317 with the authorized main-metadata
-correction after its hosted checks pass; the full local gate has passed. Pair Review naming and
-its packaged definition are on the release branch through #318. Pending
-documentation batch PRs retain their separate owner review and merge path. The CI work order
-is implemented, reviewed, validated and merged into the release through
-PR #312. Required ci-gate configuration remains an owner action; normal
-release propagation to main remains open. Documentation scheduling records
-reflect the acknowledged 0.3.1 deferral.
-Historical candidate sequencing below must not override this owner direction.
+Current: owner merge of the validated RC9 preparation branch into release;
+push docs-0.3.0 at 68b21a18, then deliver the untouched release-to-main copy.
+After owner main merge, run the candidate gate, tag v0.3.0-rc9, and verify the
+published downloaded PEX. No freshness decision remains pending.
+Historical candidate sequencing below must not override this direction.
 
 1. The network-node slice, on `ws-maintenance/0.3.0-network-node` from
    the release branch, a pull request into it with the reviewer loop;
@@ -3199,11 +3348,17 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- PR #318 is merged; #317 has no textual conflicts. The owner authorized
-  the main-metadata exception and commit `2e8709ad` applies it. Complete
-  hosted checks, then owner merge of #317; the full local gate passed.
-  Retain the release branch at 0.3.0.
-  No new feature work is implied by this integration.
+- RC9 preparation is validated and awaits owner release/main integration.
+  Publish docs-0.3.0 at its promotion commit; no candidate tag exists yet.
+- Downloaded-candidate provider/tool actions, JetBrains editor acceptance and
+  the remaining release obligations are not replaced by startup checks.
+- The owner must configure ci-gate as required if enforcement is desired;
+  main's live rules currently require no status check.
+- The approved #317 correction is merged on main at ce08ebad; preserve main's
+  0.3.1.dev0 metadata and absence of the release-only docs source override.
+- Scratch download/setup attempts are not durable project records. The
+  artifact digests, successful probe, screenshots/facts and validation limits
+  are retained in the RC9 evidence ledger; caches and built PEX remain local.
 
 - CI Pair Review #314 settled without a revision round. Reviewer proposals
   not implemented: migrate paths-filter v3 to v4 (Node 20 produces a hosted
@@ -3657,6 +3812,8 @@ Earlier open-thread history (read against the current scope above):
 
 ## Workstream Document Index
 
+- [RC9 preparation and component verification](evidence/2026-10-31-rc9/README.md).
+
 - [User-docs 0.3.0 CLI alignment work order](../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md),
   [Batch 1 verification ledger](evidence/2026-10-30-docs-batch-1/README.md),
   [PR319.1 Pair Review brief](evidence/2026-10-30-docs-batch-1/review-brief.md), and
@@ -3669,17 +3826,21 @@ Earlier open-thread history (read against the current scope above):
 - [CI path gating and advisory diff coverage](../../work-orders/2026-10-30-ci-path-gating-and-diff-coverage.md): active 0.3.0 slice.
 
 - [Explicit IDE requirement override evidence](evidence/2026-10-29-ide-override/README.md): the recorded acceptance session of 2026-10-29, forced Codium then plain PyCharm, and the review brief.
+- [Batch 2 verification ledger (`docs/configuration/`)](evidence/2026-10-30-docs-batch-2/README.md) and
+  [PR321.1 Pair Review brief](evidence/2026-10-30-docs-batch-2/review-brief.md): PR #321, 10-file 0.3.0 documentation alignment and prose slice on `ws-maintenance/0.3.0-docs-batch-2-configuration`.
 - [VS Code smoke evidence](evidence/2026-10-28-vscode/README.md): the recorded IDE smoke of the `vscode` surface, 2026-10-28, and the PR301.1 brief for Antigravity, Gemini 4 Argon (High).
 - [PR #293 review-partner brief (PR293.1)](evidence/2026-10-27-diagnostics-snapshot/brief-pr293-1.md): brief for Codex (`gpt-6-astra`) on the session diagnostics snapshot and sanitized export slice.
 - [PR #236 review-partner brief (PR236.1)](evidence/2026-10-22-pr236-review-brief.md): brief for Claude Fable 5.1 on the E2E scenario video recorder and Eclipse Java debugger demo slice.
 - [Landing-page work order (`Why DevCapsule?`)](../../work-orders/2026-10-18-landing-page-why-devcapsule.md): Deliverables 1–4 completed and verified on `ws-maintenance/e2e_videos`.
 - [Stretch-goal hero video follow-up work order](../../work-orders/2026-10-19-eclipse-java-1brc-hero-video.md): Eclipse/Java 1BRC hero video stretch goal with reusable pipeline preamble and unblocking options.
+- [Batch 3 verification ledger (`README`, `getting-started`, `your-project`, `containment`)](evidence/2026-10-30-docs-batch-3/README.md) and [PR323.1 review brief](evidence/2026-10-30-docs-batch-3/review-brief.md): 10-file 0.3.0 documentation alignment and prose slice ([PR #323](https://github.com/ccozianu/devcapsule/pull/323)) on `ws-maintenance/0.3.0-docs-batch-3-onboarding-project-containment`.
 - [0.3.0 release overview](../../releases/v0.3.0/README.md): the cut, the checklist, the freshness review, the candidates; open for any release question.
 - [0.3.0 bug table](../../releases/v0.3.0/bugs.md): the records the release carries and their dispositions.
 - [0.3.0 changelog](../../releases/v0.3.0/changelog.md): what is new and fixed since 0.2.15, maintained at every candidate; the prerelease body.
 - [Diagnostics and logs](../../../docs/troubleshooting/diagnostics-and-logs.md): the user-facing statement of slice 1; open when changing what a session logs.
 - [Session logs acceptance](evidence/2026-10-11-session-logs/README.md): the recipe-12 base, the real session, the rotation; open when a reviewer asks what was proven on a capsule.
 - [PR #172 review](2026-10-08-pr172-review.md): findings, fixes, regression evidence and remaining limits.
+- [Batch 4 verification ledger (`everyday-development`, `working-with-ai`)](evidence/2026-10-30-docs-batch-4/README.md) and [PR325.1 review brief](evidence/2026-10-30-docs-batch-4/review-brief.md): 10-file 0.3.0 documentation alignment and prose slice ([PR #325](https://github.com/ccozianu/devcapsule/pull/325)) on `ws-maintenance/0.3.0-docs-batch-4-everyday-dev-and-ai`.
 - [Unpacked cache publication/recovery bug](../../bugs/devcapsule/2026-10-08-unpacked-cache-publication-and-recovery.md): fixed on review branch; close after main integration.
 
 - [Released launchers reject the repository manifest](../../bugs/devcapsule/2026-09-24-released-launchers-reject-repository-manifest.md): blocking, fixed on branch, needs RC2.
@@ -3691,6 +3852,8 @@ Earlier open-thread history (read against the current scope above):
 - [Runtime CLI blocker](../../bugs/devcapsule/2026-09-24-runtime-cli-not-on-path.md): next implementation task; blocks 0.2.14.
 - [URL-opening defect](../../bugs/devcapsule/2026-09-24-url-opening-without-browser-handler.md): contained-display triage.
 - [Workflow onboarding](../../work-orders/2026-09-24-workflow-installation-onboarding.md): non-blocking follow-up.
+- [0.3.0 user docs Batch 5 evidence](evidence/2026-10-30-docs-batch-5/README.md): Batch 5 (`sessions/`, `collaboration/`, `platforms/`) scope, validation, and Pair Review record.
+- [PR #327 review-partner brief (PR327.1)](evidence/2026-10-30-docs-batch-5/review-brief.md): brief for `Codex (gpt-6-astra)` on Batch 5 (`#327`/`#328`).
 
 - [Legacy launch capability work item](../../work-orders/2026-09-22-legacy-launch-capability-disposition.md): future-release decisions and delivery, blocking V1.
 - [Release overview](../../releases/v0.2.14/README.md): cut, candidates and acceptance checklist.
