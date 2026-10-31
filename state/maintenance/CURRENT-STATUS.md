@@ -4,9 +4,9 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: integrating 2026-10-31; owner approved #331 correction; validated integration published for hosted checks and owner main merge
+State: awaiting owner acceptance 2026-10-31; RC9 published; downloaded executable passes 8 E2E tests and shared-browser regression; cookie bug closed
 
-Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@65501b3407db
+Definition read: WORKFLOW.md@bfc91d68cd06, WORKFLOW-LOCAL.md@65501b3407db
 
 Integration target: `main`
 
@@ -15,6 +15,37 @@ Delivery method: pull request from `release-0.3.0` to `main` before each candida
 Branch association: `release-0.3.0`, the release branch, the workstream's selection from the cut to the final tag; `ws-maintenance/session-logs` (PR #207) and `ws-maintenance/log-rotation` (PR #209, then #216) are merged to `main` and closed; `ws-maintenance/post-0.2.15` is merged through PR #172 and closed; release-0.2.15 is closed and retained
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`, `R-CONSOLE-001`
+
+## RC9 published and downloaded verification — 2026-10-31
+
+Owner merge of [#331](https://github.com/ccozianu/devcapsule/pull/331) verified
+at main `4b59b10daede8b77ff7c7aee753b9df483d62458`; release remains
+`475427da033633ff5ee0e44e09face700630bf36`. Returned this clean checkout to
+`release-0.3.0`. No main-to-release synchronization: the approved integration
+preserves main's development metadata, and the release source is already an
+ancestor of main. The candidate gate passes with no unintegrated commits.
+
+Tagged and published [v0.3.0-rc9](https://github.com/ccozianu/devcapsule/releases/tag/v0.3.0-rc9)
+at that release source. [Hosted publication](https://github.com/ccozianu/devcapsule/actions/runs/41181720227)
+passed. Downloaded all three public assets and verified checksum, manifest,
+version `0.3.0rc9`, mnemonic and source SHA. PEX SHA-256:
+`413b1d45bac9c39b6fa5fab68090e43550c9e255108de48b387c50a715c4fcf2`.
+
+Downloaded-artifact validation: ordinary E2E suite **8 passed** (129.38 s),
+including component cache, exact executable delivery, runtime lifecycle and
+clean-machine execution; shared-browser regression **1 passed** (22.90 s).
+Two fresh projects use the fixed default base with one browser context;
+tokenless console navigation/reload and noVNC reconnection pass, sibling
+credentials are refused, and containers/project records are removed.
+The blocking cookie bug is closed on this evidence. Existing locks still
+require explicit refresh; noVNC uses a WebSocket token URL, not the console
+cookie. See [downloaded verification evidence](evidence/2026-10-31-rc9/README.md#downloaded-rc9-verification).
+
+These post-tag records are committed locally and published on coordination;
+they travel with the acceptance integration, without a records-only PR.
+The immutable RC9 tag stays at 475427da. This is candidate verification,
+not final-release acceptance. Historical preparation statements below are
+superseded by this checkpoint.
 
 ## Web-console port-scoped authentication cookie fix for 0.3.0 — 2026-10-31
 
@@ -2640,10 +2671,11 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-Current: complete hosted checks on #331 with the owner-approved integration
-correction, then owner main merge. Verify the merged main disposition before
-tagging RC9, then run downloaded-candidate acceptance. #329 is merged and
-the fixed base/shared-browser verification are complete.
+Current: the owner evaluates the published RC9. Complete outstanding final
+acceptance obligations (fixed-bug/provider/editor checks and C17/nine-proposal
+dispositions), record acceptance of this exact candidate if approved, integrate
+that acceptance through the owner-merged main PR, then promote under the
+runbook. No final v0.3.0 tag is authorized by these smoke results alone.
 Historical candidate sequencing below must not override this direction.
 
 1. The network-node slice, on `ws-maintenance/0.3.0-network-node` from
@@ -3491,12 +3523,16 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- #329 is merged at 475427da. The owner authorized #331's correction
-  in chat on 2026-10-31. The tested merge and approval record are published
-  for hosted checks and owner main merge before RC9.
-  The base/concurrency hold is resolved; no candidate tag exists yet.
-- docs-0.3.0 includes the cookie-fix guides at 7a813b80 and matches this
-  release docs tree. Main intentionally omits the devel source-version override.
+- RC9 is published from release 475427da and integrated through #331 at
+  main 4b59b10d. Eight downloaded E2E checks and the shared-browser regression
+  pass; the cookie bug is closed. Owner final acceptance remains pending.
+- Post-tag evidence/closure records are committed locally on release-0.3.0,
+  with live status published on coordination; carry them in the acceptance
+  integration. The tag and remote release source remain at 475427da.
+- docs-0.3.0 at 7a813b80 matches the release docs tree. Main retains its
+  development metadata; do not undo the approved #331 resolution.
+- Raw launcher logs, credentials and tokened URLs are deliberately excluded
+  from durable evidence. Sanitized facts, screenshots and cleanup survive.
 - Downloaded-candidate provider/tool actions, JetBrains editor acceptance and
   the remaining release obligations are not replaced by startup checks.
 - The owner must configure ci-gate as required if enforcement is desired;
