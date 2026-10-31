@@ -109,5 +109,27 @@
     "digest": "sha256:feb14cb499782540f4d7b051122201650d787bb89cb76c217547702b60ab90ca"
   },
   "workflow_result": "success",
-  "production_promotion": "pending owner review and dispatch"
+  "production_promotion": "completed by owner; independently verified",
+  "production": {
+    "checked_at": "2026-10-31T09:50:39.079808+00:00",
+    "url": "https://devcapsule.mycodespace.ai/build-info.json",
+    "current": "0.3.0",
+    "content": {
+      "revision": "31d44fa473a86f608110caa53ee38c6aef40a717",
+      "dirty": false,
+      "sha256": "18cfb99c3fbd155abaf856588f0926bef653242ece1728e615fe45e336e5a3c2"
+    },
+    "implementation": {
+      "revision": "2bcfe6e22de7563bb9492205b1695b3e6a701651",
+      "dirty": false
+    },
+    "promotion": {
+      "sourceRun": "https://github.com/ccozianu/devcapsule/actions/runs/41188626026",
+      "sourceRunAttempt": "1",
+      "release": "https://github.com/ccozianu/devcapsule/releases/tag/website-candidate-41188626026-1",
+      "archiveDigest": "sha256:feb14cb499782540f4d7b051122201650d787bb89cb76c217547702b60ab90ca",
+      "origin": "https://devcapsule.mycodespace.ai",
+      "transformation": "origin-only: canonical links, social metadata URLs, JSON-LD URLs, robots.txt sitemap reference, sitemap locations"
+    }
+  }
 }

@@ -1,6 +1,6 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-31. Stage: **0.3.0 published and final downloads verified; test site verified; owner production website promotion pending**.
+Updated: 2026-10-31. Stage: **0.3.0 complete: final downloads and production website verified**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Release notes](notes.md) ·
@@ -14,6 +14,15 @@ Update this file as decisions and evidence arrive. Chat highlights changes
 and questions; the bug records remain authoritative for individual status,
 ownership and technical evidence; the maintenance status file links here
 for resumption.
+
+## Production handoff complete — 2026-10-31
+
+The owner confirmed "All done". Independently checked
+[production build-info](https://devcapsule.mycodespace.ai/build-info.json):
+current 0.3.0, content 31d44fa4, and the exact reviewed candidate
+website-candidate-41188626026-1 with archive digest feb14cb499782540f4d7b051122201650d787bb89cb76c217547702b60ab90ca.
+[Verification record](website-verification.json). CLI and production website
+delivery are complete. Earlier pending-promotion statements are historical.
 
 ## Final delivery — 2026-10-31
 

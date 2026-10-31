@@ -27,7 +27,7 @@
   ],
   "test_website_run": "https://github.com/ccozianu/devcapsule/actions/runs/41188626026",
   "test_website_result": "success; deployed content and candidate metadata verified",
-  "production_website_promotion": "owner review and promotion pending",
+  "production_website_promotion": "completed by owner; live production metadata matches verified website candidate",
   "website_candidate": "website-candidate-41188626026-1",
   "website_candidate_url": "https://github.com/ccozianu/devcapsule/releases/tag/website-candidate-41188626026-1"
 }

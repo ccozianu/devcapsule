@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-31; 0.3.0 and test site published/verified; owner production promotion pending; 0.3.1 maintenance preparation ready
+State: active 2026-10-31; 0.3.0 final artifacts and production website verified; release complete; 0.3.1 maintenance preparation ready
 
 Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@65501b3407db
 
@@ -15,6 +15,16 @@ Delivery method: ordinary maintenance PRs to `main`; owner merges. No records-on
 Branch association: `ws-maintenance/0.3.1-preparation` from main 31d44fa4; `release-0.3.0` closed after final publication and retained with its tags; `ws-maintenance/0.3.0-acceptance` merged through #332 and closed; earlier slice branches are historical
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`, `R-CONSOLE-001`
+
+## 0.3.0 delivery complete — 2026-10-31
+
+The owner confirmed production promotion complete ("All done"). Independent
+HTTPS inspection of production build-info confirms current 0.3.0, content
+31d44fa4 and the exact reviewed website-candidate-41188626026-1 with matching
+bundle digest. [Evidence](../../releases/v0.3.0/website-verification.json).
+No release handoff remains. Earlier pending-production statements below are
+superseded. Maintenance remains on ws-maintenance/0.3.1-preparation; no new
+implementation task was started by this release-closing checkpoint.
 
 ## 0.3.0 published; 0.3.1 preparation — 2026-10-31
 
@@ -2823,8 +2833,8 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-Current: owner reviews/promotes website-candidate-41188626026-1 to production.
-Maintenance is ready for 0.3.1 planning from the queue above; the
+Current: 0.3.0 delivery is complete. Maintenance is ready for 0.3.1
+planning from the queue above; the
 release-independent fixture bug is the proposed first implementation slice.
 No repeat 0.3.0 product testing is needed without new evidence of a problem.
 Historical candidate sequencing below must not override this direction.
@@ -3674,9 +3684,8 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Final 0.3.0 and its test website are published and verified. The remaining
-  owner operation is production promotion of website-candidate-41188626026-1.
-  Do not infer that the production site was promoted from these checks.
+- Final 0.3.0 and its production website are published and independently
+  verified. The owner promotion handoff is complete; no release action remains.
 - Maintenance now selects ws-maintenance/0.3.1-preparation from main 31d44fa4.
   Scope candidates and outstanding item-level decisions are listed above.
   No implementation slice is underway; the fixture bug is proposed first.
