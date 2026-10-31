@@ -4,9 +4,9 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: integrating 2026-10-31; fixed base published and pinned, concurrent browser check and full gate pass; PR #329 awaits owner merge
+State: integrating 2026-10-31; #329 merged at 475427da; #331 main integration correction prepared; applying it to the release copy awaits owner exception
 
-Definition read: WORKFLOW.md@bfc91d68cd06, WORKFLOW-LOCAL.md@65501b3407db
+Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@65501b3407db
 
 Integration target: `main`
 
@@ -64,6 +64,37 @@ for 0.3.1. Next action after 0.3.0: isolate generic CLI/contract tests from
 current production pins and the repository lock; demonstrate reduced changed-file
 count on a representative pin refresh while preserving independent assertions
 and historical compatibility coverage. This does not expand the RC9 code slice.
+
+## RC9 main integration — 2026-10-31
+
+SSH fetch verified #329 merged into release at
+`475427da033633ff5ee0e44e09face700630bf36`. Its tree matches tested preparation
+head b6dd2335. Main remains ce08ebad. Created [draft PR #331](https://github.com/ccozianu/devcapsule/pull/331)
+from `4PR-11-release-0.3.0`, an untouched copy at the release tip.
+
+Prepared main integration on this maintenance working branch. Resolved three
+conflicted metadata files: retain current RC9 status and main's nonconflicting
+history; remove one identical duplicated Batch 1 section; keep promoted
+0.3.0 documentation and omit devel's release-only source-version. The three
+version declarations retain main's 0.3.1.dev0 without manual changes.
+Main's existing explicit launcher-version fixtures in test_home.py and
+test_settings.py are also preserved.
+Product code and tests merge without conflicts. Release remains at 475427da.
+
+The resolved main integration tree passed the full local gate under
+0.3.1.dev0: 2,645 unit tests, 18 packaging tests, 374 console tests,
+type/syntax checks, CLI/PEX smoke and documentation contract. Website
+build/check passed (252 pages, 21,031 links/assets/anchors). Manual
+resolution touches only the three metadata files. The main version
+frontmatters, pyproject version and existing fixture fixes match origin/main.
+The prepared correction is retained as a local merge commit on the
+maintenance working branch and a patch in `/var/tmp/maintenance-ci/rc9-main/`;
+#331's remote copy still points unchanged to 475427da.
+
+Applying this prepared correction to #331 awaits a narrow owner exception to
+WORKFLOW-LOCAL.md Release Policy 8, "Commit nothing to the copy". The #317
+exception was PR-specific. This request concerns only the integration copy;
+it does not authorize changing the release or tagging before main disposition.
 
 ## Intended final candidate RC9 — 2026-10-31
 
@@ -224,18 +255,33 @@ Its tree equals tested head `a2485dd4`. PR #317's untouched release copy
 was fast-forwarded to that release tip; main `ebab228a` is an ancestor,
 so the textual conflicts are resolved.
 
-Remaining policy conflict: Version Scheme 4 requires main to retain its
-next development version, but Release Policy 8 says to commit nothing to
-the PR copy. The unmodified release tree would reset main to 0.3.0.
-A four-file patch, prepared and checked with `git apply --check`, restores
-0.3.1.dev0 in pyproject.toml and both workflow frontmatters and removes the
-release-only source-version override from docs/versions.yaml. It is shown
-in PR #317 and kept in scratch `/var/tmp/maintenance-ci/main-metadata.patch`.
-No patch content has been applied. Await owner permission for this one-time
-metadata adjustment on #317's copy; release-0.3.0 would stay unchanged.
-Then apply the standard bump command, remove the override, validate the main
-integration tree and hand #317 back. This project-local rule conflict needs
-clarification before the next release propagation. No final
+The owner explicitly authorized the four-file main-metadata correction on
+#317's branch on 2026-10-30, a one-time exception to Release Policy 8.
+Commit `2e8709ad` on `4PR-10-release-0.3.0` applies it: standard
+`nox -s bump -- 0.3.1.dev0` updates pyproject.toml and both workflow
+frontmatters; docs/versions.yaml loses its release-only source-version
+override. The exact prepared patch was verified by reverse apply-check.
+The release branch remains at `def205a4` with version 0.3.0. This copy is
+now a main integration branch by the owner's exception; do not overwrite
+its correction by resetting it to the release tip. This project-local rule
+conflict needs clarification before the next release propagation.
+
+The first main-version gate exposed three existing tests with hard-coded
+0.3.0 launcher expectations (home display, settings round-trip, refusal
+message). Runtime behavior correctly normalizes 0.3.1.dev0 to 0.3.1 and is
+already covered by the release-comparison matrix. Commit `580b4ce0` gives
+those three tests explicit 0.3.0 launcher inputs; both affected modules pass
+39 tests. No runtime behavior changes. The final full gate at `580b4ce0`
+passed: 2,644 unit tests (40 deselected, one xfail and one XPASS), 18 packaging
+tests, 357 web-console tests, type checks, source/PEX smokes and the 192-page
+documentation contract including 18 aliases, with devel correctly identified
+as 0.3.1.dev0. Log: `/var/tmp/maintenance-ci/main-metadata-final.log`.
+The earlier three-failure run is retained in `main-metadata-gate.log`.
+Only status records changed after the successful gate. Hosted CI is linked
+from #317; website verification passed and Python was still running at this
+checkpoint. PR #317 is ready for owner review and merge after its checks pass. Existing documentation batch
+status and dispositions from coordination have been preserved; these pending
+PRs are not silently folded into this integration. No final
 tag or publication was requested. Required ci-gate enforcement remains a
 separate GitHub setting.
 
@@ -2590,11 +2636,11 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-Current: owner merges PR #329 into release-0.3.0. The fixed base is published
-and pinned; the combined full gate, concurrent browser check and website
-check pass. Then deliver release to main with its documented metadata
-resolution, satisfy the candidate gate, tag RC9, and verify the downloaded
-artifact. Main propagation and downloaded-candidate acceptance remain.
+Current: obtain owner authorization to apply the prepared and validated
+main-integration correction to #331's release-copy branch, then complete
+hosted checks and owner main merge. Verify the merged main disposition before
+tagging RC9, then run downloaded-candidate acceptance. #329 is merged and
+the fixed base/shared-browser verification are complete.
 Historical candidate sequencing below must not override this direction.
 
 1. The network-node slice, on `ws-maintenance/0.3.0-network-node` from
@@ -3442,11 +3488,12 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- PR #329 awaits owner merge. #330 is reconciled, the base-first decision is
-  implemented, and the shared-browser/full-gate/website checks pass. The
-  base/concurrency hold is resolved; no candidate tag exists yet.
+- #329 is merged at 475427da. Draft #331 is an untouched release copy.
+  Its prepared metadata resolution awaits the narrow owner exception;
+  release-copy correction, hosted checks and owner main merge precede RC9.
+  The base/concurrency hold is resolved; no candidate tag exists yet.
 - docs-0.3.0 includes the cookie-fix guides at 7a813b80 and matches this
-  branch's docs tree. Release-to-main propagation follows owner merge.
+  release docs tree. Main intentionally omits the devel source-version override.
 - Downloaded-candidate provider/tool actions, JetBrains editor acceptance and
   the remaining release obligations are not replaced by startup checks.
 - The owner must configure ci-gate as required if enforcement is desired;
