@@ -4,17 +4,72 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: integrating final acceptance 2026-10-31; PR #332 awaits owner merge; RC9 accepted with limits; final publication authorized after main integration
+State: active 2026-10-31; 0.3.0 and test site published/verified; owner production promotion pending; 0.3.1 maintenance preparation ready
 
 Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@65501b3407db
 
 Integration target: `main`
 
-Delivery method: pull request from `release-0.3.0` to `main` before each candidate tag, as the runbook rules; the owner merges; `gh` authorized to create, update and consult pull requests since 2026-10-08
+Delivery method: ordinary maintenance PRs to `main`; owner merges. No records-only PR. The 0.3.0 release is published; website production promotion remains owner-operated.
 
-Branch association: `release-0.3.0` (retained release); `ws-maintenance/0.3.0-acceptance` (temporary mainline acceptance delivery), the release branch, the workstream's selection from the cut to the final tag; `ws-maintenance/session-logs` (PR #207) and `ws-maintenance/log-rotation` (PR #209, then #216) are merged to `main` and closed; `ws-maintenance/post-0.2.15` is merged through PR #172 and closed; release-0.2.15 is closed and retained
+Branch association: `ws-maintenance/0.3.1-preparation` from main 31d44fa4; `release-0.3.0` closed after final publication and retained with its tags; `ws-maintenance/0.3.0-acceptance` merged through #332 and closed; earlier slice branches are historical
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`, `R-CONSOLE-001`
+
+## 0.3.0 published; 0.3.1 preparation — 2026-10-31
+
+Verified owner merge of #332 at main 31d44fa473a86f608110caa53ee38c6aef40a717.
+Validated acceptance identity/ancestry, exact candidate documentation and
+matching docs-0.3.0 tree before creating v0.3.0 at accepted RC9 source
+475427da033633ff5ee0e44e09face700630bf36. No release synchronization or source
+change was needed. Final publication succeeded in
+[run 41188312058](https://github.com/ccozianu/devcapsule/actions/runs/41188312058).
+[The release](https://github.com/ccozianu/devcapsule/releases/tag/v0.3.0) is
+public, non-draft and final, with all three assets.
+
+Independently downloaded/checksummed the final PEX and verified version,
+mnemonic, source, embedded mainline acceptance, base and frozen build inputs.
+Final PEX SHA-256 f59e05cdbb5ab157641aae5a27f269f963400a650c1ae3db1650e1881a6df714.
+[Final verification](../../releases/v0.3.0/final-verification.json).
+The release branch and tags are retained and closed for development. Local
+release-side records remain at 4aedfb74; all their delivery reached main
+through #332. Do not tag their tip or merge it over main's metadata.
+
+At the owner's direction to prepare 0.3.1, selected a fresh branch
+ws-maintenance/0.3.1-preparation from fetched main 31d44fa4. This is still
+maintenance. Main already carries 0.3.1.dev0, so no version bump or release
+branch cut is needed. Its current workflow and local rules are unchanged
+apart from the intentional main development-version frontmatter. New status
+and release-verification records travel with the next deliverable, and live
+state is published on coordination; no administrative PR is opened.
+
+Test-site run 41188626026 succeeded (build, deploy and candidate). Live
+build-info and HTTP checks verify current 0.3.0, content main 31d44fa4 and
+docs-0.3.0 at 7a813b80. [Website verification](../../releases/v0.3.0/website-verification.json).
+The published candidate is website-candidate-41188626026-1, bundle SHA-256
+feb14cb499782540f4d7b051122201650d787bb89cb76c217547702b60ab90ca.
+The owner reviews test-devcapsule.mycodespace.ai and promotes this candidate
+through devcapsule-website's Publish production website workflow. This is the
+remaining release handoff; production deployment was not performed here.
+Delivery/routing notice sent to project-management and website through
+coordination mail at 35e5c6a599cd. GitHub Latest now resolves to v0.3.0.
+
+### 0.3.1 preparation queue
+
+| Item | Owner | Disposition / next action |
+|---|---|---|
+| [Release-independent test fixtures](../../bugs/devcapsule/2026-10-31-release-dependent-test-fixtures.md) | maintenance | Confirmed minor, target 0.3.1; proposed first implementation slice. Use stable fixtures for behavior tests and retain independent real-pin/historical-contract checks. |
+| [October 25 documentation order](../../work-orders/2026-10-25-documentation-orientation-and-concepts.md) | maintenance | Parts A and B assigned to 0.3.1; plan their delivery against the now-complete 0.3.0 guides. |
+| C17 generic project-operation instructions | workflow-improvements | Moved to 0.3.1 planning by the owner's final disposition; scheduling mail delivered at 6fe8ac4cfbb9. Do not implement from maintenance. |
+| Nine September 28 documentation proposals | project-management / user-docs | Moved to 0.3.1 planning; item-level choices still pending, not blanket implementation approval. |
+| Claude Code freshness | maintenance | Final check found 2.1.316 versus accepted 2.1.314; recheck the vendor before a 0.3.1 pin update. No new pin selected yet. |
+| Image/cache cleanup and empty-cache IDE reuse | maintenance | Excluded from 0.3.0; revisit scope in 0.3.1 planning. The older bug target still needs reconciliation with the recorded deferral. |
+| Remaining open bug triage | maintenance | Legacy-lock IDE replacement, JSON-help/retired-command hints, old-project compatibility proof, unchanged-manifest writes; targets remain unassigned. The old workstation-command record is stale after the delivered home API and needs evidence-based reconciliation. |
+
+No 0.3.1 implementation, new release branch or candidate has been started.
+The retained 0.9/1.0 bugs stay at their own targets; preparation does not
+silently pull them into 0.3.1. The workstream intake contains only its README;
+no mail waited at resumption. Earlier release sequences below are historical.
 
 ## Acceptance delivery PR #332 — 2026-10-31
 
@@ -2768,11 +2823,10 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-Current: owner merges acceptance PR #332. Then verify remote main,
-check accepted-source docs, tag v0.3.0 at RC9's exact source, await hosted
-publication, download/check final assets and inspect the test-site dispatch.
-No further publication approval is needed. Continue to 0.3.1 maintenance
-preparation only after this final delivery.
+Current: owner reviews/promotes website-candidate-41188626026-1 to production.
+Maintenance is ready for 0.3.1 planning from the queue above; the
+release-independent fixture bug is the proposed first implementation slice.
+No repeat 0.3.0 product testing is needed without new evidence of a problem.
 Historical candidate sequencing below must not override this direction.
 
 1. The network-node slice, on `ws-maintenance/0.3.0-network-node` from
@@ -3620,14 +3674,19 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- Final scope and acceptance are settled by the owner's "Yes to both"
-  response, recorded above. The ephemeral decision has been removed only
-  after preserving its outcomes here. Do not ask these choices again.
-- Mainline acceptance integration is pending in PR #332. The human must merge the PR
-  under WORKFLOW-LOCAL.md; final tagging after that is already authorized.
-- Release records are retained locally; the acceptance branch carries their
-  delivery and coordination carries live status. RC9's tag and published
-  source are unchanged. No final tag or 0.3.1 development branch exists yet.
+- Final 0.3.0 and its test website are published and verified. The remaining
+  owner operation is production promotion of website-candidate-41188626026-1.
+  Do not infer that the production site was promoted from these checks.
+- Maintenance now selects ws-maintenance/0.3.1-preparation from main 31d44fa4.
+  Scope candidates and outstanding item-level decisions are listed above.
+  No implementation slice is underway; the fixture bug is proposed first.
+- Final verification/status changes remain on this new branch for the next
+  deliverable; coordination carries live routing. No records-only PR.
+- Preserve the accepted source, final/candidate tags, final manifest and
+  verification facts. Scratch downloads/logs can be reproduced. Credentials,
+  tokened links and obsolete console decision state are not durable records.
+
+Earlier threads below are historical and superseded by the current state:
 
 - RC9 is published from release 475427da and integrated through #331 at
   main 4b59b10d. Eight downloaded E2E checks and the shared-browser regression

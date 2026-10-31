@@ -1,6 +1,6 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-31. Stage: **RC9 accepted with documented limits; mainline acceptance PR required before final publication**.
+Updated: 2026-10-31. Stage: **0.3.0 published and final downloads verified; test site verified; owner production website promotion pending**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Release notes](notes.md) ·
@@ -14,6 +14,37 @@ Update this file as decisions and evidence arrive. Chat highlights changes
 and questions; the bug records remain authoritative for individual status,
 ownership and technical evidence; the maintenance status file links here
 for resumption.
+
+## Final delivery — 2026-10-31
+
+[DevCapsule v0.3.0](https://github.com/ccozianu/devcapsule/releases/tag/v0.3.0)
+was published at 09:25:15 UTC after owner merge of acceptance PR #332 at
+main `31d44fa473a86f608110caa53ee38c6aef40a717`.
+[Publication run 41188312058](https://github.com/ccozianu/devcapsule/actions/runs/41188312058)
+passed all gates, packaged tests, staging and download verification.
+The final tag points to accepted RC9 source
+`475427da033633ff5ee0e44e09face700630bf36`, not the acceptance PR commit.
+
+The three public assets were downloaded independently into a fresh directory.
+Checksum, `0.3.0` version, `v0.3.0` mnemonic, source SHA and embedded acceptance
+record all match. Base references and frozen dependencies/Python match RC9.
+Final PEX SHA-256:
+`f59e05cdbb5ab157641aae5a27f269f963400a650c1ae3db1650e1881a6df714`.
+[Verification facts](final-verification.json) and [final manifest](final-manifest.json).
+
+The workflow dispatched [test website run 41188626026](https://github.com/ccozianu/devcapsule/actions/runs/41188626026).
+Build, deploy and candidate publication all passed. Live build-info names
+main 31d44fa4, docs-0.3.0 at 7a813b80 and current version 0.3.0; the home,
+current guides, versioned guides and release-note pages return HTTP 200.
+[Website verification](website-verification.json). The public candidate is
+[website-candidate-41188626026-1](https://github.com/ccozianu/devcapsule/releases/tag/website-candidate-41188626026-1),
+with bundle SHA-256 feb14cb499782540f4d7b051122201650d787bb89cb76c217547702b60ab90ca.
+The owner reviews [the test site](https://test-devcapsule.mycodespace.ai/)
+and selects that candidate in **Publish production website** in
+ccozianu/devcapsule-website. Production promotion was not performed here.
+The release branch is closed and retained; corrections to released guides
+belong on docs-0.3.0. Maintenance resumes on
+`ws-maintenance/0.3.1-preparation` from the acceptance merge on main.
 
 ## Final acceptance — 2026-10-31
 
