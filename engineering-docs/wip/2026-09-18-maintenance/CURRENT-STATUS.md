@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: integrating final acceptance 2026-10-31; owner accepts RC9 with recorded limits; C17/nine proposals move to 0.3.1; acceptance PR precedes final tag
+State: integrating final acceptance 2026-10-31; PR #332 awaits owner merge; RC9 accepted with limits; final publication authorized after main integration
 
 Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@65501b3407db
 
@@ -15,6 +15,24 @@ Delivery method: pull request from `release-0.3.0` to `main` before each candida
 Branch association: `release-0.3.0` (retained release); `ws-maintenance/0.3.0-acceptance` (temporary mainline acceptance delivery), the release branch, the workstream's selection from the cut to the final tag; `ws-maintenance/session-logs` (PR #207) and `ws-maintenance/log-rotation` (PR #209, then #216) are merged to `main` and closed; `ws-maintenance/post-0.2.15` is merged through PR #172 and closed; release-0.2.15 is closed and retained
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`, `R-CONSOLE-001`
+
+## Acceptance delivery PR #332 — 2026-10-31
+
+[PR #332](https://github.com/ccozianu/devcapsule/pull/332),
+ws-maintenance/0.3.0-acceptance -> main, delivers the canonical acceptance
+record and accumulated post-tag audit. Initial head a5d88954. The promotion
+helper redownloaded and verified RC9; protocol identity/ancestry validation
+passes. Main's product code, build inputs, workflow files and docs are
+unchanged; main remains 0.3.1.dev0. No repeat product suite is warranted
+for this acceptance/evidence-only delivery; prior exact-artifact evidence
+is retained. The release-side acceptance commit is 4aedfb74 (local only).
+The main-derived branch avoids propagating release-only version metadata.
+
+The owner merges #332. Then fetch and validate the record on remote main,
+tag v0.3.0 at 475427da (not this PR's commit), and verify final publication.
+No renewed acceptance or tag approval is needed. The temporary decision
+state was removed after the durable outcome commit. Scheduling mail was
+already sent; no other workstream files were edited.
 
 ## Final acceptance decision — 2026-10-31
 
@@ -2750,8 +2768,7 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-Current: deliver the accepted RC9 promotion record and final audit through
-the mainline acceptance PR. The owner merges; then verify remote main,
+Current: owner merges acceptance PR #332. Then verify remote main,
 check accepted-source docs, tag v0.3.0 at RC9's exact source, await hosted
 publication, download/check final assets and inspect the test-site dispatch.
 No further publication approval is needed. Continue to 0.3.1 maintenance
@@ -3606,7 +3623,7 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 - Final scope and acceptance are settled by the owner's "Yes to both"
   response, recorded above. The ephemeral decision has been removed only
   after preserving its outcomes here. Do not ask these choices again.
-- Mainline acceptance integration is pending. The human must merge the PR
+- Mainline acceptance integration is pending in PR #332. The human must merge the PR
   under WORKFLOW-LOCAL.md; final tagging after that is already authorized.
 - Release records are retained locally; the acceptance branch carries their
   delivery and coordination carries live status. RC9's tag and published

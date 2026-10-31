@@ -35,7 +35,7 @@ All required downloaded-executable checks pass. The notes, documentation
 manifest and docs branch match the candidate. Claude 2.1.316 is held for a
 0.3.1 review; the accepted source retains tested 2.1.314.
 
-Next: owner merges the acceptance PR to main, then publish v0.3.0 from
+Next: owner merges [acceptance PR #332](https://github.com/ccozianu/devcapsule/pull/332) to main, then publish v0.3.0 from
 RC9's source, verify final assets and the test-site deployment. No new
 publication approval is needed. The owner promotes the site to production.
 Main remains 0.3.1.dev0; preparation for 0.3.1 follows final delivery.
