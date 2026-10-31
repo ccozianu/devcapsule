@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: integrating 2026-10-31; #319, #321, #323, #325, #327 merged into release-0.3.0 (338f94ab) and #317 merged into main (ce08ebad); 0.3.0 web-console port-scoped cookie fix validated and ready for owner merge; recipe-11 published base pin refresh remains before final v0.3.0 tag
+State: integrating 2026-10-31; fixed base published and pinned, concurrent browser check and full gate pass; PR #329 awaits owner merge
 
 Definition read: WORKFLOW.md@bfc91d68cd06, WORKFLOW-LOCAL.md@65501b3407db
 
@@ -56,6 +56,106 @@ targeting `release-0.3.0`:
   `ubuntu-24.04@11` base image in `resolution_matrix.py` from a `0.3.0`
   candidate carrying this commit so non-self-hosting adopters receive the
   updated `/opt/devcapsule-webconsole` without building a local base.
+
+## 0.3.1 test maintenance follow-up — 2026-10-31
+
+Owner requested [release-independent behavioral fixtures](../../bugs/devcapsule/2026-10-31-release-dependent-test-fixtures.md)
+for 0.3.1. Next action after 0.3.0: isolate generic CLI/contract tests from
+current production pins and the repository lock; demonstrate reduced changed-file
+count on a representative pin refresh while preserving independent assertions
+and historical compatibility coverage. This does not expand the RC9 code slice.
+
+## Intended final candidate RC9 — 2026-10-31
+
+**Cookie fix integration, 2026-10-31:** SSH fetch confirms
+[PR #330](https://github.com/ccozianu/devcapsule/pull/330) merged to release at
+`36b5e660`, carrying fix `3af21584`. Merged the release into this preparation
+branch; the only conflict was this file's State line. Both the RC9
+preparation and the parallel session's fix/verification records are retained. Workflow
+files are identical to the preparation branch, so no definition update is
+needed. The release branch itself is not synchronized or rewritten.
+
+The owner selected **base-first** in decision
+`2026-10-31-rc9-base-refresh`, answered 2026-10-31 at 02:14:16 UTC.
+That sequence is complete: recipe 11 was rebuilt with the supported strict
+public-source builder from commit `12a30fa60322de585810048881ee166fcdb26854`,
+published as `mycodespaceai/devcapsule-base:v0.3.0-base-20261031`, and pinned
+at `sha256:d7047ced8556cd35964fcc058a1101cf2b5b202f7a5daa2fdd434dcda5ed82c9`
+in catalog embedded-31. Registry pull matches the built image. Only the
+console layer differs from rc6, and its security module matches the merged
+fix byte-for-byte. Old pins remain valid; existing locks are not rewritten.
+
+Two real fresh-project capsules on that default pin passed one shared-browser
+check: tokenless console navigation/reload, noVNC reload/reconnect, and refusal
+of sibling credentials. Console cookies use browser-facing port suffixes;
+noVNC uses its WebSocket token URL. Both test containers and their project
+records were cleaned up. Evidence retains image lineage, sanitized facts
+and screenshots. The base/concurrency hold on #329 is resolved.
+
+Final local validation: full build gate passed (2,645 unit tests, 18 packaging
+tests, 374 console tests, type/syntax/CLI/PEX/documentation checks), 112 focused
+catalog/init/contract tests, concurrent browser regression (1 passed), and
+website build/check (252 pages, 21,031 links/assets/anchors). The first gate
+exposed a test assumption that every retained base pin increases the recipe
+number; corrected to require identical contracts for same-recipe rebuilds.
+The new pin's exact builder SHA supplies its recipe-source permalink.
+Main remains ce08ebad and release 36b5e660; no new synchronization is needed.
+
+Owner requests the intended final candidate after all PRs merge. Verified
+main `ce08ebad` includes #317; release `338f94ab` includes all five user-docs
+batches. Those documentation batches still need pre-candidate main integration.
+The next unused tag is v0.3.0-rc9; no tag has been created. The owner selected
+**upgrade** in `2026-10-31-rc9-agent-pins`, answered 00:50:18 UTC, and asked
+also to check IDE updates because of security fixes. The choice and note
+are preserved here before the console decision state is removed.
+
+Current slice: `ws-maintenance/0.3.0-rc9-preparation`, based on release
+`338f94ab`, for the required component pin updates, release notes and docs
+promotion. The release remains the integration selection. Main has no newer
+workflow definition to import; do not merge main into the release without
+a new owner direction. The approved main-metadata adjustment is already
+merged through #317 and must be preserved in subsequent main delivery.
+
+Selected vendor stable versions: Codex 0.166.0, Claude Code 2.1.314,
+Antigravity 1.4.12; PyCharm/IntelliJ/Rider 2026.2.4, VSCodium 1.143.17232,
+VS Code 1.144.0. Eclipse Java stays 2026-09-R. All nine full downloads passed
+vendor integrity checks. Catalog embedded-31 keeps prior pins for old locks.
+The base refresh above supersedes the initial embedded-30 preparation.
+No repository configuration migration was made. The running rc8
+baseline validates the repository's existing schema-1 manifest and lock.
+
+Initial component-refresh validation: full build gate passed (2,644 unit tests, 18 packaging tests,
+type/syntax/CLI/PEX/docs checks, 357 console tests); 101 focused catalog/init
+tests; 92 release-document tests; website check (252 pages and 21,031 links).
+All three agents passed recipe-11 startup/seed checks. All five updated IDEs
+passed desktop/console/window/pixel startup checks. Rider's SDK built and ran
+the C# fixture; Rider/IntelliJ component browsers rendered HTML. JetBrains
+screenshots stop at first-use agreements, VS Code at welcome/sign-in;
+provider authentication and editor use are not claimed. See the
+[evidence ledger](evidence/2026-10-31-rc9/README.md).
+
+Notes and documentation promotion are ready: 0.3.0 current, 0.2.15 deprecated,
+0.2.14/0.2.12 unsupported. `docs-0.3.0` was published at promotion commit `68b21a18`; docs-only commit
+`7a813b80` adds #330's guide corrections, and its docs tree matches this
+preparation branch. The
+promotion itself remains on the release review slice until the owner merges. Deliver `ws-maintenance/0.3.0-rc9-preparation` into
+`release-0.3.0`, then use the prescribed untouched release copy for the main
+PR. The human merges both. Tag only after main disposition passes, then
+verify the downloaded published PEX. Final acceptance still needs the
+fixed-bug/provider checks and the C17/nine-doc-proposal dispositions from
+the October 27 scope record. No candidate or final release is tagged yet.
+
+Read-only merge-tree preview against main ce08ebad finds three record conflicts:
+root CURRENT-STATUS.md, docs/versions.yaml, and this status file. Keep current
+RC9 progress plus nonconflicting main history; use the promoted documentation
+list but omit devel's release-only source-version on main. Main's authored
+0.3.1.dev0 versions merge unchanged. Resolve the delivery method after release
+integration: the prescribed untouched copy cannot receive correction commits
+without owner direction (the #317 exception was specific to that PR).
+
+Live main rules checked 2026-10-31: deletion and non-fast-forward prevention,
+no required status check. `ci-gate` enforcement still requires the owner's
+repository setting; workflow propagation did not configure it.
 
 ## User documentation 0.3.0 CLI alignment and prose review (Batch 1) — 2026-10-30
 
@@ -2490,15 +2590,12 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-Current: #318 is merged and #317 refreshed. Obtain the one-time exception
-for main metadata on the release-copy branch, apply the prepared four-file
-correction, validate, and hand #317 back for merge. Pair Review naming and
-its packaged definition are now on the release branch through #318. The CI work order
-is implemented, reviewed, validated and merged into the release through
-PR #312. Required ci-gate configuration remains an owner action; normal
-release propagation to main remains open. Documentation scheduling records
-reflect the acknowledged 0.3.1 deferral.
-Historical candidate sequencing below must not override this owner direction.
+Current: owner merges PR #329 into release-0.3.0. The fixed base is published
+and pinned; the combined full gate, concurrent browser check and website
+check pass. Then deliver release to main with its documented metadata
+resolution, satisfy the candidate gate, tag RC9, and verify the downloaded
+artifact. Main propagation and downloaded-candidate acceptance remain.
+Historical candidate sequencing below must not override this direction.
 
 1. The network-node slice, on `ws-maintenance/0.3.0-network-node` from
    the release branch, a pull request into it with the reviewer loop;
@@ -3345,11 +3442,20 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- PR #318 is merged; #317 is refreshed and has no textual conflicts.
-  The four-file main-metadata correction is prepared but not applied.
-  It requires an explicit exception to Release Policy 8 (untouched copy)
-  to preserve Version Scheme 4 (main stays on its development version).
-  No new feature work is implied by this integration.
+- PR #329 awaits owner merge. #330 is reconciled, the base-first decision is
+  implemented, and the shared-browser/full-gate/website checks pass. The
+  base/concurrency hold is resolved; no candidate tag exists yet.
+- docs-0.3.0 includes the cookie-fix guides at 7a813b80 and matches this
+  branch's docs tree. Release-to-main propagation follows owner merge.
+- Downloaded-candidate provider/tool actions, JetBrains editor acceptance and
+  the remaining release obligations are not replaced by startup checks.
+- The owner must configure ci-gate as required if enforcement is desired;
+  main's live rules currently require no status check.
+- The approved #317 correction is merged on main at ce08ebad; preserve main's
+  0.3.1.dev0 metadata and absence of the release-only docs source override.
+- Scratch download/setup attempts are not durable project records. The
+  artifact digests, successful probe, screenshots/facts and validation limits
+  are retained in the RC9 evidence ledger; caches and built PEX remain local.
 
 - CI Pair Review #314 settled without a revision round. Reviewer proposals
   not implemented: migrate paths-filter v3 to v4 (Node 20 produces a hosted
@@ -3802,6 +3908,8 @@ Earlier open-thread history (read against the current scope above):
   release documents and bug records.
 
 ## Workstream Document Index
+
+- [RC9 preparation and component verification](evidence/2026-10-31-rc9/README.md).
 
 - [User-docs 0.3.0 CLI alignment work order](../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md),
   [Batch 1 verification ledger](evidence/2026-10-30-docs-batch-1/README.md),

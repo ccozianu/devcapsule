@@ -1,8 +1,9 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-26. Stage: **candidate 8 published and verified as downloaded; `init --regenerate` migrates a schema-1 manifest to schema 2, the owner's gate of 2026-10-26 met; the owner's regeneration of the repository's own manifests next, then the diagnostics snapshot, image cleanup and C20**.
+Updated: 2026-10-31. Stage: **RC9 preparation ready for owner merge of #329; fixed base published/pinned and combined concurrent-session verification passes**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
+[Release notes](notes.md) ·
 [Changelog since 0.2.15](changelog.md) ·
 [Bug table](bugs.md) ·
 [Work order](../../work-orders/2026-10-18-release-0-3-0.md) ·
@@ -39,7 +40,9 @@ that is honest about what it skips.
   no percentage gate and serial execution; parallelism is deferred beyond
   0.3.0 without a later release target. PR #312 implements the slice with
   GPT-6 Codex and Claude Code / Claude Fable 5.1 Pair Review. Review #314 is accepted and the final local/hosted gates passed.
-  Integration and the owner-required `ci-gate` setting remain open.
+  Integration is complete through #312 and #317. The `ci-gate` required-check
+  setting remains open: the live main rules on 2026-10-31 prevent deletion
+  and non-fast-forward pushes, but require no status check.
 - **October 25 documentation proposals, retargeted 2026-10-29.** Parts A
   and B of that work order belong to 0.3.1, still owned by maintenance.
   They no longer gate 0.3.0. The separate language review, accurate candidate
@@ -296,6 +299,67 @@ replacement.
   candidate tag; the bug records closed on candidates.
 - [ ] The gates before the final tag; `notes.md`; the acceptance record;
   the final tag; delivery verified; `docs/versions.yaml` promoted on `main`.
+
+## RC9 preparation — 2026-10-31
+
+**Cookie fix merged:** PR #330 is on `release-0.3.0` at `36b5e660`,
+carrying fix `3af21584`. PR #329 incorporates it; the only merge conflict
+was the maintenance status State line, resolved while retaining both sessions'
+records. Console cookies now use the browser-facing port in their name.
+noVNC authenticates through its WebSocket token URL, not this console cookie.
+
+The owner selected **base-first** in `2026-10-31-rc9-base-refresh` at
+02:14:16 UTC. It is complete: the strict public-source builder at `12a30fa6`
+produced `mycodespaceai/devcapsule-base:v0.3.0-base-20261031`, published and
+pinned at `sha256:d7047ced8556cd35964fcc058a1101cf2b5b202f7a5daa2fdd434dcda5ed82c9`.
+The installed console matches the fix, and only its layer changed from rc6.
+Catalog embedded-31 retains old pins and selects the fixed base for new
+resolutions. Existing locks require an explicit base refresh.
+
+Two ordinary fresh-project capsules on the new default pin passed one shared
+browser context: tokenless console navigation/reload, noVNC reload/reconnect,
+and refusal of each other's console and desktop credentials. Both test
+containers were removed. Full local gate passes (2,645 unit, 18 packaging,
+374 console tests, type/syntax/CLI/PEX/docs), as do 112 focused tests and the
+website check. The base/concurrency hold is resolved. Owner release/main
+merges, the candidate gate and downloaded-RC9 acceptance remain.
+
+The owner requested the intended final release candidate after all open PRs
+merged. PR #317 is on main at `ce08ebad`; documentation batches #319, #321,
+#323, #325 and #327 are on release tip `338f94ab` but not yet on main.
+All 49 guides were reviewed; all 12 planned stubs were authored. The next
+unused tag is `v0.3.0-rc9`; it has not been created.
+
+Preparation: write the adopter notes, promote docs/versions.yaml with the
+C20 helper, establish docs-0.3.0, run the full local gate and website build,
+and integrate the resulting release source into main before tagging.
+`docs-0.3.0` was published at promotion commit `68b21a18`; docs-only commit
+`7a813b80` now includes #330's three guide corrections for hosted PR checks.
+The owner merges the integration PR. No final release or candidate acceptance
+is claimed by this preparation.
+
+Freshness recheck, 2026-10-31: vendor latest pointers offer Codex 0.166.0,
+Claude Code 2.1.314 and Antigravity CLI 1.4.12, compared with the existing
+pins 0.163.0, 2.1.302 and 1.4.2. Sources are the same vendor endpoints in
+the freshness table. The owner selected **upgrade** in decision `2026-10-31-rc9-agent-pins`
+(answered 2026-10-31 at 00:50:18 UTC) and additionally requested IDE updates
+because of security fixes. Stable vendor feeds select PyCharm, IntelliJ IDEA
+and Rider 2026.2.4, VSCodium 1.143.17232 and VS Code 1.144.0; Eclipse Java
+2026-09-R is unchanged. All nine full artifacts passed vendor integrity checks. All three agents
+and five updated IDEs passed startup checks on the pinned recipe-11 base;
+JetBrains editor/account acceptance remains beyond the first-use dialogs.
+The full build gate and website checks pass. See the maintenance
+[evidence ledger](../../wip/2026-09-18-maintenance/evidence/2026-10-31-rc9/README.md).
+Existing pins remain available for old locks.
+Do not claim a particular security fix from version age alone; the vendor
+security table did not return usable advisory rows during this check.
+
+Final acceptance still needs downloaded-artifact verification, the remaining
+fixed-bug/provider checks, and an explicit disposition of the C17 generic
+half and nine documentation proposal decisions left open in the October 27
+scope record. Candidate preparation does not silently close those items.
+Automated cleanup and empty-cache IDE reuse are out by that record, despite
+older historical candidate plans below.
 
 ## Candidates
 

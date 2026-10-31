@@ -326,12 +326,16 @@ def test_listed_candidate_may_be_development(checkout, monkeypatch, capsys):
 def test_promote_reads_the_repository_manifest_as_written(checkout):
     """The real file, with its header comment and quoted versions, is admitted and promoted."""
     (checkout / "docs/versions.yaml").write_bytes((REPOSITORY / "docs/versions.yaml").read_bytes())
-    moves = MODULE.promote(checkout, "0.3.0", [])
-    assert "current: 0.2.15 -> 0.3.0" in moves
+    previous = MODULE.read_manifest(checkout)["current"]
+    # A synthetic future release keeps this real-file test valid after promotion.
+    future = "999.0.0"
+    (checkout / "devcapsule-src/pyproject.toml").write_text(f'[project]\nversion = "{future}"\n')
+    moves = MODULE.promote(checkout, future, [])
+    assert f"current: {previous} -> {future}" in moves
     data = MODULE.read_manifest(checkout)
-    assert data["current"] == "0.3.0"
-    assert data["versions"][0]["source-version"] == "0.3.0"
-    assert [entry["version"] for entry in data["versions"]][:2] == ["devel", "0.3.0"]
+    assert data["current"] == future
+    assert data["versions"][0]["source-version"] == future
+    assert [entry["version"] for entry in data["versions"]][:2] == ["devel", future]
 
 
 @pytest.mark.parametrize("body", [
