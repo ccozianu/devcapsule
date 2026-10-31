@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: waiting 2026-10-31; #330 reconciled into #329 and combined gate passes; owner base-refresh decision and concurrent-session verification remain before RC9
+State: active 2026-10-31; owner selected base-first; rebuilding and publishing fixed base before RC9, then concurrent browser verification
 
 Definition read: WORKFLOW.md@bfc91d68cd06, WORKFLOW-LOCAL.md@65501b3407db
 
@@ -73,11 +73,11 @@ plugin; it does not use the console's authentication cookie. Concurrent
 browser verification must still cover both services on two capsules sharing
 one browser profile, with switching, refresh/reconnect and wrong credentials.
 
-The published recipe-11 pin still contains the old console. The base-refresh
-sequence is pending owner decision `2026-10-31-rc9-base-refresh`: build/publish
-from clean public source before RC9, or use RC9 as a bootstrap builder and
-cut a later final candidate after re-pinning. No image build/publication or
-candidate tag is started while that choice is pending. Combined source validation passed: 2,644 unit tests, 18 packaging tests,
+The published recipe-11 pin still contains the old console. The owner selected **base-first** in decision
+`2026-10-31-rc9-base-refresh`, answered 2026-10-31 at 02:14:16 UTC:
+build and publish from clean public source, re-pin the fixed base, and verify
+concurrent browser use before RC9. No bootstrap candidate is needed.
+Main remains ce08ebad and release 36b5e660; no new synchronization is needed. Combined source validation passed: 2,644 unit tests, 18 packaging tests,
 374 console tests, type/syntax/CLI/PEX/documentation checks, and the website
 check (252 pages, 21,031 links/assets/anchors). Prior sequential IDE startup checks do not prove
 concurrent authentication or delivery of the fixed console in the pinned base.
@@ -2571,7 +2571,7 @@ launch was taken into intake and committed. No source was changed.
 ## Planned Next Step
 
 Current: #329 reconciliation, the combined full gate and published guide
-corrections are complete. Resolve the base-refresh sequence with the owner,
+corrections are complete. Build/publish/re-pin the fixed base under the owner's base-first decision,
 then verify two simultaneous capsules
 in one browser profile using the selected base. Owner release/main merges
 and candidate gate still precede any tag.
@@ -3423,8 +3423,8 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 ## Open Threads
 
 - #330 is merged at 36b5e660 and reconciled into #329. Its three guide
-  corrections are published on docs-0.3.0 at 7a813b80. Base-refresh sequence awaits the owner
-  (`2026-10-31-rc9-base-refresh`); concurrent browser acceptance follows.
+  corrections are published on docs-0.3.0 at 7a813b80. Owner selected base-first
+  (`2026-10-31-rc9-base-refresh`, 02:14:16 UTC); concurrent browser acceptance follows.
 
 - The source fix is merged; the publication hold remains until the updated
   base and combined concurrent-session checks satisfy the selected sequence.

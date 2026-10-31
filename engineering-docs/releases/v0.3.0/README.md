@@ -309,13 +309,11 @@ records. Console cookies now use the browser-facing port in their name.
 noVNC authenticates through its WebSocket token URL, not this console cookie.
 
 The current recipe-11 base pin still contains the old console. The owner
-must select the base-refresh sequence (`2026-10-31-rc9-base-refresh`):
-build and publish from clean public source before RC9, or use RC9 as a
-bootstrap builder and cut a later final candidate after re-pinning. Keep
-publication held until that sequence and concurrent browser verification
-are complete. Verify two simultaneous capsules in one browser profile,
-switching, refreshing and reconnecting both services. Earlier sequential
-startup checks do not cover this regression.
+selected **base-first** in `2026-10-31-rc9-base-refresh`, answered at
+02:14:16 UTC: build and publish from clean public source, re-pin the fixed
+base, then verify two simultaneous capsules in one browser profile before
+RC9, including switching, refreshing and reconnecting both services.
+Earlier sequential startup checks do not cover this regression.
 
 The owner requested the intended final release candidate after all open PRs
 merged. PR #317 is on main at `ce08ebad`; documentation batches #319, #321,
