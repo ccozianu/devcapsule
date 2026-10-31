@@ -1,7 +1,7 @@
 ---
 description: Run multiple projects at once, or register additional checkouts and worktrees of one repository so each runs in its own capsule.
 weight: 3
-updated: 2026-10-30
+updated: 2026-10-31
 ---
 # Several projects
 
@@ -25,7 +25,7 @@ Projects with different `creator` and `slug` fields in
   and fresh per-run tokens for its desktop and web console.
 
 Open a terminal in each project directory, run `devcapsule project run`, and
-keep each capsule's desktop in its own browser tab. Docker layers for shared
+keep each capsule's desktop and web console in their own browser tabs. Docker layers for shared
 base images, IDEs, and capabilities are stored once in your local Docker cache
 and reused across projects.
 

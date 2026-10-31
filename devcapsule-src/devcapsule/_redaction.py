@@ -22,7 +22,7 @@ _ENCODED_QUERY_TOKEN_RE = re.compile(
     re.IGNORECASE,
 )
 _CONSOLE_COOKIE_RE = re.compile(
-    r"(devcapsule-console-token=)[^;\s\"'<>]+",
+    r"(devcapsule-console-token(?:-[A-Za-z0-9_-]+)?=)[^;\s\"'<>]+",
     re.IGNORECASE,
 )
 _AUTH_HEADER_RE = re.compile(
