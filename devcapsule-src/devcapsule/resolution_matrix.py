@@ -81,7 +81,7 @@ class ResolutionError(ProjectConfigurationError):
     """
 
 
-_MATRIX_VERSION = "embedded-29"
+_MATRIX_VERSION = "embedded-30"
 
 
 # --------------------------------------------------------------------------
@@ -1251,6 +1251,134 @@ _ANTIGRAVITY_CLI_1_4_2 = _ComponentPin(
     },
 )
 
+# 2026-10-31 RC9 refresh: complete downloads verified against vendor integrity.
+_CODEX_0_166_0 = _ComponentPin(
+    component_id="codex",
+    version="0.166.0",
+    lock_table={
+        "version": "0.166.0",
+        "delivery-policy": "local-materialization",
+        "license": "Apache-2.0",
+        "npm-package": "@openai/codex",
+        "url": "https://registry.npmjs.org/@openai/codex/-/codex-0.166.0.tgz",
+        "sha256": "67ee6f4069d9328956401f54ac202c20369233159058af9f4ec1af731b87f5b7",
+        "artifacts": {
+            "linux-amd64": {
+                "npm-package": "@openai/codex-linux-x64",
+                "url": "https://registry.npmjs.org/@openai/codex/-/codex-0.166.0-linux-x64.tgz",
+                "sha256": "cbc00a26d3d0e2ceefc4be8891f8a81ef1e349b3b175bc0ae308762bc001fd93"
+            }
+        }
+    },
+)
+
+
+_CLAUDE_CODE_2_1_314 = _ComponentPin(
+    component_id="claude-code",
+    version="2.1.314",
+    lock_table={
+        "version": "2.1.314",
+        "delivery-policy": "local-materialization",
+        "acquisition-authorization": "claude-code-download",
+        "license": "Proprietary",
+        "terms-url": "https://www.anthropic.com/legal/commercial-terms",
+        "distribution": "user-acquired-not-redistributed",
+        "artifacts": {
+            "linux-amd64": {
+                "url": "https://downloads.claude.ai/claude-code-releases/2.1.314/linux-x64/claude",
+                "sha256": "4487042b4c4f5d88d4568f68ae98aae0b1ffae58864cf57fb868641bc5f84594"
+            }
+        }
+    },
+)
+
+
+_ANTIGRAVITY_CLI_1_4_12 = _ComponentPin(
+    component_id="antigravity-cli",
+    version="1.4.12",
+    lock_table={
+        "version": "1.4.12",
+        "delivery-policy": "local-materialization",
+        "acquisition-authorization": "antigravity-download",
+        "license": "Proprietary",
+        "terms-url": "https://antigravity.google/terms/",
+        "distribution": "user-acquired-not-redistributed",
+        "artifacts": {
+            "linux-amd64": {
+                "url": "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.4.12-4768735748292608/linux-x64/cli_linux_x64.tar.gz",
+                "sha256": "3368d1923fc869f21ec8fce83252a8c96c89283aac9393958ac91fbf7a3949e4",
+                "archive-member": "antigravity",
+                "upstream-sha512": "ea01c73b772187bca928852cf96235f0d846d6da5ebdac188b9ae719597465737f325540d483ee5f3f62d151029001713344972a187ddfb98cc7b97f7204b7f4"
+            }
+        }
+    },
+)
+
+
+# 2026-10-31 stable IDE updates; prior pins remain readable by existing locks.
+_PYCHARM_2026_2_4 = _ComponentPin(
+    component_id="pycharm",
+    version="2026.2.4",
+    lock_table={
+        "version": "2026.2.4",
+        "variant": "professional",
+        "delivery-policy": "local-materialization",
+        "url": "https://download.jetbrains.com/python/pycharm-2026.2.4.tar.gz",
+        "sha256": "87d39ae1125f7298e8f8c4b96aac836043eb15053f8dc5d7c52356eaab5762a8",
+    },
+)
+
+
+_INTELLIJ_2026_2_4 = _ComponentPin(
+    component_id="intellij", version="2026.2.4",
+    lock_table={
+        "version": "2026.2.4", "variant": "unified",
+        "delivery-policy": "local-materialization",
+        "url": "https://download.jetbrains.com/idea/idea-2026.2.4.tar.gz",
+        "sha256": "cc6b29ddb82c7dcc656d5c728cefb2c917ac767eb4b8368f1208732846fbb5bd",
+    },
+)
+
+
+_RIDER_2026_2_4 = _ComponentPin(
+    component_id="rider", version="2026.2.4",
+    lock_table={
+        "version": "2026.2.4", "delivery-policy": "local-materialization",
+        "license": "Proprietary", "terms-url": "https://www.jetbrains.com/legal/docs/toolbox/license/",
+        "url": "https://download.jetbrains.com/rider/JetBrains.Rider-2026.2.4.tar.gz",
+        "sha256": "6e5ac7238a5b95f905b9a1404c42eb4d7bc5566d950750b0078f20bd78a3f599",
+    },
+)
+
+
+_CODIUM_1_143_17232 = _ComponentPin(
+    component_id="codium",
+    version="1.143.17232",
+    lock_table={
+        "version": "1.143.17232",
+        "delivery-policy": "local-materialization",
+        "license": "MIT",
+        "url": "https://github.com/VSCodium/vscodium/releases/download/1.143.17232/VSCodium-linux-x64-1.143.17232.tar.gz",
+        "sha256": "ca1895aa040bd91a09c709d79eac7862d8c1aa0237fdc25b503deeb8bcd87efd",
+    },
+)
+
+
+_VSCODE_1_144_0 = _ComponentPin(
+    component_id="vscode",
+    version="1.144.0",
+    lock_table={
+        "version": "1.144.0",
+        "delivery-policy": "local-materialization",
+        "acquisition-authorization": "vscode-download",
+        "license": "Proprietary",
+        "terms-url": "https://code.visualstudio.com/license",
+        "url": "https://vscode.download.prss.microsoft.com/dbazure/download/stable/2c33b50b16c472efe58357d1d2a8a5414bc23fbf/code-stable-x64-1793133762.tar.gz",
+        "sha256": "17b72a7e6f40a5b5dce9850f10eea13ce734a63052b67fa021cc01e715ad4cf1",
+    },
+)
+
+
 _POSTGRESQL_CLIENT_16 = _ComponentPin(
     component_id="postgresql-client",
     version="16",
@@ -1266,26 +1394,78 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
     matrix_version=_MATRIX_VERSION,
     bases=(_V0_2_8_BASE, _V0_2_10_BASE, _V0_2_12_BASE, _V0_3_0_RC6_BASE),
     components={
-        "pycharm": (_PYCHARM_2026_2_0_1,),
-        "intellij": (_INTELLIJ_2026_2_3,),
+        "pycharm": (_PYCHARM_2026_2_0_1, _PYCHARM_2026_2_4),
+        "intellij": (_INTELLIJ_2026_2_3, _INTELLIJ_2026_2_4),
         "eclipse": (_ECLIPSE_2026_09,),
-        "rider": (_RIDER_2026_2_3_1,),
+        "rider": (_RIDER_2026_2_3_1, _RIDER_2026_2_4),
         "dotnet-sdk": (_DOTNET_SDK_10_0_401,),
         "playwright": (_ComponentPin("playwright", str(PLAYWRIGHT_PIN["version"]), PLAYWRIGHT_PIN),),
-        "codium": (_CODIUM_1_126_04524,),
-        "vscode": (_VSCODE_1_143_1,),
-        "codex": (_CODEX_0_145_0, _CODEX_0_153_0, _CODEX_0_153_4, _CODEX_0_157_1, _CODEX_0_163_0),
+        "codium": (_CODIUM_1_126_04524, _CODIUM_1_143_17232),
+        "vscode": (_VSCODE_1_143_1, _VSCODE_1_144_0),
+        "codex": (_CODEX_0_145_0, _CODEX_0_153_0, _CODEX_0_153_4, _CODEX_0_157_1, _CODEX_0_163_0, _CODEX_0_166_0),
         "claude-code": (
             _CLAUDE_CODE_2_1_227,
             _CLAUDE_CODE_2_1_236,
             _CLAUDE_CODE_2_1_261,
             _CLAUDE_CODE_2_1_283,
             _CLAUDE_CODE_2_1_302,
+            _CLAUDE_CODE_2_1_314,
         ),
-        "antigravity-cli": (_ANTIGRAVITY_CLI_1_1_24, _ANTIGRAVITY_CLI_1_2_12, _ANTIGRAVITY_CLI_1_4_2),
+        "antigravity-cli": (_ANTIGRAVITY_CLI_1_1_24, _ANTIGRAVITY_CLI_1_2_12, _ANTIGRAVITY_CLI_1_4_2, _ANTIGRAVITY_CLI_1_4_12),
         "postgresql-client": (_POSTGRESQL_CLIENT_16,),
     },
     edges=(
+        _VerifiedEdge(
+            "vscode", "1.144.0", _BASE_FAMILY_UBUNTU_24_04,
+            "noVNC HTTP/window/pixel startup passed on pinned v0.3.0-rc6 "
+            "recipe-11 base, 2026-10-31 run 20261031T011314Z-518a42; "
+            "welcome/sign-in screen; no saved-edit or persistence check",
+        ),
+        _VerifiedEdge(
+            "codium", "1.143.17232", _BASE_FAMILY_UBUNTU_24_04,
+            "noVNC HTTP/window/pixel startup passed on pinned v0.3.0-rc6 "
+            "recipe-11 base, 2026-10-31 run 20261031T011008Z-702c9c; "
+            "welcome/editor shell; no saved-edit or persistence check",
+        ),
+        _VerifiedEdge(
+            "rider", "2026.2.4", _BASE_FAMILY_UBUNTU_24_04,
+            "noVNC HTTP/window/pixel startup passed on pinned v0.3.0-rc6 "
+            "recipe-11 base, 2026-10-31 run 20261031T011314Z-518a42; "
+            "first-use agreement; SDK fixture built and ran; editor acceptance remains",
+        ),
+        _VerifiedEdge(
+            "intellij", "2026.2.4", _BASE_FAMILY_UBUNTU_24_04,
+            "noVNC HTTP/window/pixel startup passed on pinned v0.3.0-rc6 "
+            "recipe-11 base, 2026-10-31 run 20261031T011314Z-518a42; "
+            "first-use agreement; editor acceptance remains",
+        ),
+        _VerifiedEdge(
+            "pycharm", "2026.2.4", _BASE_FAMILY_UBUNTU_24_04,
+            "noVNC HTTP/window/pixel startup passed on pinned v0.3.0-rc6 "
+            "recipe-11 base, 2026-10-31 run 20261031T011008Z-702c9c; "
+            "first-use agreement; editor acceptance remains",
+        ),
+        _VerifiedEdge(
+            "antigravity-cli", "1.4.12", _BASE_FAMILY_UBUNTU_24_04,
+            "provisional: owner-directed RC9 refresh 2026-10-31; vendor checksums "
+            "verified; pinned v0.3.0-rc6 recipe-11 startup/configuration smoke passed; "
+            "interactive "
+            "provider acceptance awaits the downloaded candidate",
+        ),
+        _VerifiedEdge(
+            "claude-code", "2.1.314", _BASE_FAMILY_UBUNTU_24_04,
+            "provisional: owner-directed RC9 refresh 2026-10-31; vendor checksums "
+            "verified; pinned v0.3.0-rc6 recipe-11 startup/configuration smoke passed; "
+            "interactive "
+            "provider acceptance awaits the downloaded candidate",
+        ),
+        _VerifiedEdge(
+            "codex", "0.166.0", _BASE_FAMILY_UBUNTU_24_04,
+            "provisional: owner-directed RC9 refresh 2026-10-31; vendor checksums "
+            "verified; pinned v0.3.0-rc6 recipe-11 startup/configuration smoke passed; "
+            "interactive "
+            "provider acceptance awaits the downloaded candidate",
+        ),
         _VerifiedEdge("eclipse", "2026-09-R", _BASE_FAMILY_UBUNTU_24_04,
                       "Codex/gpt-6-astra noVNC saved-edit smoke passed on v0.2.12-rc5; 2026-10-04 run 20261004T090121Z-ea0a5b; child Playwright browser, WebKitGTK and persistent home configuration verified"),
         _VerifiedEdge("dotnet-sdk", "10.0.401", _BASE_FAMILY_UBUNTU_24_04,

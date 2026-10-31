@@ -143,7 +143,7 @@ def test_minimal_need_generates_a_complete_pycharm_lock() -> None:
     )
     assert lock["base"]["build-mnemonic"] == "v0.3.0-rc6"
     assert lock["components"]["interactive-surface"] == "pycharm"
-    assert lock["components"]["pycharm"]["version"] == "2026.2.0.1"
+    assert lock["components"]["pycharm"]["version"] == "2026.2.4"
     assert lock["materialization"]["recipe"] == "jetbrains-local-materialization"
     assert set(lock["components"]) == {"interactive-surface", "pycharm"}
     # The scoped digest covers exactly the derivation input; the retired
@@ -159,9 +159,9 @@ def test_frontend_need_generates_a_complete_codium_lock() -> None:
 
     assert lock["components"]["interactive-surface"] == "codium"
     codium = lock["components"]["codium"]
-    assert codium["version"] == "1.126.04524"
+    assert codium["version"] == "1.143.17232"
     assert codium["license"] == "MIT"
-    assert codium["url"].endswith("VSCodium-linux-x64-1.126.04524.tar.gz")
+    assert codium["url"].endswith("VSCodium-linux-x64-1.143.17232.tar.gz")
     assert lock["materialization"]["recipe"] == "vscode-local-materialization"
     assert set(lock["components"]) == {"interactive-surface", "codium"}
     # The newest base in the validated family wins.
@@ -195,7 +195,7 @@ def test_formation_reports_capabilities_and_provenance() -> None:
 
     assert isinstance(formation, Formation)
     assert formation.capabilities == ("python", "python-ide")
-    assert "pycharm 2026.2.0.1" in formation.provenance
+    assert "pycharm 2026.2.4" in formation.provenance
     assert "base v0.3.0-rc6" in formation.provenance
 
 

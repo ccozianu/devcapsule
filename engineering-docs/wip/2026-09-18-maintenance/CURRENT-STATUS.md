@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-10-31; preparing intended final candidate rc9 with owner-selected agent upgrades and IDE update checks
+State: awaiting owner release integration 2026-10-31; RC9 agent/IDE refresh, notes and documentation promotion validated
 
 Definition read: WORKFLOW.md@bfc91d68cd06, WORKFLOW-LOCAL.md@65501b3407db
 
@@ -35,21 +35,34 @@ merged through #317 and must be preserved in subsequent main delivery.
 
 Selected vendor stable versions: Codex 0.166.0, Claude Code 2.1.314,
 Antigravity 1.4.12; PyCharm/IntelliJ/Rider 2026.2.4, VSCodium 1.143.17232,
-VS Code 1.144.0. Eclipse Java stays 2026-09-R. Downloads and digest checks
-are in progress in the persistent cache (198 GiB available at start);
-/var/tmp is a 1 GiB tmpfs and is used only for small logs. The existing
-recipe-11 base is available locally; no base upgrade is planned.
+VS Code 1.144.0. Eclipse Java stays 2026-09-R. All nine full downloads passed
+vendor integrity checks. Catalog embedded-30 keeps prior pins for old locks.
+No base or repository configuration migration was made. The running rc8
+baseline validates the repository's existing schema-1 manifest and lock.
 
-Notes drafted; release-docs promote/check pass, with 0.3.0 current,
-0.2.15 deprecated and 0.2.14/0.2.12 unsupported. A repository-manifest test
-was coupled to pre-promotion 0.2.15; its scratch promotion now uses a
-synthetic future version. All 92 release-docs tests pass. The documentation
-ref has not yet been created or pushed. Complete artifact/runtime checks,
-review the prepared release changes, run the full gate and website check,
-and integrate into main before tagging. The human merges the delivery PRs.
-Final acceptance still needs the downloaded RC checks and disposition of
-the remaining C17/nine-doc-proposal obligations in the October 27 scope
-record; this candidate request does not silently close them.
+Validation: full build gate passed (2,644 unit tests, 18 packaging tests,
+type/syntax/CLI/PEX/docs checks, 357 console tests); 101 focused catalog/init
+tests; 92 release-document tests; website check (252 pages and 21,031 links).
+All three agents passed recipe-11 startup/seed checks. All five updated IDEs
+passed desktop/console/window/pixel startup checks. Rider's SDK built and ran
+the C# fixture; Rider/IntelliJ component browsers rendered HTML. JetBrains
+screenshots stop at first-use agreements, VS Code at welcome/sign-in;
+provider authentication and editor use are not claimed. See the
+[evidence ledger](evidence/2026-10-31-rc9/README.md).
+
+Notes and documentation promotion are ready: 0.3.0 current, 0.2.15 deprecated,
+0.2.14/0.2.12 unsupported. A local `docs-0.3.0` ref at promotion commit
+`68b21a18` supports the website build; push it after that commit reaches the
+release branch. Deliver `ws-maintenance/0.3.0-rc9-preparation` into
+`release-0.3.0`, then use the prescribed untouched release copy for the main
+PR. The human merges both. Tag only after main disposition passes, then
+verify the downloaded published PEX. Final acceptance still needs the
+fixed-bug/provider checks and the C17/nine-doc-proposal dispositions from
+the October 27 scope record. No candidate or final release is tagged yet.
+
+Live main rules checked 2026-10-31: deletion and non-fast-forward prevention,
+no required status check. `ci-gate` enforcement still requires the owner's
+repository setting; workflow propagation did not configure it.
 
 ## User documentation 0.3.0 CLI alignment and prose review (Batch 1) — 2026-10-30
 
@@ -2484,11 +2497,10 @@ launch was taken into intake and committed. No source was changed.
 
 ## Planned Next Step
 
-Current: finish RC9 agent/IDE freshness verification and pin updates, prepare
-and validate release notes and documentation promotion, then deliver the
-release preparation and pre-candidate main integration for owner merge.
-Tag v0.3.0-rc9 only after the candidate gate proves its main disposition.
-The owner selected upgrades; no freshness decision remains pending.
+Current: owner merge of the validated RC9 preparation branch into release;
+push docs-0.3.0 at 68b21a18, then deliver the untouched release-to-main copy.
+After owner main merge, run the candidate gate, tag v0.3.0-rc9, and verify the
+published downloaded PEX. No freshness decision remains pending.
 Historical candidate sequencing below must not override this direction.
 
 1. The network-node slice, on `ws-maintenance/0.3.0-network-node` from
@@ -3336,17 +3348,17 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 
 ## Open Threads
 
-- RC9: upgrade the three agent pins and check/update stable IDE pins as the
-  owner requested; verify artifacts and runtime behavior before recording
-  acceptance. Provider/tool and GUI acceptance must be explicit about limits.
-- Pre-last-candidate documentation promotion and notes are prepared, but
-  docs-0.3.0 and the pre-candidate main merge remain outstanding.
-
-- PR #318 is merged; #317 is refreshed and has no textual conflicts.
-  The four-file main-metadata correction is prepared but not applied.
-  It requires an explicit exception to Release Policy 8 (untouched copy)
-  to preserve Version Scheme 4 (main stays on its development version).
-  No new feature work is implied by this integration.
+- RC9 preparation is validated and awaits owner release/main integration.
+  Publish docs-0.3.0 at its promotion commit; no candidate tag exists yet.
+- Downloaded-candidate provider/tool actions, JetBrains editor acceptance and
+  the remaining release obligations are not replaced by startup checks.
+- The owner must configure ci-gate as required if enforcement is desired;
+  main's live rules currently require no status check.
+- The approved #317 correction is merged on main at ce08ebad; preserve main's
+  0.3.1.dev0 metadata and absence of the release-only docs source override.
+- Scratch download/setup attempts are not durable project records. The
+  artifact digests, successful probe, screenshots/facts and validation limits
+  are retained in the RC9 evidence ledger; caches and built PEX remain local.
 
 - CI Pair Review #314 settled without a revision round. Reviewer proposals
   not implemented: migrate paths-filter v3 to v4 (Node 20 produces a hosted
@@ -3799,6 +3811,8 @@ Earlier open-thread history (read against the current scope above):
   release documents and bug records.
 
 ## Workstream Document Index
+
+- [RC9 preparation and component verification](evidence/2026-10-31-rc9/README.md).
 
 - [User-docs 0.3.0 CLI alignment work order](../../work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md),
   [Batch 1 verification ledger](evidence/2026-10-30-docs-batch-1/README.md),

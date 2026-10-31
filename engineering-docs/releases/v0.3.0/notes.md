@@ -1,3 +1,7 @@
+---
+description: DevCapsule 0.3.0 adds a session web console, persistent diagnostics, more IDE choices, and separate project requirements and personal setup.
+updated: 2026-10-31
+---
 # DevCapsule 0.3.0
 
 DevCapsule 0.3.0 adds a web console and persistent session diagnostics,
@@ -77,10 +81,13 @@ Old home files are not silently merged into the new `settings.toml`. Inspect
 commands where needed. Agent credentials still belong to your provider
 accounts and are not granted by a launcher upgrade.
 
-## Agent versions and validation limits
+## Component versions and validation limits
 
-The candidate's catalog pins Codex **0.163.0**, Claude Code **2.1.302**, and
-Antigravity CLI **1.4.2**. Their artifacts were checked against vendor
+The IDE catalog supplies PyCharm, IntelliJ IDEA and Rider **2026.2.4**,
+VSCodium **1.143.17232**, VS Code **1.144.0**, and Eclipse Java **2026-09-R**.
+
+The candidate's catalog pins Codex **0.166.0**, Claude Code **2.1.314**, and
+Antigravity CLI **1.4.12**. Their artifacts were checked against vendor
 integrity values and startup-tested on the pinned base with DevCapsule's
 seeded settings. Existing locks retain their selected versions. These pins
 are not a claim to be each vendor's latest release; authentication, model

@@ -1,6 +1,6 @@
 # DevCapsule 0.3.0 — Release Work
 
-Updated: 2026-10-31. Stage: **preparing intended final candidate 9; documentation batches merged into the release branch, release notes and documentation promotion being validated; agent and IDE refresh selected; pre-candidate main integration pending**.
+Updated: 2026-10-31. Stage: **preparing intended final candidate 9; agent/IDE refresh, release notes and documentation promotion validated; owner release/main integration pending**.
 Driver: **maintenance**. Product owner: Costin Cozianu.
 
 [Release notes](notes.md) ·
@@ -40,7 +40,9 @@ that is honest about what it skips.
   no percentage gate and serial execution; parallelism is deferred beyond
   0.3.0 without a later release target. PR #312 implements the slice with
   GPT-6 Codex and Claude Code / Claude Fable 5.1 Pair Review. Review #314 is accepted and the final local/hosted gates passed.
-  Integration and the owner-required `ci-gate` setting remain open.
+  Integration is complete through #312 and #317. The `ci-gate` required-check
+  setting remains open: the live main rules on 2026-10-31 prevent deletion
+  and non-fast-forward pushes, but require no status check.
 - **October 25 documentation proposals, retargeted 2026-10-29.** Parts A
   and B of that work order belong to 0.3.1, still owned by maintenance.
   They no longer gate 0.3.0. The separate language review, accurate candidate
@@ -319,8 +321,12 @@ the freshness table. The owner selected **upgrade** in decision `2026-10-31-rc9-
 (answered 2026-10-31 at 00:50:18 UTC) and additionally requested IDE updates
 because of security fixes. Stable vendor feeds select PyCharm, IntelliJ IDEA
 and Rider 2026.2.4, VSCodium 1.143.17232 and VS Code 1.144.0; Eclipse Java
-2026-09-R is unchanged. Artifact acquisition/digest checks and runtime
-validation are in progress. Existing pins remain available for old locks.
+2026-09-R is unchanged. All nine full artifacts passed vendor integrity checks. All three agents
+and five updated IDEs passed startup checks on the pinned recipe-11 base;
+JetBrains editor/account acceptance remains beyond the first-use dialogs.
+The full build gate and website checks pass. See the maintenance
+[evidence ledger](../../wip/2026-09-18-maintenance/evidence/2026-10-31-rc9/README.md).
+Existing pins remain available for old locks.
 Do not claim a particular security fix from version age alone; the vendor
 security table did not return usable advisory rows during this check.
 
