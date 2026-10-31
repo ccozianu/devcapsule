@@ -442,6 +442,46 @@ built `dist/devcapsule-local.pex` (1 passed in 21.15 s). Slice state:
 integrating; [PR #293](https://github.com/ccozianu/devcapsule/pull/293) is
 ready for the owner's merge into `release-0.3.0`.
 
+## User documentation 0.3.0 CLI alignment and prose review (Batch 4) — 2026-10-30
+
+Slice branch `ws-maintenance/0.3.0-docs-batch-4-everyday-dev-and-ai` (from
+`origin/release-0.3.0` at `c2742621`) updates 10 `docs/*.md` files across
+`docs/everyday-development/` (5) and `docs/working-with-ai/` (5) under
+[`2026-10-30-user-docs-0-3-0-cli-alignment.md`](https://github.com/ccozianu/devcapsule/blob/main/engineering-docs/work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md)
+and folds in the human-prose pass from
+`2026-10-24-maintenance-docs-language-review-before-0-3-0.md`.
+
+Key changes:
+- Authored all 5 `status: planned` stubs in full (`status: planned` retired):
+  `docs/everyday-development/git.md`, `docs/everyday-development/run-debug-test.md`,
+  `docs/everyday-development/previews-and-ports.md`,
+  `docs/working-with-ai/hosted-and-local-models.md`, and
+  `docs/working-with-ai/review-and-change-agents.md`.
+- Updated `ides-and-terminals.md` (`config ide`, `use frontend-ide vscode`,
+  `run --ide codium --force` departure behavior, Eclipse `/ide-workspace`,
+  Rider/`dotnet`), `clipboard-and-browser.md` (`host-browser` broker and `F11`
+  fullscreen), `choose-an-agent.md` (`role: agents` preserved, retired stale
+  pre-`0.3.0` personal-agent trust limit, added web-console `add` and writable
+  `.git` guidance), `sign-in-and-defaults.md` (`codex/openai-api-key` and
+  `antigravity-cli/gemini-api-key` secret bindings, `host-browser`, seeded
+  settings), and `instructions-for-agents.md`; see the
+  [Batch 4 verification ledger](evidence/2026-10-30-docs-batch-4/README.md).
+- Opened [PR #325](https://github.com/ccozianu/devcapsule/pull/325) against
+  `release-0.3.0`, dispatched `Codex (gpt-6-astra)` under
+  [`review-brief.md`](evidence/2026-10-30-docs-batch-4/review-brief.md),
+  accepted [PR #326](https://github.com/ccozianu/devcapsule/pull/326)
+  (`5f734995`, 15 source-verified fixes across all 10 files) without a revision
+  round, and merged it at `65fa4958`.
+- Recorded unimplemented proposals (residual `_launcher.py` `GIT_USER_NAME` /
+  `GIT_USER_EMAIL` forwarding under `inherit_legacy_configuration=False`, Batch
+  5 follow-up on `docs/sessions/what-persists.md:18` Antigravity credential
+  scope, and `bash -n` docs-contract check); post-merge gate passed
+  (`docs-contract`: `192` pages; `website.sh build && check`: `23` tests, `196`
+  HTML pages, `14,471` links/anchors; `pytest -q -k release_docs`: `92` passed;
+  `nox -s smoke`: passed). Ready for owner merge into `release-0.3.0`; next
+  step: execute final Batch 5 (`docs/sessions/`, `docs/collaboration/`,
+  `docs/platforms/`, 9 files, 2 stubs).
+
 ## General saved Docker arguments — 2026-10-23
 
 The owner broadened PR #253 before merge, then requested the same reviewer
@@ -3748,6 +3788,7 @@ Earlier open-thread history (read against the current scope above):
 - [Diagnostics and logs](../../../docs/troubleshooting/diagnostics-and-logs.md): the user-facing statement of slice 1; open when changing what a session logs.
 - [Session logs acceptance](evidence/2026-10-11-session-logs/README.md): the recipe-12 base, the real session, the rotation; open when a reviewer asks what was proven on a capsule.
 - [PR #172 review](2026-10-08-pr172-review.md): findings, fixes, regression evidence and remaining limits.
+- [Batch 4 verification ledger (`everyday-development`, `working-with-ai`)](evidence/2026-10-30-docs-batch-4/README.md) and [PR325.1 review brief](evidence/2026-10-30-docs-batch-4/review-brief.md): 10-file 0.3.0 documentation alignment and prose slice ([PR #325](https://github.com/ccozianu/devcapsule/pull/325)) on `ws-maintenance/0.3.0-docs-batch-4-everyday-dev-and-ai`.
 - [Unpacked cache publication/recovery bug](../../bugs/devcapsule/2026-10-08-unpacked-cache-publication-and-recovery.md): fixed on review branch; close after main integration.
 
 - [Released launchers reject the repository manifest](../../bugs/devcapsule/2026-09-24-released-launchers-reject-repository-manifest.md): blocking, fixed on branch, needs RC2.
