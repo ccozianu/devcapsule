@@ -51,14 +51,22 @@ provider authentication and editor use are not claimed. See the
 [evidence ledger](evidence/2026-10-31-rc9/README.md).
 
 Notes and documentation promotion are ready: 0.3.0 current, 0.2.15 deprecated,
-0.2.14/0.2.12 unsupported. A local `docs-0.3.0` ref at promotion commit
-`68b21a18` supports the website build; push it after that commit reaches the
-release branch. Deliver `ws-maintenance/0.3.0-rc9-preparation` into
+0.2.14/0.2.12 unsupported. `docs-0.3.0` is published at promotion commit `68b21a18`, before
+review integration so the hosted website check can fetch its source. The
+promotion itself remains on the release review slice until the owner merges. Deliver `ws-maintenance/0.3.0-rc9-preparation` into
 `release-0.3.0`, then use the prescribed untouched release copy for the main
 PR. The human merges both. Tag only after main disposition passes, then
 verify the downloaded published PEX. Final acceptance still needs the
 fixed-bug/provider checks and the C17/nine-doc-proposal dispositions from
 the October 27 scope record. No candidate or final release is tagged yet.
+
+Read-only merge-tree preview against main ce08ebad finds three record conflicts:
+root CURRENT-STATUS.md, docs/versions.yaml, and this status file. Keep current
+RC9 progress plus nonconflicting main history; use the promoted documentation
+list but omit devel's release-only source-version on main. Main's authored
+0.3.1.dev0 versions merge unchanged. Resolve the delivery method after release
+integration: the prescribed untouched copy cannot receive correction commits
+without owner direction (the #317 exception was specific to that PR).
 
 Live main rules checked 2026-10-31: deletion and non-fast-forward prevention,
 no required status check. `ci-gate` enforcement still requires the owner's
@@ -2498,7 +2506,8 @@ launch was taken into intake and committed. No source was changed.
 ## Planned Next Step
 
 Current: owner merge of the validated RC9 preparation branch into release;
-push docs-0.3.0 at 68b21a18, then deliver the untouched release-to-main copy.
+docs-0.3.0 is already published at 68b21a18. Then deliver the untouched
+release-to-main copy.
 After owner main merge, run the candidate gate, tag v0.3.0-rc9, and verify the
 published downloaded PEX. No freshness decision remains pending.
 Historical candidate sequencing below must not override this direction.
@@ -3349,7 +3358,7 @@ claimed. No final release or graphical/end-user acceptance is claimed yet.
 ## Open Threads
 
 - RC9 preparation is validated and awaits owner release/main integration.
-  Publish docs-0.3.0 at its promotion commit; no candidate tag exists yet.
+  docs-0.3.0 is published at its promotion commit; no candidate tag exists yet.
 - Downloaded-candidate provider/tool actions, JetBrains editor acceptance and
   the remaining release obligations are not replaced by startup checks.
 - The owner must configure ci-gate as required if enforcement is desired;
