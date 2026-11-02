@@ -34,6 +34,12 @@ FRC team 6328 Mechanical-Advantage's public robot code, Java built with Gradle a
 GradleRIO plugin, MIT licensed. A team that keeps its own code private can use that wrapper to
 learn from the best team's code in an afternoon instead of following installation instructions.
 
+The showcase wrapper has its own repository, created by the owner on 2026-11-02:
+`git@github.com:ccozianu/devcapsule-sample-frc-learning.git`. The wrapper produced by the
+three commands is pushed there, and at delivery it joins the other sample projects as a
+submodule under `devcapsule-src/tests/resources/sample_projects/`, following the pattern of
+the `sample-projects` workstream; taken as decided, flagged here for the owner.
+
 The second audience is anyone who wants to read, build or debug an open-source project whose
 development setup is a chore, and the maintainer who receives a message saying: instead of an
 afternoon of setup, `devcapsule project run`.

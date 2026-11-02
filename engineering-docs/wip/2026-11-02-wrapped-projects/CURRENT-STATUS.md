@@ -37,6 +37,10 @@ The work order records the rulings. Preparation evidence from inside the 0.3.0 c
 - The same build under a Temurin 17 downloaded into the session scratch: in progress when
   this file was written; the result is recorded below when it lands.
 
+**2026-11-02, the sample repository.** The owner created
+`git@github.com:ccozianu/devcapsule-sample-frc-learning.git` for the showcase wrapper. The
+wrapper the three commands produce is pushed there; the work order records it.
+
 ## Next Resumable Task
 
 1. Record the Temurin 17 build result here.
