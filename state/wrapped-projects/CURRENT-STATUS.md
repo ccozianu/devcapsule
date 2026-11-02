@@ -37,6 +37,10 @@ The work order records the rulings. Preparation evidence from inside the 0.3.0 c
 - The same build under a Temurin 17 downloaded into the session scratch: in progress when
   this file was written; the result is recorded below when it lands.
 
+**2026-11-02, the sample repository.** The owner created
+`git@github.com:ccozianu/devcapsule-sample-frc-learning.git` for the showcase wrapper. The
+wrapper the three commands produce is pushed there; the work order records it.
+
 ## Next Resumable Task
 
 1. Record the Temurin 17 build result here.
@@ -57,4 +61,5 @@ The work order records the rulings. Preparation evidence from inside the 0.3.0 c
 ## Document Index
 
 - [the work order](../../work-orders/2026-11-02-wrapped-projects.md): read first.
+- [the wrapped-source design](2026-11-02-design-wrapped-source.md): the manifest shape, the JDK mechanism, the IDE rule, the detection rules; open for the first stopping point.
 - `intake/` and `intake-dispositions.md`: the queue and its log; empty at opening.
