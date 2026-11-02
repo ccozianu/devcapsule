@@ -349,3 +349,38 @@ def test_owner_help_discloses_schema_two_compatibility(capsys, command) -> None:
     assert cli.main(["project", *command, "--help"]) == 0
     help_text = " ".join(capsys.readouterr().out.split())
     assert "rc3 and older launchers cannot read" in help_text
+
+
+def test_declare_source_writes_the_table_and_leaves_the_lock_bytes_alone(project: Path, capsys) -> None:
+    lock_before = paths(project)[1].read_bytes()
+    assert cli.main(["project", "--path", str(project), "config", "show"]) == 0
+    capsys.readouterr()
+    text = owner_commands.declare_source(project, "RobotCode2025Public", java="17")
+    assert text.splitlines()[0] == "Declared source RobotCode2025Public; the manifest is updated."
+    assert "learn from it" in text and "Java 17" in text
+    manifest = load_toml(paths(project)[0])
+    assert manifest["sources"] == {"RobotCode2025Public": {"java": "17"}}
+    assert paths(project)[1].read_bytes() == lock_before
+    assert cli.main(["project", "--path", str(project), "config", "show"]) == 0
+    assert "source      RobotCode2025Public  java 17" in capsys.readouterr().out.replace("  ", "  ")
+
+
+def test_declare_source_again_replaces_known_keys_and_keeps_unknown_ones(project: Path) -> None:
+    owner_commands.declare_source(project, "robot", upstream="https://example.test/up", java="17")
+    manifest_path = paths(project)[0]
+    manifest_path.write_text(manifest_path.read_text().replace('java = "17"', 'java = "17"\nfuture = "kept"'))
+    text = owner_commands.declare_source(project, "robot", java="21")
+    assert text.splitlines()[0] == "Redeclared source robot; the manifest is updated."
+    assert load_toml(manifest_path)["sources"] == {"robot": {"java": "21", "future": "kept"}}
+
+
+def test_declare_source_preview_and_refusals_write_nothing(project: Path) -> None:
+    before = manifest_text(project)
+    assert owner_commands.declare_source(project, "robot", java="17", preview=True).startswith("Preview; nothing written.")
+    with pytest.raises(ProjectConfigurationError, match="source path"):
+        owner_commands.declare_source(project, "../robot")
+    with pytest.raises(ProjectConfigurationError, match="Java line"):
+        owner_commands.declare_source(project, "robot", java="17.0")
+    with pytest.raises(ProjectConfigurationError, match="upstream"):
+        owner_commands.declare_source(project, "robot", upstream="  ")
+    assert manifest_text(project) == before
