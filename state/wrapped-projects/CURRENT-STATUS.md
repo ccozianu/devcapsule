@@ -4,7 +4,7 @@ Mnemonic: `wrapped-projects`
 
 Start date: 2026-11-02
 
-State: active; opened 2026-11-02 at the owner's direction; design and the JDK experiment in progress
+State: active; opened 2026-11-02; design note and JDK experiment done; waiting for the owner's ruling at the first stopping point
 
 Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@65501b3407db
 
@@ -34,8 +34,14 @@ The work order records the rulings. Preparation evidence from inside the 0.3.0 c
   Temurin 25.0.4+7: `BUILD FAILED`, `Unsupported class file major version 69` during the
   build script's semantic analysis, before any Java compiled. Exit 1 after 2m 5s, most of it
   the Gradle download.
-- The same build under a Temurin 17 downloaded into the session scratch: in progress when
-  this file was written; the result is recorded below when it lands.
+- The same build under Temurin 17.0.21+9, downloaded into the session scratch and selected
+  with `JAVA_HOME` and `PATH` only: `BUILD SUCCESSFUL in 10m 55s`, 25 tasks executed,
+  `compileJava`, `test` and `check` among them, exit 0. The foreign tree was clean afterwards
+  even though the project's own build runs `spotlessApply` before compiling. The Gradle cache
+  under the capsule home grew to 1.4 GB; the design's section 7 is why that is paid once.
+  Both runs were made in this capsule's shell, not in a child capsule: no base with a second
+  JDK exists yet, and the question needed one build each. Conclusion: the JDK line is the
+  whole difference, and `JAVA_HOME` plus `PATH` is a sufficient selection mechanism.
 
 **2026-11-02, the sample repository.** The owner created
 `git@github.com:ccozianu/devcapsule-sample-frc-learning.git` for the showcase wrapper. The
@@ -43,8 +49,8 @@ wrapper the three commands produce is pushed there; the work order records it.
 
 ## Next Resumable Task
 
-1. Record the Temurin 17 build result here.
-2. Write `2026-11-02-design-wrapped-source.md`: the manifest shape, the JDK selection
+1. Done: the Temurin 17 result is above.
+2. Done: wrote `2026-11-02-design-wrapped-source.md`: the manifest shape, the JDK selection
    mechanism, the IDE opening rule, the detection rules for the showcase. Stop there for the
    owner's reading in the IDE; this is the first stopping point of the work order.
 3. After the ruling: slice 1, the declaration and `project wrap`, as PR1 with its Codex review.
