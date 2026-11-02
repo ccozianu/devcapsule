@@ -4,7 +4,7 @@ Mnemonic: `wrapped-projects`
 
 Start date: 2026-11-02
 
-State: active; opened 2026-11-02; design note and JDK experiment done; waiting for the owner's ruling at the first stopping point
+State: active; slice 1 delivered as PR1 (#333) on 2026-11-02; its Codex review (PR1.1) in progress
 
 Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@65501b3407db
 
@@ -47,13 +47,47 @@ The work order records the rulings. Preparation evidence from inside the 0.3.0 c
 `git@github.com:ccozianu/devcapsule-sample-frc-learning.git` for the showcase wrapper. The
 wrapper the three commands produce is pushed there; the work order records it.
 
+**2026-11-02, the owner's ruling and slice 1.** The owner read the design and said to run
+with it in this capsule; the recommendations of the design note are taken as decided, and
+the release target is the next minor after 0.3.0 until the owner names it. Slice 1 is
+PR1, [#333](https://github.com/ccozianu/devcapsule/pull/333), against `main`: the
+`[sources]` declaration, `declare_source`, `project wrap` with its detection and guidance
+files, the `config show` rows, the user page, the CLI reference, R-WRAP-001 and the
+R-CONFIG-001 section. The Codex + gpt-6-astra pair reviews it as PR1.1 from
+`ws-wrapped-projects/wrap-review` in `~/worktrees/wrapped-projects-review`; the brief is
+[evidence/2026-11-02-pr1-brief-codex.md](evidence/2026-11-02-pr1-brief-codex.md).
+
+### Slice 1, judgments
+
+1. The manifest holds only what DevCapsule adds to a source: `upstream` and `java`. The
+   origin URL stays in `.gitmodules`.
+2. `upstream` present means a fork to change; absent means the upstream to learn from.
+3. The toolchain key is per source and named after the capability (`java = "17"`).
+4. `wrap` writes nothing inside the submodule and does not install the workflow.
+5. Guidance files with the wrap marker are regenerated on every wrap; the owner's own are
+   kept and named in the report.
+6. The IDE recommendation is added only when the manifest recommends none.
+7. Detection covers the showcase only: Gradle, with or without GradleRIO.
+8. The submodule's Git directory is embedded by moving `.git/modules/<path>` and editing
+   `core.worktree` out of the file, not through repository discovery, which fails on the
+   moved directory.
+
+Validation of PR1 in this capsule: `nox -s typecheck` passes over 271 files; the new
+tests, 100 in `test_sources.py`, `test_wrap_detection.py`, `test_wrap.py` and
+`test_owner_commands.py`, pass; the full `nox -s tests` run is recorded on the PR when it
+completes. Three pre-existing failures in `test_capability_commands_v2.py`
+(`test_resolution_grants_no_consent_and_no_partial_save`) fail in this capsule with the
+slice stashed as well as applied; disclosed on the PR, not fixed here.
+
 ## Next Resumable Task
 
-1. Done: the Temurin 17 result is above.
-2. Done: wrote `2026-11-02-design-wrapped-source.md`: the manifest shape, the JDK selection
-   mechanism, the IDE opening rule, the detection rules for the showcase. Stop there for the
-   owner's reading in the IDE; this is the first stopping point of the work order.
-3. After the ruling: slice 1, the declaration and `project wrap`, as PR1 with its Codex review.
+1. Run the Codex review of PR1 (#333): read PR1.1's diff, post the assessment, merge or push
+   back, at most three rounds; then the full gate on PR1's branch, the counts on the PR, and
+   hand PR1 to the owner.
+2. Push the showcase wrapper, produced by the three commands against
+   RobotCode2025Public, to `git@github.com:ccozianu/devcapsule-sample-frc-learning.git`.
+3. Slice 2, after the owner's go at the second stopping point: Temurin 17 in the base under
+   the stable names, the session environment, the IntelliJ link, the acceptance run.
 
 ## Open Threads
 
@@ -67,5 +101,6 @@ wrapper the three commands produce is pushed there; the work order records it.
 ## Document Index
 
 - [the work order](../../work-orders/2026-11-02-wrapped-projects.md): read first.
-- [the wrapped-source design](2026-11-02-design-wrapped-source.md): the manifest shape, the JDK mechanism, the IDE rule, the detection rules; open for the first stopping point.
+- [the wrapped-source design](2026-11-02-design-wrapped-source.md): the manifest shape, the JDK mechanism, the IDE rule, the detection rules; ruled 2026-11-02.
+- [evidence/2026-11-02-pr1-brief-codex.md](evidence/2026-11-02-pr1-brief-codex.md): the review brief of PR1; open when reading PR1.1.
 - `intake/` and `intake-dispositions.md`: the queue and its log; empty at opening.
