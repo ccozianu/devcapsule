@@ -6,7 +6,7 @@ Start date: 2026-11-02
 
 State: active; opened 2026-11-02 at the owner's direction; design and the JDK experiment in progress
 
-Definition read: WORKFLOW.md@635ed43f2fde, WORKFLOW-LOCAL.md@fb8d8f100502
+Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@65501b3407db
 
 Branch association: `ws-wrapped-projects/wrap`, forked from `origin/main` at 31d44fa473a8
 
@@ -57,4 +57,5 @@ The work order records the rulings. Preparation evidence from inside the 0.3.0 c
 ## Document Index
 
 - [the work order](../../work-orders/2026-11-02-wrapped-projects.md): read first.
+- [the wrapped-source design](2026-11-02-design-wrapped-source.md): the manifest shape, the JDK mechanism, the IDE rule, the detection rules; open for the first stopping point.
 - `intake/` and `intake-dispositions.md`: the queue and its log; empty at opening.
