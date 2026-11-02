@@ -22,7 +22,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [This project's local workflow: the reasons, for humans](WORKFLOW-LOCAL-humane.md)
 - [Product documentation](docs/README.md), versioned per release under the content–website contract; pages marked *coming soon* are planned stubs
   - Getting started: [Install](docs/getting-started/install.md), [Your first session](docs/getting-started/first-session.md), [Stop and come back](docs/getting-started/stop-and-come-back.md)
-  - Your project: [An existing repository](docs/your-project/existing-repository.md), [A new project](docs/your-project/new-project.md), [What a project declares](docs/your-project/declare-needs.md) (coming soon), [Services and ports](docs/your-project/services-and-ports.md) (coming soon)
+  - Your project: [An existing repository](docs/your-project/existing-repository.md), [A new project](docs/your-project/new-project.md), [Someone else's repository](docs/your-project/someone-elses-repository.md), [What a project declares](docs/your-project/declare-needs.md) (coming soon), [Services and ports](docs/your-project/services-and-ports.md) (coming soon)
   - Working with AI: [Choose an agent](docs/working-with-ai/choose-an-agent.md), [Sign in and defaults](docs/working-with-ai/sign-in-and-defaults.md), [Instructions for agents](docs/working-with-ai/instructions-for-agents.md), [Hosted and local models](docs/working-with-ai/hosted-and-local-models.md) (coming soon), [Review and change agents](docs/working-with-ai/review-and-change-agents.md) (coming soon)
   - Everyday development: [Clipboard, keys and browser](docs/everyday-development/clipboard-and-browser.md); coming soon: [IDEs and terminals](docs/everyday-development/ides-and-terminals.md), [Git](docs/everyday-development/git.md), [Run, debug, test](docs/everyday-development/run-debug-test.md), [Previews and ports](docs/everyday-development/previews-and-ports.md)
 - [Configuration](docs/configuration/index.md)
@@ -75,6 +75,7 @@ status file; internal WIP/archive documents use the local index in that status.
 ## Root Requirement Records
 
 - [Conservative configuration writers and tolerant readers](engineering-docs/requirements/product/r-config-001-conservative-writers-tolerant-readers.md) — R-CONFIG-001, accepted 0.3 direction.
+- [R-WRAP-001 Wrapped projects](engineering-docs/requirements/product/r-wrap-001-wrapped-projects.md)
 - [R-CONSOLE-001 Every capsule serves a web console](engineering-docs/requirements/product/r-console-001-capsule-web-console.md)
 - [R-UPGRADE-001 Local Component Upgrades And Recoverable Version Sets](engineering-docs/requirements/product/r-upgrade-001-component-version-sets.md)
 - [R-UPGRADE-002 Component Status Operational Reliability](engineering-docs/requirements/product/r-upgrade-002-status-operational-reliability.md)
