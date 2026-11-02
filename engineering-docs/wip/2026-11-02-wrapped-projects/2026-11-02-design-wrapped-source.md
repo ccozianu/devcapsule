@@ -134,3 +134,12 @@ fresh clone.
 
 Each slice is one pull request with its Codex review, as the local Pair Review Loop
 says.
+
+## 7. The downloaded internet stays downloaded
+
+One build of the showcase pulls Gradle itself and a few hundred megabytes of
+dependencies into `~/.gradle`. The capsule's home is already a persistent mount per
+checkout (`persistence.py`), so the cache survives sessions with no new mechanism, and
+the second launch builds offline-fast. The cost is paid once per wrapper checkout, not
+once per session. Nothing to build here; the acceptance run records the second-launch
+build time beside the first to prove it.
