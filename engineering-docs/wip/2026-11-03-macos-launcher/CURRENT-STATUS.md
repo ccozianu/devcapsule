@@ -4,7 +4,7 @@ Mnemonic: `macos-launcher`
 
 Start date: 2026-11-03
 
-State: active; slices 1 to 3 done 2026-11-03, the live PyCharm launch passing on this Mac; slice 4, the documentation, next
+State: active; slices 1 to 4 done 2026-11-03; waits on the SSH key to publish, and on the owner's rulings
 
 Branch association: `ws-macos-launcher/host-port`, forked from local `main` at b3f10b7d
 
@@ -84,13 +84,23 @@ The harness had matched only the ready line a capsule prints; a launcher outside
 prints another, so the smoke could not pass on any host but a capsule. It now takes either.
 Its runtime digest check compares with the runtime the launcher delivers.
 
+**2026-11-03, slice 4.** `docs/platforms/macos.md` now describes the experimental launcher
+built from source on Apple Silicon: no macOS executable in the release, the two executables,
+emulation, the bridge fallback, no host-browser bridge, Docker access reaching an `arm64`
+daemon, file sharing, and a build of both executables. The page's commands were run on this
+Mac, the Linux build from `git archive` of the commit into a `linux/amd64` container. The
+install page sends Mac readers there. `nox -s docs-contract` skipped itself: the website
+submodule is not initialized here, and fetching it needs the SSH key.
+
+Reading for slice 4 found that a supported macOS release reopens
+[D-0009](../../decisions/product/d-0009-launcher-delivers-identical-runtime.md): the
+launcher cannot deliver its own bytes there. Today's path is the explicit user override
+D-0009 admits. The design note's section 4 states the question for the owner.
+
 ## Next Resumable Task
 
-Slice 4: rewrite `docs/platforms/macos.md` and the install page's macOS line for what works,
-as built from source: the macOS launcher, the Linux runtime beside it in
-`DEVCAPSULE_RUNTIME_PEX`, Docker Desktop, emulated capsules, the bridge fallback, the
-unavailable host-browser bridge, and Docker access reaching an `arm64` daemon. Whether a
-release ships the pair is the owner's ruling, not this page's.
+None in the plan; the slices are done. Publish the workstream and push the branch once the
+SSH key is loaded, give the human the compare link, and wait for the owner's rulings below.
 
 ## Open Threads
 
@@ -100,7 +110,12 @@ release ships the pair is the owner's ruling, not this page's.
 - No `python3.12` exists on this Mac. `.venv` was created with `uv venv --python 3.12`
   (CPython 3.12.12) instead of `python3.12 -m venv`; the executable still embeds 3.12.14.
 - Adding a supported host platform is a product commitment. The repository owner has not
-  yet ruled on it; the human started the work.
+  yet ruled on it; the human started the work. It includes reopening D-0009 (design note,
+  section 4) and how a release would ship the Linux runtime beside the macOS launcher.
+- The macOS default for an authorized `network host`, bridge with a warning, was put to the
+  human on 2026-11-03 with refusal as the alternative; no answer yet, so the warning stands.
+- The PyCharm User Agreement in the probe sessions was left unaccepted, so the project
+  window was not reached on this Mac.
 
 ## Document Index
 

@@ -137,11 +137,21 @@ Desktop on this Mac. Evidence under `devcapsule-src/dist/e2e-evidence/` (not com
    Findings decide the code; this slice is mostly evidence.
 4. **Executable and documentation.** A `macos-aarch64` scie, smoke-tested here; the macOS
    platform page and the install page rewritten for what works; release automation is the
-   owner's call.
+   owner's call. Done 2026-11-03: the page describes the experimental from-source launcher,
+   its differences from Linux, and a build of both executables whose commands were run on
+   this Mac; the install page sends Mac readers there.
 
 ## 4. What this does not decide
 
 - Whether macOS becomes a *supported* platform in a release. That is the owner's ruling;
   this workstream produces the evidence for it.
+- [D-0009](../../decisions/product/d-0009-launcher-delivers-identical-runtime.md), one
+  executable outside and inside. A macOS launcher cannot deliver its own bytes, so on macOS
+  the delivered runtime is the user's explicit choice in `DEVCAPSULE_RUNTIME_PEX`, which
+  D-0009's third point admits. As a product default it would not hold: D-0009's *Reopen If*
+  names this case, a supported execution environment that cannot run the launcher inside its
+  container. A macOS release needs the owner to reopen it and say how identity holds, for
+  example a macOS launcher that carries the exact Linux runtime bytes and delivers them, or
+  one that fetches the release's Linux executable against a digest it pins.
 - Signing and notarization of a macOS executable.
 - `linux-arm64` capsules.
