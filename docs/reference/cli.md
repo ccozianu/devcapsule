@@ -93,7 +93,12 @@ the manifest, regenerated on every wrap and left alone when they are yours.
 `--upstream` says `URL` is your fork of that upstream: changes and pull
 requests go to the fork, never to the upstream. Without it the origin is the
 upstream itself and the intent is to learn; nothing is pushed. A rerun keeps
-a submodule already added from the same URL. The owner options are `init`'s.
+a submodule already added from the same URL, and initializes a registered
+submodule whose directory is missing. A different registered URL is refused.
+After a partial Git failure, the error names the state to inspect; no files
+are removed. An initialization interruption leaves the submodule for a rerun.
+Guidance files are replaced only when their entire first line is the generated
+marker. The owner options are `init`'s.
 See [Someone else's repository](../your-project/someone-elses-repository.md).
 
 ### `run`

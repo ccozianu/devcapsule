@@ -40,7 +40,7 @@ def test_an_unknown_wpilib_year_requires_java_but_names_no_line(tmp_path: Path) 
 
 
 @pytest.mark.parametrize("distribution, line", [("8.11", "17"), ("8.0", "17"), ("9.0", "17"), ("9.1", "25"), ("10.2", "25")])
-def test_plain_gradle_gets_the_oldest_line_its_wrapper_runs_on(tmp_path: Path, distribution: str, line: str) -> None:
+def test_plain_gradle_gets_the_declared_selection_for_its_wrapper(tmp_path: Path, distribution: str, line: str) -> None:
     source = gradle_project(tmp_path / "lib", distribution=distribution)
     assert detect(source) == Detection(("java",), "java-ide", line,
                                        ("Gradle wrapper and build.gradle", f"Gradle {distribution}: runs on Java {line}"))
@@ -49,7 +49,7 @@ def test_plain_gradle_gets_the_oldest_line_its_wrapper_runs_on(tmp_path: Path, d
 def test_a_gradle_wrapper_without_a_readable_version_names_no_line(tmp_path: Path) -> None:
     source = gradle_project(tmp_path / "lib", distribution=None)
     assert detect(source) == Detection(("java",), "java-ide", None,
-                                       ("Gradle wrapper and build.gradle", "the Gradle version is not in gradle-wrapper.properties"))
+                                       ("Gradle wrapper and build.gradle", "no supported Gradle version found in distributionUrl in gradle-wrapper.properties"))
 
 
 def test_anything_else_is_undetected(tmp_path: Path) -> None:
@@ -57,3 +57,38 @@ def test_anything_else_is_undetected(tmp_path: Path) -> None:
     assert detect(tmp_path) is None
     (tmp_path / "gradlew").write_text("")  # a wrapper without a build script says nothing
     assert detect(tmp_path) is None
+
+
+@pytest.mark.parametrize("script", [
+    '// id "edu.wpi.first.GradleRIO" version "2025.3.2"',
+    '/* id "edu.wpi.first.GradleRIO" version "2025.3.2" */',
+    '''def example = 'id "edu.wpi.first.GradleRIO" version "2025.3.2"' ''',
+    '''def example = """id "edu.wpi.first.GradleRIO" version "2025.3.2"""" ''',
+    '''def example = /id "edu.wpi.first.GradleRIO" version "2025.3.2"/ ''',
+    '''def example = $/id "edu.wpi.first.GradleRIO" version "2025.3.2"/$ ''',
+])
+def test_gradlerio_mentions_are_not_plugin_declarations(tmp_path: Path, script: str) -> None:
+    source = gradle_project(tmp_path / "lib", script=script, distribution="9.1")
+    result = detect(source)
+    assert result is not None and result.java == "25"
+    assert result.evidence[-1] == "Gradle 9.1: runs on Java 25"
+
+
+def test_comments_between_plugin_tokens_do_not_hide_the_declaration(tmp_path: Path) -> None:
+    source = gradle_project(tmp_path / "lib", script='plugins { id /* plugin */ ("edu.wpi.first.GradleRIO") version /* year */ "2026.1.1" }', distribution="9.1")
+    result = detect(source)
+    assert result is not None and result.java == "17"
+
+
+@pytest.mark.parametrize("properties, line", [
+    ('# distributionUrl=https://example/gradle-8.11-bin.zip\ndistributionUrl=https://example/gradle-9.1-bin.zip\n', "25"),
+    ('other=https://example/gradle-8.11-bin.zip\ndistributionUrl=https://example/gradle-9.1-bin.zip\n', "25"),
+    ('other=https://example/gradle-8.11-bin.zip\n', None),
+    ('distributionUrl=https://example/gradle-7.6-bin.zip\n', None),
+    ('distributionUrl=https://example/unknown.zip\n', None),
+])
+def test_gradle_version_comes_only_from_distribution_url(tmp_path: Path, properties: str, line: str | None) -> None:
+    source = gradle_project(tmp_path / "lib")
+    (source / "gradle/wrapper/gradle-wrapper.properties").write_text(properties)
+    result = detect(source)
+    assert result is not None and result.java == line

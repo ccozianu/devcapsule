@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+import json
 import tomllib
+from typing import Any
 
 import pytest
 
@@ -384,3 +386,38 @@ def test_declare_source_preview_and_refusals_write_nothing(project: Path) -> Non
     with pytest.raises(ProjectConfigurationError, match="upstream"):
         owner_commands.declare_source(project, "robot", upstream="  ")
     assert manifest_text(project) == before
+
+
+@pytest.mark.parametrize("fields", [
+    {"path": ""}, {"path": "../escape"}, {"path": 3},
+    {"upstream": 3}, {"upstream": "bad\x00url"}, {"upstream": " "},
+    {"java": 17}, {"java": "0"}, {"java": "17\n"},
+])
+def test_declare_source_refuses_malformed_inputs_without_touching_files(project: Path, fields: dict[str, Any]) -> None:
+    manifest_path, lock_path, _ = paths(project)
+    before = manifest_path.read_bytes(), lock_path.read_bytes()
+    with pytest.raises(ProjectConfigurationError):
+        owner_commands.declare_source(project, **{"path": "vendor/robot", **fields})
+    assert (manifest_path.read_bytes(), lock_path.read_bytes()) == before
+
+
+def test_sources_survive_other_owner_edits_and_do_not_change_pending_decisions(project: Path, capsys) -> None:
+    assert cli.main(["project", "--path", str(project), "config", "show", "--json"]) == 0
+    baseline = json.loads(capsys.readouterr().out)
+    owner_commands.declare_source(project, 'vendor/robot.code', upstream="https://example.test/up", java="17")
+    owner_commands.declare_source(project, "notes")
+    manifest_path, lock_path, _ = paths(project)
+    manifest_path.write_text(manifest_path.read_text().replace('java = "17"', 'java = "17"\nfuture = { extra = true }'))
+    sources = load_toml(manifest_path)["sources"]
+    owner_commands.recommend(project, "memory", "4g")
+    assert load_toml(manifest_path)["sources"] == sources
+    lock = lock_path.read_bytes()
+    owner_commands.declare_source(project, "notes", preview=True)
+    assert lock_path.read_bytes() == lock
+    assert cli.main(["project", "--path", str(project), "config", "show", "--json"]) == 0
+    document = json.loads(capsys.readouterr().out)
+    assert document["pending"] == baseline["pending"]
+    assert [row for row in document["rows"] if row["kind"] == "source"] == [
+        {"kind": "source", "name": "notes", "effective": "no toolchain declared", "source": "project: upstream, read-only", "pending": "", "command": ""},
+        {"kind": "source", "name": "vendor/robot.code", "effective": "java 17", "source": "project: fork of https://example.test/up", "pending": "", "command": ""},
+    ]

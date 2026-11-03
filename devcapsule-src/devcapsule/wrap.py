@@ -23,11 +23,14 @@ added at the path from the same URL is kept, not refused.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import html
 from pathlib import Path
+import re
 import shutil
 import subprocess
 from typing import Any, Mapping, TextIO
 
+from devcapsule.compat import CliError
 from devcapsule.configuration.file_formats import ProjectConfigurationError
 from devcapsule.configuration.manifest import current_manifest
 from devcapsule.configuration.manifest_document import Recommendations
@@ -100,7 +103,9 @@ def wrap_project(request: WrapRequest, *, input_stream: TextIO | None = None, ou
     """Wrap one repository into the project at ``request.directory``; see the module docstring for the steps."""
     root = request.directory.expanduser().resolve()
     _require_repository_root(root)
-    path = source_path(request.path or _repository_name(request.url), field_name="--path")
+    path = source_path(request.path if request.path is not None else _repository_name(request.url), field_name="--path")
+    # Validate source metadata before Git or initialization writes anything.
+    WrappedSources.read({"sources": {path: {"upstream": request.upstream} if request.upstream is not None else {}}})
     submodule_action = _add_submodule(root, request.url, path)
     detection = detect(root / path)
     manifest_path = root / ".devcapsule" / "devcapsule.toml"
@@ -108,13 +113,19 @@ def wrap_project(request: WrapRequest, *, input_stream: TextIO | None = None, ou
     capability_lines: list[str] = []
     needed = detection.capabilities if detection is not None else ()
     if not manifest_path.is_file():
-        initialized = initialize_project(
-            InitializeRequest(directory=root, require=needed, ide=request.ide, agents=request.agents,
-                              project_name=request.project_name, slug=request.slug, creator=request.creator,
-                              project_mount=request.project_mount, answers=request.answers,
-                              allow_unverified=request.allow_unverified, interactive=request.interactive),
-            input_stream=input_stream, output_stream=output_stream,
-        )
+        try:
+            initialized = initialize_project(
+                InitializeRequest(directory=root, require=needed, ide=request.ide, agents=request.agents,
+                                  project_name=request.project_name, slug=request.slug, creator=request.creator,
+                                  project_mount=request.project_mount, answers=request.answers,
+                                  allow_unverified=request.allow_unverified, interactive=request.interactive),
+                input_stream=input_stream, output_stream=output_stream,
+            )
+        except (CliError, KeyboardInterrupt) as exc:
+            raise ProjectConfigurationError(
+                f"Initialization did not finish: {exc or 'interrupted'}. The submodule {path} remains. "
+                "Rerun wrap with the missing answers; if configuration files already exist, complete 'project init' first."
+            ) from exc
     else:
         manifest = current_manifest(load_toml(manifest_path), manifest_path).document()
         declared = {name.partition(">=")[0] for name in manifest["capabilities"].get("required", [])}
@@ -155,14 +166,25 @@ def _repository_name(url: str) -> str:
 def _add_submodule(root: Path, url: str, path: str) -> str:
     """Add the submodule unless the same one already stands at ``path``; embed its Git directory either way."""
     target = root / path
-    registered = _git(root, "config", "-f", ".gitmodules", f"submodule.{path}.url", check=False)
-    if target.exists():
-        if registered.returncode == 0 and registered.stdout.strip() == url:
-            action = f"Kept the submodule {path}, already added from {url}"
-        else:
-            raise ProjectConfigurationError(f"{target} exists and is not a submodule added from {url}; give another --path.")
+    if any(part.is_symlink() for part in (target, *target.parents) if part != root and root in part.parents):
+        raise ProjectConfigurationError(f"{target} passes through a symlink; give a path inside the wrapper without symlinks.")
+    registered = _registered_url(root, path)
+    if registered is not None:
+        if registered != url:
+            raise ProjectConfigurationError(f"{path} is registered with a different URL ({registered}); give another --path.")
+        if not (target / ".git").exists():
+            _git(root, "submodule", "update", "--init", "--", path)
+        action = f"Kept the submodule {path}, already added from {url}"
+    elif target.exists():
+        raise ProjectConfigurationError(f"{target} exists and is not a submodule added from {url}; inspect any partial clone, then give another --path.")
     else:
-        _git(root, "submodule", "add", "--", url, path)
+        try:
+            _git(root, "submodule", "add", "--", url, path)
+        except ProjectConfigurationError as exc:
+            raise ProjectConfigurationError(
+                f"{exc}. Git may have left a partial submodule at {path}; no files were removed. "
+                "Rerun wrap if the submodule was registered; otherwise inspect the path, .gitmodules and Git's modules directory before retrying."
+            ) from exc
         action = f"Added the submodule {path} from {url}"
     return action + ("; its Git directory is embedded in the tree." if _embed_git_directory(root, path) else ".")
 
@@ -178,8 +200,9 @@ def _embed_git_directory(root: Path, path: str) -> bool:
     gitfile = root / path / ".git"
     if gitfile.is_dir():
         return False
-    git_dir = Path(_git(root, "rev-parse", "--path-format=absolute", "--git-dir").stdout.strip())
-    module = git_dir / "modules" / path
+    # Ask the submodule: its registered name can differ from its path, and
+    # a linked wrapper worktree has its own Git directory.
+    module = Path(_git(root / path, "rev-parse", "--absolute-git-dir").stdout.strip())
     if not module.is_dir():
         raise ProjectConfigurationError(f"The submodule's Git directory is neither at {gitfile} nor at {module}; cannot embed it.")
     gitfile.unlink()
@@ -205,7 +228,7 @@ def _write_guidance(root: Path, manifest: Mapping[str, Any]) -> tuple[str, ...]:
     lines: list[str] = []
     for name, text in (("AGENTS.md", render_agents(manifest, sources, origins)), ("README.md", render_readme(manifest, sources, origins))):
         target = root / name
-        if target.is_file() and not target.read_text(encoding="utf-8").startswith(GUIDANCE_MARKER):
+        if target.is_file() and target.read_text(encoding="utf-8").splitlines()[:1] != [GUIDANCE_MARKER]:
             lines.append(f"Kept your {name}; it does not carry the wrap marker. Add the wrapped sources to it yourself.")
             continue
         target.write_text(text, encoding="utf-8")
@@ -214,8 +237,26 @@ def _write_guidance(root: Path, manifest: Mapping[str, Any]) -> tuple[str, ...]:
 
 
 def _origin(root: Path, path: str) -> str:
-    completed = _git(root, "config", "-f", ".gitmodules", f"submodule.{path}.url", check=False)
-    return completed.stdout.strip() if completed.returncode == 0 else "(not in .gitmodules)"
+    return _registered_url(root, path) or "(not in .gitmodules)"
+
+
+def _registered_url(root: Path, path: str) -> str | None:
+    """Find a submodule by its path, which need not equal its Git section name."""
+    completed = _git(root, "config", "--null", "-f", ".gitmodules", "--get-regexp", r"^submodule\..*\.path$", check=False)
+    for record in completed.stdout.split("\x00"):
+        key, separator, value = record.partition("\n")
+        if separator and value == path:
+            url = _git(root, "config", "--null", "-f", ".gitmodules", key[:-4] + "url", check=False)
+            # A registered path without a URL must not become a new add.
+            return url.stdout.removesuffix("\x00") if url.returncode == 0 else ""
+    return None
+
+
+def _markdown_data(value: str) -> str:
+    """Keep external text on one line and prevent Markdown or HTML structure."""
+    value = value.replace("\\", "\\\\").replace("\n", r"\n").replace("\r", r"\r").replace("\t", r"\t")
+    value = html.escape(value, quote=True)
+    return re.sub(r"[`*_[\]{}()#!|]", lambda match: f"&#{ord(match.group())};", value)
 
 
 def _java_lines(source: WrappedSource) -> list[str]:
@@ -228,15 +269,15 @@ def _java_lines(source: WrappedSource) -> list[str]:
 
 def render_agents(manifest: Mapping[str, Any], sources: WrappedSources, origins: Mapping[str, str]) -> str:
     """The wrapper's AGENTS.md: agent-neutral, regenerated from the manifest."""
-    name = manifest["project"]["name"]
+    name = _markdown_data(manifest["project"]["name"])
     lines = [GUIDANCE_MARKER, f"# Agent Instructions: {name}", "",
              "This repository is a DevCapsule wrapper. It holds the DevCapsule configuration under",
              "`.devcapsule/` and foreign repositories as Git submodules. The code to work on lives in",
              "the submodules; the wrapper only sets up the environment around them.", "",
              "## Wrapped sources", ""]
     for source in sources.entries:
-        lines.extend([f"### `{source.path}`", "", f"- Origin: {origins.get(source.path, '')}",
-                      f"- Intent: {source.intent}." + (f" Upstream: {source.upstream}." if source.upstream else "")])
+        lines.extend([f"### {_markdown_data(source.path)}", "", f"- Origin: {_markdown_data(origins.get(source.path, ''))}",
+                      f"- Intent: {source.intent}." + (f" Upstream: {_markdown_data(source.upstream)}." if source.upstream else "")])
         lines.extend(_java_lines(source))
         lines.append("")
     lines.extend(["## Rules", "",
@@ -253,7 +294,7 @@ def render_agents(manifest: Mapping[str, Any], sources: WrappedSources, origins:
 
 def render_readme(manifest: Mapping[str, Any], sources: WrappedSources, origins: Mapping[str, str]) -> str:
     """The wrapper's README.md for a person: what this is and how to start."""
-    name = manifest["project"]["name"]
+    name = _markdown_data(manifest["project"]["name"])
     lines = [GUIDANCE_MARKER, f"# {name}", "",
              "A DevCapsule wrapper: the development environment for the repositories below, which",
              "are not this repository's own code and carry no DevCapsule configuration of their own.", "",
@@ -262,8 +303,8 @@ def render_readme(manifest: Mapping[str, Any], sources: WrappedSources, origins:
              "An existing clone without the submodules: `git submodule update --init`.", "",
              "## Wrapped sources", ""]
     for source in sources.entries:
-        lines.extend([f"### `{source.path}`", "", f"- Origin: {origins.get(source.path, '')}",
-                      f"- Intent: {source.intent}." + (f" Upstream: {source.upstream}." if source.upstream else "")])
+        lines.extend([f"### {_markdown_data(source.path)}", "", f"- Origin: {_markdown_data(origins.get(source.path, ''))}",
+                      f"- Intent: {source.intent}." + (f" Upstream: {_markdown_data(source.upstream)}." if source.upstream else "")])
         lines.extend(_java_lines(source))
         lines.append("")
     return "\n".join(lines)
