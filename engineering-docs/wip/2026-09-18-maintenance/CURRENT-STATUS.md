@@ -51,10 +51,10 @@ the owner merges:
   the `legacy` marker on existing files that only shrink, fix-and-move on
   touch, the reviewer's duty in the Pair Review Loop. The humane companion
   carries the motivation.
-- `scripts/test_conventions.py`, run in the `tests` and `build` sessions
+- `scripts/validate_unittests_follow_conventions.py`, run in the `tests` and `build` sessions
   and as a `tests.yml` step against the PR's base SHA: placement, docstrings,
   and legacy files compared with the merge base. Its own tests are the first
-  mirror file, `tests/unit/scripts/test_test_conventions.py`, 15 cases in
+  mirror file, `tests/unit/scripts/test_validate_unittests_follow_conventions.py`, 15 cases in
   triple form. Against the suite: 110 legacy files, 1525 legacy tests, 0
   breaches.
 - All 110 existing test files marked `legacy`; the marker registered in

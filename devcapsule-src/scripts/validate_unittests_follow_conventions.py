@@ -2,7 +2,7 @@
 
 Run from ``devcapsule-src``::
 
-    python scripts/test_conventions.py [--base REF]
+    python scripts/validate_unittests_follow_conventions.py [--base REF]
 
 The checks, in the order the section states its rules:
 

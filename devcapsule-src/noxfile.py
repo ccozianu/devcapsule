@@ -54,7 +54,7 @@ def run_tests(session: nox.Session) -> None:
 
 def check_test_conventions(session: nox.Session) -> None:
     """Hold the suite to *Unit Tests* in WORKFLOW-LOCAL.md; legacy files are compared with the diff base."""
-    session.run("python", str(PROJECT_ROOT / "scripts" / "test_conventions.py"))
+    session.run("python", str(PROJECT_ROOT / "scripts" / "validate_unittests_follow_conventions.py"))
 
 
 def run_packaging_tests(session: nox.Session) -> None:
@@ -175,7 +175,7 @@ def run_typecheck(session: nox.Session) -> None:
         str(PROJECT_ROOT / "noxfile.py"),
         str(VERSION_SCRIPT),
         str(PROJECT_ROOT / "scripts" / "release-manifest.py"),
-        str(PROJECT_ROOT / "scripts" / "test_conventions.py"),
+        str(PROJECT_ROOT / "scripts" / "validate_unittests_follow_conventions.py"),
         str(PROJECT_ROOT / "scripts" / "release-protocol.py"),
         str(PROJECT_ROOT / "scripts" / "prepare-promotion.py"),
     )

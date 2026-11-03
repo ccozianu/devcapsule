@@ -184,7 +184,7 @@ capsule for reasons that were not bugs.
    legitimate change is fixed or replaced by a conforming one, never marked
    expected to fail or deselected. No marker but `legacy` is added to a
    legacy file.
-6. The gate holds rules 1, 3 and 5: `scripts/test_conventions.py` runs in
+6. The gate holds rules 1, 3 and 5: `scripts/validate_unittests_follow_conventions.py` runs in
    the `tests` and `build` sessions and in `tests.yml`, comparing legacy
    files with the pull request's base. Its summary line counts the legacy
    files and tests; the count goes down and never up.

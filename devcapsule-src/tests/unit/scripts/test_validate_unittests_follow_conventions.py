@@ -1,4 +1,4 @@
-"""Unit tests of ``scripts/test_conventions.py``, the gate's check of the unit-test conventions.
+"""Unit tests of ``scripts/validate_unittests_follow_conventions.py``, the gate's check of the unit-test conventions.
 
 Each test builds the suite it checks under ``tmp_path``; the rules under
 test are the three *Unit Tests* in WORKFLOW-LOCAL.md states.
@@ -13,7 +13,7 @@ from typing import Any
 
 import pytest
 
-_SCRIPT = Path(__file__).resolve().parents[3] / "scripts" / "test_conventions.py"
+_SCRIPT = Path(__file__).resolve().parents[3] / "scripts" / "validate_unittests_follow_conventions.py"
 
 
 def _load(path: Path) -> Any:
