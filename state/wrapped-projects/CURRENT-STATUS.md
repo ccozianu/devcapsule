@@ -4,7 +4,7 @@ Mnemonic: `wrapped-projects`
 
 Start date: 2026-11-02
 
-State: active; PR1 (#333) complete at 0a131d69 and handed to the owner; the project-capabilities design note waits for the owner's ruling
+State: active; PR1 (#333) complete and accepted by the owner 2026-11-03, awaiting merge; the project-capabilities design is handed to workflow-improvements by mail
 
 Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@65501b3407db
 
@@ -98,10 +98,12 @@ is these records or the workflow definition; whether the proving run's evidence 
 1. Done: the final gate on PR1 (#333) at 0a131d69, 2711 passed and the same 18 capsule-specific
    failures as before, is on the PR; PR1 is the owner's to merge. The showcase wrapper is
    regenerated with the final `wrap` and pushed (58d9219).
-2. Done: `2026-11-03-design-project-capabilities.md` is written with the four questions answered
-   as recommendations; it waits for the owner's ruling. No further slice before it is ruled.
-3. Slice 2, after the ruling and the owner's go at the second stopping point: Temurin 17 in
-   the base under the stable names, the session environment, the acceptance run.
+2. Done: the owner accepted PR1 as it stands on 2026-11-03 and ruled that the project-capabilities
+   design is an AI-workflow issue; it went to `workflow-improvements` by mail the same day
+   (`2026-11-03-wrapped-projects-project-capabilities.md`). No operations slice here until the
+   definition speaks and a work order comes back.
+3. Slice 2, at the owner's go at the second stopping point: Temurin 17 in the base under the
+   stable names, the session environment from the settled facts, the acceptance run.
 
 ## Open Threads
 
@@ -117,5 +119,5 @@ is these records or the workflow definition; whether the proving run's evidence 
 - [the work order](../../work-orders/2026-11-02-wrapped-projects.md): read first.
 - [the wrapped-source design](2026-11-02-design-wrapped-source.md): the manifest shape, the JDK mechanism, the IDE rule, the detection rules; ruled 2026-11-02.
 - [evidence/2026-11-02-pr1-brief-codex.md](evidence/2026-11-02-pr1-brief-codex.md): the review brief of PR1; open when reading PR1.1.
-- [the project-capabilities design](2026-11-03-design-project-capabilities.md): operations, settled and unsettled, the record, the commands, the discovery dialogue; open for the owner's ruling.
+- [the project-capabilities design](2026-11-03-design-project-capabilities.md): operations, settled and unsettled, the record, the commands, the discovery dialogue; handed to `workflow-improvements` 2026-11-03, kept here for reference.
 - `intake/` and `intake-dispositions.md`: the queue and its log; empty at opening.
