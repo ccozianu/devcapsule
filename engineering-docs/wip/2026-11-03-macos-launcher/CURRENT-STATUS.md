@@ -4,7 +4,7 @@ Mnemonic: `macos-launcher`
 
 Start date: 2026-11-03
 
-State: active; slices 1 and 2 and the slice-3 fixes committed 2026-11-03; the live launch waits on the human's Docker disk decision
+State: active; slices 1 to 3 done 2026-11-03, the live PyCharm launch passing on this Mac; slice 4, the documentation, next
 
 Branch association: `ws-macos-launcher/host-port`, forked from local `main` at b3f10b7d
 
@@ -70,17 +70,27 @@ container the unit suite ran on Linux: 2,738 passed, 1 failed,
 `chmod 0500` directory to refuse a write and runs as root there; not caused by this change.
 On this Mac after the fallback: 2,727 passed, 19 skipped; `mypy --platform linux` clean.
 
-The live launch is not run. Docker Desktop's disk has 5.9 GB free and eight of the human's
-containers are running; the base (0.89 GB compressed) and a PyCharm formation would likely
-fill it. The decision is the human's.
+**2026-11-03, slice 3, the live launch.** The human raised Docker Desktop's disk to 96 GB.
+Both executables rebuilt from 4e42d073. `nox -s ide-smoke -- --surface pycharm` passes on
+this Mac with the macOS launcher delivering the Linux runtime: the first run built the
+PyCharm formation under emulation in 10 minutes and failed only in the harness, the second
+passed in 13 s. Two probe launches added what the smoke does not check: the capsule's desktop
+open in Chrome on this Mac, PyCharm at its User Agreement 16 s after launch; `x86_64` in the
+capsule; files written as uid 501 on both sides; with `docker-daemon` authorized, the IDE
+user reaches Docker Desktop's daemon through group 0. The record is section 2.2 of the
+design note. The User Agreement was left unaccepted; accepting it is the human's.
+
+The harness had matched only the ready line a capsule prints; a launcher outside a container
+prints another, so the smoke could not pass on any host but a capsule. It now takes either.
+Its runtime digest check compares with the runtime the launcher delivers.
 
 ## Next Resumable Task
 
-Slice 3, the live launch, once the human has made Docker disk room:
-`DEVCAPSULE_PEX_UNDER_TEST=devcapsule-src/dist/devcapsule-macos-arm64`,
-`DEVCAPSULE_RUNTIME_PEX=<the linux-x86_64 runtime>`, `PATH` with a `python3.12`, then
-`.venv/bin/python -m nox -s ide-smoke -- --surface pycharm`, and record what it shows. The
-smoke initializes with `--authorize network host`, which now falls back to bridge on macOS.
+Slice 4: rewrite `docs/platforms/macos.md` and the install page's macOS line for what works,
+as built from source: the macOS launcher, the Linux runtime beside it in
+`DEVCAPSULE_RUNTIME_PEX`, Docker Desktop, emulated capsules, the bridge fallback, the
+unavailable host-browser bridge, and Docker access reaching an `arm64` daemon. Whether a
+release ships the pair is the owner's ruling, not this page's.
 
 ## Open Threads
 

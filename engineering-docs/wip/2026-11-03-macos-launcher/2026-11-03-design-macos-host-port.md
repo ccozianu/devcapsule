@@ -47,8 +47,8 @@ Found by reading the launch path from `run_pycharm` (`launch/pycharm/_launcher.p
 | Lock and matrix key | section 1 | refuses `darwin-arm64` | slice 1 |
 | Docker `--platform` | `_launcher.py` `docker run`; `images/build.py` buildx | Docker picks arm64 or warns | slice 1 |
 | Host-browser bridge | `host_open.py` | peer check used `SO_PEERCRED`, Linux only; the broker socket is a host Unix socket bind-mounted into the capsule, which Docker Desktop refuses (section 2.1) | slice 2: unavailable on macOS with a warning, per R-CONFIG-001; the peer check also reads macOS `LOCAL_PEERCRED`; a TCP transport is a later decision. The contained desktop's own opener is Python's `webbrowser`, which already uses `open` |
-| Host Docker socket | `_launcher.py` `host_docker_socket`, `write_user_files` | both socket paths bind; `--group-add` took the host file's gid (`staff`), but the socket is `0:0 0660` inside (section 2.1) | slice 3: on macOS the capsule user joins group 0; the capsule already holds the daemon, root on the VM, so the root group adds no authority beyond it |
-| Container identity | `current_host_user`, `write_user_files` | 501:20; the generated `/etc/group` avoids the image's `dialout`; ownership round-trips (section 2.1) | none found; re-check in the live launch |
+| Host Docker socket | `_launcher.py` `host_docker_socket`, `write_user_files` | both socket paths bind; `--group-add` took the host file's gid (`staff`), but the socket is `0:0 0660` inside (section 2.1) | slice 3: on macOS the capsule user joins group 0; the capsule already holds the daemon, root on the VM, so the root group adds no authority beyond it; confirmed in the live launch (section 2.2) |
+| Container identity | `current_host_user`, `write_user_files` | 501:20; the generated `/etc/group` avoids the image's `dialout`; ownership round-trips (sections 2.1, 2.2) | none |
 | Container detection | `host_daemon.py` | a marker file, not `/proc`; already correct (section 2.1) | none |
 | Runtime artifact | `runtime_artifact.py` | the launcher delivers its own executable into the capsule; a macOS binary cannot run there | slice 1: deliver `DEVCAPSULE_RUNTIME_PEX` when the launcher's own binary is foreign, refuse with the remedy otherwise; how a release ships the Linux runtime beside the macOS launcher is slice 4 |
 | Executable | `scripts/build-pex.sh` | `DEVCAPSULE_SCIE_PLATFORM=macos-aarch64` | slice 4 |
@@ -81,7 +81,44 @@ Docker Desktop 29.3.1, macOS 27.0, arm64, `desktop-linux` context.
   `project config show`. The `linux-x86_64` runtime, 40 MB, builds inside a `linux/amd64`
   `python:3.12-slim` container from an export of the commit. With both, `runtime_artifact()`
   delivers the Linux one, and without `DEVCAPSULE_RUNTIME_PEX` it refuses with the remedy.
-- **Disk.** Docker Desktop's VM disk is 32 GB with 5.9 GB free; the base is 0.89 GB compressed.
+- **Disk.** Docker Desktop's VM disk was 32 GB with 5.9 GB free; the base is 0.89 GB
+  compressed. The human raised it to 96 GB before the live launch.
+
+### 2.2 The live launch, 2026-11-03
+
+The macOS launcher and the `linux-x86_64` runtime, both built from 4e42d073, against Docker
+Desktop on this Mac. Evidence under `devcapsule-src/dist/e2e-evidence/` (not committed).
+
+- **`nox -s ide-smoke -- --surface pycharm` passes.** The first run took 10 minutes: it built
+  the PyCharm formation under emulation, the build's last step alone 63 s. It failed only in
+  the harness, which matched the ready line a capsule prints, not the one a host prints; see
+  below. The second run, from the built image, passed in 13 s: desktop page 200, console 200
+  with its token and 403 without, a `jetbrains-pycharm` window, the capsule's runtime equal to
+  the Linux runtime delivered, container removed, project records removed.
+- **The launch**, as the launcher printed it: the host-networking warning, then bridge, the
+  desktop on container port 6080 published to `127.0.0.1:<port>`, the console on 6081 the
+  same way. `docker inspect` shows network mode `bridge`, platform `linux`, both ports bound
+  to `127.0.0.1`.
+- **In a Mac browser.** The desktop URL opened in Chrome on this Mac shows the capsule's
+  desktop with PyCharm's User Agreement, the first window of a fresh configuration, 16 s
+  after launch: splash at 10 s, the agreement at 16 s. Nobody accepted it, so the project
+  window was not reached.
+- **Identity and ownership.** `uname -m` in the capsule is `x86_64`. PyCharm's JVM runs as
+  uid 501, gid 20. A file the IDE user writes in the project is uid 501 on the Mac, group
+  the parent directory's; a host file reads as `501 20` inside. The workspace was under
+  `/private/tmp`, which Docker Desktop shares by default.
+- **Docker socket.** With `--authorize docker-daemon host-socket`, the container gets
+  `--group-add 0`, PyCharm's process carries groups `0 20`, and the IDE user's
+  `docker version` reaches Docker Desktop's daemon (server 29.3.1, `arm64`) and `docker ps`
+  lists the host's containers. The daemon is the VM's: an image the IDE user runs without
+  `--platform` is `arm64`, unlike the capsule itself.
+- **Host-browser bridge.** Not exercised: unavailable on macOS with its warning (section 2.1).
+- **The harness.** The smoke's readiness pattern required the ready line that names the URL,
+  which a launcher inside a capsule prints. A launcher outside a container opens the URL
+  instead, a no-op under the smoke's `BROWSER=true`, and prints the ready line without it;
+  on any host but a capsule the smoke waited out its 600 s. The harness now takes either
+  ready line and the URL from the launcher's earlier announcement. The child-runtime
+  digest check compares with the runtime the launcher delivers.
 - **Test suite.** Before slice 1: 411 failed and 461 errors of 2,743. After the platform
   split: 30 failed and 24 errors, in four groups: the supervisor (container-side,
   `signal.sigwaitinfo` is Linux only); Unix socket paths beyond macOS's 104 bytes under the
