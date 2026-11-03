@@ -57,6 +57,18 @@ silently reduce the project's mandatory needs. A more capable collaborator can
 still use the enhancement from the same shared project. Tolerant reading does
 not authorize ignoring constraints needed for integrity or host-access boundaries.
 
+### Wrapped sources are an optional table
+
+A wrapper project declares the foreign repositories it holds as submodules
+under `[sources."<path>"]`, one entry per submodule path, with `upstream`
+(the upstream URL when the origin is the developer's fork) and a toolchain
+key named after the capability it refines (`java = "17"`, the Java line the
+source builds with). The declaration adds no capability by itself; the
+capability stays in `[capabilities]`. A launcher without this field reads the
+table as an unknown root table, carries it through its own writes, and runs
+the capsule without the toolchain selection; a launcher with it validates the
+entries and reports them. See R-WRAP-001.
+
 ### One explicit launch exception: the required IDE
 
 Owner decision, 2026-10-28, [D-0016](../../decisions/product/d-0016-explicit-launch-departure-from-a-required-ide.md):

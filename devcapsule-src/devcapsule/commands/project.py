@@ -309,28 +309,12 @@ class ProjectInitCommand(Command):
             "--offer", action="append", default=[], metavar="CAPABILITY",
             help="A capability the project offers and a developer may leave out, such as browser-automation. Repeatable.",
         )
-        parser.add_argument("--ide", metavar="IDE", help="Your IDE for this checkout: python-ide, frontend-ide, vscode-ide, java-ide, eclipse-ide or dotnet-ide; component names such as pycharm or vscode also work.")
-        parser.add_argument("--with", dest="capabilities", action="append", default=[], metavar="CAPABILITY",
-                            help="Add a capability for your checkout. Repeatable.")
+        _add_owner_options(parser)
         _retired_option(parser, "--agent", "devcapsule project init --with CAPABILITY")
-        parser.add_argument("--name", dest="project_name", help="Project display name.")
-        parser.add_argument("--slug", help="Project identity slug.")
-        parser.add_argument("--creator", help="Project creator URL or email address.")
-        parser.add_argument("--project-mount", help="In-container project mount path.")
         parser.add_argument(
             "--regenerate",
             action="store_true",
             help="Rewrite the derived platform lock from the current embedded matrix; migrate a schema-1 manifest to schema 2, keeping its leading comment block.",
-        )
-        parser.add_argument(
-            "--unverified",
-            action="store_true",
-            dest="allow_unverified",
-            help=(
-                "If no fully verified combination satisfies the requirements, resolve past "
-                "the matrix with a gentle warning; the generated lock names every "
-                "unverified combination."
-            ),
         )
         for flag, replacement in (("--need", "init --require CAPABILITY; config ide IDE or config add CAPABILITY"),
                                   ("--required", "init --require CAPABILITY"),
@@ -366,6 +350,80 @@ class ProjectInitCommand(Command):
                 project_mount=arguments.project_mount,
                 answers=answers,
                 regenerate=arguments.regenerate,
+                allow_unverified=arguments.allow_unverified,
+            )
+        )
+        print(report.render())
+        return 0
+
+
+def _add_owner_options(parser: argparse.ArgumentParser) -> None:
+    """The options ``init`` and ``wrap`` share: the owner's own checkout, the project's identity, the matrix escape."""
+    parser.add_argument("--ide", metavar="IDE", help="Your IDE for this checkout: python-ide, frontend-ide, vscode-ide, java-ide, eclipse-ide or dotnet-ide; component names such as pycharm or vscode also work.")
+    parser.add_argument("--with", dest="capabilities", action="append", default=[], metavar="CAPABILITY",
+                        help="Add a capability for your checkout. Repeatable.")
+    parser.add_argument("--name", dest="project_name", help="Project display name.")
+    parser.add_argument("--slug", help="Project identity slug.")
+    parser.add_argument("--creator", help="Project creator URL or email address.")
+    parser.add_argument("--project-mount", help="In-container project mount path.")
+    parser.add_argument(
+        "--unverified",
+        action="store_true",
+        dest="allow_unverified",
+        help=(
+            "If no fully verified combination satisfies the requirements, resolve past "
+            "the matrix with a gentle warning; the generated lock names every "
+            "unverified combination."
+        ),
+    )
+
+
+class ProjectWrapCommand(Command):
+    name = "wrap"
+    capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.CREATES_HERE
+    help = (
+        "Wrap a foreign repository: add it as a submodule with its Git directory embedded, require what "
+        "you name, initialize or extend the manifest and lock, declare it under [sources], and write the "
+        "wrapper's AGENTS.md and README.md. Repeatable for several repositories. Writes schema 2."
+    )
+
+    @classmethod
+    def configure(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("url", metavar="URL", help="The repository to wrap: your fork when you mean to change it, the upstream when you mean to learn.")
+        parser.add_argument("--path", metavar="NAME", help="The submodule's directory in the wrapper; default: the repository's name.")
+        parser.add_argument("--upstream", metavar="URL", help="The upstream URL when URL is your fork of it; pull requests then go to the fork, never to the upstream.")
+        parser.add_argument("--require", action="append", default=[], metavar="CAPABILITY",
+                            help="A capability this source needs in every checkout, such as java, optionally NAME>=VERSION. Repeatable.")
+        parser.add_argument("--java", metavar="LINE", help="The Java line this source builds with, such as 17; the guidance names it and the capsule selects it.")
+        _add_owner_options(parser)
+        add_carrier_options(parser)
+
+    @classmethod
+    def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        from devcapsule.wrap import WrapRequest, wrap_project
+        from devcapsule.platforms import Platform
+        from devcapsule.resolution_matrix import MATRICES
+        matrix = MATRICES[Platform.current()]
+        ide = matrix.canonical_name(arguments.ide) if arguments.ide is not None and arguments.ide.strip().lower() != "none" else None
+        answers = tuple(
+            ProvidedAnswer(family=answer.family, name=answer.name, value=answer.value, justification=answer.justification)
+            for answer in carrier_answers(arguments)
+        )
+        report = wrap_project(
+            WrapRequest(
+                directory=_project_context(context).target_path(),
+                url=arguments.url,
+                path=arguments.path,
+                upstream=arguments.upstream,
+                require=tuple(arguments.require),
+                java=arguments.java,
+                ide=ide,
+                agents=tuple(arguments.capabilities),
+                project_name=arguments.project_name,
+                slug=arguments.slug,
+                creator=arguments.creator,
+                project_mount=arguments.project_mount,
+                answers=answers,
                 allow_unverified=arguments.allow_unverified,
             )
         )
@@ -2528,6 +2586,7 @@ class ProjectCommand(Group):
             ProjectDiagnoseCommand.name: ProjectDiagnoseCommand,
             ProjectListCommand.name: ProjectListCommand,
             ProjectInitCommand.name: ProjectInitCommand,
+            ProjectWrapCommand.name: ProjectWrapCommand,
             CheckoutGroup.name: CheckoutGroup,
             ConfigGroup.name: ConfigGroup,
             VersionsGroup.name: VersionsGroup,
