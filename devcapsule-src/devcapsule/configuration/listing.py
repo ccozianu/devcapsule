@@ -15,6 +15,7 @@ Every row is one of these kinds:
 - ``access``: host access and the base and vendor consents, from the
   authorization review;
 - ``env``: the environment the project asks for and the checkout saved;
+- ``source``: a wrapped source's declared toolchain and fork or learning intent;
 - ``value``, ``binding``, ``secret``: the project's declared values and the
   selected components' state slots and secret inputs.
 
@@ -47,6 +48,7 @@ from .capabilities import CapabilityPolicy, LocalCapabilities, RequirementDepart
 from .file_formats import ProjectConfigurationError, render_toml_scalar, table
 from .launcher_values import launcher_value_source
 from .manifest_document import EnvironmentPolicy, Recommendations
+from .sources import WrappedSources
 from .trust import HomeTrust, channels_for
 from .values import (
     LAUNCHER_VALUE_NAMES,
@@ -234,6 +236,7 @@ def assess_checkout(
     rows.extend(_access_rows(manifest, composed_lock if access_lock is None else access_lock,
                              checkout, project, base_display, home, home_path))
     rows.extend(_environment_rows(manifest, saved_environment or {}, project))
+    rows.extend(_source_rows(manifest))
     has_surface = bool(table(composed_lock, "components").get("interactive-surface"))
     if has_surface:
         rows.extend(_binding_rows(composed_lock, checkout, project))
@@ -426,6 +429,16 @@ def _access_rows(
         review = reviews[name]
         rows.append(ListingRow("access", name, "unused", "checkout", str(review.problem or "unsupported answer"),
                                _command(project, "forget", name)))
+    return rows
+
+
+def _source_rows(manifest: Mapping[str, Any]) -> list[ListingRow]:
+    """One row per wrapped source: its Java line, and whether it is the upstream to learn from or a fork to change."""
+    rows: list[ListingRow] = []
+    for source in WrappedSources.read(manifest).entries:
+        effective = f"java {source.java}" if source.java is not None else "no toolchain declared"
+        origin = f"project: fork of {source.upstream}" if source.upstream else "project: upstream, read-only"
+        rows.append(ListingRow("source", source.path, effective, origin))
     return rows
 
 

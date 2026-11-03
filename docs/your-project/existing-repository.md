@@ -90,5 +90,8 @@ authorizations, channel trust, private environment variables, agent sign-ins,
 and IDE state stay in your local DevCapsule home outside the repository; see
 [Project versus personal](../configuration/project-versus-personal.md).
 
+A repository that is not yours to configure is wrapped instead; see
+[Someone else's repository](someone-elses-repository.md).
+
 **Next: [choose a coding agent](../working-with-ai/choose-an-agent.md) or
 [declare project needs](declare-needs.md).**

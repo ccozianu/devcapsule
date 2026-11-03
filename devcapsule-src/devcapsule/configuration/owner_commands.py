@@ -36,10 +36,12 @@ from .manifest_document import (
     capability_table,
     environment_name,
 )
+from .sources import WrappedSource, WrappedSources, has_control_characters, java_line, source_path
 from .storage import discover_project, load_toml, require_settled
 from .values import normalize_memory_size
 
 __all__ = [
+    "declare_source",
     "edit_capabilities",
     "drop_environment",
     "drop_tools",
@@ -392,3 +394,40 @@ def _validate(manifest: dict[str, Any]) -> None:
     ManifestV2.read(manifest, Path("manifest"))
     from .authorization import authorization_declarations
     authorization_declarations(manifest, {})
+
+
+def declare_source(start: Path, path: str, *, upstream: str | None = None, java: str | None = None,
+                   preview: bool = False) -> str:
+    """Declare, or redeclare, one wrapped source under ``[sources."<path>"]``; the manifest alone changes.
+
+    ``path`` is the submodule's path in the wrapper. ``upstream`` is the
+    upstream's URL when the submodule's origin is the developer's fork, else
+    ``None``. ``java`` is the Java line the source builds with, or ``None``
+    when the source does not build with Java. A second declaration of the
+    same path replaces its known keys and keeps any key this launcher does
+    not know. The lock is untouched: a source adds no capability by itself;
+    ``require_tools`` does that, and ``project wrap`` calls both.
+    """
+    root, manifest, _lock, _matrix = _project(start, check_resolutions=False)
+    path = source_path(path, field_name="source path")
+    if upstream is not None and (not isinstance(upstream, str) or not upstream.strip() or has_control_characters(upstream)):
+        raise ProjectConfigurationError("The upstream is the upstream repository's URL, on one line; it cannot be blank.")
+    if java is not None:
+        java = java_line(java, field_name="java line")
+    previous = deepcopy(manifest.get("sources", {}))
+    declared = WrappedSources.read(manifest)
+    entries = [source for source in declared.entries if source.path != path]
+    entries.append(WrappedSource(path, upstream, java))
+    candidate = WrappedSources(tuple(sorted(entries, key=lambda source: source.path)))
+    candidate_manifest = deepcopy(manifest)
+    candidate_manifest["sources"] = candidate.document(previous=previous)
+    WrappedSources.read(candidate_manifest)
+    check_documents(candidate_manifest, _lock, check_resolutions=False)
+    if not preview:
+        promote(root, candidate_manifest)
+    verb = "Redeclared" if declared.get(path) is not None else "Declared"
+    lines = ["Preview; nothing written." if preview else f"{verb} source {path}; the manifest is updated."]
+    lines.append(f"  {path}: " + ("learn from it; the origin is the upstream and nothing is pushed" if upstream is None
+                                   else f"change it in your fork of {upstream}; pull requests go to the fork")
+                 + (f"; builds with Java {java}" if java is not None else ""))
+    return "\n".join(lines)
