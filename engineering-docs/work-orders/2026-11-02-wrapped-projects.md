@@ -92,6 +92,10 @@ Amended by the owner on 2026-11-03, in chat:
    rebuild, no longer exists.
 9. **The project-capabilities design is an AI-workflow issue** and went to `workflow-improvements`
    by mail on 2026-11-03; the launcher side returns as a work order when the definition is ruled.
+10. **Gradle is a component too.** A `gradle` capability, provided by a `gradle` component from
+    the Gradle distribution channel, pinned and materialized like the JDK, on `PATH` in the
+    capsule. A project with a Gradle wrapper keeps using it; the component serves projects
+    without one, the IDE's Gradle, and the `gradle` command at the terminal.
 
 ## Deliverables
 
