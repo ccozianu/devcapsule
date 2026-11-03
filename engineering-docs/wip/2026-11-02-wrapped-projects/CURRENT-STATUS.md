@@ -96,7 +96,8 @@ is these records or the workflow definition; whether the proving run's evidence 
 **2026-11-03, integrated.** The owner merged PR1 (#333) into `main` at b3f10b7d. `main` now carries
 the `[sources]` declaration, `project wrap`, the user page, the CLI reference, R-WRAP-001 and the
 R-CONFIG-001 section. The branch was fast-forwarded to the merge; CI's *Tests and coverage* on the
-merge commit is recorded below when it completes.
+merge commit succeeded (run 41555871687), the clean-environment evidence the capsule's own gate
+could not give.
 
 ## Next Resumable Task
 
