@@ -14,6 +14,8 @@ from devcapsule.components.pycharm import runtime_template as pycharm_runtime_te
 from devcapsule.container_runtime import console as console_child
 from devcapsule.container_runtime.contract import ConsolePlan, Identity, RuntimePlan
 
+pytestmark = pytest.mark.legacy
+
 
 CLI_PREFIX = ["project", "checkout", "decisions"]
 

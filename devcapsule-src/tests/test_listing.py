@@ -17,6 +17,8 @@ from devcapsule.configuration.file_formats import ProjectConfigurationError
 from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES
 
+pytestmark = pytest.mark.legacy
+
 MATRIX = MATRICES[Platform.LINUX_AMD64]
 
 SURFACES = {name: MATRIX.resolve_provider(name) or name for name in MATRIX.ide_capabilities()}

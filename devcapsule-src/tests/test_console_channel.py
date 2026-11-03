@@ -21,6 +21,8 @@ from devcapsule.configuration.file_formats import ProjectConfigurationError
 from devcapsule.configuration.storage import checkout_record_paths, load_toml
 from devcapsule import runtime_configuration
 
+pytestmark = pytest.mark.legacy
+
 
 @pytest.fixture
 def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:

@@ -16,6 +16,8 @@ import pytest
 
 from devcapsule.materialization import parse_locked_environment
 
+pytestmark = pytest.mark.legacy
+
 
 # Frozen from final v0.2.15, commit a15ff8b58f4af93845c17eaca22f9c9d29c8e000:
 # configuration/values.py, resolution_matrix.py and components/catalog.py.

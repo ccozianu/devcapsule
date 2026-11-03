@@ -21,6 +21,8 @@ from devcapsule.compat import CliError
 from devcapsule.images.build import render_build_context
 from devcapsule.images.tooling import MAVEN_VERSION, TEMURIN_VERSION
 
+pytestmark = pytest.mark.legacy
+
 
 def pex_fixture(
     path: Path,

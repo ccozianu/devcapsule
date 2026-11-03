@@ -8,6 +8,8 @@ import pytest
 
 from tests.conftest import DOCKER_MARKERS
 
+pytestmark = pytest.mark.legacy
+
 pytest_plugins = ["pytester"]
 
 

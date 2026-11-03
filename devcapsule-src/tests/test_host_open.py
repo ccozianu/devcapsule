@@ -21,6 +21,8 @@ from devcapsule.host_open import (
     validate_host_url,
 )
 
+pytestmark = pytest.mark.legacy
+
 
 def test_broker_forwards_one_exact_url_without_shell_parsing(tmp_path: Path) -> None:
     path = tmp_path / "host-open.sock"

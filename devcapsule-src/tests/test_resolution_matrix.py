@@ -33,6 +33,8 @@ from devcapsule.resolution_matrix import (
     _VerifiedEdge,
 )
 
+pytestmark = pytest.mark.legacy
+
 
 MATRIX = MATRICES[Platform.LINUX_AMD64]
 GOLDEN_ROOT = Path(__file__).parent / "resources" / "golden_locks"

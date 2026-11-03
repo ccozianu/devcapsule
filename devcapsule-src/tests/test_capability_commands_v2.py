@@ -28,6 +28,8 @@ from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES, Capability
 from tests.test_run_flow import project, config, record
 
+pytestmark = pytest.mark.legacy
+
 
 @pytest.fixture
 def matrix(monkeypatch):

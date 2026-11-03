@@ -141,6 +141,13 @@ jobs:
           python -m pip install -r dev-requirements.txt
           python -m pip install -e . --no-deps
 
+      # Unit-test conventions of WORKFLOW-LOCAL.md: placement, docstrings,
+      # and legacy files that only shrink against the PR's exact base.
+      - name: Check test conventions
+        env:
+          DEVCAPSULE_DIFF_BASE: ${{ github.event.pull_request.base.sha || 'origin/main' }}
+        run: python scripts/test_conventions.py
+
       - name: Run tests with coverage
         run: >-
           python -m pytest tests/

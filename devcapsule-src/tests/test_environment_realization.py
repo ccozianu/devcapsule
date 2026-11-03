@@ -23,6 +23,8 @@ from devcapsule.configuration.file_formats import (
     canonical_digest,
 )
 
+pytestmark = pytest.mark.legacy
+
 
 BASE_REFERENCE = f"docker.io/example/devcapsule-base@sha256:{'b' * 64}"
 CANONICAL_IMAGE = "devcapsule-local-pycharm:0123456789abcdef0123"

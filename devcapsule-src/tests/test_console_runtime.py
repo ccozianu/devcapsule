@@ -19,6 +19,8 @@ from devcapsule.materialization import ENTRYPOINT_CONTRACT
 from tests.test_contained_display import contained_document
 from tests.test_runtime_entrypoint import SupervisorCapture, captured_supervisor, runtime_document  # noqa: F401
 
+pytestmark = pytest.mark.legacy
+
 CONSOLE = {"listen_address": "0.0.0.0", "port": 6081, "token_path": "/run/devcapsule-console-token"}
 
 

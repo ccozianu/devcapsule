@@ -24,6 +24,8 @@ from devcapsule.images.base import BASE_RECIPE_VERSION, BASE_SERVICES, current_c
 from devcapsule.configuration.authorization import authorization_declarations
 from devcapsule.resolution_matrix import MATRICES, compatibility_report, known_base_image
 
+pytestmark = pytest.mark.legacy
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 REPO_LOCK = REPO_ROOT / ".devcapsule" / "devcapsule.linux-amd64.lock"
 REPO_MANIFEST = REPO_ROOT / ".devcapsule" / "devcapsule.toml"

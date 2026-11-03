@@ -28,6 +28,8 @@ from devcapsule.container_runtime.supervisor import (
     SupervisorError,
 )
 
+pytestmark = pytest.mark.legacy
+
 DRIVER = Path(__file__).parent / "resources" / "supervisor_driver.py"
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
