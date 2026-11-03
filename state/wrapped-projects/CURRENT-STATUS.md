@@ -4,7 +4,7 @@ Mnemonic: `wrapped-projects`
 
 Start date: 2026-11-02
 
-State: active; slice 1 delivered as PR1 (#333) on 2026-11-02; its Codex review (PR1.1) in progress
+State: active; PR1 (#333) reviewed, PR1.1 (#334) merged, detection removed at the owner's direction; gate running; the project-capabilities design note is next
 
 Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@65501b3407db
 
@@ -12,7 +12,7 @@ Branch association: `ws-wrapped-projects/wrap`, forked from `origin/main` at 31d
 
 Integration target: `main`
 
-Delivery method: pull request, merge commit, under the Pair Review Loop with Codex as the review partner
+Delivery method: pull request, merge commit, under the Pair Review Loop with Codex as the review partner; PR1.1 (#334) merged 2026-11-02
 
 Requirements: R-CONFIG-001, R-SCOPE-001; a new requirement for the wrapped-project shape is a deliverable
 
@@ -79,15 +79,29 @@ completes. Three pre-existing failures in `test_capability_commands_v2.py`
 (`test_resolution_grants_no_consent_and_no_partial_save`) fail in this capsule with the
 slice stashed as well as applied; disclosed on the PR, not fixed here.
 
+**2026-11-02 late, PR1.1 and the owner's two rulings.** The Codex + gpt-6-astra pair's review,
+[#334](https://github.com/ccozianu/devcapsule/pull/334), was accepted without a round and merged
+at 5a18a5c9: inputs validated before Git writes, submodules found by path (a section name is not
+a path), missing registered directories initialized, the embedding asking the submodule for its
+own Git directory, recovery messages, the exact first-line marker. Its entity escaping of the
+guidance was replaced afterwards by code spans, since agents read the file raw. Then the owner,
+in chat, ruled twice: the launcher infers nothing from a foreign tree, so the Gradle detection
+is deleted and `wrap` takes `--require` and `--java` (work order amendment 6); and the next
+design is higher-level project capabilities, browse, build, test, debug and manage, each settled
+or unsettled, with the unsettled ones surfaced by the status as the standing task of the agent
+with the user (amendment 7). The four questions put to the owner for that note: one word or two
+for the two kinds of capability; whether `browse` is the project's or the IDE's; whether `manage`
+is these records or the workflow definition; whether the proving run's evidence is kept.
+
 ## Next Resumable Task
 
-1. Run the Codex review of PR1 (#333): read PR1.1's diff, post the assessment, merge or push
-   back, at most three rounds; then the full gate on PR1's branch, the counts on the PR, and
-   hand PR1 to the owner.
-2. Push the showcase wrapper, produced by the three commands against
-   RobotCode2025Public, to `git@github.com:ccozianu/devcapsule-sample-frc-learning.git`.
-3. Slice 2, after the owner's go at the second stopping point: Temurin 17 in the base under
-   the stable names, the session environment, the IntelliJ link, the acceptance run.
+1. Record the full gate's counts on PR1 (#333) after the detection removal and hand it to the
+   owner. The showcase wrapper at `git@github.com:ccozianu/devcapsule-sample-frc-learning.git`
+   is regenerated with the final `wrap` and pushed.
+2. Write `2026-11-03-design-project-capabilities.md` from amendment 7 and the owner's four
+   answers; stop there for the owner's reading. No further slice before it is ruled.
+3. Slice 2, after the ruling and the owner's go at the second stopping point: Temurin 17 in
+   the base under the stable names, the session environment, the acceptance run.
 
 ## Open Threads
 
