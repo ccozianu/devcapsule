@@ -8,9 +8,12 @@ submodule of it.  ``wrap`` does, in order:
 
 1. adds the submodule, with its Git directory embedded in the tree the
    capsule mounts, so it works inside the capsule on the first run;
-2. reads what the source needs (:mod:`wrap_detection`);
+2. requires the capabilities the developer names: the launcher infers
+   nothing from a foreign tree (owner's ruling of 2026-11-02); how the
+   source is built is settled inside the capsule, by the agent with the
+   developer, and the guidance says so;
 3. initializes the manifest and lock as ``init`` would, or extends an
-   existing manifest with what the source requires;
+   existing manifest with what was named;
 4. declares the source under ``[sources."<path>"]``;
 5. writes the wrapper's ``AGENTS.md`` and ``README.md``, regenerated from the
    manifest on every wrap, so an agent and a human each know what is foreign,
@@ -23,7 +26,6 @@ added at the path from the same URL is kept, not refused.
 from __future__ import annotations
 
 from dataclasses import dataclass
-import html
 from pathlib import Path
 import re
 import shutil
@@ -33,12 +35,10 @@ from typing import Any, Mapping, TextIO
 from devcapsule.compat import CliError
 from devcapsule.configuration.file_formats import ProjectConfigurationError
 from devcapsule.configuration.manifest import current_manifest
-from devcapsule.configuration.manifest_document import Recommendations
 from devcapsule.configuration.operations import InitializeReport, InitializeRequest, ProvidedAnswer, initialize_project
-from devcapsule.configuration.owner_commands import declare_source, recommend, require_tools
+from devcapsule.configuration.owner_commands import declare_source, require_tools
 from devcapsule.configuration.sources import WrappedSource, WrappedSources, source_path
 from devcapsule.configuration.storage import load_toml
-from devcapsule.wrap_detection import Detection, detect
 
 __all__ = ["WrapRequest", "WrapReport", "wrap_project", "GUIDANCE_MARKER", "render_agents", "render_readme"]
 
@@ -58,6 +58,10 @@ class WrapRequest:
     url: str
     path: str | None = None
     upstream: str | None = None
+    # What the source needs, as the developer names it: project capabilities
+    # every checkout must have, and the Java line the source builds with.
+    require: tuple[str, ...] = ()
+    java: str | None = None
     # The owner's own checkout, as for init: never in the manifest.
     ide: str | None = None
     agents: tuple[str, ...] = ()
@@ -76,7 +80,6 @@ class WrapReport:
 
     path: str
     submodule_action: str
-    detection: Detection | None
     initialized: InitializeReport | None
     capability_lines: tuple[str, ...]
     source_line: str
@@ -85,11 +88,6 @@ class WrapReport:
 
     def render(self) -> str:
         lines = [self.submodule_action]
-        if self.detection is None:
-            lines.append(f"Detected nothing in {self.path} that these rules know; declare what it needs with "
-                         "'devcapsule project config require CAPABILITY'.")
-        else:
-            lines.append(f"Detected in {self.path}: " + "; ".join(self.detection.evidence))
         if self.initialized is not None:
             lines.append(self.initialized.render())
         lines.extend(self.capability_lines)
@@ -105,13 +103,12 @@ def wrap_project(request: WrapRequest, *, input_stream: TextIO | None = None, ou
     _require_repository_root(root)
     path = source_path(request.path if request.path is not None else _repository_name(request.url), field_name="--path")
     # Validate source metadata before Git or initialization writes anything.
-    WrappedSources.read({"sources": {path: {"upstream": request.upstream} if request.upstream is not None else {}}})
+    WrappedSources.read({"sources": {path: WrappedSource(path, request.upstream, request.java).document()}})
     submodule_action = _add_submodule(root, request.url, path)
-    detection = detect(root / path)
     manifest_path = root / ".devcapsule" / "devcapsule.toml"
     initialized: InitializeReport | None = None
     capability_lines: list[str] = []
-    needed = detection.capabilities if detection is not None else ()
+    needed = tuple(dict.fromkeys(request.require))
     if not manifest_path.is_file():
         try:
             initialized = initialize_project(
@@ -132,16 +129,12 @@ def wrap_project(request: WrapRequest, *, input_stream: TextIO | None = None, ou
         missing = tuple(name for name in needed if name not in declared)
         if missing:
             capability_lines.append(require_tools(root, missing, allow_unverified=request.allow_unverified).splitlines()[0])
-    manifest = current_manifest(load_toml(manifest_path), manifest_path).document()
-    if detection is not None and detection.ide is not None and Recommendations.read(manifest).ide is None:
-        capability_lines.append(recommend(root, "ide", detection.ide).splitlines()[0])
-    source_line = declare_source(root, path, upstream=request.upstream,
-                                 java=detection.java if detection is not None else None).splitlines()[0]
+    source_line = declare_source(root, path, upstream=request.upstream, java=request.java).splitlines()[0]
     manifest = current_manifest(load_toml(manifest_path), manifest_path).document()
     guidance = _write_guidance(root, manifest)
     next_steps = ("Review the changes, commit them (the submodule, .gitmodules, .devcapsule/, AGENTS.md, README.md),",
                   "then 'devcapsule project run' opens the capsule.")
-    return WrapReport(path, submodule_action, detection, initialized, tuple(capability_lines), source_line, guidance, next_steps)
+    return WrapReport(path, submodule_action, initialized, tuple(capability_lines), source_line, guidance, next_steps)
 
 
 def _require_repository_root(root: Path) -> None:
@@ -252,16 +245,29 @@ def _registered_url(root: Path, path: str) -> str | None:
     return None
 
 
-def _markdown_data(value: str) -> str:
-    """Keep external text on one line and prevent Markdown or HTML structure."""
-    value = value.replace("\\", "\\\\").replace("\n", r"\n").replace("\r", r"\r").replace("\t", r"\t")
-    value = html.escape(value, quote=True)
-    return re.sub(r"[`*_[\]{}()#!|]", lambda match: f"&#{ord(match.group())};", value)
+def _plain(value: str) -> str:
+    """External text on one line: a control character becomes U+FFFD, so it cannot open a heading or a line of its own."""
+    return "".join("\ufffd" if ord(character) < 0x20 or character == "\x7f" else character for character in value)
+
+
+def _code_span(value: str) -> str:
+    """External text as a Markdown code span, readable raw by an agent and inert when rendered.
+
+    A code span cannot start a heading, a list or HTML; the file is read raw
+    by agents, so the text inside stays exactly the path or URL they must
+    use, never an entity.  A run of backticks inside is fenced by a longer run.
+    """
+    value = _plain(value)
+    runs = [len(run) for run in re.findall(r"`+", value)]
+    fence = "`" * (max(runs, default=0) + 1)
+    padding = " " if value.startswith("`") or value.endswith("`") else ""
+    return f"{fence}{padding}{value}{padding}{fence}"
 
 
 def _java_lines(source: WrappedSource) -> list[str]:
     if source.java is None:
-        return []
+        return ["- How this source is built, tested and run is not settled yet. Find out with the user, from its own",
+                "  files, before assuming; do not write the answer into the source."]
     home = f"{JAVA_HOME_ROOT}/{source.java}"
     return [f"- Builds with Java {source.java}. Before any build, test or run in this directory, select it:",
             "", "  ```bash", f'  export JAVA_HOME={home}; export PATH="$JAVA_HOME/bin:$PATH"', "  ```"]
@@ -269,15 +275,15 @@ def _java_lines(source: WrappedSource) -> list[str]:
 
 def render_agents(manifest: Mapping[str, Any], sources: WrappedSources, origins: Mapping[str, str]) -> str:
     """The wrapper's AGENTS.md: agent-neutral, regenerated from the manifest."""
-    name = _markdown_data(manifest["project"]["name"])
+    name = _plain(manifest["project"]["name"])
     lines = [GUIDANCE_MARKER, f"# Agent Instructions: {name}", "",
              "This repository is a DevCapsule wrapper. It holds the DevCapsule configuration under",
              "`.devcapsule/` and foreign repositories as Git submodules. The code to work on lives in",
              "the submodules; the wrapper only sets up the environment around them.", "",
              "## Wrapped sources", ""]
     for source in sources.entries:
-        lines.extend([f"### {_markdown_data(source.path)}", "", f"- Origin: {_markdown_data(origins.get(source.path, ''))}",
-                      f"- Intent: {source.intent}." + (f" Upstream: {_markdown_data(source.upstream)}." if source.upstream else "")])
+        lines.extend([f"### {_code_span(source.path)}", "", f"- Origin: {_code_span(origins.get(source.path, ''))}",
+                      f"- Intent: {source.intent}." + (f" Upstream: {_code_span(source.upstream)}." if source.upstream else "")])
         lines.extend(_java_lines(source))
         lines.append("")
     lines.extend(["## Rules", "",
@@ -294,7 +300,7 @@ def render_agents(manifest: Mapping[str, Any], sources: WrappedSources, origins:
 
 def render_readme(manifest: Mapping[str, Any], sources: WrappedSources, origins: Mapping[str, str]) -> str:
     """The wrapper's README.md for a person: what this is and how to start."""
-    name = _markdown_data(manifest["project"]["name"])
+    name = _plain(manifest["project"]["name"])
     lines = [GUIDANCE_MARKER, f"# {name}", "",
              "A DevCapsule wrapper: the development environment for the repositories below, which",
              "are not this repository's own code and carry no DevCapsule configuration of their own.", "",
@@ -303,8 +309,8 @@ def render_readme(manifest: Mapping[str, Any], sources: WrappedSources, origins:
              "An existing clone without the submodules: `git submodule update --init`.", "",
              "## Wrapped sources", ""]
     for source in sources.entries:
-        lines.extend([f"### {_markdown_data(source.path)}", "", f"- Origin: {_markdown_data(origins.get(source.path, ''))}",
-                      f"- Intent: {source.intent}." + (f" Upstream: {_markdown_data(source.upstream)}." if source.upstream else "")])
+        lines.extend([f"### {_code_span(source.path)}", "", f"- Origin: {_code_span(origins.get(source.path, ''))}",
+                      f"- Intent: {source.intent}." + (f" Upstream: {_code_span(source.upstream)}." if source.upstream else "")])
         lines.extend(_java_lines(source))
         lines.append("")
     return "\n".join(lines)

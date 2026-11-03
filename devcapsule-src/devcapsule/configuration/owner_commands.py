@@ -36,7 +36,7 @@ from .manifest_document import (
     capability_table,
     environment_name,
 )
-from .sources import WrappedSource, WrappedSources, java_line, source_path
+from .sources import WrappedSource, WrappedSources, has_control_characters, java_line, source_path
 from .storage import discover_project, load_toml, require_settled
 from .values import normalize_memory_size
 
@@ -410,8 +410,8 @@ def declare_source(start: Path, path: str, *, upstream: str | None = None, java:
     """
     root, manifest, _lock, _matrix = _project(start, check_resolutions=False)
     path = source_path(path, field_name="source path")
-    if upstream is not None and (not isinstance(upstream, str) or not upstream.strip() or "\x00" in upstream):
-        raise ProjectConfigurationError("The upstream is the upstream repository's URL; it cannot be blank.")
+    if upstream is not None and (not isinstance(upstream, str) or not upstream.strip() or has_control_characters(upstream)):
+        raise ProjectConfigurationError("The upstream is the upstream repository's URL, on one line; it cannot be blank.")
     if java is not None:
         java = java_line(java, field_name="java line")
     previous = deepcopy(manifest.get("sources", {}))

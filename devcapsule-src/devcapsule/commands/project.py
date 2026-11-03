@@ -382,8 +382,8 @@ class ProjectWrapCommand(Command):
     name = "wrap"
     capsule_access: ClassVar[CapsuleAccess] = CapsuleAccess.CREATES_HERE
     help = (
-        "Wrap a foreign repository: add it as a submodule with its Git directory embedded, read what it "
-        "needs, initialize or extend the manifest and lock, declare it under [sources], and write the "
+        "Wrap a foreign repository: add it as a submodule with its Git directory embedded, require what "
+        "you name, initialize or extend the manifest and lock, declare it under [sources], and write the "
         "wrapper's AGENTS.md and README.md. Repeatable for several repositories. Writes schema 2."
     )
 
@@ -392,6 +392,9 @@ class ProjectWrapCommand(Command):
         parser.add_argument("url", metavar="URL", help="The repository to wrap: your fork when you mean to change it, the upstream when you mean to learn.")
         parser.add_argument("--path", metavar="NAME", help="The submodule's directory in the wrapper; default: the repository's name.")
         parser.add_argument("--upstream", metavar="URL", help="The upstream URL when URL is your fork of it; pull requests then go to the fork, never to the upstream.")
+        parser.add_argument("--require", action="append", default=[], metavar="CAPABILITY",
+                            help="A capability this source needs in every checkout, such as java, optionally NAME>=VERSION. Repeatable.")
+        parser.add_argument("--java", metavar="LINE", help="The Java line this source builds with, such as 17; the guidance names it and the capsule selects it.")
         _add_owner_options(parser)
         add_carrier_options(parser)
 
@@ -412,6 +415,8 @@ class ProjectWrapCommand(Command):
                 url=arguments.url,
                 path=arguments.path,
                 upstream=arguments.upstream,
+                require=tuple(arguments.require),
+                java=arguments.java,
                 ide=ide,
                 agents=tuple(arguments.capabilities),
                 project_name=arguments.project_name,

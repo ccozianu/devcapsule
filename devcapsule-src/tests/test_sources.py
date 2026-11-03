@@ -37,7 +37,7 @@ def test_an_entry_without_a_java_line_names_no_toolchain() -> None:
     assert sources.document() == {"docs": {}}
 
 
-@pytest.mark.parametrize("path", ["", "/abs", "../out", "a/../b", ".", "a//b", "a/", "back\\slash"])
+@pytest.mark.parametrize("path", ["", "/abs", "../out", "a/../b", ".", "a//b", "a/", "back\\slash", "a\nb", "tab\tbed", "nul\x00"])
 def test_source_paths_stay_inside_the_wrapper_in_posix_form(path: str) -> None:
     with pytest.raises(ProjectConfigurationError, match="source path"):
         source_path(path, field_name="source path")
@@ -57,6 +57,7 @@ def test_a_java_line_is_a_feature_release_number_as_a_string(value: object) -> N
     ("17", "must be a table"),
     ({"upstream": ""}, "upstream"),
     ({"upstream": 3}, "upstream"),
+    ({"upstream": "https://x\ny"}, "on one line"),
     ({"java": 17}, "Java line"),
 ])
 def test_malformed_entries_are_refused_by_name(entry: object, message: str) -> None:
@@ -102,7 +103,7 @@ def test_an_explicitly_empty_sources_table_survives_the_round_trip() -> None:
     assert "[sources]" in render_manifest(value.document())
 
 
-@pytest.mark.parametrize("path", ['vendor/robot', 'robot.code', 'two words', 'quote"', 'tick`', 'line\nbreak', 'robot\x7f'])
+@pytest.mark.parametrize("path", ['vendor/robot', 'robot.code', 'two words', 'quote"', 'tick`', 'ünïcode'])
 def test_source_keys_and_unknown_fields_round_trip_through_the_manifest(path: str) -> None:
     document = manifest(**{path: {"java": "17", "future": {"key.with.dots": True}}})
     value = ManifestV2.read(document, "manifest")

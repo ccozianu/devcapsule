@@ -39,7 +39,7 @@ home instead and disables this fallback to launcher settings.
 | Command | Intent |
 |---|---|
 | `init` | Create the project manifest and platform lock, record your checkout's IDE and capabilities, and resolve when an IDE is chosen. |
-| `wrap` | Add a foreign repository as a submodule, read what it needs, create or extend the manifest and lock, declare it as a wrapped source, and write the wrapper's `AGENTS.md` and `README.md`. |
+| `wrap` | Add a foreign repository as a submodule, require what you name, create or extend the manifest and lock, declare it as a wrapped source, and write the wrapper's `AGENTS.md` and `README.md`. |
 | `run` | Derive the launch plan from the project, this home, and this checkout, ask any open questions, and start the capsule. |
 | `config` | Inspect what the next launch uses, change checkout choices or the shared project contract, and validate without launching. |
 | `info` | Show selected software, container environment, and persistent storage paths without changing state. |
@@ -75,20 +75,21 @@ also accept one optional justification argument after the value.
 ### `wrap`
 
 ```text
-devcapsule project wrap URL [--path NAME] [--upstream URL] [--ide IDE] [--with CAPABILITY]...
+devcapsule project wrap URL [--path NAME] [--upstream URL] [--require CAPABILITY]... [--java LINE]
+                        [--ide IDE] [--with CAPABILITY]...
                         [--name NAME] [--slug SLUG] [--creator CREATOR] [--project-mount PATH]
                         [--unverified] [--set NAME VALUE]... [--authorize NAME VALUE]... [--bind NAME VALUE]...
 ```
 
 Run it at the top level of a Git repository, the wrapper. `wrap` adds `URL`
 as a submodule at `--path` (default: the repository's name) with its Git
-directory embedded in the tree, reads what the source needs, and declares it
-under `[sources."NAME"]` in `.devcapsule/devcapsule.toml`. Without a manifest
-it initializes one as `init` would, with the detected requirements; with one
-it adds what is missing. A Gradle wrapper means `java` is required and
-`java-ide` recommended; WPILib's GradleRIO names the Java line its season
-builds with, `java = "17"`. It then writes `AGENTS.md` and `README.md` from
-the manifest, regenerated on every wrap and left alone when they are yours.
+directory embedded in the tree, requires the capabilities you name, and
+declares the source under `[sources."NAME"]` in `.devcapsule/devcapsule.toml`
+with the Java line you give, `java = "17"`. Without a manifest it initializes
+one as `init` would; with one it adds what is missing. It infers nothing from
+the source. It then writes `AGENTS.md` and `README.md` from the manifest,
+regenerated on every wrap and left alone when they are yours; a source
+without a Java line is described as unsettled, to be found out with the user.
 
 `--upstream` says `URL` is your fork of that upstream: changes and pull
 requests go to the fork, never to the upstream. Without it the origin is the

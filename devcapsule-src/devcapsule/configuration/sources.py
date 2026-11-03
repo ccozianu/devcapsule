@@ -31,7 +31,7 @@ from typing import Any, Mapping
 
 from .file_formats import ProjectConfigurationError, table
 
-__all__ = ["WrappedSource", "WrappedSources", "source_path", "java_line"]
+__all__ = ["WrappedSource", "WrappedSources", "has_control_characters", "java_line", "source_path"]
 
 # The keys this launcher knows in a source entry; others are tolerated and
 # carried, so a newer owner's field does not make the manifest unreadable.
@@ -41,9 +41,14 @@ SOURCE_KEYS = frozenset({"upstream", "java"})
 JAVA_LINE_PATTERN = re.compile(r"^[1-9][0-9]*$")
 
 
+def has_control_characters(value: str) -> bool:
+    """Whether the text carries a control character, which no path, URL or guidance line may."""
+    return any(ord(character) < 0x20 or character == "\x7f" for character in value)
+
+
 def source_path(value: object, *, field_name: str) -> str:
     """Validate a submodule path as the manifest keys it: relative, inside the wrapper, in POSIX form."""
-    if not isinstance(value, str) or not value or "\x00" in value or "\\" in value:
+    if not isinstance(value, str) or not value or "\\" in value or has_control_characters(value):
         raise ProjectConfigurationError(f"{field_name}: a source path is a relative POSIX path such as RobotCode2025Public; found {value!r}.")
     if value.startswith("/") or value != posixpath.normpath(value) or value == "." or value.split("/")[0] == "..":
         raise ProjectConfigurationError(f"{field_name}: a source path stays inside the wrapper and carries no '.' or '..' segments; found {value!r}.")
@@ -96,8 +101,8 @@ class WrappedSources:
             if not isinstance(entry, dict):
                 raise ProjectConfigurationError(f"{field_name} must be a table with optional 'upstream' and 'java' keys.")
             upstream = entry.get("upstream")
-            if upstream is not None and (not isinstance(upstream, str) or not upstream.strip() or "\x00" in upstream):
-                raise ProjectConfigurationError(f"{field_name}.upstream must be the upstream repository's URL.")
+            if upstream is not None and (not isinstance(upstream, str) or not upstream.strip() or has_control_characters(upstream)):
+                raise ProjectConfigurationError(f"{field_name}.upstream must be the upstream repository's URL, on one line.")
             java = entry.get("java")
             if java is not None:
                 java = java_line(java, field_name=f"{field_name}.java")

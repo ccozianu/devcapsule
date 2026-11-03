@@ -19,32 +19,29 @@ of it. Nothing is written into their tree.
 
 ```bash
 mkdir frc-learning && cd frc-learning && git init
-~/.local/bin/devcapsule project wrap https://github.com/Mechanical-Advantage/RobotCode2025Public
+~/.local/bin/devcapsule project wrap https://github.com/Mechanical-Advantage/RobotCode2025Public --require java --java 17
 ~/.local/bin/devcapsule project run
 ```
 
-`wrap` adds the submodule, reads what the code needs, writes the manifest and
+`wrap` adds the submodule, requires what you name, writes the manifest and
 the lock, and writes an `AGENTS.md` and a `README.md` that say what is foreign,
-how to build it and which Java to use. `run` opens the capsule with the IDE on
-the wrapper; the code is in the submodule. Commit what `wrap` produced; anyone
-who clones the wrapper must initialize its submodules before running it.
+under whose control, and which Java to use. `run` opens the capsule with the
+IDE on the wrapper; the code is in the submodule. Commit what `wrap` produced;
+anyone who clones the wrapper must initialize its submodules before running it.
 
-## What `wrap` reads off the code
+## What you tell `wrap`
 
-| Found in the repository | Declared |
-|---|---|
-| A Gradle wrapper with WPILib's GradleRIO plugin | `java` required, `java-ide` recommended, the Java line of that WPILib season: 17 for 2025 and 2026 |
-| A Gradle wrapper without it | `java` required, `java-ide` recommended; Java 17 for Gradle 8.x and 9.0, Java 25 from 9.1 onward |
-| Anything else | Nothing; `wrap` says so and names `project config require` |
+The launcher infers nothing from a foreign tree. You name what every
+checkout must have, `--require java`, as you would with `init`, and the Java
+line the source builds with, `--java 17`. The line matters because a build
+such as WPILib's refuses any other JDK; the generated `AGENTS.md` names it,
+and the matching JDK must exist under `/opt/java/<line>`. The additional JDK
+in the base and the session-wide selection are planned for the next slice.
 
-The Java line matters because a build such as GradleRIO's refuses any other
-JDK. The generated `AGENTS.md` names the line to select before building in
-that directory. The matching JDK must exist under `/opt/java/<line>`.
-Slice 2 supplies the additional JDK and session-wide selection.
-
-Detection reads literal GradleRIO plugin declarations. It ignores comments
-and string examples. Plain Gradle detection reads only `distributionUrl` in
-`gradle/wrapper/gradle-wrapper.properties`. It does not execute build scripts.
+Name nothing and the source is still wrapped, with its build unsettled: the
+`AGENTS.md` tells the agent to find out with you, from the source's own
+files, before assuming. The IDE is recommended separately,
+`devcapsule project config recommend ide java-ide`, as for any project.
 
 ## Learning or changing
 
