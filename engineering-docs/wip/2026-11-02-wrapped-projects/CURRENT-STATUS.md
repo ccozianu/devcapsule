@@ -4,11 +4,11 @@ Mnemonic: `wrapped-projects`
 
 Start date: 2026-11-02
 
-State: active; PR1 (#333) complete and accepted by the owner 2026-11-03, awaiting merge; the project-capabilities design is handed to workflow-improvements by mail
+State: active; slice 1 integrated: PR1 (#333) merged into `main` by the owner 2026-11-03 at b3f10b7d; the project-capabilities design is with `workflow-improvements`; slice 2 waits for the owner's go
 
 Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@65501b3407db
 
-Branch association: `ws-wrapped-projects/wrap`, forked from `origin/main` at 31d44fa473a8
+Branch association: `ws-wrapped-projects/wrap`, forked from `origin/main` at 31d44fa473a8, merged into `main` at b3f10b7d through #333 and kept current with `main`; the next slice starts on a fresh `ws-wrapped-projects/<slice>` branch from `main`
 
 Integration target: `main`
 
@@ -93,10 +93,14 @@ with the user (amendment 7). The four questions put to the owner for that note: 
 for the two kinds of capability; whether `browse` is the project's or the IDE's; whether `manage`
 is these records or the workflow definition; whether the proving run's evidence is kept.
 
+**2026-11-03, integrated.** The owner merged PR1 (#333) into `main` at b3f10b7d. `main` now carries
+the `[sources]` declaration, `project wrap`, the user page, the CLI reference, R-WRAP-001 and the
+R-CONFIG-001 section. The branch was fast-forwarded to the merge; CI's *Tests and coverage* on the
+merge commit is recorded below when it completes.
+
 ## Next Resumable Task
 
-1. Done: the final gate on PR1 (#333) at 0a131d69, 2711 passed and the same 18 capsule-specific
-   failures as before, is on the PR; PR1 is the owner's to merge. The showcase wrapper is
+1. Done: PR1 (#333) merged into `main` at b3f10b7d on 2026-11-03. The showcase wrapper is
    regenerated with the final `wrap` and pushed (58d9219).
 2. Done: the owner accepted PR1 as it stands on 2026-11-03 and ruled that the project-capabilities
    design is an AI-workflow issue; it went to `workflow-improvements` by mail the same day
