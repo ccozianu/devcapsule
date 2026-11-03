@@ -106,6 +106,9 @@ environment from its runtime template, chosen with `config require 'java>=17'` a
 `config recommend java temurin-17`. Work order amendment 8. The `--java` option and the
 `[sources]` `java` key go in slice 2; the guidance then needs no export line, since the
 capsule's session already carries the right Java.
+The owner added Gradle as a component the same day (amendment 10): a `gradle` capability and a
+`gradle` component from the Gradle distribution channel, for projects without a wrapper, the IDE's
+Gradle and the terminal.
 
 ## Next Resumable Task
 
@@ -117,9 +120,11 @@ capsule's session already carries the right Java.
    definition speaks and a work order comes back.
 3. Slice 2, PR2 with its Codex review: a `temurin` component in the catalog with the 17 line
    (Adoptium release channel, checksums, the runtime template exporting `JAVA_HOME` and `PATH`);
-   `java` resolvable to it through the existing provider recommendation; `--java` and the
-   `[sources]` `java` key removed, the guidance's export line with them; the showcase wrapper
-   re-declared with `config require 'java>=17'` and `config recommend java temurin-17`; the
+   `java` resolvable to it through the existing provider recommendation; a `gradle` capability
+   and a `gradle` component from the Gradle distribution channel, on `PATH` in the capsule
+   (amendment 10); `--java` and the `[sources]` `java` key removed, the guidance's export line
+   with them; the showcase wrapper re-declared with `config require 'java>=17' gradle` and
+   `config recommend java temurin-17`; the
    acceptance run of the work order inside a capsule: `./gradlew build -x spotlessCheck` in the
    wrapped source from the IDE terminal and by an agent told only to build. Starts on a fresh
    `ws-wrapped-projects/temurin-component` branch from `main`.
