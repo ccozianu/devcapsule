@@ -2,8 +2,22 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import sys
+import tempfile
 
 import pytest
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Give a macOS run a short temporary root.
+
+    macOS limits a Unix socket path to 104 bytes, and its per-user temporary
+    directory under /var/folders leaves too little of that for the sockets
+    the tests bind beneath tmp_path. An explicit --basetemp still wins.
+    """
+
+    if sys.platform == "darwin" and not config.option.basetemp:
+        config.option.basetemp = tempfile.mkdtemp(prefix="dcpt-", dir="/tmp")
 
 
 @pytest.fixture(autouse=True)

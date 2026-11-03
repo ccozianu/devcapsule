@@ -11,6 +11,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from devcapsule import cli
+from devcapsule.platforms import HostOs
 from devcapsule.host_open import (
     HOST_OPEN_SOCKET_ENV,
     MAX_URL_BYTES,
@@ -175,6 +176,7 @@ def test_physical_host_bridge_owns_and_cleans_broker(tmp_path: Path) -> None:
 
     with (
         patch("devcapsule.host_open.in_container", return_value=False),
+        patch("devcapsule.host_open.HostOs.current", return_value=HostOs.LINUX),
         patch("devcapsule.host_open.subprocess.run", run),
         host_open_bridge(env, enabled=True, opener=("test-opener",)) as path,
     ):
@@ -184,6 +186,19 @@ def test_physical_host_bridge_owns_and_cleans_broker(tmp_path: Path) -> None:
         open_host_url("https://example.test", socket_path=path)
 
     assert not root.exists()
+
+
+def test_macos_host_bridge_is_unavailable_with_a_warning(tmp_path: Path, capsys) -> None:
+    # Docker Desktop refuses a host Unix socket as a bind source, so the
+    # optional integration degrades instead of failing the launch.
+    with (
+        patch("devcapsule.host_open.in_container", return_value=False),
+        patch("devcapsule.host_open.HostOs.current", return_value=HostOs.DARWIN),
+        host_open_bridge({"XDG_RUNTIME_DIR": str(tmp_path)}, enabled=True) as path,
+    ):
+        assert path is None
+    assert "host-browser is unavailable on macOS" in capsys.readouterr().err
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_hidden_host_open_command_uses_authorized_environment(tmp_path: Path, capsys) -> None:

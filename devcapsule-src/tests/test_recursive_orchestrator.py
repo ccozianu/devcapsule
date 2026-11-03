@@ -24,6 +24,12 @@ from devcapsule.recursive_orchestrator import (
 
 pytestmark = pytest.mark.legacy
 
+# The recursive dogfood validates the host's X11 socket directory even for a
+# contained display; a macOS host has none, and the flow is Linux-only.
+requires_host_x11 = pytest.mark.skipif(
+    not Path("/tmp/.X11-unix").is_dir(), reason="recursive dogfood needs a host X11 socket directory"
+)
+
 
 @dataclass
 class RecursiveFixture:
@@ -152,6 +158,7 @@ def test_normal_project_launch_derives_only_a_downgradable_readiness_marker(
     assert unauthorized == {RECURSIVE_E2E_ENABLED_ENV: "0"}
 
 
+@requires_host_x11
 def test_public_dry_run_is_unique_redacted_and_cleans_owned_staging(
     recursive_fixture: RecursiveFixture,
 ) -> None:
@@ -180,6 +187,7 @@ def test_public_dry_run_is_unique_redacted_and_cleans_owned_staging(
     assert not (workspace / second.run_id).exists()
 
 
+@requires_host_x11
 def test_public_dry_run_cleans_after_preparation_failure(
     recursive_fixture: RecursiveFixture,
 ) -> None:
@@ -203,6 +211,7 @@ def test_public_dry_run_cleans_after_preparation_failure(
     assert not run_root.exists()
 
 
+@requires_host_x11
 def test_keep_on_failure_preserves_only_the_owned_run(
     recursive_fixture: RecursiveFixture,
 ) -> None:
@@ -228,6 +237,7 @@ def test_keep_on_failure_preserves_only_the_owned_run(
     assert run_root.is_dir()
 
 
+@requires_host_x11
 def test_contained_display_dry_run_forwards_no_host_x11(
     recursive_fixture: RecursiveFixture, tmp_path: Path
 ) -> None:

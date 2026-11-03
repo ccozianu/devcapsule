@@ -7,7 +7,8 @@ import pytest
 
 from devcapsule.compat import CliError
 from devcapsule.materialization import ArtifactSpec, formation_descriptor, formation_identity
-from devcapsule.runtime_artifact import runtime_artifact
+from devcapsule import platforms
+from devcapsule.runtime_artifact import executable_platform, runtime_artifact
 from devcapsule.runtime_command import RuntimeCommand
 from tests.test_base_image import pex_fixture
 
@@ -30,6 +31,55 @@ def test_source_launcher_requires_explicit_built_runtime(tmp_path: Path, monkeyp
     launcher = pex_fixture(tmp_path / "runtime.pex")
     monkeypatch.setenv("DEVCAPSULE_RUNTIME_PEX", str(launcher))
     assert runtime_artifact() == launcher
+
+
+MACH_O_ARM64 = b"\xcf\xfa\xed\xfe" + bytes(16)
+ELF_AMD64 = b"\x7fELF\x02\x01\x01" + bytes(11) + (0x3E).to_bytes(2, "little")
+ELF_ARM64 = b"\x7fELF\x02\x01\x01" + bytes(11) + (0xB7).to_bytes(2, "little")
+
+
+def native(path: Path, header: bytes) -> Path:
+    """A PEX fixture whose first bytes are a native executable's header.
+
+    A scie is a native launcher with the PEX appended; the build information
+    is read from the archive, so the header and the archive coexist.
+    """
+
+    pex = pex_fixture(path)
+    pex.write_bytes(header + pex.read_bytes())
+    return pex
+
+
+def _apple_silicon(monkeypatch) -> None:
+    monkeypatch.setattr(platforms.host_platform, "system", lambda: "Darwin")
+    monkeypatch.setattr(platforms.host_platform, "machine", lambda: "arm64")
+
+
+def test_executable_platform_reads_native_headers(tmp_path: Path) -> None:
+    assert executable_platform(native(tmp_path / "mac", MACH_O_ARM64)) == "darwin"
+    assert executable_platform(native(tmp_path / "amd64", ELF_AMD64)) == "linux-amd64"
+    assert executable_platform(native(tmp_path / "arm64", ELF_ARM64)) == "linux-arm64"
+    assert executable_platform(pex_fixture(tmp_path / "plain.pex")) is None
+    assert executable_platform(tmp_path / "absent") is None
+
+
+def test_macos_launcher_delivers_the_named_linux_runtime(tmp_path: Path, monkeypatch) -> None:
+    _apple_silicon(monkeypatch)
+    monkeypatch.setenv("SCIE", str(native(tmp_path / "devcapsule-macos", MACH_O_ARM64)))
+    linux = native(tmp_path / "devcapsule-linux", ELF_AMD64)
+    monkeypatch.setenv("DEVCAPSULE_RUNTIME_PEX", str(linux))
+    assert runtime_artifact() == linux
+
+
+def test_macos_launcher_without_a_linux_runtime_says_what_to_set(tmp_path: Path, monkeypatch) -> None:
+    _apple_silicon(monkeypatch)
+    monkeypatch.setenv("SCIE", str(native(tmp_path / "devcapsule-macos", MACH_O_ARM64)))
+    monkeypatch.delenv("DEVCAPSULE_RUNTIME_PEX", raising=False)
+    with pytest.raises(CliError, match="darwin executable and cannot run inside linux-amd64 capsules.*DEVCAPSULE_RUNTIME_PEX"):
+        runtime_artifact()
+    monkeypatch.setenv("DEVCAPSULE_RUNTIME_PEX", str(native(tmp_path / "wrong-arch", ELF_ARM64)))
+    with pytest.raises(CliError, match="linux-arm64 executable"):
+        runtime_artifact()
 
 
 def test_runtime_update_changes_formation_identity_without_changing_components() -> None:

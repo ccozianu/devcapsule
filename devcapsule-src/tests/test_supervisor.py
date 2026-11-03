@@ -20,6 +20,10 @@ import time
 
 import pytest
 
+# The supervisor is the capsule's entry process: it runs only inside Linux
+# capsules and relies on Linux signal primitives (sigwaitinfo).
+pytestmark = pytest.mark.skipif(sys.platform != "linux", reason="container-side code; capsules are Linux")
+
 from devcapsule import logs
 from devcapsule.container_runtime.supervisor import (
     INFRASTRUCTURE_FAILURE_EXIT_CODE,

@@ -4,7 +4,7 @@ Mnemonic: `macos-launcher`
 
 Start date: 2026-11-03
 
-State: active; registered 2026-11-03; slice 1, the capsule-platform split, in progress
+State: active; slices 1 and 2 committed 2026-11-03; slice 3, the live launch, next
 
 Branch association: `ws-macos-launcher/host-port`, forked from local `main` at b3f10b7d
 
@@ -42,10 +42,27 @@ the human's Mac (macOS 27.0, arm64, Docker Desktop 29.3.1, `desktop-linux` conte
 The work plan, one slice each, is in the
 [design note](2026-11-03-design-macos-host-port.md).
 
+**2026-11-03, slices 1 and 2.** `Platform.current()` now means the platform this host runs
+capsules as (`linux-amd64` on a Mac), with `HostOs` for host mechanisms. Every `docker run`,
+buildx build and base pull carries `--platform linux/amd64` when the host emulates it, and a
+native Linux launch composes the same command as before. A launcher whose own binary cannot
+run in the capsule delivers `DEVCAPSULE_RUNTIME_PEX` instead, or refuses with that remedy.
+The host-browser bridge is unavailable on macOS with a warning; its peer check reads
+`LOCAL_PEERCRED`, and two macOS socket races in its protocol are fixed (an early rejection
+closed with unread input; `shutdown` after the broker closed). The capsule user joins group 0
+for Docker Desktop's socket. `project config show` answers on this Mac.
+
+Validation on this Mac: the unit suite, 2,725 passed, 19 skipped (the container-side
+supervisor and the X11-dependent recursive dogfood, by marker), from 411 failed and 461 errors
+before; the host-open module 20 runs clean; `mypy --platform linux` clean over 269 files. `nox`
+cannot run its sessions here, having no `python3.12` on `PATH`, so the commands were run from
+`.venv` directly. The unit suite on Linux is still to run, inside an amd64 container.
+
 ## Next Resumable Task
 
-Slice 1: separate the capsule platform, which keys locks and matrices, from the host
-operating system, and pass `--platform linux/amd64` to Docker when they differ.
+Slice 3: in a `linux/amd64` container from this checkout, run the unit suite and build the
+`linux-x86_64` executable; then launch this repository on this Mac with
+`DEVCAPSULE_RUNTIME_PEX` naming that executable, and record what the launch shows.
 
 ## Open Threads
 

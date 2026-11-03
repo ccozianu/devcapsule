@@ -19,6 +19,7 @@ from devcapsule.launch.pycharm import (
     build_run_config,
 )
 from devcapsule.container_runtime.contract import INFRASTRUCTURE_FAILURE_EXIT_CODE
+from devcapsule.platforms import HostOs
 from devcapsule.launch.pycharm._launcher import (
     AttachedResult,
     display_disclosure,
@@ -466,6 +467,7 @@ def test_physical_host_launcher_owns_browser_broker_for_docker_lifetime(
 
     with (
         patch("devcapsule.host_open.in_container", return_value=False),
+        patch("devcapsule.host_open.HostOs.current", return_value=HostOs.LINUX),
         patch("devcapsule.launch.pycharm._launcher.shutil.which", return_value=None),
         patch("devcapsule.launch.pycharm._launcher.run_attached") as run,
     ):
@@ -619,6 +621,48 @@ def test_authorized_runtime_effects_build_the_complete_docker_plan(tmp_path: Pat
     assert "--read-only" not in args
     assert "--privileged" not in args
     assert "SYS_ADMIN" not in args
+
+
+@pytest.mark.parametrize("host_os,expected_gid", [(HostOs.LINUX, "file"), (HostOs.DARWIN, 0)])
+def test_host_docker_group_follows_where_the_socket_is_owned(tmp_path: Path, host_os, expected_gid) -> None:
+    # On Linux the capsule joins the socket file's group. Docker Desktop shows
+    # its socket inside the VM as root:root 0660, so a Mac host joins group 0
+    # and writes no second group for it.
+    project = tmp_path / "project"
+    project.mkdir()
+    env = base_env(tmp_path)
+    docker_socket = tmp_path / "docker.sock"
+    docker_socket.touch()
+    gid = docker_socket.stat().st_gid if expected_gid == "file" else expected_gid
+    host_user = HostUser(uid=501, gid=20, name="developer", group_name="staff")
+    with (
+        patch("devcapsule.launch.pycharm._launcher.current_host_user", return_value=host_user),
+        patch("devcapsule.launch.pycharm._launcher.is_socket", return_value=True),
+        patch("devcapsule.launch.pycharm._launcher.HostOs.current", return_value=host_os),
+    ):
+        config = build_run_config(
+            PycharmRunOptions(
+                project=project,
+                project_mount="/workspace/project",
+                docker_mode=DockerMode.host,
+                host_docker_socket=docker_socket,
+                network_mode="bridge",
+                runtime_plan=external_runtime_plan(),
+                use_image_process=True,
+            ),
+            env,
+        )
+        with patch("devcapsule.launch.pycharm._launcher.write_xauthority"):
+            files = prepare_temp_runtime_files(config, env)
+        try:
+            args = build_docker_args(config, files, env)
+            groups = files.group_file.read_text(encoding="utf-8")
+        finally:
+            cleanup_temp_runtime_files(files)
+
+    assert config.host_docker_gid == gid
+    assert ["--group-add", str(gid)] == args[args.index("--group-add") : args.index("--group-add") + 2]
+    assert ("host-docker:x:" in groups) is (gid not in (0, host_user.gid))
 
 
 def test_unauthorized_runtime_effects_keep_safe_docker_defaults(tmp_path: Path) -> None:

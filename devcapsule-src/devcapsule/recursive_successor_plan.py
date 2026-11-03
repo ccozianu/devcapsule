@@ -43,9 +43,11 @@ _VALUE_FLAGS = frozenset(
     }
 )
 _BOOLEAN_FLAGS = frozenset({"--detach", "--privileged", "--read-only", "--rm", "-i"})
-# Flags that describe how Docker obtains the image rather than the resulting
-# container. They are deliberately not part of the comparable plan.
-_IGNORED_FLAGS = frozenset({"--pull"})
+# Flags that describe how Docker obtains or executes the image rather than the
+# resulting container. They are deliberately not part of the comparable plan.
+# The launcher emits each as one inline token (``--platform=linux/amd64`` on
+# a host that emulates the capsule platform).
+_IGNORED_FLAGS = frozenset({"--platform", "--pull"})
 
 
 class SuccessorPlanError(Exception):

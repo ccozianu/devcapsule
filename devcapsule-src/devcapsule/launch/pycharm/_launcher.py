@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
 from ...docker_arguments import inline_environment_names, redact_environment
+from ...platforms import HostOs, Platform
 from ...container_runtime.contract import (
     CONTAINED_DISPLAY_TRANSPORT,
     INFRASTRUCTURE_FAILURE_EXIT_CODE,
@@ -297,6 +298,13 @@ class PycharmRunConfig:
     libgl_always_software: str = "1"
     mesa_loader_driver_override: str = "llvmpipe"
     libgl_dri3_disable: str = "1"
+
+
+# Docker Desktop presents its socket inside every container as root:root,
+# mode 0660, whatever the macOS file's owner (observed on 29.3.1). The capsule
+# user joins group 0 to use it. A capsule granted the host daemon already
+# holds root on Docker Desktop's VM, so the group adds no authority.
+DOCKER_DESKTOP_SOCKET_GID = 0
 
 
 def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None) -> int:
@@ -957,7 +965,10 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
                 "Start Docker on the host, set HOST_DOCKER_SOCKET, or launch with --docker-in-docker / --no-docker."
             )
         host_docker_socket = host_docker_socket.resolve()
-        host_docker_gid = host_docker_socket.stat().st_gid
+        host_docker_gid = (
+            DOCKER_DESKTOP_SOCKET_GID if HostOs.current() is HostOs.DARWIN
+            else host_docker_socket.stat().st_gid
+        )
 
     if enable_sudo:
         while ide_sudo_gid in {0, host_user.gid, host_docker_gid}:
@@ -1293,6 +1304,7 @@ def build_docker_args(
     args = [
         "--rm",
         "-i",
+        *Platform.current().docker_platform_args(),
         "--name",
         config.name,
         "--workdir",
@@ -1816,7 +1828,7 @@ def write_user_files(config: PycharmRunConfig, files: TempRuntimeFiles) -> None:
         "root:x:0:",
         f"{host_user.group_name}:x:{host_user.gid}:",
     ]
-    if config.host_docker_gid is not None and config.host_docker_gid != host_user.gid:
+    if config.host_docker_gid not in (None, 0, host_user.gid):
         group_lines.append(f"host-docker:x:{config.host_docker_gid}:")
     if config.enable_sudo:
         group_lines.append(f"ide-sudo:x:{config.ide_sudo_gid}:{host_user.name}")

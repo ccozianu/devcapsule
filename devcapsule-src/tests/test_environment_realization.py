@@ -266,6 +266,7 @@ def test_realize_environment_allows_terms_bound_claude_download_authorization(
 def test_ensure_local_image_pulls_only_when_missing(already_local: bool) -> None:
     details = base_image()
     with (
+        patch("devcapsule.platforms.host_architecture", return_value="amd64"),
         patch(
             "devcapsule.environment_realization.docker.image.exists",
             return_value=already_local,
@@ -283,6 +284,20 @@ def test_ensure_local_image_pulls_only_when_missing(already_local: bool) -> None
     else:
         pull.assert_called_once_with(BASE_REFERENCE)
     require.assert_called_once_with(BASE_REFERENCE)
+
+
+def test_an_emulating_host_pulls_the_capsule_platform() -> None:
+    # Apple Silicon runs linux-amd64 capsules; the pull must not resolve a
+    # multi-platform reference to the host's arm64 image.
+    with (
+        patch("devcapsule.platforms.host_platform.system", return_value="Darwin"),
+        patch("devcapsule.platforms.host_architecture", return_value="arm64"),
+        patch("devcapsule.environment_realization.docker.image.exists", return_value=False),
+        patch("devcapsule.environment_realization.docker.image.pull") as pull,
+        patch("devcapsule.environment_realization.required_local_image", return_value=base_image()),
+    ):
+        ensure_local_image(BASE_REFERENCE)
+    pull.assert_called_once_with(BASE_REFERENCE, platform="linux/amd64")
 
 
 def test_realize_environment_allows_explicit_managed_base_override(tmp_path: Path) -> None:

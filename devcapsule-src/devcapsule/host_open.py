@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import deque
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
+import errno
 import json
 import os
 from pathlib import Path
@@ -12,6 +13,7 @@ import socket
 import stat
 import struct
 import subprocess
+import sys
 import tempfile
 from threading import Event, Thread
 import time
@@ -19,6 +21,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from devcapsule.host_daemon import in_container
+from devcapsule.platforms import HostOs
 
 
 HOST_OPEN_SOCKET_ENV = "DEVCAPSULE_HOST_OPEN_SOCKET"
@@ -32,6 +35,13 @@ DEFAULT_TIMEOUT_SECONDS = 10.0
 RATE_LIMIT_REQUESTS = 30
 RATE_LIMIT_WINDOW_SECONDS = 60.0
 _UNIX_PATH_LIMIT = 100
+HOST_OPEN_UNAVAILABLE_ON_MACOS = (
+    "devcapsule: warning: host-browser is unavailable on macOS: Docker Desktop does not carry the "
+    "host's Unix sockets into a capsule. Links open in the capsule's own browser instead."
+)
+# macOS: SOL_LOCAL, and the leading fields of struct xucred (cr_version, cr_uid).
+_SOL_LOCAL = 0
+_XUCRED_SIZE = 76
 
 
 class HostOpenError(Exception):
@@ -79,7 +89,13 @@ def open_host_url(
             connection.settimeout(timeout)
             connection.connect(str(path))
             connection.sendall(request)
-            connection.shutdown(socket.SHUT_WR)
+            try:
+                connection.shutdown(socket.SHUT_WR)
+            except OSError as exc:
+                # macOS refuses shutdown once the broker has answered and
+                # closed; the answer is still buffered and is read below.
+                if exc.errno != errno.ENOTCONN:
+                    raise
             response = _read_frame(connection, MAX_RESPONSE_BYTES)
     except (OSError, TimeoutError) as exc:
         raise HostOpenError("host-browser broker is unavailable") from exc
@@ -188,6 +204,7 @@ class HostOpenBroker:
             detail = str(exc) or "request rejected"
             try:
                 connection.sendall(_encode_frame({"ok": False, "error": detail}))
+                _drain(connection)
             except OSError:
                 pass
 
@@ -244,6 +261,13 @@ def host_open_bridge(
         # It may only propagate a bridge explicitly inherited from its owner.
         yield None
         return
+    if HostOs.current() is not HostOs.LINUX:
+        # The broker is a host Unix socket bound into the capsule. Docker
+        # Desktop refuses that bind source (observed on 29.3.1, macOS 27), so
+        # the optional integration is unavailable rather than fatal.
+        print(HOST_OPEN_UNAVAILABLE_ON_MACOS, file=sys.stderr)
+        yield None
+        return
 
     parent = _runtime_parent(environ)
     with _broker_socket_path(parent) as path:
@@ -288,11 +312,15 @@ def _broker_socket_path(parent: str | None) -> Iterator[Path]:
 
 
 def _peer_uid(connection: socket.socket) -> int:
-    if not hasattr(socket, "SO_PEERCRED"):
-        raise HostOpenError("peer credentials are unavailable on this platform")
-    credentials = connection.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize("3i"))
-    _pid, uid, _gid = struct.unpack("3i", credentials)
-    return uid
+    if hasattr(socket, "SO_PEERCRED"):
+        credentials = connection.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize("3i"))
+        _pid, uid, _gid = struct.unpack("3i", credentials)
+        return uid
+    if hasattr(socket, "LOCAL_PEERCRED"):
+        credentials = connection.getsockopt(_SOL_LOCAL, socket.LOCAL_PEERCRED, _XUCRED_SIZE)
+        _version, uid = struct.unpack_from("=II", credentials)
+        return uid
+    raise HostOpenError("peer credentials are unavailable on this platform")
 
 
 def _is_socket(path: Path) -> bool:
@@ -306,6 +334,19 @@ def _encode_frame(value: Mapping[str, Any]) -> bytes:
     return (
         json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
     ).encode("utf-8")
+
+
+def _drain(connection: socket.socket) -> None:
+    """Consume what a rejected client sent, up to its end or the frame limit.
+
+    Closing a socket with unread input resets the connection on macOS, and
+    the client then loses the rejection it was just sent.
+    """
+
+    connection.shutdown(socket.SHUT_WR)
+    remaining = MAX_FRAME_BYTES
+    while remaining > 0 and (chunk := connection.recv(min(4096, remaining))):
+        remaining -= len(chunk)
 
 
 def _read_frame(connection: socket.socket, limit: int) -> bytes:

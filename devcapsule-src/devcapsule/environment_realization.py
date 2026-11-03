@@ -10,6 +10,7 @@ from python_on_whales import docker
 from python_on_whales.exceptions import DockerException
 
 from devcapsule.compat import CliError
+from devcapsule.platforms import Platform
 from devcapsule.images.build import BuildxImageBuilder, ImageBuildSpec
 from devcapsule.images.metadata import inspect_local_image
 from devcapsule.materialization import (
@@ -181,7 +182,11 @@ def realize_environment(
 def ensure_local_image(reference: str) -> ImageDetails:
     try:
         if not docker.image.exists(reference):
-            docker.image.pull(reference)
+            capsule = Platform.current()
+            if capsule.emulated():
+                docker.image.pull(reference, platform=capsule.docker_platform)
+            else:
+                docker.image.pull(reference)
     except DockerException as exc:
         raise CliError(f"Cannot obtain Docker image {reference!r}: {exc}") from exc
     return required_local_image(reference)

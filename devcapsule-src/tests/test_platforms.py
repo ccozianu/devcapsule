@@ -6,7 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from devcapsule.platforms import Platform, UnsupportedPlatformError, XdgHomes
+from devcapsule import platforms
+from devcapsule.platforms import HostOs, Platform, UnsupportedPlatformError, XdgHomes
 
 pytestmark = pytest.mark.legacy
 
@@ -34,6 +35,47 @@ def test_current_returns_a_member_on_a_supported_host() -> None:
     current = Platform.current()
     assert current in Platform
     assert Platform.parse(current.value) is current
+
+
+def _host(monkeypatch: pytest.MonkeyPatch, system: str, machine: str) -> None:
+    monkeypatch.setattr(platforms.host_platform, "system", lambda: system)
+    monkeypatch.setattr(platforms.host_platform, "machine", lambda: machine)
+
+
+@pytest.mark.parametrize("system,machine,emulated", [
+    ("Linux", "x86_64", False),
+    ("Darwin", "x86_64", False),
+    ("Darwin", "arm64", True),
+])
+def test_current_is_the_capsule_platform_of_the_host(monkeypatch, system, machine, emulated) -> None:
+    # A Mac runs Linux capsules: the lock it reads is linux-amd64, natively
+    # on Intel and under Docker's emulation on Apple Silicon.
+    _host(monkeypatch, system, machine)
+    assert Platform.current() is Platform.LINUX_AMD64
+    assert Platform.current().emulated() is emulated
+    assert Platform.current().docker_platform_args() == (["--platform=linux/amd64"] if emulated else [])
+
+
+@pytest.mark.parametrize("system,machine", [("Linux", "aarch64"), ("Windows", "AMD64"), ("Darwin", "ppc")])
+def test_current_refuses_a_host_without_a_capsule_platform(monkeypatch, system, machine) -> None:
+    _host(monkeypatch, system, machine)
+    with pytest.raises(UnsupportedPlatformError, match="supported platforms: linux-amd64"):
+        Platform.current()
+
+
+def test_docker_spelling_and_architecture() -> None:
+    assert Platform.LINUX_AMD64.docker_platform == "linux/amd64"
+    assert Platform.LINUX_AMD64.architecture == "amd64"
+
+
+def test_host_os_names_linux_and_macos_only(monkeypatch) -> None:
+    _host(monkeypatch, "Darwin", "arm64")
+    assert HostOs.current() is HostOs.DARWIN
+    _host(monkeypatch, "Linux", "x86_64")
+    assert HostOs.current() is HostOs.LINUX
+    _host(monkeypatch, "Windows", "AMD64")
+    with pytest.raises(UnsupportedPlatformError, match="'windows'"):
+        HostOs.current()
 
 
 def test_xdg_homes_honor_explicit_overrides() -> None:

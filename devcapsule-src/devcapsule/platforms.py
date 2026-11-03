@@ -20,36 +20,101 @@ from pathlib import Path
 import platform as host_platform
 from typing import Mapping
 
-__all__ = ["Platform", "UnsupportedPlatformError", "XdgHomes"]
+__all__ = ["HostOs", "Platform", "UnsupportedPlatformError", "XdgHomes", "host_architecture"]
 
 
 class UnsupportedPlatformError(ValueError):
     """A platform key outside the supported set; the message is displayable."""
 
 
-class Platform(StrEnum):
-    """The supported-platform declaration and its wire format.
+def host_architecture() -> str:
+    """This host's CPU architecture in the platform keys' spelling."""
 
-    Members are the single authority on what platforms DevCapsule supports;
-    values are the wire format serialized into lock filenames, lock
-    documents, and artifact tables. Because committed locks carry these
-    values, members are append-only and never renamed.
+    machine = host_platform.machine().lower()
+    return {"x86_64": "amd64", "aarch64": "arm64"}.get(machine, machine)
+
+
+class HostOs(StrEnum):
+    """The host operating system, for the mechanisms that differ by host.
+
+    Locks never carry it: capsules are Linux on every host, and the lock
+    names the capsule platform (``Platform``).
+    """
+
+    LINUX = "linux"
+    DARWIN = "darwin"
+
+    @classmethod
+    def current(cls) -> HostOs:
+        system = host_platform.system().lower()
+        try:
+            return cls(system)
+        except ValueError:
+            supported = ", ".join(member.value for member in cls)
+            raise UnsupportedPlatformError(
+                f"Unsupported host operating system {system!r}; supported: {supported}."
+            ) from None
+
+
+# The capsule platform a non-Linux host runs. Apple Silicon runs linux-amd64
+# under Docker's emulation until a linux-arm64 platform exists.
+_CAPSULE_PLATFORM_OF_HOST = {
+    "darwin-arm64": "linux-amd64",
+    "darwin-amd64": "linux-amd64",
+}
+
+
+class Platform(StrEnum):
+    """The supported capsule platforms and their wire format.
+
+    A platform is what capsules run as, not what the launcher runs on: a
+    Mac launches Linux capsules. Members are the single authority on what
+    capsule platforms DevCapsule supports; values are the wire format
+    serialized into lock filenames, lock documents, and artifact tables.
+    Because committed locks carry these values, members are append-only and
+    never renamed.
 
     A client never constructs a key from parts: it obtains one from
-    ``current()`` (the platform it is running on) or ``parse()`` (the
-    platform a lock records), and only carries it between those points.
+    ``current()`` (the platform this host runs capsules as) or ``parse()``
+    (the platform a lock records), and only carries it between those points.
     """
 
     LINUX_AMD64 = "linux-amd64"
 
     @classmethod
     def current(cls) -> Platform:
-        """The platform this process is running on."""
+        """The platform this host runs capsules as.
 
-        system = host_platform.system().lower()
-        machine = host_platform.machine().lower()
-        architecture = {"x86_64": "amd64", "aarch64": "arm64"}.get(machine, machine)
-        return cls.parse(f"{system}-{architecture}")
+        On Linux, the host's own platform. On macOS, the Linux platform
+        Docker Desktop runs, natively or under emulation.
+        """
+
+        host = f"{host_platform.system().lower()}-{host_architecture()}"
+        return cls.parse(_CAPSULE_PLATFORM_OF_HOST.get(host, host))
+
+    @property
+    def architecture(self) -> str:
+        return self.value.split("-", 1)[1]
+
+    @property
+    def docker_platform(self) -> str:
+        """Docker's spelling of this platform, as ``--platform`` takes it."""
+
+        return self.value.replace("-", "/", 1)
+
+    def emulated(self) -> bool:
+        """Whether this host's CPU runs capsules of this platform only under emulation."""
+
+        return host_architecture() != self.architecture
+
+    def docker_platform_args(self) -> list[str]:
+        """The ``--platform`` option every run and build carries under emulation.
+
+        Empty on a native host, so a Linux launch composes the same command
+        as before the option existed.
+        """
+
+        return [f"--platform={self.docker_platform}"] if self.emulated() else []
 
     @classmethod
     def parse(cls, key: str) -> Platform:
