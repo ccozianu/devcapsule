@@ -4,7 +4,7 @@ Mnemonic: `wrapped-projects`
 
 Start date: 2026-11-02
 
-State: active; PR1 (#333) reviewed, PR1.1 (#334) merged, detection removed at the owner's direction; gate running; the project-capabilities design note is next
+State: active; PR1 (#333) complete at 0a131d69 and handed to the owner; the project-capabilities design note waits for the owner's ruling
 
 Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@65501b3407db
 
@@ -95,9 +95,9 @@ is these records or the workflow definition; whether the proving run's evidence 
 
 ## Next Resumable Task
 
-1. Record the full gate's counts on PR1 (#333) after the detection removal and hand it to the
-   owner. The showcase wrapper at `git@github.com:ccozianu/devcapsule-sample-frc-learning.git`
-   is regenerated with the final `wrap` and pushed.
+1. Done: the final gate on PR1 (#333) at 0a131d69, 2711 passed and the same 18 capsule-specific
+   failures as before, is on the PR; PR1 is the owner's to merge. The showcase wrapper is
+   regenerated with the final `wrap` and pushed (58d9219).
 2. Done: `2026-11-03-design-project-capabilities.md` is written with the four questions answered
    as recommendations; it waits for the owner's ruling. No further slice before it is ruled.
 3. Slice 2, after the ruling and the owner's go at the second stopping point: Temurin 17 in
