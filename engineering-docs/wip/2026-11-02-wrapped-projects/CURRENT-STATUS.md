@@ -98,8 +98,8 @@ is these records or the workflow definition; whether the proving run's evidence 
 1. Record the full gate's counts on PR1 (#333) after the detection removal and hand it to the
    owner. The showcase wrapper at `git@github.com:ccozianu/devcapsule-sample-frc-learning.git`
    is regenerated with the final `wrap` and pushed.
-2. Write `2026-11-03-design-project-capabilities.md` from amendment 7 and the owner's four
-   answers; stop there for the owner's reading. No further slice before it is ruled.
+2. Done: `2026-11-03-design-project-capabilities.md` is written with the four questions answered
+   as recommendations; it waits for the owner's ruling. No further slice before it is ruled.
 3. Slice 2, after the ruling and the owner's go at the second stopping point: Temurin 17 in
    the base under the stable names, the session environment, the acceptance run.
 
@@ -117,4 +117,5 @@ is these records or the workflow definition; whether the proving run's evidence 
 - [the work order](../../work-orders/2026-11-02-wrapped-projects.md): read first.
 - [the wrapped-source design](2026-11-02-design-wrapped-source.md): the manifest shape, the JDK mechanism, the IDE rule, the detection rules; ruled 2026-11-02.
 - [evidence/2026-11-02-pr1-brief-codex.md](evidence/2026-11-02-pr1-brief-codex.md): the review brief of PR1; open when reading PR1.1.
+- [the project-capabilities design](2026-11-03-design-project-capabilities.md): operations, settled and unsettled, the record, the commands, the discovery dialogue; open for the owner's ruling.
 - `intake/` and `intake-dispositions.md`: the queue and its log; empty at opening.
