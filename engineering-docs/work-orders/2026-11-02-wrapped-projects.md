@@ -67,6 +67,19 @@ The owner ruled these on 2026-11-02.
 5. **The pair.** Claude (Fable 5.1) designs and implements; Codex is the review partner under the
    Pair Review Loop as the local workflow file applies it.
 
+Amended by the owner on 2026-11-02, in chat, after reading slice 1:
+
+6. **The launcher infers nothing from a foreign tree.** Detecting Gradle, or any build tool, special-cases
+   one ecosystem into the product and bakes in facts about someone else's tool that rot. `wrap`
+   takes what the developer names, `--require CAPABILITY` and `--java LINE`, and declares that. Item 2
+   of the `project wrap` deliverable and the showcase's detection table are superseded; the showcase
+   command is `wrap <url> --require java --java 17`.
+7. **Higher-level project capabilities are the next design.** A project, wrapped or not, can be made
+   to do things: browse, build, test, debug, manage its development. Each is settled or unsettled; an
+   unsettled one is not an error but a standing task the status surfaces ("we can browse the code
+   but cannot build yet") and the agent takes up with the user. The `java` line of a source is an
+   early form of the build's environment. A design note on this precedes any further slice.
+
 ## Deliverables
 
 ### The wrapped-source declaration
@@ -88,9 +101,8 @@ manifest without losing it, and `project config show` reports it.
 1. Adds the repository as a submodule at the path, the repository's name by default, with the
    embedded Git directory the capsule needs, so the submodule works from inside the capsule on
    the first run.
-2. Detects what the source needs from what is in it. For the showcase: a Gradle wrapper and
-   GradleRIO mean Java; the GradleRIO version decides the JDK line. Unknown contents produce a
-   manifest the developer can complete with the ordinary `project config` commands, and say so.
+2. Superseded by amendment 6: requires the capabilities the developer names and declares the Java
+   line the developer gives; infers nothing from the source.
 3. Writes or extends the manifest and lock as `init` would: the required capabilities, the
    recommended IDE, the wrapped-source declaration. A second `wrap` adds a source to an existing
    manifest and reconciles the capabilities.
