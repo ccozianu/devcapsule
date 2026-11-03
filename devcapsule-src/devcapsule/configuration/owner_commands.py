@@ -410,7 +410,7 @@ def declare_source(start: Path, path: str, *, upstream: str | None = None, java:
     """
     root, manifest, _lock, _matrix = _project(start, check_resolutions=False)
     path = source_path(path, field_name="source path")
-    if upstream is not None and (not upstream.strip() or "\x00" in upstream):
+    if upstream is not None and (not isinstance(upstream, str) or not upstream.strip() or "\x00" in upstream):
         raise ProjectConfigurationError("The upstream is the upstream repository's URL; it cannot be blank.")
     if java is not None:
         java = java_line(java, field_name="java line")

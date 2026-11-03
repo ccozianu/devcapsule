@@ -15,6 +15,7 @@ Every row is one of these kinds:
 - ``access``: host access and the base and vendor consents, from the
   authorization review;
 - ``env``: the environment the project asks for and the checkout saved;
+- ``source``: a wrapped source's declared toolchain and fork or learning intent;
 - ``value``, ``binding``, ``secret``: the project's declared values and the
   selected components' state slots and secret inputs.
 

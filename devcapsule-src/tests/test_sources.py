@@ -80,7 +80,7 @@ def test_schema_two_reads_sources_as_its_own_table_and_renders_it_after_capabili
     assert value.extensions == {}
     assert value.wrapped_sources.entries == (WrappedSource("vendor/robot", None, "17"),)
     text = render_manifest(value.document())
-    assert text.index("[capabilities]") < text.index('[sources."vendor/robot"]') < text.index("[recommendations]") if "[recommendations]" in text else True
+    assert text.index("[capabilities]") < text.index('[sources."vendor/robot"]')
     assert 'java = "17"' in text
     assert read_manifest(tomllib.loads(text), "rendered") == value
 
@@ -100,3 +100,16 @@ def test_an_explicitly_empty_sources_table_survives_the_round_trip() -> None:
     value = read_manifest(manifest(), "manifest")
     assert value.document()["sources"] == {}
     assert "[sources]" in render_manifest(value.document())
+
+
+@pytest.mark.parametrize("path", ['vendor/robot', 'robot.code', 'two words', 'quote"', 'tick`', 'line\nbreak', 'robot\x7f'])
+def test_source_keys_and_unknown_fields_round_trip_through_the_manifest(path: str) -> None:
+    document = manifest(**{path: {"java": "17", "future": {"key.with.dots": True}}})
+    value = ManifestV2.read(document, "manifest")
+    assert tomllib.loads(render_manifest(value.document())) == document
+
+
+@pytest.mark.parametrize("path", [None, 17, "a/./b", "a/..", "./a", "//a", "a\x00b"])
+def test_additional_non_normal_source_paths_are_refused(path: object) -> None:
+    with pytest.raises(ProjectConfigurationError, match="source path"):
+        source_path(path, field_name="source path")
