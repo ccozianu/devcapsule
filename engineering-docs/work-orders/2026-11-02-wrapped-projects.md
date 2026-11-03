@@ -80,6 +80,19 @@ Amended by the owner on 2026-11-02, in chat, after reading slice 1:
    but cannot build yet") and the agent takes up with the user. The `java` line of a source is an
    early form of the build's environment. A design note on this precedes any further slice.
 
+Amended by the owner on 2026-11-03, in chat:
+
+8. **No second JDK in the base.** Ruling 2 is withdrawn: the base keeps one default of each tool
+   and does not grow with every project's toolchain. A JDK line is a provider of the `java`
+   capability, a component like Codex or PyCharm: in the catalog from the Adoptium release channel,
+   pinned in the project's lock, materialized per checkout, its `JAVA_HOME` and `PATH` set by its
+   runtime template. The project names it with the existing commands, `config require 'java>=17'`
+   and `config recommend java temurin-17`. The `--java` option of `wrap` and the `java` key of
+   `[sources]` are removed before any release ships them. The second stopping point, the base
+   rebuild, no longer exists.
+9. **The project-capabilities design is an AI-workflow issue** and went to `workflow-improvements`
+   by mail on 2026-11-03; the launcher side returns as a work order when the definition is ruled.
+
 ## Deliverables
 
 ### The wrapped-source declaration

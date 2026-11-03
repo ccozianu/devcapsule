@@ -4,7 +4,7 @@ Mnemonic: `wrapped-projects`
 
 Start date: 2026-11-02
 
-State: active; slice 1 integrated: PR1 (#333) merged into `main` by the owner 2026-11-03 at b3f10b7d; the project-capabilities design is with `workflow-improvements`; slice 2 waits for the owner's go
+State: active; slice 1 integrated 2026-11-03 (#333 at b3f10b7d); the owner ruled the JDK is a component, not a base addition (amendment 8); slice 2 is the Temurin component and the showcase acceptance
 
 Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@65501b3407db
 
@@ -99,6 +99,14 @@ R-CONFIG-001 section. The branch was fast-forwarded to the merge; CI's *Tests an
 merge commit succeeded (run 41555871687), the clean-environment evidence the capsule's own gate
 could not give.
 
+**2026-11-03, the JDK is a component.** The owner withdrew the second JDK in the base: the base
+would grow with every project's toolchain. A JDK line is a provider of the `java` capability, a
+component from the Adoptium channel, pinned in the lock, materialized per checkout, its
+environment from its runtime template, chosen with `config require 'java>=17'` and
+`config recommend java temurin-17`. Work order amendment 8. The `--java` option and the
+`[sources]` `java` key go in slice 2; the guidance then needs no export line, since the
+capsule's session already carries the right Java.
+
 ## Next Resumable Task
 
 1. Done: PR1 (#333) merged into `main` at b3f10b7d on 2026-11-03. The showcase wrapper is
@@ -107,8 +115,14 @@ could not give.
    design is an AI-workflow issue; it went to `workflow-improvements` by mail the same day
    (`2026-11-03-wrapped-projects-project-capabilities.md`). No operations slice here until the
    definition speaks and a work order comes back.
-3. Slice 2, at the owner's go at the second stopping point: Temurin 17 in the base under the
-   stable names, the session environment from the settled facts, the acceptance run.
+3. Slice 2, PR2 with its Codex review: a `temurin` component in the catalog with the 17 line
+   (Adoptium release channel, checksums, the runtime template exporting `JAVA_HOME` and `PATH`);
+   `java` resolvable to it through the existing provider recommendation; `--java` and the
+   `[sources]` `java` key removed, the guidance's export line with them; the showcase wrapper
+   re-declared with `config require 'java>=17'` and `config recommend java temurin-17`; the
+   acceptance run of the work order inside a capsule: `./gradlew build -x spotlessCheck` in the
+   wrapped source from the IDE terminal and by an agent told only to build. Starts on a fresh
+   `ws-wrapped-projects/temurin-component` branch from `main`.
 
 ## Open Threads
 
