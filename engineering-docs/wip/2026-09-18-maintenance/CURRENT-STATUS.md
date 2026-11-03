@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: paused 2026-10-31 at owner direction for travel; 0.3.0 complete; 0.3.1 preparation and queue preserved
+State: active 2026-11-03; unit-test conventions slice delivered for the owner's merge; 0.3.1 queue preserved
 
 Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@65501b3407db
 
@@ -12,9 +12,62 @@ Integration target: `main`
 
 Delivery method: ordinary maintenance PRs to `main`; owner merges. No records-only PR. The 0.3.0 release is published; website production promotion remains owner-operated.
 
-Branch association: `ws-maintenance/0.3.1-preparation` from main 31d44fa4; `release-0.3.0` closed after final publication and retained with its tags; `ws-maintenance/0.3.0-acceptance` merged through #332 and closed; earlier slice branches are historical
+Branch association: `ws-maintenance/test-conventions`, from `ws-maintenance/0.3.1-preparation` merged with main b3f10b7d, carrying the 0.3.1 preparation records to main with this slice; `ws-maintenance/0.3.1-preparation` from main 31d44fa4; `release-0.3.0` closed after final publication and retained with its tags; `ws-maintenance/0.3.0-acceptance` merged through #332 and closed; earlier slice branches are historical
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`, `R-CONSOLE-001`
+
+## Unit-test conventions — 2026-11-03
+
+The owner resumed from travel and ran `nox -s build` in the dogfood capsule:
+18 failures, 2711 passed, none a product regression. Thirteen tests read the
+owner's accepted claude-code channel through the launcher's mounted settings
+at `/etc/devcapsule/home/settings.toml`, which `settings_source` consults
+whenever a home has no settings of its own and no named home; the autouse
+isolation fixture moves HOME and XDG but deletes `DEVCAPSULE_CONFIG_HOME`,
+so inside a capsule every test's private home falls back to the mount.
+Four tests read the repository's own manifest and lock, which the owner's
+checkout carries migrated to schema 2 against a local base build. One
+scanned `tests/` for a forbidden word and hit a sample project's `.venv`.
+Verified: the thirteen pass with the launch context hidden, the four pass
+on a clean worktree of HEAD.
+
+The owner's diagnosis, accepted: these tests state no contract. A hard-coded
+value tests only that the file still says what it said; the precondition the
+assertion hinges on was inherited from the machine. Measured over the
+project's own suite: 1525 test functions, 61 with a docstring, 237 with more
+than twelve lines before the first assertion, 29 asserting a version or
+digest literal, 46 of 110 files named after a module; over the 0.3.0 cycle
+the tests changed 13.3k lines against 12.7k in the product, with 9 of 402
+commits touching tests alone. Pair review had endorsed the dissected test by
+name and dismissed its private monkeypatch as "confined to tests".
+
+Delivered on `ws-maintenance/test-conventions`, by owner order, as one PR
+to `main`:
+
+- *Unit Tests* in `WORKFLOW-LOCAL.md`: mirror placement, the Hoare triple
+  with the precondition established by the test, a docstring stating the
+  contract, a declared public surface as the precondition of testability,
+  the `legacy` marker on existing files that only shrink, fix-and-move on
+  touch, the reviewer's duty in the Pair Review Loop. The humane companion
+  carries the motivation.
+- `scripts/test_conventions.py`, run in the `tests` and `build` sessions
+  and as a `tests.yml` step against the PR's base SHA: placement, docstrings,
+  and legacy files compared with the merge base. Its own tests are the first
+  mirror file, `tests/unit/scripts/test_test_conventions.py`, 15 cases in
+  triple form. Against the suite: 110 legacy files, 1525 legacy tests, 0
+  breaches.
+- All 110 existing test files marked `legacy`; the marker registered in
+  `pyproject.toml`; the review brief template and the unit-tests guide
+  updated, the guide's stale fixture list corrected.
+
+Out of this slice, queued: the isolation fixture should set
+`DEVCAPSULE_CONFIG_HOME` so a capsule's mount is never consulted (joins the
+release-independent fixtures item); the shared `project`, `config` and
+`record` helpers imported across test modules move to the unit tree's
+conftest before legacy tests start moving; a workstream for the measured
+refactor of the legacy debt, module by module, with the owner choosing the
+module; frameworks for contracts and property-based testing to be decided
+inside its first slice.
 
 ## Paused for travel — 2026-10-31
 

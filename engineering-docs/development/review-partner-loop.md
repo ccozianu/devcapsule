@@ -122,6 +122,12 @@ Improve it on your branch, focused on exactly three things, in this order:
 3. Test coverage of the new and modified lines. Add tests where a branch is
    not exercised. Every test must fail if the line it covers is broken. Do
    not pad.
+4. Every new or changed test against *Unit Tests* in `WORKFLOW-LOCAL.md`:
+   it lives in the mirror and names its unit; it establishes its own
+   precondition, calls one public operation and asserts a promised
+   postcondition; its docstring states the contract. For each, name what
+   would make it fail for a reason that is not a bug. A finding here is a
+   finding; "confined to tests" does not dismiss it.
 
 Stay inside the PR's scope: <the scope in one sentence>. Do not change
 <the neighbours>. Do not widen <the contract>; if you believe it is wrong,
