@@ -41,8 +41,9 @@ the tests changed 13.3k lines against 12.7k in the product, with 9 of 402
 commits touching tests alone. Pair review had endorsed the dissected test by
 name and dismissed its private monkeypatch as "confined to tests".
 
-Delivered on `ws-maintenance/test-conventions`, by owner order, as one PR
-to `main`:
+Delivered on `ws-maintenance/test-conventions`, by owner order, as
+[PR #335](https://github.com/ccozianu/devcapsule/pull/335) to `main`;
+the owner merges:
 
 - *Unit Tests* in `WORKFLOW-LOCAL.md`: mirror placement, the Hoare triple
   with the precondition established by the test, a docstring stating the
