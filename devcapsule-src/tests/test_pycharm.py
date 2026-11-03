@@ -665,6 +665,28 @@ def test_host_docker_group_follows_where_the_socket_is_owned(tmp_path: Path, hos
     assert ("host-docker:x:" in groups) is (gid not in (0, host_user.gid))
 
 
+@pytest.mark.parametrize("host_os,effective", [(HostOs.LINUX, "host"), (HostOs.DARWIN, "bridge")])
+def test_host_networking_falls_back_to_bridge_on_macos(tmp_path: Path, capsys, host_os, effective) -> None:
+    # Docker Desktop's host network is its VM's; the contained desktop would
+    # listen where the Mac cannot reach it.
+    project = tmp_path / "project"
+    project.mkdir()
+    with patch("devcapsule.launch.pycharm._launcher.HostOs.current", return_value=host_os):
+        config = build_run_config(
+            PycharmRunOptions(
+                project=project,
+                project_mount="/workspace/project",
+                docker_mode=DockerMode.none,
+                network_mode="host",
+                runtime_plan=external_runtime_plan(),
+                use_image_process=True,
+            ),
+            base_env(tmp_path),
+        )
+    assert config.network_mode == effective
+    assert ("host networking is unavailable on macOS" in capsys.readouterr().err) is (effective == "bridge")
+
+
 def test_unauthorized_runtime_effects_keep_safe_docker_defaults(tmp_path: Path) -> None:
     project = tmp_path / "project"
     project.mkdir()

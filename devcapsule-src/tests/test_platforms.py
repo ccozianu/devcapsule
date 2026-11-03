@@ -68,6 +68,7 @@ def test_docker_spelling_and_architecture() -> None:
     assert Platform.LINUX_AMD64.architecture == "amd64"
 
 
+@pytest.mark.real_host_os
 def test_host_os_names_linux_and_macos_only(monkeypatch) -> None:
     _host(monkeypatch, "Darwin", "arm64")
     assert HostOs.current() is HostOs.DARWIN

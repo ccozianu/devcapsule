@@ -16,7 +16,7 @@ import sys
 import tempfile
 from threading import Event
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from pathlib import Path
 from typing import Callable, Mapping, Sequence
@@ -305,6 +305,11 @@ class PycharmRunConfig:
 # user joins group 0 to use it. A capsule granted the host daemon already
 # holds root on Docker Desktop's VM, so the group adds no authority.
 DOCKER_DESKTOP_SOCKET_GID = 0
+HOST_NETWORK_UNAVAILABLE_ON_MACOS = (
+    "devcapsule: warning: host networking is unavailable on macOS: Docker Desktop's host network "
+    "is its virtual machine's, out of the Mac's reach. This launch uses bridge networking; "
+    "services on the Mac are reachable from the capsule as host.docker.internal."
+)
 
 
 def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None) -> int:
@@ -824,6 +829,12 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         )
     if options.network_mode not in {"bridge", "host", "none"}:
         raise PycharmRunError("The Docker network mode must be bridge, host, or none.")
+    if options.network_mode == "host" and HostOs.current() is HostOs.DARWIN:
+        # Docker Desktop's host network is its VM's: a listener on loopback
+        # there is unreachable from the Mac (observed on 29.3.1), so the
+        # desktop and console would never answer. Bridge is the narrower grant.
+        print(HOST_NETWORK_UNAVAILABLE_ON_MACOS, file=sys.stderr)
+        options = replace(options, network_mode="bridge")
     if options.use_image_process and options.runtime_plan is None:
         raise PycharmRunError("Using the image process requires an external runtime plan.")
     contained_display = options.display_transport == CONTAINED_DISPLAY_TRANSPORT

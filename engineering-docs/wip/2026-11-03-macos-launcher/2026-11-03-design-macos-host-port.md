@@ -52,8 +52,8 @@ Found by reading the launch path from `run_pycharm` (`launch/pycharm/_launcher.p
 | Container detection | `host_daemon.py` | a marker file, not `/proc`; already correct (section 2.1) | none |
 | Runtime artifact | `runtime_artifact.py` | the launcher delivers its own executable into the capsule; a macOS binary cannot run there | slice 1: deliver `DEVCAPSULE_RUNTIME_PEX` when the launcher's own binary is foreign, refuse with the remedy otherwise; how a release ships the Linux runtime beside the macOS launcher is slice 4 |
 | Executable | `scripts/build-pex.sh` | `DEVCAPSULE_SCIE_PLATFORM=macos-aarch64` | slice 4 |
-| Ports | `--publish 127.0.0.1:<port>` | Docker Desktop forwards loopback publishes (*to verify*) | slice 3, by a live launch |
-| Project's host networking rule | `WORKFLOW-LOCAL.md` *Local Launch Networking* | Docker Desktop's host networking is an opt-in setting (*to verify*) | record the fallback when a launch needs it |
+| Ports | `--publish 127.0.0.1:<port>` | forwarded to the Mac's loopback (section 2.1) | none |
+| Host networking | `_launcher.py` `build_run_config` | a listener on loopback under `--network host` is unreachable from the Mac; a bridge publish to `127.0.0.1` answers (section 2.1) | slice 3: on macOS an authorized `network host` launches on bridge with a warning; the Mac's services are `host.docker.internal`. This is the concrete reason and fallback *Local Launch Networking* asks to record, and a product default for the owner to confirm |
 
 ### 2.1 Observed on this Mac, 2026-11-03
 
@@ -73,6 +73,15 @@ Docker Desktop 29.3.1, macOS 27.0, arm64, `desktop-linux` context.
   host's `staff` (20) does not collide with the image's `dialout` (20).
 - **`/proc`.** `host_daemon.in_container()` tests a marker file; nothing on the host path reads
   `/proc`. The row above is void.
+- **Networking.** A `linux/amd64` HTTP server bound to `127.0.0.1` under `--network host` is
+  unreachable from the Mac (`curl` HTTP 000); the same server on bridge, published to
+  `127.0.0.1:18766`, answers HTTP 200. `host.docker.internal` resolves inside a capsule.
+- **Executables.** `build-pex.sh` with `DEVCAPSULE_SCIE_PLATFORM=macos-aarch64` builds natively
+  here: a 31 MB Mach-O arm64 scie, CPython 3.12.14, that answers `version --json` and
+  `project config show`. The `linux-x86_64` runtime, 40 MB, builds inside a `linux/amd64`
+  `python:3.12-slim` container from an export of the commit. With both, `runtime_artifact()`
+  delivers the Linux one, and without `DEVCAPSULE_RUNTIME_PEX` it refuses with the remedy.
+- **Disk.** Docker Desktop's VM disk is 32 GB with 5.9 GB free; the base is 0.89 GB compressed.
 - **Test suite.** Before slice 1: 411 failed and 461 errors of 2,743. After the platform
   split: 30 failed and 24 errors, in four groups: the supervisor (container-side,
   `signal.sigwaitinfo` is Linux only); Unix socket paths beyond macOS's 104 bytes under the

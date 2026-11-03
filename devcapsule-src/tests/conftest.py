@@ -38,6 +38,22 @@ def host_launch_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
+@pytest.fixture(autouse=True)
+def linux_host_by_default(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make host-mechanism tests take the Linux path wherever they run.
+
+    The launcher takes macOS paths for the host-browser bridge, host
+    networking and the Docker socket's group. Tests of the Linux behaviour
+    would otherwise fail on a Mac; tests of the macOS behaviour patch
+    ``HostOs.current`` themselves. Docker-marked tests keep the real host.
+    """
+
+    if any(request.node.get_closest_marker(marker) for marker in (*DOCKER_MARKERS, "real_host_os")):
+        return
+    from devcapsule.platforms import HostOs
+    monkeypatch.setattr(HostOs, "current", classmethod(lambda cls: HostOs.LINUX))
+
+
 DOCKER_MARKERS = ("e2e", "base_build_e2e", "recursive_e2e", "contributor_e2e", "ide_smoke")
 
 
