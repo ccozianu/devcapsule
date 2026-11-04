@@ -112,6 +112,14 @@ arm64 on arm"). `Platform.current()` is now the native platform, and init asks t
 elicitor before the identity questions: Enter, or a run without a terminal, takes it. A
 project with a lock the host runs is not asked, and a Linux host never is.
 
+**2026-11-04, on today's `main`.** Rebased onto `main` at 7ab3adcd, which brought the
+unit-test conventions of WORKFLOW-LOCAL.md: a legacy test file only loses tests. Every test
+this branch added or changed now lives in the `tests/unit` mirror with a contract docstring;
+the two end-to-end files it changed are marked `e2e` at module level; the Linux-only skips
+it had added to three legacy files are gone, so on a Mac those tests fail as they do on
+`main`. The gate: 108 legacy files holding 1,461 tests, 22 conforming files, no breach.
+In a `linux/amd64` container, 2,821 passed and 5 failed, the five that fail on `main` there.
+
 ## Next Resumable Task
 
 Publish this workstream and `macos-launcher` once the SSH agent holds a key, and hand both
