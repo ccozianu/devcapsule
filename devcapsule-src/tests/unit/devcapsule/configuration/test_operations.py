@@ -50,7 +50,8 @@ def test_init_platform_adds_that_lock_beside_the_projects_other(amd64_project_on
                                          interactive=False))
     assert locks_of(amd64_project_on_apple_silicon) == ["devcapsule.linux-amd64.lock", "devcapsule.linux-arm64.lock"]
     arm64_lock = load_toml(amd64_project_on_apple_silicon / ".devcapsule" / "devcapsule.linux-arm64.lock")
-    assert MATRICES[Platform.LINUX_ARM64].base_unpublished(arm64_lock["base"]["reference"])
+    (arm64_base,) = MATRICES[Platform.LINUX_ARM64].base_images()
+    assert arm64_lock["base"]["reference"] == arm64_base.reference
 
 
 @pytest.mark.own_host_patches
@@ -77,8 +78,7 @@ def test_init_asks_a_host_of_two_platforms_the_native_one_by_default(
     project = tmp_path / "project"
     project.mkdir()
     asked = init_answering(project, f"{answer}\n" + "\n" * 8)
-    assert ("Capsule platform for this project: linux-arm64 (native; its base is built locally) "
-            "or linux-amd64 (emulated) [linux-arm64]:") in asked
+    assert "Capsule platform for this project: linux-arm64 (native) or linux-amd64 (emulated) [linux-arm64]:" in asked
     assert locks_of(project) == [f"devcapsule.{expected}.lock"]
 
 

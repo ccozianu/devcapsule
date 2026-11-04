@@ -28,13 +28,6 @@ def test_the_arm64_base_is_its_own_recipe_11_pin() -> None:
     assert base.reference not in {image.reference for image in AMD64.base_images()}
 
 
-def test_only_the_arm64_base_is_unpublished() -> None:
-    """The arm64 base is not published yet; every amd64 base is."""
-    (arm64,) = ARM64.base_images()
-    assert ARM64.base_unpublished(arm64.reference)
-    assert not any(AMD64.base_unpublished(image.reference) for image in AMD64.base_images())
-
-
 @pytest.mark.parametrize("ide", ["frontend-ide", "vscode-ide", "eclipse-ide", "python-ide", "java-ide"])
 def test_each_ide_smoked_natively_on_arm64_resolves_verified(ide: str) -> None:
     """An IDE with a native arm64 smoke resolves on the arm64 matrix without an unverified combination."""
