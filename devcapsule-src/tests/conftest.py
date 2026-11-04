@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
 from pathlib import Path
 import sys
 import tempfile
@@ -52,6 +53,24 @@ def linux_host_by_default(request: pytest.FixtureRequest, monkeypatch: pytest.Mo
         return
     from devcapsule.platforms import HostOs
     monkeypatch.setattr(HostOs, "current", classmethod(lambda cls: HostOs.LINUX))
+
+
+@pytest.fixture(autouse=True)
+def amd64_capsules_by_default(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Make capsule-platform tests run as linux-amd64 wherever they run.
+
+    An Apple Silicon host prefers linux-arm64; the suite's fixtures and
+    golden locks are linux-amd64. Tests of other platforms patch
+    ``Platform.runnable`` themselves; Docker-marked and ``real_host_os``
+    tests keep the real host. No project selection outlives its test.
+    """
+
+    from devcapsule.platforms import Platform
+    Platform.clear_selection()
+    if not any(request.node.get_closest_marker(marker) for marker in (*DOCKER_MARKERS, "real_host_os")):
+        monkeypatch.setattr(Platform, "runnable", classmethod(lambda cls: (Platform.LINUX_AMD64,)))
+    yield
+    Platform.clear_selection()
 
 
 DOCKER_MARKERS = ("e2e", "base_build_e2e", "recursive_e2e", "contributor_e2e", "ide_smoke")

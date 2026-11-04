@@ -147,3 +147,25 @@ def test_development_mode_removes_only_its_own_inherited_link(tmp_path, monkeypa
     else:
         assert command.read_text() == "development command"
         assert command.is_symlink() == (existing == "development-link")
+
+
+@pytest.mark.real_host_os
+def test_a_runtime_directory_serves_each_capsule_platform(tmp_path: Path, monkeypatch) -> None:
+    # Apple Silicon runs both platforms; one setting names both runtimes, and
+    # the project's locks choose which one a launch delivers.
+    _apple_silicon(monkeypatch)
+    monkeypatch.setenv("SCIE", str(native(tmp_path / "devcapsule-macos", MACH_O_ARM64)))
+    runtimes = tmp_path / "runtimes"
+    runtimes.mkdir()
+    amd64 = native(runtimes / "devcapsule-linux-amd64", ELF_AMD64)
+    arm64 = native(runtimes / "devcapsule-linux-arm64", ELF_ARM64)
+    monkeypatch.setenv("DEVCAPSULE_RUNTIME_PEX", str(runtimes))
+    assert runtime_artifact() == arm64
+    project = tmp_path / "project"
+    (project / ".devcapsule").mkdir(parents=True)
+    (project / ".devcapsule" / "devcapsule.linux-amd64.lock").write_text("")
+    platforms.Platform.select_for_project(project)
+    assert runtime_artifact() == amd64
+    amd64.unlink()
+    with pytest.raises(CliError, match="directory holding it as devcapsule-linux-amd64"):
+        runtime_artifact()

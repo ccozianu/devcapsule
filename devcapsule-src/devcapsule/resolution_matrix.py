@@ -1702,12 +1702,27 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
     },
 )
 
+# linux-arm64 offers the same vocabulary and the same materialization
+# recipes as linux-amd64; its bases, pins and verified edges are its own,
+# because a validation on one architecture establishes nothing on another.
+_LINUX_ARM64_MATRIX = ResolutionMatrix(
+    platform=Platform.LINUX_ARM64,
+    matrix_version=_MATRIX_VERSION,
+    bases=(),
+    components={},
+    edges=(),
+    couplings=(),
+    capability_table=_LINUX_AMD64_MATRIX._capability_table,
+    materialization=_LINUX_AMD64_MATRIX._materialization,
+)
+
 # The map is the platform authority: its keys are the supported platforms,
 # total over the Platform enum (D-0006/D-0007). Clients index it with a key
 # from Platform.current() or Platform.parse(), never one built from parts.
 MATRICES: Mapping[Platform, ResolutionMatrix] = MappingProxyType(
     {
         Platform.LINUX_AMD64: _LINUX_AMD64_MATRIX,
+        Platform.LINUX_ARM64: _LINUX_ARM64_MATRIX,
     }
 )
 

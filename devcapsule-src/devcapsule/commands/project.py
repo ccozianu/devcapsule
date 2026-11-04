@@ -2577,6 +2577,7 @@ class ProjectCommand(Group):
             context = replace(context, capsule_root=runtime_configuration.capsule_project_root(Path(".")))
         if access.needs_launcher:
             runtime_configuration.require_launcher(context.start_path(), tokens)
+        _select_capsule_platform(context)
         return context
 
     @classmethod
@@ -2594,6 +2595,25 @@ class ProjectCommand(Group):
             RecursiveE2EGroup.name: RecursiveE2EGroup,
             ProjectRunCommand.name: ProjectRunCommand,
         }
+
+
+def _select_capsule_platform(context: ProjectCommandContext) -> None:
+    """Run the selected project as the platform it is locked for on this host.
+
+    See ``Platform.select_for_project``: where a host runs two platforms, the
+    project's locks choose. Without an enclosing project, as for ``init`` in
+    a fresh directory, the host's preferred platform stands.
+    """
+    from devcapsule.platforms import Platform, UnsupportedPlatformError
+
+    try:
+        root: Path | None = discover_project(context.start_path())
+    except ProjectConfigurationError:
+        root = None
+    try:
+        Platform.select_for_project(root)
+    except UnsupportedPlatformError:
+        pass  # Each platform-dependent step reports it in its own terms.
 
 
 def _capsule_access(leaf: type[Command]) -> CapsuleAccess:

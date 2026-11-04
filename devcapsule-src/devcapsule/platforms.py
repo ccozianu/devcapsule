@@ -13,6 +13,7 @@ of DevCapsule's.
 
 from __future__ import annotations
 
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from enum import StrEnum
 import os
@@ -56,12 +57,17 @@ class HostOs(StrEnum):
             ) from None
 
 
-# The capsule platform a non-Linux host runs. Apple Silicon runs linux-amd64
-# under Docker's emulation until a linux-arm64 platform exists.
-_CAPSULE_PLATFORM_OF_HOST = {
-    "darwin-arm64": "linux-amd64",
-    "darwin-amd64": "linux-amd64",
+# The capsule platforms each host runs, preferred first. A Linux host runs its
+# own platform. Apple Silicon runs linux-arm64 natively and linux-amd64 under
+# Docker Desktop's emulation; an Intel Mac runs linux-amd64.
+_CAPSULE_PLATFORMS_OF_HOST: Mapping[str, tuple[str, ...]] = {
+    "darwin-arm64": ("linux-arm64", "linux-amd64"),
+    "darwin-amd64": ("linux-amd64",),
 }
+
+# The platform selected for the project this process works on, if any; see
+# Platform.select_for_project.
+_selected_platform: ContextVar[Platform | None] = ContextVar("devcapsule_capsule_platform", default=None)
 
 
 class Platform(StrEnum):
@@ -80,17 +86,51 @@ class Platform(StrEnum):
     """
 
     LINUX_AMD64 = "linux-amd64"
+    LINUX_ARM64 = "linux-arm64"
 
     @classmethod
     def current(cls) -> Platform:
-        """The platform this host runs capsules as.
+        """The platform this process runs capsules as.
 
-        On Linux, the host's own platform. On macOS, the Linux platform
-        Docker Desktop runs, natively or under emulation.
+        The platform selected for its project, when one was; otherwise the
+        host's preferred platform: on Linux the host's own, on Apple Silicon
+        linux-arm64.
         """
 
+        return _selected_platform.get() or cls.runnable()[0]
+
+    @classmethod
+    def runnable(cls) -> tuple[Platform, ...]:
+        """The platforms this host runs capsules as, preferred first."""
+
         host = f"{host_platform.system().lower()}-{host_architecture()}"
-        return cls.parse(_CAPSULE_PLATFORM_OF_HOST.get(host, host))
+        return tuple(cls.parse(key) for key in _CAPSULE_PLATFORMS_OF_HOST.get(host, (host,)))
+
+    @classmethod
+    def select_for_project(cls, root: Path | None) -> Platform:
+        """Select, for this process, the platform the project at ``root`` runs as.
+
+        The first platform this host runs that the project has a lock for;
+        without one, as for a project not yet initialized, the preferred
+        platform. Apple Silicon so runs a project locked for linux-arm64
+        natively and one locked only for linux-amd64 under emulation.
+        """
+
+        runnable = cls.runnable()
+        locks = root / ".devcapsule" if root is not None else None
+        selected = next(
+            (platform for platform in runnable
+             if locks is not None and (locks / f"devcapsule.{platform}.lock").is_file()),
+            runnable[0],
+        )
+        _selected_platform.set(selected)
+        return selected
+
+    @classmethod
+    def clear_selection(cls) -> None:
+        """Forget the project selection; ``current()`` is the host's preference again."""
+
+        _selected_platform.set(None)
 
     @property
     def architecture(self) -> str:

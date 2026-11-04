@@ -23,7 +23,9 @@ def runtime_artifact() -> Path:
     A packaged launcher delivers itself when its binary runs on the capsule
     platform. A launcher that cannot, a macOS executable launching Linux
     capsules, delivers the runtime ``DEVCAPSULE_RUNTIME_PEX`` names. A
-    source-form launcher must name its built runtime the same way.
+    source-form launcher must name its built runtime the same way. The
+    variable names one executable, or a directory holding one per capsule
+    platform as ``devcapsule-<platform>``, for a host that runs two.
     """
 
     capsule = Platform.current()
@@ -31,6 +33,15 @@ def runtime_artifact() -> Path:
     # archive too. sys.argv[0] alone can name the extracted console script.
     own = os.environ.get("SCIE") or os.environ.get("PEX")
     explicit = os.environ.get(RUNTIME_PEX_ENV)
+    if explicit and Path(explicit).expanduser().is_dir():
+        directory = Path(explicit).expanduser()
+        explicit = str(directory / f"devcapsule-{capsule}")
+        if not Path(explicit).is_file() and executable_platform(_resolved(own or sys.argv[0])) != str(capsule):
+            raise CliError(
+                f"{RUNTIME_PEX_ENV} names {directory}, which holds no devcapsule-{capsule}: "
+                f"this launch runs a {capsule} capsule. Put a {capsule} DevCapsule executable of the same "
+                f"version there, or a directory holding it as devcapsule-{capsule}."
+            )
     path = _resolved(own or explicit or sys.argv[0])
     if own and explicit and executable_platform(path) not in (None, str(capsule)):
         path = _resolved(explicit)
@@ -46,7 +57,8 @@ def runtime_artifact() -> Path:
     if found not in (None, str(capsule)):
         raise CliError(
             f"{path} is a {found} executable and cannot run inside {capsule} capsules. "
-            f"Set {RUNTIME_PEX_ENV} to a {capsule} DevCapsule executable of the same version."
+            f"Set {RUNTIME_PEX_ENV} to a {capsule} DevCapsule executable of the same version, "
+            f"or to a directory holding it as devcapsule-{capsule}."
         )
     return path
 
