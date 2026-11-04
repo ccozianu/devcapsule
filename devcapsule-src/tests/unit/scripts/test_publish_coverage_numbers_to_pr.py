@@ -74,6 +74,22 @@ def test_upsert_replaces_only_the_block_between_the_markers() -> None:
     assert publish.upsert(f"above\n\n{old}\n\nbelow\n", new) == f"above\n\n{new}\n\nbelow\n"
 
 
+def test_markers_quoted_in_the_authors_prose_are_not_the_block() -> None:
+    """Precondition: a description that mentions both markers inside a sentence and has no block.
+    Action: upsert. Postcondition: the sentence is intact and the block is appended after it."""
+    prose = f"It renders a block between `{publish.BEGIN}` and `{publish.END}` with the figures.\n"
+    block = f"{publish.BEGIN}\nnumbers\n{publish.END}"
+    assert publish.upsert(prose, block) == f"{prose}\n{block}"
+
+
+def test_a_change_outside_the_measured_package_says_so_instead_of_a_percentage() -> None:
+    """Precondition: diff-cover measured no changed line. Action: render.
+    Postcondition: the changed-lines cell says none measured and names the package; no percent sign in it."""
+    block = publish.render(publish.Numbers(82.456, 16012, 19488, 100, 0, 0), "https://ci/run/1")
+    cell = next(line for line in block.splitlines() if line.startswith("| Changed lines covered"))
+    assert "none measured: the change touches no line of `devcapsule`" in cell and "%" not in cell
+
+
 def test_upsert_on_an_empty_description_is_the_block_alone() -> None:
     """Precondition: the API returned no body. Action: upsert. Postcondition: the block alone."""
     block = f"{publish.BEGIN}\nnumbers\n{publish.END}"

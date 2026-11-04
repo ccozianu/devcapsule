@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import urllib.request
 from collections.abc import Mapping
@@ -35,7 +36,9 @@ __all__ = ["Numbers", "read_numbers", "render", "upsert", "main"]
 
 BEGIN = "<!-- coverage-numbers:begin -->"
 END = "<!-- coverage-numbers:end -->"
-"""The markers that bound the block; everything between them is replaced on each run."""
+"""The markers that bound the block; each stands alone on its line, so a marker quoted in prose is not a block."""
+
+_BLOCK = re.compile(rf"^{re.escape(BEGIN)}\n.*?^{re.escape(END)}$", re.MULTILINE | re.DOTALL)
 
 _API_VERSION = "2022-11-28"
 
@@ -86,22 +89,31 @@ def render(numbers: Numbers, run_url: str) -> str:
         "",
         "| | |",
         "|---|---|",
-        f"| Changed lines covered | **{numbers.diff_percent}%** "
-        f"({numbers.diff_lines - numbers.diff_uncovered} of {numbers.diff_lines} measured changed lines; "
-        f"{numbers.diff_uncovered} uncovered) |",
+        "| Changed lines covered | " + _changed_lines(numbers) + " |",
         f"| Overall `devcapsule` | **{numbers.overall_percent:.1f}%** "
         f"({numbers.covered_statements:,} of {numbers.statements:,} statements) |",
         END,
     ])
 
 
+def _changed_lines(numbers: Numbers) -> str:
+    """The changed-lines cell; a change outside the measured package says so instead of claiming 100% of nothing."""
+    if numbers.diff_lines == 0:
+        return "none measured: the change touches no line of `devcapsule`"
+    return (f"**{numbers.diff_percent}%** ({numbers.diff_lines - numbers.diff_uncovered} of {numbers.diff_lines} "
+            f"measured changed lines; {numbers.diff_uncovered} uncovered)")
+
+
 def upsert(body: str | None, block: str) -> str:
-    """The description with the block replaced between the markers, or appended after a blank line."""
+    """The description with its block replaced, or the block appended after a blank line.
+
+    Only a block whose markers each stand alone on a line is replaced; the
+    markers quoted inside the author's prose are prose.
+    """
     text = body or ""
-    start = text.find(BEGIN)
-    end = text.find(END, start)
-    if start != -1 and end != -1:
-        return text[:start] + block + text[end + len(END):]
+    found = _BLOCK.search(text)
+    if found:
+        return text[:found.start()] + block + text[found.end():]
     return block if not text.strip() else text.rstrip("\n") + "\n\n" + block
 
 
