@@ -24,7 +24,8 @@ request's summary, and later in the merge commit's detail. CI already
 computed both, the overall figure into the job summary and diff-cover's
 report into an artifact and annotations; nothing reached the pull request.
 
-Delivered on `ws-maintenance/coverage-in-pr` as a PR to `main`:
+Delivered on `ws-maintenance/coverage-in-pr` as
+[PR #336](https://github.com/ccozianu/devcapsule/pull/336) to `main`:
 `scripts/publish_coverage_numbers_to_pr.py` reads `coverage.json` and
 `diff-cover.json`, renders one block between `<!-- coverage-numbers:begin -->`
 and `<!-- coverage-numbers:end -->`, and replaces that block in the pull
