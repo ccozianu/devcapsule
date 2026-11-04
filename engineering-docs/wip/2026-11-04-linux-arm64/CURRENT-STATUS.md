@@ -4,7 +4,7 @@ Mnemonic: `linux-arm64`
 
 Start date: 2026-11-04
 
-State: active; slices 1 to 3 and the review's fixes committed 2026-11-04; native smokes pending Docker
+State: active; slices 1 to 4 done 2026-11-04, six IDEs running natively; waits on publication and the owner
 
 Branch association: `ws-linux-arm64/capsules`, forked from local `main` at b3f10b7d, with
 `ws-macos-launcher/host-port` merged in as its foundation
@@ -66,9 +66,8 @@ Found for `maintenance`, not fixed here: the amd64 Eclipse closure's `libsoup-3.
 `libsoup-3.0-common` 3.4.4-5ubuntu0.8 URLs return 404, since Ubuntu removed that version from
 every noble pocket on 2026-10-08, so Eclipse cannot be acquired afresh on amd64.
 
-**2026-11-04, review and fixes.** The human ran the `/review` skill of `~/work/teachme` on all
-changes since `main`, through a separate agent: rejected, seven high, fourteen medium, three
-low findings. The human said "fix all"; the design note's section 5 records them, and
+**2026-11-04, review and fixes.** The human had all changes since `main` reviewed by a
+separate agent: rejected, seven high, fourteen medium, three low findings. The human said "fix all"; the design note's section 5 records them, and
 section 3 the design they produced. In short: a Mac creates `linux-amd64` projects again and
 runs a project as the first platform it has a lock for; the configuration answers which
 (`storage.project_platform`), and below it the lock's platform is passed down explicitly; a
@@ -89,10 +88,28 @@ The arm64 run fails 14 console-channel tests whose real `devcapsule` subprocess 
 arm64 host while the suite's fixtures are amd64: a limit of the suite on ARM Linux, not CI.
 The IDE smoke takes `DEVCAPSULE_SMOKE_PLATFORM` to create its project for a platform.
 
+**2026-11-04, native smokes and a second review.** One at a time, each after a check of free
+space and followed by removing its images, every IDE passed natively as `linux-arm64` with
+the local base: VSCodium, VS Code, Eclipse, PyCharm, Rider and IntelliJ IDEA, runs
+20261104T120158Z-e8f78f to 20261104T121007Z-289109. The JetBrains IDEs were seen at their
+splash window. The six are the `linux-arm64` matrix's first verified edges; the .NET SDK and
+Playwright rode along unexercised and stay unverified. A second review of all changes since
+`main`, and a review against the codebase's own conventions, followed; the design note's
+section 5 records both, and 9d285a5a their fixes: `project --platform` and its module-global
+selection are gone and `project init --platform` adds a lock; an owner's edit regenerates
+every lock; the lock's platform is required below the configuration; the sudo-policy sweep
+spares a concurrent launch's volume; comments, messages and tests follow the surrounding
+code. Unit suite on this Mac: 2,760 passed, 25 skipped; in a `linux/amd64` container, 2,779
+passed and 5 failed, the same five recursive tests that fail on `main` there, for want of a
+host X11 directory, a non-root user and a Docker group. From 9d285a5a, VSCodium passed
+natively (20261104T130201Z-392364, created with `init --platform linux-arm64` and verified
+without `--unverified`) and under emulation (20261104T130042Z-36f56a).
+
 ## Next Resumable Task
 
-Record the rerun smokes; add arm64 verified edges for the surfaces that pass, with their
-evidence, so resolution stops needing `--unverified`; then the documentation slice.
+Publish this workstream and `macos-launcher` once the SSH agent holds a key, and hand both
+pull requests to the human, the macOS one first. The owner's rulings and the arm64 base's
+publication follow.
 
 ## Open Threads
 
@@ -107,6 +124,8 @@ evidence, so resolution stops needing `--unverified`; then the documentation sli
   can be pushed.
 - Docker access from an arm64 capsule reaches an arm64 daemon either way; on amd64 capsules
   under emulation it also defaults to arm64 images (`docs/platforms/macos.md`).
+- A checkout keeps one base-image answer. Deleting the arm64 lock to return to emulation
+  needs the base answered again, as the macOS page says.
 
 ## Document Index
 
