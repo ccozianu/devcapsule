@@ -113,14 +113,6 @@ _CAPSULE_PLATFORMS_OF_HOST: Mapping[tuple[HostOs, str], tuple[str, ...]] = {
     (HostOs.DARWIN, "amd64"): ("linux-amd64",),
 }
 
-# The platform a host creates a new project for, where it is not the native
-# one. Apple Silicon creates linux-amd64 projects while the linux-arm64 base
-# is unpublished; a developer adds a linux-arm64 lock deliberately
-# (project init --platform linux-arm64), and the project then runs as it.
-_NEW_PROJECT_PLATFORM_OF_HOST: Mapping[tuple[HostOs, str], str] = {
-    (HostOs.DARWIN, "arm64"): "linux-amd64",
-}
-
 # The platform whose executables carry each ELF e_machine value.
 _PLATFORM_OF_ELF_MACHINE: Mapping[int, str] = {0x3E: "linux-amd64", 0xB7: "linux-arm64"}
 
@@ -136,9 +128,9 @@ class Platform(StrEnum):
     never renamed.
 
     A client never constructs a key from parts. Host detection gives
-    ``current()`` (the platform this host creates a project for) and
-    ``runnable()`` (every platform it runs); ``parse()`` gives the platform a
-    lock records, and ``of_elf_machine()`` the one an executable is for.
+    ``current()`` (the platform this host runs natively) and ``runnable()``
+    (every platform it runs); ``parse()`` gives the platform a lock records,
+    and ``of_elf_machine()`` the one an executable is for.
     Which platform a project runs as is the configuration's question
     (``configuration.storage.project_platform``), answered from its locks.
     """
@@ -148,15 +140,9 @@ class Platform(StrEnum):
 
     @classmethod
     def current(cls) -> Platform:
-        """The platform this host creates a new project for.
+        """The platform this host runs natively, and a new project's unless the developer chooses another."""
 
-        On Linux the host's own. On a Mac linux-amd64, natively on Intel and
-        under Docker Desktop's emulation on Apple Silicon.
-        """
-
-        host = (HostOs.current(), host_architecture())
-        created = _NEW_PROJECT_PLATFORM_OF_HOST.get(host)
-        return cls.parse(created) if created is not None else cls.runnable()[0]
+        return cls.runnable()[0]
 
     @classmethod
     def runnable(cls) -> tuple[Platform, ...]:

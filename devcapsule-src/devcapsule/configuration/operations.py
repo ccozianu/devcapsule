@@ -27,7 +27,7 @@ from devcapsule.elicitation import SOURCE_EXISTING_RECORD, SOURCE_COMMAND_LINE, 
 from devcapsule.environment_realization import required_local_image
 from devcapsule.materialization import validate_base_image
 from devcapsule.project import sanitize_name
-from devcapsule.platforms import Platform
+from devcapsule.platforms import Platform, UnsupportedPlatformError
 from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix
 
 from .trust import HomeTrust
@@ -278,7 +278,8 @@ class InitializeRequest:
     allow_unverified: bool = False
     # None: decide from whether stdin is a terminal.
     interactive: bool | None = None
-    # The platform whose lock to write; None: the one the project runs as here.
+    # The platform whose lock to write; None: the one the project runs as
+    # here, or, for a new project on a host of several platforms, asked.
     platform: Platform | None = None
 
 
@@ -408,7 +409,14 @@ def initialize_project(
         raise ProjectConfigurationError(f"Project directory does not exist: {root}")
     require_settled(root)
     manifest_path = root / ".devcapsule" / "devcapsule.toml"
-    platform = _platform_to_lock(root, request.platform)
+    elicitor = Elicitor(
+        _init_command_line(request),
+        interactive=request.interactive,
+        input_stream=input_stream,
+        output_stream=output_stream,
+    )
+    # The platform comes first: its matrix answers every later question.
+    platform = _elicit_platform(elicitor, root)
     lock_path = platform_lock_path(root, platform)
     matrix = MATRICES[platform]
 
@@ -453,12 +461,6 @@ def initialize_project(
                 "the 'config' family changes individual answers."
             )
 
-    elicitor = Elicitor(
-        _init_command_line(request),
-        interactive=request.interactive,
-        input_stream=input_stream,
-        output_stream=output_stream,
-    )
     identity = _elicit_identity(elicitor, root, existing_manifest, matrix)
     authored = frozenset(answer.name for answer in request.answers if answer.justification is not None)
     # Fail now if identity or requirements are unanswered: the lock cannot be
@@ -581,25 +583,64 @@ def initialize_project(
     )
 
 
-def _platform_to_lock(root: Path, named: Platform | None) -> Platform:
-    """The platform whose lock init writes: ``named``, or the one the project runs as here.
+def _elicit_platform(elicitor: Elicitor, root: Path) -> Platform:
+    """The platform whose lock init writes, asked when this host runs several.
 
-    Init completes the checkout for the lock it writes, so a named platform
-    must be the one the project runs as once that lock exists.
+    A project with a lock this host runs keeps that platform unless
+    ``--platform`` names another; otherwise a host of one platform takes it,
+    and a host of several asks, its native platform the default and the
+    unattended answer. Init completes the checkout for the lock it writes, so
+    the platform must be the one the project runs as once that lock exists.
     """
-    if named is None:
-        return project_platform(root)
     runnable = Platform.runnable()
-    if named not in runnable:
-        names = ", ".join(str(member) for member in runnable)
-        raise ProjectConfigurationError(f"This host runs {names} capsules, not {named}.")
-    runs_as = next(platform for platform in runnable if platform is named or platform_lock_path(root, platform).is_file())
-    if runs_as is not named:
+    native = runnable[0]
+    locked = next((platform for platform in runnable if platform_lock_path(root, platform).is_file()), None)
+    choices = " or ".join(
+        f"{platform} ({'native' if platform is native else 'emulated'}"
+        + ("; its base is built locally" if _base_unpublished(MATRICES[platform]) else "") + ")"
+        for platform in runnable
+    )
+    answer = elicitor.seek(
+        "platform",
+        description=f"Capsule platform for this project: {choices}",
+        remedy="--platform PLATFORM",
+        existing=str(locked) if locked is not None else None,
+        default=str(native) if len(runnable) == 1 else None,
+        empty_answer=str(native),
+        omitted_answer=str(native),
+        validate=_platform_validator(runnable),
+    )
+    if answer is None:  # Input ended at the question.
+        elicitor.finish(require_all_consumed=False)
+        raise AssertionError("an unanswered platform question must fail the elicitation")
+    platform = Platform.parse(answer.value)
+    runs_as = next(candidate for candidate in runnable
+                   if candidate is platform or platform_lock_path(root, candidate).is_file())
+    if runs_as is not platform:
         raise ProjectConfigurationError(
             f"On this host the project runs as {runs_as}, which it has a lock for, "
-            f"so init cannot add a {named} lock here."
+            f"so init cannot add a {platform} lock here."
         )
-    return named
+    return platform
+
+
+def _platform_validator(runnable: tuple[Platform, ...]) -> Any:
+    def validate(value: str) -> str:
+        try:
+            candidate = Platform.parse(value.strip())
+        except UnsupportedPlatformError as exc:
+            raise ProjectConfigurationError(str(exc)) from exc
+        if candidate not in runnable:
+            names = ", ".join(str(platform) for platform in runnable)
+            raise ProjectConfigurationError(f"This host runs {names} capsules, not {candidate}.")
+        return str(candidate)
+
+    return validate
+
+
+def _base_unpublished(matrix: ResolutionMatrix) -> bool:
+    """Whether every base ``matrix`` pins is still unpublished."""
+    return all(matrix.base_unpublished(base.reference) for base in matrix.base_images())
 
 
 def _initialize_report(
@@ -808,6 +849,8 @@ def _init_command_line(request: InitializeRequest) -> dict[AnswerKey, str]:
         command_line[("offer", "value")] = " ".join(request.offer)
     if request.ide is not None:
         command_line[("ide", "value")] = request.ide
+    if request.platform is not None:
+        command_line[("platform", "value")] = str(request.platform)
     for key, value in (
         ("name", request.project_name),
         ("slug", request.slug),

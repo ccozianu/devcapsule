@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 from pathlib import Path
 
 import pytest
@@ -25,7 +26,7 @@ def _project(root: Path, *locked: str) -> Path:
 
 @pytest.mark.own_host_patches
 @pytest.mark.parametrize("locked,expected", [
-    ((), "linux-amd64"),
+    ((), "linux-arm64"),
     (("linux-amd64",), "linux-amd64"),
     (("linux-arm64",), "linux-arm64"),
     (("linux-amd64", "linux-arm64"), "linux-arm64"),
@@ -34,7 +35,7 @@ def test_apple_silicon_runs_a_project_as_the_platform_it_is_locked_for(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, locked: tuple[str, ...], expected: str,
 ) -> None:
     # Natively when the project has an arm64 lock, else its amd64 lock under
-    # emulation; a project without a lock is created amd64.
+    # emulation; a project without a lock is created for the native platform.
     on_host(monkeypatch, "Darwin", "arm64")
     assert project_platform(_project(tmp_path / "project", *locked)) is Platform.parse(expected)
 
@@ -52,7 +53,8 @@ def test_init_platform_adds_that_lock_and_the_project_runs_as_it(tmp_path: Path,
     on_host(monkeypatch, "Darwin", "arm64")
     project = tmp_path / "project"
     project.mkdir()
-    initialize_project(InitializeRequest(directory=project, creator="owner@example.test", interactive=False))
+    initialize_project(InitializeRequest(directory=project, creator="owner@example.test",
+                                         platform=Platform.LINUX_AMD64, interactive=False))
     initialize_project(InitializeRequest(directory=project, platform=Platform.LINUX_ARM64, interactive=False))
     locks = sorted(path.name for path in (project / ".devcapsule").glob("*.lock"))
     assert locks == ["devcapsule.linux-amd64.lock", "devcapsule.linux-arm64.lock"]
@@ -81,3 +83,48 @@ def test_init_platform_refuses_a_platform_this_host_cannot_run(
     assert "this host runs linux-amd64 capsules, not linux-arm64" in capsys.readouterr().err
     assert cli.main(["project", "--path", str(project), "init", "--platform", "windows-amd64"]) != 0
     assert "Unsupported platform 'windows-amd64'" in capsys.readouterr().err
+
+
+def _init_answering(project: Path, answers: str) -> str:
+    """Run an interactive init of ``project``, answering each question in turn; return what it asked."""
+    asked = io.StringIO()
+    initialize_project(
+        InitializeRequest(directory=project, creator="owner@example.test", interactive=True),
+        input_stream=io.StringIO(answers), output_stream=asked,
+    )
+    return asked.getvalue()
+
+
+@pytest.mark.own_host_patches
+@pytest.mark.parametrize("answer,expected", [("", "linux-arm64"), ("linux-amd64", "linux-amd64")])
+def test_init_asks_a_host_of_two_platforms_the_native_one_by_default(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, answer: str, expected: str,
+) -> None:
+    on_host(monkeypatch, "Darwin", "arm64")
+    project = tmp_path / "project"
+    project.mkdir()
+    asked = _init_answering(project, f"{answer}\n" + "\n" * 8)
+    assert ("Capsule platform for this project: linux-arm64 (native; its base is built locally) "
+            "or linux-amd64 (emulated) [linux-arm64]:") in asked
+    assert [path.name for path in (project / ".devcapsule").glob("*.lock")] == [f"devcapsule.{expected}.lock"]
+
+
+@pytest.mark.own_host_patches
+def test_init_keeps_the_platform_of_a_lock_the_host_runs_without_asking(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    on_host(monkeypatch, "Darwin", "arm64")
+    project = tmp_path / "project"
+    project.mkdir()
+    initialize_project(InitializeRequest(directory=project, creator="owner@example.test",
+                                         platform=Platform.LINUX_AMD64, interactive=False))
+    assert "Capsule platform" not in _init_answering(project, "\n" * 8)
+    assert [path.name for path in (project / ".devcapsule").glob("*.lock")] == ["devcapsule.linux-amd64.lock"]
+
+
+def test_a_host_of_one_platform_is_not_asked(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    assert "Capsule platform" not in _init_answering(project, "\n" * 8)
+    assert (project / ".devcapsule" / "devcapsule.linux-amd64.lock").is_file()
+

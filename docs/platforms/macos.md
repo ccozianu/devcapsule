@@ -14,13 +14,15 @@ experimental and not a supported platform in {{tag}}. Intel Macs are untested.
 
 A project runs as one of two capsule platforms:
 
-- **`linux-amd64`, the default.** The same environments Linux users get, run by
-  Docker Desktop under x86-64 emulation. Every new project starts here.
-- **`linux-arm64`, natively, per project.** Faster, but its base image is not
-  published yet: you build it on your Mac and select it for each checkout.
+- **`linux-arm64`, natively, the default.** Faster, but its base image is not
+  published yet: you build it on your Mac once and select it for each checkout.
+- **`linux-amd64`, under emulation.** The same environments Linux users get,
+  with the published base, run by Docker Desktop under x86-64 emulation.
 
-A project runs as `linux-arm64` when it has a `linux-arm64` lock, and
-otherwise as `linux-amd64`.
+`devcapsule project init` asks which one a new project is for; Enter takes
+`linux-arm64`, and `--platform PLATFORM` answers without the question. A
+project runs as `linux-arm64` when it has a `linux-arm64` lock, and otherwise
+as `linux-amd64`.
 
 ## What differs from Linux
 
@@ -91,8 +93,9 @@ export DEVCAPSULE_RUNTIME_PEX="$HOME/.local/lib/devcapsule"
 ```
 
 Add the `export` line, and `$HOME/.local/bin` on your `PATH`, to your shell
-profile. Then continue with [your first session](../getting-started/first-session.md);
-its projects run as `linux-amd64`.
+profile. Then build the arm64 base below, or continue with
+[your first session](../getting-started/first-session.md) and answer
+`linux-amd64` when init asks for the platform.
 
 ## Run a project natively as `linux-arm64`
 
@@ -104,8 +107,8 @@ devcapsule images build --type base --recipe ubuntu-24.04 --platform linux-arm64
   --tag devcapsule-base-local:arm64 --source-revision "$revision"
 ```
 
-Then, in each project, add the arm64 lock and select your local base for the
-checkout:
+Then, in each project, create the arm64 lock, or add it beside an existing
+`linux-amd64` one, and select your local base for the checkout:
 
 ```bash
 devcapsule project init --platform linux-arm64 --authorize base-image default

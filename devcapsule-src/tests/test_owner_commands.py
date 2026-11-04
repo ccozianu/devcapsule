@@ -427,11 +427,17 @@ def test_sources_survive_other_owner_edits_and_do_not_change_pending_decisions(p
 
 
 @pytest.fixture
-def two_platform_project(project: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """The project on Apple Silicon, with a linux-arm64 lock added beside its linux-amd64 one."""
+def two_platform_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """A project on Apple Silicon with a linux-amd64 lock and a linux-arm64 lock added beside it."""
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
     on_host(monkeypatch, "Darwin", "arm64")
-    assert cli.main(["project", "--path", str(project), "init", "--platform", "linux-arm64"]) == 0
-    return project
+    root = tmp_path / "project"
+    root.mkdir()
+    assert cli.main(["project", "--path", str(root), "init", "--platform", "linux-amd64", "--require", "python",
+                     "--creator", "mailto:owner@example.test"]) == 0
+    assert cli.main(["project", "--path", str(root), "init", "--platform", "linux-arm64"]) == 0
+    return root
 
 
 def _locked_components(root: Path) -> dict[str, set[str]]:

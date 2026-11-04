@@ -26,15 +26,18 @@ the base recipe, on top of `macos-launcher`'s platform split. File references ar
 1. Every component at once, not a first slice.
 2. The arm64 base is built locally and approved per checkout; the owner publishes later.
 3. On Apple Silicon, a project runs as `linux-arm64` when it has a `linux-arm64` lock, and
-   otherwise as `linux-amd64` under emulation.
+   otherwise as `linux-amd64` under emulation. Amended the same day, after the human's
+   first init of a new project: on a host that runs several platforms, init asks which a
+   new project is for, the native one by default ("depending on the current os just ask",
+   "default arm64 on arm").
 4. A new workstream on the macOS branch.
 
 ## 3. Design
 
 1. **`Platform.LINUX_ARM64`.** Host detection stays in `platforms.py`: `runnable()`, every
    platform a host runs, native first (Apple Silicon: arm64, then amd64 under emulation),
-   and `current()`, the platform a host creates a new project for, `linux-amd64` on a Mac
-   while the arm64 base is unpublished, per the ruling in section 2. Which platform a
+   and `current()`, the host's native platform, a new project's default, per section 2's
+   amended ruling; init asks on a host of several platforms. Which platform a
    project runs as is the configuration's question: `configuration.storage.project_platform`,
    read-only, answers the first runnable platform the project has a lock for, else
    `current()`. `project init --platform` adds a platform's lock, and the project then runs

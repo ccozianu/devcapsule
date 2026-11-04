@@ -49,12 +49,11 @@ def on_host(monkeypatch: pytest.MonkeyPatch, system: str, machine: str) -> None:
     ("Linux", "x86_64", ("linux-amd64",), "linux-amd64"),
     ("Linux", "aarch64", ("linux-arm64",), "linux-arm64"),
     ("Darwin", "x86_64", ("linux-amd64",), "linux-amd64"),
-    ("Darwin", "arm64", ("linux-arm64", "linux-amd64"), "linux-amd64"),
+    ("Darwin", "arm64", ("linux-arm64", "linux-amd64"), "linux-arm64"),
 ])
 def test_each_host_runs_its_platforms_and_creates_projects_for_one(monkeypatch, system, machine, runnable, created) -> None:
     # A Mac runs Linux capsules. Apple Silicon runs linux-arm64 natively and
-    # linux-amd64 under emulation, and creates linux-amd64 projects while the
-    # linux-arm64 base is unpublished.
+    # linux-amd64 under emulation; a new project defaults to the native one.
     on_host(monkeypatch, system, machine)
     assert tuple(str(platform) for platform in Platform.runnable()) == runnable
     assert Platform.current() is Platform.parse(created)

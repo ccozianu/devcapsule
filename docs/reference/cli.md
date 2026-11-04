@@ -75,10 +75,12 @@ also accept one optional justification argument after the value.
 
 A project has one lock per capsule platform it runs as, such as
 `devcapsule.linux-amd64.lock`. A project runs as the first platform this host
-runs that it has a lock for. An Apple Silicon Mac runs `linux-arm64` before
-`linux-amd64`, and creates new projects as `linux-amd64`. `--platform PLATFORM`
-adds that platform's lock, so on the Mac
-`devcapsule project init --platform linux-arm64` lets a project run natively.
+runs that it has a lock for; an Apple Silicon Mac runs `linux-arm64` before
+`linux-amd64`. On a host that runs more than one, init asks which platform a
+new project is for, the native one by default. `--platform PLATFORM` answers
+without the question, and adds that platform's lock to a project locked for
+another, so on the Mac `devcapsule project init --platform linux-arm64` lets an
+emulated project run natively.
 
 ### `wrap`
 

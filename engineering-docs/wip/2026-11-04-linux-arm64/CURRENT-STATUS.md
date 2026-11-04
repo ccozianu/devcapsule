@@ -105,6 +105,13 @@ host X11 directory, a non-root user and a Docker group. From 9d285a5a, VSCodium 
 natively (20261104T130201Z-392364, created with `init --platform linux-arm64` and verified
 without `--unverified`) and under emulation (20261104T130042Z-36f56a).
 
+**2026-11-04, init asks for the platform.** The human's first init of a new project on the
+Mac chose `linux-amd64` without a question; they ruled that init ask on a host of several
+platforms, the native one by default ("depending on the current os just ask", "default
+arm64 on arm"). `Platform.current()` is now the native platform, and init asks through its
+elicitor before the identity questions: Enter, or a run without a terminal, takes it. A
+project with a lock the host runs is not asked, and a Linux host never is.
+
 ## Next Resumable Task
 
 Publish this workstream and `macos-launcher` once the SSH agent holds a key, and hand both
