@@ -1,7 +1,7 @@
 ---
 description: The command tree of the devcapsule launcher, with one line of intent per command and usage for init, run and config.
 weight: 1
-updated: 2026-10-30
+updated: 2026-11-04
 ---
 # Command reference
 
@@ -11,7 +11,11 @@ checks even when given `--help`.
 
 `devcapsule project` commands discover the project from the current directory.
 To target another directory, pass `--path` before the subcommand:
-`devcapsule project --path PROJECT config show`. Inside a capsule, inspection
+`devcapsule project --path PROJECT config show`. On a host that runs two capsule
+platforms, an Apple Silicon Mac, a project runs as the first one it has a lock
+for, `linux-arm64` before `linux-amd64`; `--platform PLATFORM` before the
+subcommand names one for that command, so `devcapsule project --platform
+linux-arm64 init` adds an arm64 lock to a project. Inside a capsule, inspection
 commands distinguish captured launch data from next-launch choices where available. Commands that need launcher-owned state
 print the exact `devcapsule` command to run outside.
 

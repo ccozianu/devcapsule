@@ -4,7 +4,7 @@ Mnemonic: `linux-arm64`
 
 Start date: 2026-11-04
 
-State: active; registered 2026-11-04; slice 1, the second capsule platform, next
+State: active; slices 1 to 3 committed 2026-11-04; native smokes in progress
 
 Branch association: `ws-linux-arm64/capsules`, forked from local `main` at b3f10b7d, with
 `ws-macos-launcher/host-port` merged in as its foundation
@@ -43,9 +43,33 @@ once; build the base locally now; arm64 when locked, else amd64; a new workstrea
 the macOS branch. Two read-only surveys mapped the work; the plan is in the
 [design note](2026-11-04-design-linux-arm64.md).
 
+**2026-11-04, slices 1 to 3.** `Platform.LINUX_ARM64`; a project runs as the first platform
+the host runs that it has a lock for, and `project --platform` names one (f1bba6c9,
+7a32f1c6). `DEVCAPSULE_RUNTIME_PEX` may name a directory of runtimes. The arm64 base was
+built natively here from a launcher at public `main` b3f10b7d and pinned at its local index
+digest, unpublished (7a32f1c6). Every component is pinned for arm64 at the amd64 versions,
+102 artifacts, 15.6 GB hashed from their bytes (87e71b19), and the Eclipse closure gained
+`libunwind8`, which arm64's GStreamer needs (b12e2516). The human's own switch of
+`~/hello-devcapsule` to arm64 found that a checkout's personal pins kept the amd64 VSCodium;
+personal pins are now re-pinned per platform (52fb1a1a).
+
+Native arm64 smokes on this Mac with the local base: VSCodium passed in 58 s with its main
+window; VS Code passed. Eclipse failed at `libunwind8`, since fixed; PyCharm, Rider and
+IntelliJ failed on Docker I/O errors when the Mac's disk filled. The disk filled because
+these runs built five formations at once on top of a 20 GB artifact cache, and Docker
+Desktop's VM failed with it; a restart recovered it. With the human's consent the test
+images and build cache were removed, and the reruns go one surface at a time, checking free
+space first and removing each image after. The macOS test session now removes its temporary
+root; each run had left one in `/tmp`.
+
+Found for `maintenance`, not fixed here: the amd64 Eclipse closure's `libsoup-3.0-0` and
+`libsoup-3.0-common` 3.4.4-5ubuntu0.8 URLs return 404, since Ubuntu removed that version from
+every noble pocket on 2026-10-08, so Eclipse cannot be acquired afresh on amd64.
+
 ## Next Resumable Task
 
-Slice 1 of the design note: the second capsule platform.
+Record the rerun smokes; add arm64 verified edges for the surfaces that pass, with their
+evidence, so resolution stops needing `--unverified`; then the documentation slice.
 
 ## Open Threads
 
@@ -55,6 +79,11 @@ Slice 1 of the design note: the second capsule platform.
   registration commit is forked from `main` as topic 7.5 requires, and the macOS branch is
   merged after it; this pull request follows that one.
 - An arm64 base on `docker.io/mycodespaceai`, and its digest in the matrix, need the owner.
+  The pin holds the digest a push of this Mac's exact image keeps; a rebuild must re-pin.
+- The libsoup 404 on amd64 goes to `maintenance` by intake mail once the coordination branch
+  can be pushed.
+- Docker access from an arm64 capsule reaches an arm64 daemon either way; on amd64 capsules
+  under emulation it also defaults to arm64 images (`docs/platforms/macos.md`).
 
 ## Document Index
 
