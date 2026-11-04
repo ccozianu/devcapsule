@@ -22,7 +22,7 @@ from devcapsule.materialization import ArtifactSpec, ensure_materialized_surface
 from devcapsule.platforms import Platform
 from devcapsule.runtime_command import RuntimeCommand
 
-pytestmark = pytest.mark.legacy
+pytestmark = pytest.mark.e2e
 
 
 def docker(*args: str) -> str:
@@ -36,8 +36,9 @@ def docker(*args: str) -> str:
     return completed.stdout.strip()
 
 
-@pytest.mark.e2e
 def test_installation_is_reused_across_images_and_invalidated_by_recipe(tmp_path: Path) -> None:
+    """A component's installation layer is reused by every image built on the same base and recipe,
+    whatever else the images contain, and runs again when the recipe changes."""
     base_reference = os.environ.get("DEVCAPSULE_E2E_BASE_IMAGE", "ubuntu:24.04")
     if expected_base := os.environ.get("DEVCAPSULE_E2E_BUILT_BASE"):
         assert json.loads(docker("image", "inspect", base_reference))[0]["Id"] == expected_base
@@ -75,12 +76,13 @@ def test_installation_is_reused_across_images_and_invalidated_by_recipe(tmp_path
         subprocess.run(["docker", "image", "rm", *images], capture_output=True)
 
 
-@pytest.mark.e2e
 @pytest.mark.parametrize("surface", ["pycharm", "codium"])
 @pytest.mark.parametrize("command", list(RuntimeCommand))
 def test_formation_receives_exact_launcher_on_runtime_free_base(
     tmp_path: Path, built_pex: Path, surface: str, command: RuntimeCommand,
 ) -> None:
+    """A materialized surface on a base without a runtime carries the exact executable under test,
+    labelled with its digest, and reaches it through each public command as an ordinary user."""
     archive_path = tmp_path / "surface.tar.gz"
     names = ("bin/pycharm.sh",) if surface == "pycharm" else ("codium", "bin/codium", "chrome-sandbox")
     with tarfile.open(archive_path, "w:gz") as archive:
