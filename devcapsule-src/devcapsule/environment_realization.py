@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from functools import partial
 from pathlib import Path
 from typing import Any, Callable
 
@@ -11,7 +10,7 @@ from python_on_whales import docker
 from python_on_whales.exceptions import DockerException
 
 from devcapsule.compat import CliError
-from devcapsule import host_daemon
+from devcapsule.host_daemon import daemon_architecture
 from devcapsule.platforms import Platform
 from devcapsule.images.build import BuildxImageBuilder, ImageBuildSpec
 from devcapsule.images.metadata import inspect_local_image
@@ -120,15 +119,15 @@ def realize_environment(
             raise CliError(
                 f"The lock's base {base_reference} is not published yet, so it cannot be pulled. Build the "
                 f"{capsule_platform} base locally ('devcapsule images build --type base --recipe ubuntu-24.04 "
-                f"--platform {capsule_platform} --tag <local tag> --source-revision <revision>') and select it "
-                "for this checkout ('devcapsule project config authorize base-image <local tag>')."
+                f"--platform {capsule_platform} --tag IMAGE --source-revision REVISION') and select it "
+                "for this checkout ('devcapsule project config authorize base-image IMAGE')."
             )
     if obtain_image is not None:
         obtain = obtain_image
     elif local_authorization:
         obtain = required_local_image
     else:
-        obtain = partial(ensure_local_image, platform=capsule_platform)
+        obtain = lambda reference: ensure_local_image(reference, capsule_platform)
     inspect = inspect_image or optional_local_image
     require = require_image or required_local_image
     base = obtain(base_reference)
@@ -152,7 +151,7 @@ def realize_environment(
         # One context root for every build: BuildKit's incremental transfer of
         # the IDE trees is keyed on this path, see BuildxImageBuilder.
         builder = BuildxImageBuilder(context_root=selected_cache / "build-contexts" / "context")
-        build = partial(builder.build, network="none", platform=capsule_platform)
+        build = lambda spec: builder.build(spec, network="none", platform=capsule_platform)
     materialize_environment = materialize or ensure_materialized_surface
     # Explanation/reporting hooks ride only the real materializer; injected
     # test materializers keep their narrower signature.
@@ -192,19 +191,11 @@ def realize_environment(
     )
 
 
-def ensure_local_image(reference: str, platform: Platform | None = None) -> ImageDetails:
-    """The local image at ``reference``, pulled for ``platform`` when absent.
-
-    ``platform`` is the lock's; without one, the platform this host creates
-    projects for. A daemon that runs it natively pulls as before.
-    """
-    capsule_platform = platform or Platform.current()
+def ensure_local_image(reference: str, platform: Platform) -> ImageDetails:
+    """The local image at ``reference``, pulled for the lock's ``platform`` when absent."""
     try:
         if not docker.image.exists(reference):
-            if capsule_platform.emulated(host_daemon.daemon_architecture()):
-                docker.image.pull(reference, platform=capsule_platform.docker_platform)
-            else:
-                docker.image.pull(reference)
+            docker.image.pull(reference, platform=platform.emulated_docker_platform(daemon_architecture()))
     except DockerException as exc:
         raise CliError(f"Cannot obtain Docker image {reference!r}: {exc}") from exc
     return required_local_image(reference)

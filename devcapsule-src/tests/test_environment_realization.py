@@ -267,7 +267,6 @@ def test_realize_environment_allows_terms_bound_claude_download_authorization(
 def test_ensure_local_image_pulls_only_when_missing(already_local: bool) -> None:
     details = base_image()
     with (
-        patch("devcapsule.platforms.host_architecture", return_value="amd64"),
         patch(
             "devcapsule.environment_realization.docker.image.exists",
             return_value=already_local,
@@ -278,27 +277,27 @@ def test_ensure_local_image_pulls_only_when_missing(already_local: bool) -> None
             return_value=details,
         ) as require,
     ):
-        assert ensure_local_image(BASE_REFERENCE) == details
+        assert ensure_local_image(BASE_REFERENCE, Platform.LINUX_AMD64) == details
 
     if already_local:
         pull.assert_not_called()
     else:
-        pull.assert_called_once_with(BASE_REFERENCE)
+        pull.assert_called_once_with(BASE_REFERENCE, platform=None)
     require.assert_called_once_with(BASE_REFERENCE)
 
 
-@pytest.mark.parametrize("daemon,expected", [("arm64", {"platform": "linux/amd64"}), ("amd64", {})])
-def test_a_daemon_of_another_architecture_pulls_the_lock_platform(daemon: str, expected: dict[str, str]) -> None:
+@pytest.mark.parametrize("daemon,expected", [("arm64", "linux/amd64"), ("amd64", None)])
+def test_a_daemon_of_another_architecture_pulls_the_lock_platform(daemon: str, expected: str | None) -> None:
     # Docker Desktop on Apple Silicon is an arm64 daemon; a linux-amd64 lock's
-    # base must not resolve to its arm64 variant. A native daemon pulls as before.
+    # base must not resolve to its arm64 variant.
     with (
-        patch("devcapsule.host_daemon.daemon_architecture", return_value=daemon),
+        patch("devcapsule.environment_realization.daemon_architecture", return_value=daemon),
         patch("devcapsule.environment_realization.docker.image.exists", return_value=False),
         patch("devcapsule.environment_realization.docker.image.pull") as pull,
         patch("devcapsule.environment_realization.required_local_image", return_value=base_image()),
     ):
         ensure_local_image(BASE_REFERENCE, Platform.LINUX_AMD64)
-    pull.assert_called_once_with(BASE_REFERENCE, **expected)
+    pull.assert_called_once_with(BASE_REFERENCE, platform=expected)
 
 
 def test_realize_environment_allows_explicit_managed_base_override(tmp_path: Path) -> None:

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Iterator
 from pathlib import Path
 import shutil
 import sys
@@ -60,41 +59,25 @@ def host_launch_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(autouse=True)
-def linux_host_by_default(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Make host-mechanism tests take the Linux path wherever they run.
+def amd64_linux_host_by_default(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make host-dependent tests run on an amd64 Linux host with an amd64 Docker daemon.
 
     The launcher takes macOS paths for the host-browser bridge, host
-    networking and the Docker socket's group. Tests of the Linux behaviour
-    would otherwise fail on a Mac; tests of the macOS behaviour patch
-    ``HostOs.current`` themselves. Docker-marked tests keep the real host.
+    networking, the Docker socket's group and the sudo policy, and an Apple
+    Silicon host runs linux-arm64 capsules natively. Tests of the CI's host
+    would otherwise depend on where they run; tests of another host patch it
+    themselves and carry ``own_host_patches``. Docker-marked tests keep the
+    real host.
     """
 
     if any(request.node.get_closest_marker(marker) for marker in (*DOCKER_MARKERS, "own_host_patches")):
         return
     from devcapsule.platforms import HostOs
+
     monkeypatch.setattr(HostOs, "current", classmethod(lambda cls: HostOs.LINUX))
-
-
-@pytest.fixture(autouse=True)
-def amd64_capsules_by_default(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
-    """Make capsule-platform tests run on an amd64 host with an amd64 daemon.
-
-    With ``linux_host_by_default`` the suite's host is then an amd64 Linux
-    machine wherever it runs: it creates and runs linux-amd64 capsules, and
-    its Docker daemon needs no ``--platform``, as on the Linux CI. Tests of
-    other hosts patch the host themselves and carry ``own_host_patches``;
-    Docker-marked tests keep the real host. No ``--platform`` choice outlives
-    its test.
-    """
-
-    from devcapsule.configuration import storage
-
-    storage.name_platform(None)
-    if not any(request.node.get_closest_marker(marker) for marker in (*DOCKER_MARKERS, "own_host_patches")):
-        monkeypatch.setattr("devcapsule.platforms.host_architecture", lambda: "amd64")
-        monkeypatch.setattr("devcapsule.host_daemon.daemon_architecture", lambda: "amd64")
-    yield
-    storage.name_platform(None)
+    monkeypatch.setattr("devcapsule.platforms.host_architecture", lambda: "amd64")
+    for module in ("environment_realization", "images.build", "launch.pycharm._launcher"):
+        monkeypatch.setattr(f"devcapsule.{module}.daemon_architecture", lambda: "amd64")
 
 
 DOCKER_MARKERS = ("e2e", "base_build_e2e", "recursive_e2e", "contributor_e2e", "ide_smoke")

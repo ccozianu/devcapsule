@@ -19,11 +19,12 @@ from devcapsule.images.base import (
     build_base_image,
     resolved_root_image,
 )
-from devcapsule.commands.framework import Command, Group
+from devcapsule.commands.framework import Command, Group, capsule_platform_argument
 from devcapsule.compat import CliError
 from devcapsule.environment_realization import optional_local_image, realize_environment
 from devcapsule.images.metadata import LocalImageRecord, inspect_local_image, list_local_images
 from devcapsule.materialization import ImageDetails
+from devcapsule.platforms import Platform
 from devcapsule.configuration.execution import (
     fresh_resolved_project,
 )
@@ -113,23 +114,17 @@ class ImagesBuildCommand(Command):
         parser.add_argument(
             "--platform",
             dest="capsule_platform",
+            type=capsule_platform_argument,
             metavar="PLATFORM",
-            help="Capsule platform to build for, such as linux-arm64. An environment build defaults to "
-                 "the first one this host runs that the project has a lock for; a base build to the one "
-                 "this host creates projects for.",
+            help="Capsule platform of a base build, such as linux-arm64; default: the one this host "
+                 "creates projects for. An environment build is for its project's platform.",
         )
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
-        from devcapsule.configuration.storage import name_platform
-        from devcapsule.platforms import Platform, UnsupportedPlatformError
-
-        try:
-            capsule_platform = Platform.parse(arguments.capsule_platform) if arguments.capsule_platform else None
-        except UnsupportedPlatformError as exc:
-            raise CliError(str(exc)) from exc
-        name_platform(capsule_platform)
         if arguments.image_type == "environment":
+            if arguments.capsule_platform is not None:
+                raise CliError("--platform applies only to base builds; an environment build is for its project's platform.")
             return _build_environment(
                 project=arguments.project,
                 base_override=arguments.base_override,
@@ -169,7 +164,7 @@ class ImagesBuildCommand(Command):
         build_base_image(
             options,
             network=arguments.network,
-            platform=capsule_platform,
+            platform=arguments.capsule_platform or Platform.current(),
         )
         image = inspect_local_image(arguments.tag)
         labels = dict(image.config.labels or {})

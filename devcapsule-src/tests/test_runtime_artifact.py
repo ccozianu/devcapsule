@@ -7,12 +7,12 @@ import pytest
 
 from devcapsule.compat import CliError
 from devcapsule.materialization import ArtifactSpec, formation_descriptor, formation_identity
-from devcapsule import platforms
 from devcapsule.build_info import BuildInfo
 from devcapsule.platforms import HostOs, Platform
 from devcapsule.runtime_artifact import executable_platform, runtime_artifact
 from devcapsule.runtime_command import RuntimeCommand
 from tests.test_base_image import pex_fixture
+from tests.test_platforms import on_host
 
 pytestmark = pytest.mark.legacy
 
@@ -46,11 +46,6 @@ def launcher_of_the_fixtures_build(monkeypatch: pytest.MonkeyPatch) -> None:
         source_revision="a" * 40, source_url="unknown"))
 
 
-def _apple_silicon(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(platforms.host_platform, "system", lambda: "Darwin")
-    monkeypatch.setattr(platforms.host_platform, "machine", lambda: "arm64")
-
-
 def test_packaged_launcher_supplies_itself_despite_source_override(tmp_path: Path, monkeypatch) -> None:
     launcher = pex_fixture(tmp_path / "launcher.pex")
     monkeypatch.setenv("SCIE", str(launcher))
@@ -80,7 +75,7 @@ def test_executable_platform_reads_native_headers(tmp_path: Path) -> None:
 
 @pytest.mark.own_host_patches
 def test_macos_launcher_delivers_the_named_linux_runtime(tmp_path: Path, monkeypatch) -> None:
-    _apple_silicon(monkeypatch)
+    on_host(monkeypatch, "Darwin", "arm64")
     monkeypatch.setenv("SCIE", str(pex_with_native_header(tmp_path / "devcapsule-macos", MACH_O_ARM64)))
     linux = pex_with_native_header(tmp_path / "devcapsule-linux", ELF_AMD64)
     monkeypatch.setenv("DEVCAPSULE_RUNTIME_PEX", str(linux))
@@ -89,7 +84,7 @@ def test_macos_launcher_delivers_the_named_linux_runtime(tmp_path: Path, monkeyp
 
 @pytest.mark.own_host_patches
 def test_macos_launcher_without_a_linux_runtime_says_what_to_set(tmp_path: Path, monkeypatch) -> None:
-    _apple_silicon(monkeypatch)
+    on_host(monkeypatch, "Darwin", "arm64")
     monkeypatch.setenv("SCIE", str(pex_with_native_header(tmp_path / "devcapsule-macos", MACH_O_ARM64)))
     monkeypatch.delenv("DEVCAPSULE_RUNTIME_PEX", raising=False)
     with pytest.raises(CliError, match="a macOS executable and cannot run inside linux-amd64 capsules.*DEVCAPSULE_RUNTIME_PEX"):
@@ -102,7 +97,7 @@ def test_macos_launcher_without_a_linux_runtime_says_what_to_set(tmp_path: Path,
 @pytest.mark.own_host_patches
 def test_a_plain_pex_launcher_on_a_mac_is_not_delivered(tmp_path: Path, monkeypatch) -> None:
     # A PEX bundles native wheels for the machine it was built on.
-    _apple_silicon(monkeypatch)
+    on_host(monkeypatch, "Darwin", "arm64")
     monkeypatch.delenv("SCIE", raising=False)
     monkeypatch.setenv("PEX", str(pex_fixture(tmp_path / "launcher.pex")))
     linux = pex_with_native_header(tmp_path / "devcapsule-linux", ELF_AMD64)
@@ -117,7 +112,7 @@ def test_a_plain_pex_launcher_on_a_mac_is_not_delivered(tmp_path: Path, monkeypa
 def test_a_runtime_of_another_build_is_refused(tmp_path: Path, monkeypatch) -> None:
     # D-0009: the runtime runs the plan this launcher writes. A runtime left
     # from an earlier build, after the launcher was updated, is refused.
-    _apple_silicon(monkeypatch)
+    on_host(monkeypatch, "Darwin", "arm64")
     monkeypatch.setenv("SCIE", str(pex_with_native_header(tmp_path / "devcapsule-macos", MACH_O_ARM64)))
     stale = pex_with_native_header(tmp_path / "devcapsule-linux", ELF_AMD64, revision="b" * 40)
     monkeypatch.setenv("DEVCAPSULE_RUNTIME_PEX", str(stale))
@@ -129,7 +124,7 @@ def test_a_runtime_of_another_build_is_refused(tmp_path: Path, monkeypatch) -> N
 def test_a_runtime_directory_serves_each_capsule_platform(tmp_path: Path, monkeypatch) -> None:
     # Apple Silicon runs both platforms; one setting names both runtimes, and
     # each launch delivers the one for its lock's platform.
-    _apple_silicon(monkeypatch)
+    on_host(monkeypatch, "Darwin", "arm64")
     monkeypatch.setenv("SCIE", str(pex_with_native_header(tmp_path / "devcapsule-macos", MACH_O_ARM64)))
     runtimes = tmp_path / "runtimes"
     runtimes.mkdir()

@@ -382,52 +382,35 @@ def manifest_source_digest(root: Path) -> str | None:
         return None
 
 
-# The platform a command was told to use (`project --platform`), if any. A
-# command runs for one project, so this is the process's; see project_platform.
-_named_platform: Platform | None = None
-
-
-def name_platform(platform: Platform | None) -> None:
-    """Make ``platform`` the one project commands in this process use, or clear it.
-
-    It must be one this host runs; the error names the ones it does.
-    """
-    global _named_platform
-    if platform is not None and platform not in Platform.runnable():
-        names = ", ".join(str(member) for member in Platform.runnable())
-        raise ProjectConfigurationError(f"This host runs {names} capsules, not {platform}.")
-    _named_platform = platform
-
-
 def platform_lock_path(root: Path, platform: Platform) -> Path:
     """The path of the project's lock for ``platform``."""
     return root / ".devcapsule" / f"devcapsule.{platform}.lock"
 
 
-def project_platform(root: Path | None) -> Platform:
+def project_platform(root: Path) -> Platform:
     """The capsule platform this host runs the project at ``root`` as.
 
-    The platform named for this command, if any; otherwise the first platform
-    this host runs that the project has a lock for, so Apple Silicon runs a
-    project locked for linux-arm64 natively and one locked only for
-    linux-amd64 under emulation; otherwise, as for a project not yet
-    initialized, the platform this host creates projects for. Reads only.
+    The first platform this host runs that the project has a lock for, so
+    Apple Silicon runs a project locked for linux-arm64 natively and one
+    locked only for linux-amd64 under emulation; for a project with no such
+    lock, the platform this host creates projects for. Reads only.
     """
-    if _named_platform is not None:
-        return _named_platform
     try:
-        runnable = Platform.runnable()
-        if root is not None:
-            for platform in runnable:
-                if platform_lock_path(root, platform).is_file():
-                    return platform
+        for platform in Platform.runnable():
+            if platform_lock_path(root, platform).is_file():
+                return platform
         return Platform.current()
     except UnsupportedPlatformError as exc:
         raise ProjectConfigurationError(str(exc)) from exc
 
 
+def locked_platforms(root: Path) -> tuple[Platform, ...]:
+    """Every platform the project at ``root`` has a lock for, on any host."""
+    return tuple(platform for platform in Platform if platform_lock_path(root, platform).is_file())
+
+
 def recommendation_lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[str, Any]]:
-    """Load the committed platform lock for this host's platform.
+    """Load the committed lock of the platform this host runs the project as.
 
     The lock is the project-side record of one resolution: the version set and
     property defaults selected for one platform. It is a record, not a
@@ -454,7 +437,7 @@ def recommendation_lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Pa
         raise ProjectConfigurationError(
             f"Missing {path}: this project carries no platform lock for {platform}. "
             "The platform lock is authored on the project side and committed with the project; "
-            f"'devcapsule project --platform {platform} init' adds it."
+            "'devcapsule project init' adds it."
         )
     value = load_toml(path)
     validate_file_format(value, ConfigurationFileKind.lock, path)
@@ -471,7 +454,7 @@ def recommendation_lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Pa
 def composition_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[str, Any], dict[str, Any]]:
     """The checkout's persistent software selection, before execution filtering.
 
-    Return the current platform's shared lock path, the composed selection (the
+    Return the project platform's shared lock path, the composed selection (the
     explicit version set, or the shared lock with personal pins laid over it)
     and the loaded checkout record, empty when the checkout is unregistered.
     A version set for another platform raises ProjectConfigurationError.

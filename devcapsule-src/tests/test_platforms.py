@@ -38,7 +38,8 @@ def test_current_returns_a_member_on_a_supported_host() -> None:
     assert Platform.parse(current.value) is current
 
 
-def _host(monkeypatch: pytest.MonkeyPatch, system: str, machine: str) -> None:
+def on_host(monkeypatch: pytest.MonkeyPatch, system: str, machine: str) -> None:
+    """Make this host the one ``platform.system()`` and ``platform.machine()`` would name."""
     monkeypatch.setattr(platforms.host_platform, "system", lambda: system)
     monkeypatch.setattr(platforms.host_platform, "machine", lambda: machine)
 
@@ -53,15 +54,16 @@ def _host(monkeypatch: pytest.MonkeyPatch, system: str, machine: str) -> None:
 def test_each_host_runs_its_platforms_and_creates_projects_for_one(monkeypatch, system, machine, runnable, created) -> None:
     # A Mac runs Linux capsules. Apple Silicon runs linux-arm64 natively and
     # linux-amd64 under emulation, and creates linux-amd64 projects while the
-    # linux-arm64 base is unpublished (the human's ruling of 2026-11-04).
-    _host(monkeypatch, system, machine)
+    # linux-arm64 base is unpublished.
+    on_host(monkeypatch, system, machine)
     assert tuple(str(platform) for platform in Platform.runnable()) == runnable
     assert Platform.current() is Platform.parse(created)
 
 
 def test_emulation_is_the_daemons() -> None:
     # Docker Desktop on Apple Silicon is an arm64 daemon, whatever runs the launcher.
-    assert Platform.LINUX_AMD64.emulated("arm64")
+    assert Platform.LINUX_AMD64.emulated_docker_platform("arm64") == "linux/amd64"
+    assert Platform.LINUX_ARM64.emulated_docker_platform("arm64") is None
     assert Platform.LINUX_AMD64.docker_platform_args("arm64") == ["--platform=linux/amd64"]
     assert Platform.LINUX_AMD64.docker_platform_args("amd64") == []
     assert Platform.LINUX_ARM64.docker_platform_args("arm64") == []
@@ -74,7 +76,7 @@ def test_emulation_is_the_daemons() -> None:
     ("Windows", "AMD64", "supported: linux, darwin"),
 ])
 def test_current_refuses_a_host_without_a_capsule_platform(monkeypatch, system, machine, message) -> None:
-    _host(monkeypatch, system, machine)
+    on_host(monkeypatch, system, machine)
     with pytest.raises(UnsupportedPlatformError, match=message):
         Platform.current()
 
@@ -101,11 +103,11 @@ def test_docker_spelling_and_architecture() -> None:
 
 @pytest.mark.own_host_patches
 def test_host_os_names_linux_and_macos_only(monkeypatch) -> None:
-    _host(monkeypatch, "Darwin", "arm64")
+    on_host(monkeypatch, "Darwin", "arm64")
     assert HostOs.current() is HostOs.DARWIN
-    _host(monkeypatch, "Linux", "x86_64")
+    on_host(monkeypatch, "Linux", "x86_64")
     assert HostOs.current() is HostOs.LINUX
-    _host(monkeypatch, "Windows", "AMD64")
+    on_host(monkeypatch, "Windows", "AMD64")
     with pytest.raises(UnsupportedPlatformError, match="'windows'"):
         HostOs.current()
 

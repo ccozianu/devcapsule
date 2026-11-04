@@ -11,12 +11,7 @@ checks even when given `--help`.
 
 `devcapsule project` commands discover the project from the current directory.
 To target another directory, pass `--path` before the subcommand:
-`devcapsule project --path PROJECT config show`. On a host that runs two capsule
-platforms, an Apple Silicon Mac, a project runs as the first one it has a lock
-for, `linux-arm64` before `linux-amd64`, and a new project as `linux-amd64`;
-`--platform PLATFORM` before the subcommand names one for that command, so
-`devcapsule project --platform linux-arm64 init` adds an arm64 lock to a
-project. `devcapsule images build` takes `--platform` too. Inside a capsule, inspection
+`devcapsule project --path PROJECT config show`. Inside a capsule, inspection
 commands distinguish captured launch data from next-launch choices where available. Commands that need launcher-owned state
 print the exact `devcapsule` command to run outside.
 
@@ -60,7 +55,8 @@ home instead and disables this fallback to launcher settings.
 ```text
 devcapsule project init [--require NAME[>=VERSION]]... [--offer CAPABILITY]... [--ide IDE] [--with CAPABILITY]...
                         [--name NAME] [--slug SLUG] [--creator CREATOR] [--project-mount PATH]
-                        [--regenerate] [--unverified] [--set NAME VALUE]... [--authorize NAME VALUE]... [--bind NAME VALUE]...
+                        [--platform PLATFORM] [--regenerate] [--unverified]
+                        [--set NAME VALUE]... [--authorize NAME VALUE]... [--bind NAME VALUE]...
 ```
 
 `--require` and `--offer` write shared project capabilities into
@@ -76,6 +72,13 @@ Schema-2 manifests cannot be read by candidate 3 or older launchers. When an
 IDE is selected, `init` can ask for base or vendor consent; non-interactive
 scripts can pass `--authorize NAME VALUE`. `--set`, `--bind`, and `--authorize`
 also accept one optional justification argument after the value.
+
+A project has one lock per capsule platform it runs as, such as
+`devcapsule.linux-amd64.lock`. A project runs as the first platform this host
+runs that it has a lock for. An Apple Silicon Mac runs `linux-arm64` before
+`linux-amd64`, and creates new projects as `linux-amd64`. `--platform PLATFORM`
+adds that platform's lock, so on the Mac
+`devcapsule project init --platform linux-arm64` lets a project run natively.
 
 ### `wrap`
 
@@ -199,7 +202,7 @@ Shared project contract (for repository owners; writes schema 2):
 
 Every shared-contract command accepts `--preview` to validate and print the
 resulting change without writing files. Capability changes and provider
-recommendations update the manifest and platform lock together. Capability
+recommendations update the manifest and every platform lock together. Capability
 commands accept `--unverified`; `recommend` does not. Environment declarations
 and non-provider recommendations update only `.devcapsule/devcapsule.toml`.
 
@@ -253,7 +256,7 @@ Each command below follows `devcapsule`:
 | Command | Intent |
 |---|---|
 | `version [--json]` | Print the launcher version, package version, and source revision provenance. |
-| `images build --type {base,environment} ...` | Build a curated base image or materialize a project environment image. |
+| `images build --type {base,environment} ...` | Build a curated base image, for the capsule platform `--platform` names, or materialize a project environment image. |
 | `images list [--include-legacy]` | List DevCapsule base and environment images in the local Docker store. |
 | `bootstrap [--refresh-workflow-definition] project` | Install or refresh DevCapsule workflow files and initialize project status records. |
 | `workflow brief` | Print the active workstream summary, live claims, waiting mail, sync distance, and validation commands. |

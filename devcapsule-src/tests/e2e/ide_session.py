@@ -183,7 +183,7 @@ def initialize_project(executable: Path, surface: IdeSurface, workspace: Path, e
     # such as linux-arm64 on Apple Silicon, whose new projects are linux-amd64.
     platform = os.environ.get("DEVCAPSULE_SMOKE_PLATFORM")
     init = subprocess.run(
-        [str(executable), "project", *(["--platform", platform] if platform else []), "init",
+        [str(executable), "project", "init", *(["--platform", platform] if platform else []),
          *(flag for need in surface.needs for flag in ("--ide" if need.endswith("-ide") else "--require", need)),
          "--creator", CREATOR, "--slug", slug,
          "--authorize", "base-image", "default",

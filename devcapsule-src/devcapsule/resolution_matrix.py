@@ -101,7 +101,7 @@ class Capability:
 
 @dataclass(frozen=True)
 class _BasePin:
-    """One published base image and the capabilities it ships."""
+    """One base image and the capabilities it ships."""
 
     mnemonic: str
     # The family of base releases this pin belongs to — see _VerifiedEdge:
@@ -122,10 +122,10 @@ class _BasePin:
     display: str = HOST_X11_ONLY_DISPLAY
     runtime: str = LAUNCHER_SUPPLIED_RUNTIME
     source_revision: str | None = None
+    # A clean public-source builder need not have a release tag.
     # False while the reference names an image its registry does not hold
     # yet: only a locally built base of the same recipe stands in for it.
     published: bool = True
-    # A clean public-source builder need not have a release tag.
 
     @property
     def contract(self) -> BaseContract:
@@ -1724,11 +1724,11 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
 # the public main commit b3f10b7d, whose devcapsule-webconsole the image
 # installed. Inspected: linux/arm64, recipe 11 ready, display=contained,
 # runtime=launcher-supplied, all six services, the web console root.
-# NOT YET PUBLISHED. The reference is the digest of the OCI image index in
+# Not published yet. The reference is the digest of the OCI image index in
 # the builder's containerd store, which a push of this exact image to
 # mycodespaceai/devcapsule-base keeps; a rebuild gets another digest and
 # must be pinned again. Until the owner pushes it, a checkout selects the
-# local image: `project config authorize base-image <its local tag>`.
+# local image: `project config authorize base-image IMAGE`.
 _LINUX_ARM64_RECIPE_11_BASE = _BasePin(
     mnemonic="v0.3.1.dev0-local-macos-aarch64",
     source_revision="b3f10b7d95aec659f268afecc03d0912a2e89d2f",
@@ -1752,6 +1752,7 @@ _LINUX_ARM64_RECIPE_11_BASE = _BasePin(
     },
 )
 
+
 def _on_linux_arm64(pin: _ComponentPin) -> _ComponentPin:
     """The arm64 build of a linux-amd64 pin: same version, its own artifacts.
 
@@ -1764,7 +1765,7 @@ def _on_linux_arm64(pin: _ComponentPin) -> _ComponentPin:
     if table is None and pin.lock_table.get("delivery-policy") == "base-image":
         return pin
     if table is None:
-        raise RuntimeError(f"{pin.component_id} {pin.version} has no linux-arm64 pin in components/linux_arm64_pins.py")
+        raise AssertionError(f"{pin.component_id} {pin.version} has no linux-arm64 pin in components/linux_arm64_pins.py")
     return _ComponentPin(pin.component_id, pin.version, table)
 
 
@@ -1779,15 +1780,55 @@ _LINUX_ARM64_MATRIX = ResolutionMatrix(
         component: tuple(_on_linux_arm64(pin) for pin in pins)
         for component, pins in _LINUX_AMD64_MATRIX._components.items()
     },
-    edges=(),
+    edges=(
+        # Native IDE smokes on Apple Silicon (Docker Desktop 29.3.1) against
+        # the local, unpublished arm64 recipe-11 base above. They establish
+        # the IDE only: Playwright and the .NET SDK rode along unexercised.
+        _VerifiedEdge(
+            "codium", "1.143.17232", _BASE_FAMILY_UBUNTU_24_04,
+            "noVNC HTTP/window startup passed natively on the local arm64 recipe-11 base, "
+            "2026-11-04 run 20261104T120158Z-e8f78f; VSCodium window; no pixel, saved-edit "
+            "or persistence check",
+        ),
+        _VerifiedEdge(
+            "vscode", "1.144.0", _BASE_FAMILY_UBUNTU_24_04,
+            "noVNC HTTP/window startup passed natively on the local arm64 recipe-11 base, "
+            "2026-11-04 run 20261104T120217Z-ee18ce; Visual Studio Code window; no pixel, "
+            "saved-edit or persistence check",
+        ),
+        _VerifiedEdge(
+            "eclipse", "2026-09-R", _BASE_FAMILY_UBUNTU_24_04,
+            "noVNC HTTP/window startup passed natively on the local arm64 recipe-11 base, "
+            "2026-11-04 run 20261104T120256Z-aa127a; workspace window; no pixel, saved-edit "
+            "or persistence check",
+        ),
+        _VerifiedEdge(
+            "pycharm", "2026.2.4", _BASE_FAMILY_UBUNTU_24_04,
+            "noVNC HTTP/window startup passed natively on the local arm64 recipe-11 base, "
+            "2026-11-04 run 20261104T120351Z-38cdd0; splash window; first-use agreement and "
+            "editor acceptance remain",
+        ),
+        _VerifiedEdge(
+            "rider", "2026.2.4", _BASE_FAMILY_UBUNTU_24_04,
+            "noVNC HTTP/window startup passed natively on the local arm64 recipe-11 base, "
+            "2026-11-04 run 20261104T120546Z-c9c1b3; splash window; first-use agreement and "
+            "editor acceptance remain",
+        ),
+        _VerifiedEdge(
+            "intellij", "2026.2.4", _BASE_FAMILY_UBUNTU_24_04,
+            "noVNC HTTP/window startup passed natively on the local arm64 recipe-11 base, "
+            "2026-11-04 run 20261104T121007Z-289109; splash window; first-use agreement and "
+            "editor acceptance remain",
+        ),
+    ),
     couplings=(),
     capability_table=_LINUX_AMD64_MATRIX._capability_table,
     materialization=_LINUX_AMD64_MATRIX._materialization,
 )
 
 # The map is the platform authority: its keys are the supported platforms,
-# total over the Platform enum (D-0006/D-0007). Clients index it with a key
-# from Platform.current() or Platform.parse(), never one built from parts.
+# total over the Platform enum (D-0006/D-0007). Clients index it with a
+# Platform member, from host detection or a lock, never a key built from parts.
 MATRICES: Mapping[Platform, ResolutionMatrix] = MappingProxyType(
     {
         Platform.LINUX_AMD64: _LINUX_AMD64_MATRIX,

@@ -114,10 +114,9 @@ _CAPSULE_PLATFORMS_OF_HOST: Mapping[tuple[HostOs, str], tuple[str, ...]] = {
 }
 
 # The platform a host creates a new project for, where it is not the native
-# one. Apple Silicon creates linux-amd64 projects, as before linux-arm64
-# existed, while the linux-arm64 base is unpublished: the human's ruling of
-# 2026-11-04 runs a project as linux-arm64 when it is locked for it, and a
-# developer adds that lock deliberately (project --platform linux-arm64 init).
+# one. Apple Silicon creates linux-amd64 projects while the linux-arm64 base
+# is unpublished; a developer adds a linux-arm64 lock deliberately
+# (project init --platform linux-arm64), and the project then runs as it.
 _NEW_PROJECT_PLATFORM_OF_HOST: Mapping[tuple[HostOs, str], str] = {
     (HostOs.DARWIN, "arm64"): "linux-amd64",
 }
@@ -184,19 +183,21 @@ class Platform(StrEnum):
 
         return self.value.replace("-", "/", 1)
 
-    def emulated(self, daemon_architecture: str) -> bool:
-        """Whether a Docker daemon of ``daemon_architecture`` runs this platform only under emulation."""
+    def emulated_docker_platform(self, daemon_architecture: str) -> str | None:
+        """The platform every run, build and pull names to a daemon that emulates this one.
 
-        return daemon_architecture != self.architecture
-
-    def docker_platform_args(self, daemon_architecture: str) -> list[str]:
-        """The ``--platform`` option every run, build and pull carries under emulation.
-
-        Empty when the daemon runs this platform natively, so a native launch
-        composes the same command as before the option existed.
+        A Docker daemon of ``daemon_architecture`` defaults to its own
+        architecture, so it must be told this platform when the two differ.
+        None when it runs this platform natively and is told nothing.
         """
 
-        return [f"--platform={self.docker_platform}"] if self.emulated(daemon_architecture) else []
+        return self.docker_platform if daemon_architecture != self.architecture else None
+
+    def docker_platform_args(self, daemon_architecture: str) -> list[str]:
+        """``emulated_docker_platform`` as the option of a ``docker run`` command line."""
+
+        emulated = self.emulated_docker_platform(daemon_architecture)
+        return [f"--platform={emulated}"] if emulated is not None else []
 
     @classmethod
     def parse(cls, key: str) -> Platform:

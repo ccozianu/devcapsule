@@ -8,7 +8,6 @@ import sys
 
 from devcapsule.build_info import BuildInfo, BuildInfoError, current_build_info, read_pex_build_info
 from devcapsule.compat import CliError
-from devcapsule import platforms
 from devcapsule.platforms import HostOs, Platform
 
 RUNTIME_PEX_ENV = "DEVCAPSULE_RUNTIME_PEX"
@@ -85,12 +84,13 @@ def _runs_in(path: Path, capsule_platform: Platform) -> bool:
     """Whether the executable at ``path`` runs inside ``capsule_platform`` capsules.
 
     A plain PEX bundles native wheels for the machine it was built on, so it
-    counts as the capsule platform's only on a Linux host of that architecture.
+    counts as the capsule platform's only on a Linux host, whose one capsule
+    platform is its own.
     """
 
     runs_on = executable_platform(path)
     if runs_on is None:
-        return HostOs.current() is HostOs.LINUX and platforms.host_architecture() == capsule_platform.architecture
+        return HostOs.current() is HostOs.LINUX and Platform.runnable() == (capsule_platform,)
     return runs_on == capsule_platform
 
 

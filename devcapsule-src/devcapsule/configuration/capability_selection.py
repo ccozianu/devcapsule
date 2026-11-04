@@ -15,10 +15,21 @@ import tomllib
 from typing import Any, Mapping
 
 from devcapsule.components.catalog import COMPONENTS, INTERACTIVE_SURFACES
-from devcapsule.platforms import Platform
+from devcapsule.platforms import Platform, UnsupportedPlatformError
 from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix
 from .capabilities import CapabilityPolicy, LocalCapabilities, names, meets_minimum, resolution_recommendations
 from .file_formats import ProjectConfigurationError, legacy_lock, table
+
+
+def lock_platform(lock: Mapping[str, Any]) -> Platform:
+    """Return the lock's declared platform.
+
+    Raise ProjectConfigurationError if that platform is absent or unsupported.
+    """
+    try:
+        return Platform.parse(str(lock.get("platform")))
+    except UnsupportedPlatformError:
+        raise ProjectConfigurationError(f"Unsupported lock platform {lock.get('platform')!r}.") from None
 
 
 def matrix_for(lock: Mapping[str, Any]) -> ResolutionMatrix:
@@ -26,10 +37,7 @@ def matrix_for(lock: Mapping[str, Any]) -> ResolutionMatrix:
 
     Raise ProjectConfigurationError if that platform is absent or unsupported.
     """
-    try:
-        return MATRICES[Platform(str(lock.get("platform")))]
-    except (ValueError, KeyError):
-        raise ProjectConfigurationError(f"Unsupported lock platform {lock.get('platform')!r}.") from None
+    return MATRICES[lock_platform(lock)]
 
 
 def known_policy_names(policy: CapabilityPolicy, matrix: ResolutionMatrix) -> dict[str, str]:
@@ -140,8 +148,8 @@ def pins_for_platform(pins: Mapping[str, Any], matrix: ResolutionMatrix) -> dict
                 continue
             matrix_table = matrix.component_pin(component, metadata.get("version"))
             if matrix_table is None:
-                remedy = (f"'devcapsule project --platform {platform} config ide {component}'" if component == surface
-                          else f"'devcapsule project --platform {platform} config use' for the capability it provides")
+                remedy = (f"'devcapsule project config ide {component}'" if component == surface
+                          else f"'devcapsule project config use CAPABILITY {component}'")
                 raise ProjectConfigurationError(
                     f"This checkout's {component} {metadata.get('version')} is pinned for {written_for}, "
                     f"and {platform} has no pin for that version; choose it again with {remedy}."

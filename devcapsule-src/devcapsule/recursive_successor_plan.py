@@ -115,7 +115,7 @@ class ExpectedSuccessorPlan:
     platform: str | None = None
 
     def to_mapping(self, *, show_host_paths: bool = False) -> dict[str, Any]:
-        return {
+        mapping = {
             "schema_version": 1,
             "name": self.name,
             "image_reference": self.image_reference,
@@ -143,6 +143,11 @@ class ExpectedSuccessorPlan:
             "runtime_plan_destination": self.runtime_plan_destination,
             "runtime_plan_digest": self.runtime_plan_digest,
         }
+        # Only an emulated plan carries the key, so a native plan's digest is
+        # the one a launcher without emulation computed for it.
+        if self.platform is not None:
+            mapping["platform"] = self.platform
+        return mapping
 
     def to_json(self, *, show_host_paths: bool = False) -> str:
         return json.dumps(
@@ -188,6 +193,7 @@ class ExpectedSuccessorPlan:
             security_opt=_string_tuple(value.get("security_opt")),
             runtime_plan_destination=_required_string(value, "runtime_plan_destination"),
             runtime_plan_digest=_required_string(value, "runtime_plan_digest"),
+            platform=_optional_string(value.get("platform"), "platform"),
         )
 
     @classmethod
@@ -582,6 +588,12 @@ def _required_bool(value: Mapping[str, Any], name: str) -> bool:
     if not isinstance(found, bool):
         raise SuccessorPlanError(f"retained expected plan has no usable {name}")
     return found
+
+
+def _optional_string(value: Any, name: str) -> str | None:
+    if value is not None and (not isinstance(value, str) or not value):
+        raise SuccessorPlanError(f"retained expected plan has no usable {name}")
+    return value
 
 
 def _optional_int(value: Any, name: str) -> int | None:

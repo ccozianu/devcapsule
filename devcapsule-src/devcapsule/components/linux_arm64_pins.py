@@ -22,7 +22,7 @@ Keys are ``(component id, version)``, as the linux-amd64 matrix pins them.
 
 from typing import Any
 
-ECLIPSE_NATIVE_PACKAGES: dict[str, dict[str, str]] = {'bubblewrap': {'sha256': 'dce3a2e5f0302eab717a64fe9c9411fe2d40469e2a7946e0f2ce1420a61025c3',
+LINUX_ARM64_ECLIPSE_NATIVE_PACKAGES: dict[str, dict[str, str]] = {'bubblewrap': {'sha256': 'dce3a2e5f0302eab717a64fe9c9411fe2d40469e2a7946e0f2ce1420a61025c3',
                 'url': 'https://ports.ubuntu.com/ubuntu-ports/pool/main/b/bubblewrap/bubblewrap_0.9.0-1ubuntu0.3_arm64.deb',
                 'version': '0.9.0-1ubuntu0.3'},
  'dictionaries-common': {'sha256': '601e7cb4d662aca433785eaafd8094e51b1386aab5f5aef6572a1a565b80f21e',
@@ -184,6 +184,9 @@ ECLIPSE_NATIVE_PACKAGES: dict[str, dict[str, str]] = {'bubblewrap': {'sha256': '
  'libtwolame0': {'sha256': 'f2fffdedec9f9bc58fc700ccbc146c50a5a1d5ae2e6881e501bd727234aa5d16',
                  'url': 'https://ports.ubuntu.com/ubuntu-ports/pool/main/t/twolame/libtwolame0_0.4.0-2build3_arm64.deb',
                  'version': '0.4.0-2build3'},
+ 'libunwind8': {'sha256': '26f2bf9c0d9b42d8230aa2c070076054b0ed06519bb9141c05a9c3164732fef1',
+                'url': 'https://ports.ubuntu.com/ubuntu-ports/pool/main/libu/libunwind/libunwind8_1.6.2-3build1.1_arm64.deb',
+                'version': '1.6.2-3build1.1'},
  'libv4l-0t64': {'sha256': '0efed54458a4a3da075defb2675b243d7123115d26219ea2ffb88750e777f0e3',
                  'url': 'https://ports.ubuntu.com/ubuntu-ports/pool/main/v/v4l-utils/libv4l-0t64_1.26.1-4build3_arm64.deb',
                  'version': '1.26.1-4build3'},
@@ -221,17 +224,7 @@ ECLIPSE_NATIVE_PACKAGES: dict[str, dict[str, str]] = {'bubblewrap': {'sha256': '
                     'url': 'https://ports.ubuntu.com/ubuntu-ports/pool/main/x/xdg-dbus-proxy/xdg-dbus-proxy_0.1.5-1ubuntu0.2_arm64.deb',
                     'version': '0.1.5-1ubuntu0.2'}}
 
-# arm64 only: libgstreamer1.0-0 depends on libunwind8 on arm64, which the
-# amd64 closure does not carry. Found by the Eclipse smoke on 2026-11-04
-# ("Package libunwind8 is not installed"); noble-updates, its index verified
-# against the gpgv-checked InRelease and the bytes against the index.
-ECLIPSE_NATIVE_PACKAGES["libunwind8"] = {
-    "sha256": "26f2bf9c0d9b42d8230aa2c070076054b0ed06519bb9141c05a9c3164732fef1",
-    "url": "https://ports.ubuntu.com/ubuntu-ports/pool/main/libu/libunwind/libunwind8_1.6.2-3build1.1_arm64.deb",
-    "version": "1.6.2-3build1.1",
-}
-
-PLAYWRIGHT_PIN: dict[str, Any] = {'version': '1.63.0',
+LINUX_ARM64_PLAYWRIGHT_PIN: dict[str, Any] = {'version': '1.63.0',
  'delivery-policy': 'local-materialization',
  'license': 'Apache-2.0',
  'platform': 'linux-arm64',
@@ -291,7 +284,8 @@ COMPONENT_LOCK_TABLES: dict[tuple[str, str], dict[str, Any]] = {
      'terms-url': 'https://www.eclipse.org/legal/epl-2.0/',
      'url': 'https://download.eclipse.org/technology/epp/downloads/release/2026-09/R/eclipse-java-2026-09-R-linux-gtk-aarch64.tar.gz',
      'sha256': '37f8bff91ce2af38bb691ab0608e1184af48cb48ad04da2bb09a9568ba905f8d',
-     'upstream-sha512': 'c95453e0170efff6294a746b53e2f83f857aeb2309dbc20b933de18664f7d7e717f071a08a96d46797c2191014e1c8505da8370e45fff83a91396636d29a3091'},
+     'upstream-sha512': 'c95453e0170efff6294a746b53e2f83f857aeb2309dbc20b933de18664f7d7e717f071a08a96d46797c2191014e1c8505da8370e45fff83a91396636d29a3091',
+     'native-packages': LINUX_ARM64_ECLIPSE_NATIVE_PACKAGES},
     ('rider', '2026.2.3.1'): {'version': '2026.2.3.1',
      'delivery-policy': 'local-materialization',
      'license': 'Proprietary',
@@ -477,6 +471,5 @@ COMPONENT_LOCK_TABLES: dict[tuple[str, str], dict[str, Any]] = {
                                    'sha256': '30dd61ebe1f0a8829057ea2de29dad08c710dd972ce4c02949f51e632135a86b',
                                    'archive-member': 'antigravity',
                                    'upstream-sha512': '7cae317fb6a02eb387982f06bfb234b366879cf9a80ad8969b571e5a55d1e37a6a5a49cd6b703c0443bb417937cf5e3b14a8c80cb26917ad79eef723a9f374c7'}}},
+    ('playwright', '1.63.0'): LINUX_ARM64_PLAYWRIGHT_PIN,
 }
-COMPONENT_LOCK_TABLES[("eclipse", "2026-09-R")]["native-packages"] = ECLIPSE_NATIVE_PACKAGES
-COMPONENT_LOCK_TABLES[("playwright", PLAYWRIGHT_PIN["version"])] = PLAYWRIGHT_PIN

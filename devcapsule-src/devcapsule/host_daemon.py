@@ -16,12 +16,14 @@ current container's own mount table, so the daemon receives the host path that
 actually backs it. When a bind source is not backed by any mount, translation
 is impossible and the launch fails loudly rather than silently producing an
 empty directory.
+
+The daemon's architecture is the other fact about it a launch needs: a daemon
+of another architecture than the capsule platform runs it under emulation.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from functools import cache
 import json
 from pathlib import Path, PurePosixPath
 import re
@@ -210,14 +212,13 @@ def _unescape(value: str) -> str:
     return re.sub(r"\\([0-7]{3})", lambda match: chr(int(match.group(1), 8)), value)
 
 
-@cache
 def daemon_architecture() -> str:
     """The Docker daemon's CPU architecture, in the platform keys' spelling.
 
     Emulation is the daemon's, not the launcher's: Docker Desktop on Apple
     Silicon is arm64 whether the launcher runs natively on the Mac or inside
-    an emulated amd64 capsule granted the daemon. Asked once per process;
-    this host's architecture when the daemon does not answer.
+    an emulated amd64 capsule granted the daemon. This host's architecture
+    when the daemon does not answer.
     """
     from devcapsule.platforms import architecture_key, host_architecture
 

@@ -20,10 +20,6 @@ import time
 
 import pytest
 
-# The supervisor is the capsule's entry process: it runs only inside Linux
-# capsules and relies on Linux signal primitives (sigwaitinfo).
-pytestmark = pytest.mark.skipif(sys.platform != "linux", reason="container-side code; capsules are Linux")
-
 from devcapsule import logs
 from devcapsule.container_runtime.supervisor import (
     INFRASTRUCTURE_FAILURE_EXIT_CODE,
@@ -33,6 +29,10 @@ from devcapsule.container_runtime.supervisor import (
 )
 
 pytestmark = pytest.mark.legacy
+
+# The supervisor is the capsule's entry process: it runs only inside Linux
+# capsules and relies on Linux signal primitives (sigwaitinfo).
+pytestmark = pytest.mark.skipif(sys.platform != "linux", reason="container-side code; capsules are Linux")
 
 DRIVER = Path(__file__).parent / "resources" / "supervisor_driver.py"
 REPO_ROOT = Path(__file__).resolve().parents[1]

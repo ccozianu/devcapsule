@@ -1,5 +1,5 @@
 ---
-description: DevCapsule ships no macOS executable; an experimental launcher built from source runs on Apple Silicon Macs against Docker Desktop, with capsules under emulation or, per project, natively as linux-arm64. What works, what differs, and how to build it.
+description: An experimental launcher you build from source runs on Apple Silicon Macs against Docker Desktop, with capsules emulated or native.
 weight: 3
 updated: 2026-11-04
 ---
@@ -20,8 +20,7 @@ A project runs as one of two capsule platforms:
   published yet: you build it on your Mac and select it for each checkout.
 
 A project runs as `linux-arm64` when it has a `linux-arm64` lock, and
-otherwise as `linux-amd64`. `devcapsule project --platform PLATFORM ...` names
-one for a single command.
+otherwise as `linux-amd64`.
 
 ## What differs from Linux
 
@@ -29,8 +28,9 @@ one for a single command.
   capsule. A macOS executable cannot run there, so you build the Linux runtime
   for each capsule platform you use and put them in one directory that
   `DEVCAPSULE_RUNTIME_PEX` names. Each launch delivers the one for its
-  project's platform and refuses a runtime from another build, so rebuild
-  them whenever you rebuild the launcher.
+  project's platform and refuses one of another DevCapsule version. Rebuild
+  them whenever you rebuild the launcher: runtimes of the same version from
+  another commit are not told apart.
 - **Emulation.** Under `linux-amd64`, the first launch of an IDE builds its
   image under emulation: about ten minutes for PyCharm on a 14-core Mac. Later
   launches reuse the image. The IDE runs slower than on a native host.
@@ -94,7 +94,7 @@ Add the `export` line, and `$HOME/.local/bin` on your `PATH`, to your shell
 profile. Then continue with [your first session](../getting-started/first-session.md);
 its projects run as `linux-amd64`.
 
-## Run a project natively as linux-arm64
+## Run a project natively as `linux-arm64`
 
 Build the arm64 base once, natively, with the launcher you installed and the
 revision it was built from (`devcapsule version` shows it):
@@ -108,16 +108,22 @@ Then, in each project, add the arm64 lock and select your local base for the
 checkout:
 
 ```bash
-devcapsule project --platform linux-arm64 init --unverified --authorize base-image default
+devcapsule project init --platform linux-arm64 --authorize base-image default
 devcapsule project config authorize base-image devcapsule-base-local:arm64
 devcapsule project run
 ```
 
-`--unverified` is needed while no arm64 combination of IDE and base has
-recorded validation evidence; init says so. The arm64 lock names a base that is
+VSCodium, VS Code, Eclipse, PyCharm, IntelliJ IDEA and Rider have each started
+natively on this base. A component no arm64 run has validated yet, such as the
+.NET SDK or Playwright, needs `--unverified` on `init` or on the `config`
+command that adds it; the command says so. The arm64 lock names a base that is
 not published yet, so do not commit it to a shared repository: anyone without
-a local arm64 base cannot run it. To run the project under emulation again for
-one launch, use `devcapsule project --platform linux-amd64 run`.
+a local arm64 base cannot run it. A change to the project's requirements made
+on your Mac updates both locks.
+
+To run the project under emulation again, delete
+`.devcapsule/devcapsule.linux-arm64.lock` and select the project's base for
+your checkout again with `devcapsule project config authorize base-image default`.
 
 If something fails on your Mac, please [open an issue](https://github.com/ccozianu/devcapsule/issues/new)
 with your macOS and Docker Desktop versions and the error output, omitting

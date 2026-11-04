@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from devcapsule.platforms import Platform
-
 import hashlib
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -24,6 +22,7 @@ from devcapsule.images.contract import (
 from devcapsule.build_info import BuildInfo, BuildInfoError, current_build_info, read_pex_build_info
 from devcapsule.compat import CliError
 from devcapsule.launch.pycharm._image_build import BASE_APT_PACKAGES
+from devcapsule.platforms import Platform
 from devcapsule.images.build import (
     AptPackagesComponent,
     BaseImageComponent,
@@ -317,9 +316,9 @@ def build_base_image(
     options: BaseImageBuildOptions,
     builder: BuildxImageBuilder | None = None,
     *,
+    platform: Platform,
     network: str = "default",
     source_verifier: Callable[[BuildInfo], None] = verify_public_github_revision,
-    platform: Platform | None = None,
 ) -> None:
     spec = build_base_image_spec(options)
     if not options.allow_local_source:

@@ -17,6 +17,7 @@ import tempfile
 from threading import Event
 import time
 from dataclasses import dataclass, field, replace
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Callable, Mapping, Sequence
@@ -58,9 +59,9 @@ from ...display_client import (
     print_only_opener,
     watch_display_ready,
 )
-from ... import host_daemon
 from ...host_daemon import (
     current_container,
+    daemon_architecture,
     docker_socket,
     is_host_backed,
     requires_translation,
@@ -138,6 +139,8 @@ SUDOERS_POLICY = "%ide-sudo ALL=(ALL:ALL) NOPASSWD: ALL\n"
 SUDOERS_VOLUME_FILE = "policy"
 """The policy's name inside its macOS volume."""
 SUDOERS_VOLUME_LABEL = "devcapsule.purpose=development-sudo-policy"
+ABANDONED_SUDOERS_VOLUME_AGE = timedelta(days=1)
+"""How old a policy volume no container uses must be to count as a killed launch's."""
 
 
 
@@ -174,6 +177,8 @@ def web_console_notice(availability: WebConsoleAvailability) -> str:
 @dataclass
 class PycharmRunOptions:
     project: Path
+    # The lock's platform: what the capsule runs as.
+    capsule_platform: Platform
     # Project configuration is complete; only the legacy command inherits
     # ambient launcher options. Host observations and explicit secret sources
     # remain available in either mode.
@@ -237,8 +242,6 @@ class PycharmRunOptions:
     # caller (commands/project.py); without it the launcher announces the
     # absence once and plans no console: no port, no token, no wait.
     web_console: WebConsoleAvailability = WebConsoleAvailability(True, None)
-    # The lock's platform; without a lock, the one this host creates projects for.
-    capsule_platform: Platform | None = None
 
 
 @dataclass
@@ -276,6 +279,9 @@ class PycharmRunConfig:
     memory_limit_bytes: int | None
     runtime_plan: RuntimePlan | None
     use_image_process: bool
+    capsule_platform: Platform
+    # The Docker daemon's, asked once per launch: it decides emulation.
+    daemon_architecture: str
     cpus: int | None = None
     launch_configuration: LaunchConfiguration | None = None
     host_browser_socket: Path | None = None
@@ -292,8 +298,6 @@ class PycharmRunConfig:
     console_token: str = ""
     open_console_url: Callable[[str], None] | None = None
     web_console: WebConsoleAvailability = WebConsoleAvailability(True, None)
-    # The lock's platform; without a lock, the one this host creates projects for.
-    capsule_platform: Platform = field(default_factory=Platform.current)
     # This session's log directory on the host, bound into the capsule at
     # SESSION_LOG_DESTINATION: the launcher's own log, the supervisor's, and
     # one file per supervised child (see devcapsule.logs).
@@ -311,7 +315,7 @@ class PycharmRunConfig:
 
 
 HOST_NETWORK_UNAVAILABLE_ON_MACOS = (
-    "devcapsule: warning: host networking is unavailable on macOS: Docker Desktop's host network "
+    "Warning: host networking is unavailable on macOS: Docker Desktop's host network "
     "is its virtual machine's, out of the Mac's reach. This launch uses bridge networking; "
     "services on the Mac are reachable from the capsule as host.docker.internal."
 )
@@ -1194,7 +1198,8 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         console_token=console_token,
         open_console_url=options.open_console_url,
         web_console=options.web_console,
-        capsule_platform=options.capsule_platform or Platform.current(),
+        capsule_platform=options.capsule_platform,
+        daemon_architecture=daemon_architecture(),
         interactive_state_mounts=tuple(interactive_state_mounts),
         additional_state_mounts=tuple(additional_state_mounts),
         additional_environment=tuple(additional_environment),
@@ -1324,7 +1329,7 @@ def build_docker_args(
     args = [
         "--rm",
         "-i",
-        *config.capsule_platform.docker_platform_args(host_daemon.daemon_architecture()),
+        *config.capsule_platform.docker_platform_args(config.daemon_architecture),
         "--name",
         config.name,
         "--workdir",
@@ -1889,7 +1894,7 @@ def ensure_sudoers_policy_ownership(
             "run",
             "--rm",
             "--pull=never",
-            *config.capsule_platform.docker_platform_args(host_daemon.daemon_architecture()),
+            *config.capsule_platform.docker_platform_args(config.daemon_architecture),
             "--network",
             "none",
             "--read-only",
@@ -1938,16 +1943,12 @@ def prepare_sudoers_policy_volume(config: PycharmRunConfig, policy: Path, env: M
     with its virtual machine as the Mac user: a bind-mounted file is owned by
     that user inside every container, and not even root there can chown it.
     A volume lives on the virtual machine's own disk, where root's ownership
-    holds. The session removes it at its end; one a killed or interrupted
-    launch left behind carries the label, and the next launch prunes every
-    such volume no container uses before it creates its own.
+    holds. The session removes it at its end; the next launch removes one a
+    killed launch left behind (``remove_abandoned_sudoers_volumes``).
     """
 
     volume = f"{config.name}-sudoers"
-    subprocess.run(
-        ["docker", "volume", "prune", "--all", "--force", "--filter", f"label={SUDOERS_VOLUME_LABEL}"],
-        check=False, env=dict(env), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-    )
+    remove_abandoned_sudoers_volumes(env)
     created = subprocess.run(
         ["docker", "volume", "create", "--label", SUDOERS_VOLUME_LABEL, volume],
         check=False, env=dict(env), stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True,
@@ -1964,7 +1965,7 @@ def prepare_sudoers_policy_volume(config: PycharmRunConfig, policy: Path, env: M
         "--rm",
         "-i",
         "--pull=never",
-        *config.capsule_platform.docker_platform_args(host_daemon.daemon_architecture()),
+        *config.capsule_platform.docker_platform_args(config.daemon_architecture),
         "--network",
         "none",
         "--read-only",
@@ -2004,8 +2005,44 @@ def prepare_sudoers_policy_volume(config: PycharmRunConfig, policy: Path, env: M
     return volume
 
 
+def remove_abandoned_sudoers_volumes(env: Mapping[str, str]) -> None:
+    """Remove the policy volumes of launches that ended without removing their own.
+
+    A concurrent launch's volume is in no container's use between its
+    creation and its capsule's start, so only a volume older than
+    ``ABANDONED_SUDOERS_VOLUME_AGE`` is taken for abandoned; Docker refuses
+    to remove one a container still uses.
+    """
+
+    listed = subprocess.run(
+        ["docker", "volume", "ls", "--quiet", "--filter", f"label={SUDOERS_VOLUME_LABEL}"],
+        check=False, env=dict(env), capture_output=True, text=True,
+    )
+    volumes = listed.stdout.split() if listed.returncode == 0 else []
+    if not volumes:
+        return
+    inspected = subprocess.run(
+        ["docker", "volume", "inspect", "--format", "{{.Name}} {{.CreatedAt}}", *volumes],
+        check=False, env=dict(env), capture_output=True, text=True,
+    )
+    cutoff = datetime.now(timezone.utc) - ABANDONED_SUDOERS_VOLUME_AGE
+    abandoned = []
+    for line in inspected.stdout.splitlines():
+        volume, _, created = line.partition(" ")
+        try:
+            if datetime.fromisoformat(created) < cutoff:
+                abandoned.append(volume)
+        except ValueError:
+            continue  # A creation time Docker did not report is no evidence of age.
+    if abandoned:
+        subprocess.run(
+            ["docker", "volume", "rm", *abandoned],
+            check=False, env=dict(env), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+
+
 def remove_sudoers_policy_volume(volume: str | None, env: Mapping[str, str]) -> None:
-    """Remove the policy volume; a capsule still using it keeps it until the next launch."""
+    """Remove the policy volume; one a capsule still uses is left for a later launch to find abandoned."""
 
     if volume:
         subprocess.run(

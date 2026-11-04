@@ -10,6 +10,7 @@ import pytest
 
 from devcapsule.components.pycharm import runtime_template as pycharm_runtime_template
 from devcapsule.launch.pycharm import DockerMode, PycharmRunOptions
+from devcapsule.platforms import Platform
 from devcapsule.launch.pycharm._launcher import (
     TempRuntimeFiles,
     build_docker_args,
@@ -184,6 +185,7 @@ def test_plan_models_every_flag_the_real_launcher_emits(tmp_path: Path, enable_s
         config = build_run_config(
             PycharmRunOptions(
                 project=project,
+                capsule_platform=Platform.LINUX_AMD64,
                 project_mount="/workspace/project",
                 docker_mode=DockerMode.none,
                 network_mode="host",
@@ -580,3 +582,7 @@ def test_an_emulated_launch_plans_its_platform_and_the_successor_must_run_it(spe
     inspection["ImageManifestDescriptor"] = {"platform": {"os": "linux", "architecture": "arm64"}}
     with pytest.raises(SuccessorPlanError, match="successor platform does not match the planned --platform"):
         compare_inspection(plan, inspection)
+    # The independent inspection reloads the retained plan, platform included;
+    # a native plan's retained form is unchanged.
+    assert ExpectedSuccessorPlan.from_mapping(plan.to_mapping(show_host_paths=True)) == plan
+    assert "platform" not in build_plan(docker_args()).to_mapping()

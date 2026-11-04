@@ -37,10 +37,14 @@ the base recipe, on top of `macos-launcher`'s platform split. File references ar
    while the arm64 base is unpublished, per the ruling in section 2. Which platform a
    project runs as is the configuration's question: `configuration.storage.project_platform`,
    read-only, answers the first runnable platform the project has a lock for, else
-   `current()`; `project --platform` and `images build --platform` name one for a command.
-   Below the configuration, the platform is the lock's, passed down explicitly to the base
-   pull, the image build, the runtime choice and the launch (D-0006's consequence).
-   Emulation is judged against the Docker daemon's architecture, not the launcher's CPU.
+   `current()`. `project init --platform` adds a platform's lock, and the project then runs
+   as it; `images build --platform` names the platform of a base build. A checkout so runs
+   one platform until its project's locks change. An owner's edit of the shared contract
+   regenerates every lock the project carries, so a committed lock never falls behind the
+   manifest (R-COMPAT-001). Below the configuration, the platform is the lock's, a required
+   parameter of the base pull, the image build, the runtime choice and the launch (D-0006's
+   consequence). Emulation is judged against the Docker daemon's architecture, asked once
+   per launch, not the launcher's CPU.
 2. **The runtime.** An arm64 capsule needs a `linux-aarch64` executable. A launcher whose own
    binary runs on the capsule platform delivers itself (R-RUNTIME-001). Otherwise the user
    names the runtime: `DEVCAPSULE_RUNTIME_PEX` names one file, or a directory holding
@@ -67,9 +71,9 @@ the base recipe, on top of `macos-launcher`'s platform split. File references ar
 4. **Live and documentation.** `nox -s ide-smoke` for every surface natively on this Mac;
    the Linux, macOS and install pages.
 
-## 5. Review, 2026-11-04
+## 5. Reviews, 2026-11-04
 
-The human's `/review` of all changes since `main`, run by a separate agent, rejected the
+A review of all changes since `main`, run by a separate agent, rejected the
 branch with seven high findings: a Mac's new projects defaulting to the unpublished arm64
 base; `images build` ignoring the project's locks; the platform read from a process-wide
 selection below the configuration instead of from the lock; no version check on the
@@ -78,6 +82,24 @@ volume; a hash test that skipped three components. Fourteen medium and three low
 followed. The human said "fix all"; each is fixed as described in section 3, except that a
 lock naming an unpublished base is reported, not refused, since the human's ruling has the
 checkout select a local base for it.
+
+A second review of all changes since `main`, and a review of the branch against the
+codebase's own conventions, followed the fixes. The first rejected the branch again with
+three high findings: an owner's edit on a Mac rewrote only the lock of the platform the
+project ran as, leaving the committed `linux-amd64` lock behind its manifest; a checkout's
+one base-image answer applied to whichever lock `project --platform` named, so switching
+platforms per command broke the launch; and each macOS launch's sweep of sudo-policy
+volumes could remove a concurrent launch's fresh one. Nine medium and three low findings
+followed. The second found seventeen departures, the first that `--platform` was kept in a
+module global, process-wide state the codebase nowhere else has. The fixes are section 3's
+design: `project --platform` is gone, owner edits regenerate every lock under one journal
+that still reads the single-lock form an older launcher wrote, the sweep removes only
+unused policy volumes older than a day, and the retained successor plan carries its
+planned `--platform`. Comments, messages, tests and the generated pin module now follow the
+surrounding code.
+
+Left as it is: a checkout keeps one base-image answer. A developer who deletes the arm64
+lock to return to emulation answers the base again (`docs/platforms/macos.md`).
 
 ## 6. What this does not decide
 

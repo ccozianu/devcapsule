@@ -27,7 +27,7 @@ from devcapsule.elicitation import SOURCE_EXISTING_RECORD, SOURCE_COMMAND_LINE, 
 from devcapsule.environment_realization import required_local_image
 from devcapsule.materialization import validate_base_image
 from devcapsule.project import sanitize_name
-from devcapsule.platforms import Platform, UnsupportedPlatformError
+from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix
 
 from .trust import HomeTrust
@@ -42,7 +42,7 @@ from .authorization import (
 )
 from .capabilities import CapabilityPolicy, LocalCapabilities, requirement
 from .capability_commands import check_documents, pin_selection
-from .capability_selection import compose_lock, effective_lock, generate_lock, local_pins
+from .capability_selection import compose_lock, effective_lock, generate_lock, local_pins, matrix_for
 from .file_formats import (
     AuthorizationScalar,
     ConfigurationFileKind,
@@ -278,6 +278,8 @@ class InitializeRequest:
     allow_unverified: bool = False
     # None: decide from whether stdin is a terminal.
     interactive: bool | None = None
+    # The platform whose lock to write; None: the one the project runs as here.
+    platform: Platform | None = None
 
 
 @dataclass(frozen=True)
@@ -313,7 +315,7 @@ class InitializeReport:
     # None when the owner's checkout has no IDE yet: nothing to resolve.
     resolve: ResolveReport | None
     # The lock pins a base its registry does not hold yet (see ResolutionMatrix.base_unpublished).
-    base_unpublished: bool = False
+    base_unpublished: bool
 
     def render(self) -> str:
         required = " ".join(self.required) or "none"
@@ -329,7 +331,7 @@ class InitializeReport:
         lines.append(f"{self.lock_action} {self.lock_path} (base {self.base_display})")
         if self.base_unpublished:
             lines.append("Its base is not published yet: a checkout runs this lock only on a locally built base of "
-                         "the same recipe, selected with 'devcapsule project config authorize base-image <local tag>'.")
+                         "the same recipe, selected with 'devcapsule project config authorize base-image IMAGE'.")
         for name, value, justification in self.recommendations:
             line = f"Recommended {name} = {value} for every checkout"
             lines.append(f"{line} ({justification})." if justification else f"{line}.")
@@ -406,7 +408,7 @@ def initialize_project(
         raise ProjectConfigurationError(f"Project directory does not exist: {root}")
     require_settled(root)
     manifest_path = root / ".devcapsule" / "devcapsule.toml"
-    platform = project_platform(root)
+    platform = _platform_to_lock(root, request.platform)
     lock_path = platform_lock_path(root, platform)
     matrix = MATRICES[platform]
 
@@ -547,7 +549,7 @@ def initialize_project(
             base_display=_base_display(shared_lock), recommendations=recommendations,
             selection=selection, answered=(), carried=(), recommended=(),
             checkout_record=record.input_path, resolve=None,
-            base_unpublished=matrix.base_unpublished(str(shared_lock.get("base", {}).get("reference"))),
+            base_unpublished=_pins_unpublished_base(shared_lock),
         )
     lock = effective_lock(manifest, compose_lock(manifest, shared_lock, record.document), record.document, warn=False)
     declarations = authorization_declarations(manifest, lock)
@@ -575,15 +577,36 @@ def initialize_project(
         answered=tuple(settled.answered), carried=tuple(settled.carried),
         recommended=accepted_recommendations, checkout_record=record.input_path,
         resolve=resolve_report,
-        base_unpublished=matrix.base_unpublished(str(shared_lock.get("base", {}).get("reference"))),
+        base_unpublished=_pins_unpublished_base(shared_lock),
     )
+
+
+def _platform_to_lock(root: Path, named: Platform | None) -> Platform:
+    """The platform whose lock init writes: ``named``, or the one the project runs as here.
+
+    Init completes the checkout for the lock it writes, so a named platform
+    must be the one the project runs as once that lock exists.
+    """
+    if named is None:
+        return project_platform(root)
+    runnable = Platform.runnable()
+    if named not in runnable:
+        names = ", ".join(str(member) for member in runnable)
+        raise ProjectConfigurationError(f"This host runs {names} capsules, not {named}.")
+    runs_as = next(platform for platform in runnable if platform is named or platform_lock_path(root, platform).is_file())
+    if runs_as is not named:
+        raise ProjectConfigurationError(
+            f"On this host the project runs as {runs_as}, which it has a lock for, "
+            f"so init cannot add a {named} lock here."
+        )
+    return named
 
 
 def _initialize_report(
     manifest_path: Path, manifest_action: str, identity: _ProjectIdentity, lock_path: Path, lock_action: str,
     *, base_display: str, recommendations: list[tuple[str, str]], selection: _OwnerSelection,
     answered: tuple[str, ...], carried: tuple[str, ...], recommended: tuple[str, ...],
-    checkout_record: Path, resolve: ResolveReport | None, base_unpublished: bool = False,
+    checkout_record: Path, resolve: ResolveReport | None, base_unpublished: bool,
 ) -> InitializeReport:
     return InitializeReport(
         manifest_path=manifest_path,
@@ -610,6 +633,11 @@ def _initialize_report(
         resolve=resolve,
         base_unpublished=base_unpublished,
     )
+
+
+def _pins_unpublished_base(lock: Mapping[str, Any]) -> bool:
+    """Whether ``lock`` pins a base its registry does not hold yet."""
+    return matrix_for(lock).base_unpublished(str(lock.get("base", {}).get("reference")))
 
 
 def _base_display(lock: Mapping[str, Any]) -> str:
@@ -1585,6 +1613,7 @@ def _apply_answers_to_standing_checkout(
         base_display=base_display, recommendations=[], selection=_existing_selection(root, manifest),
         answered=tuple(settled.answered), carried=tuple(settled.carried), recommended=(),
         checkout_record=record.input_path, resolve=resolve_report,
+        base_unpublished=_pins_unpublished_base(lock),
     )
 
 

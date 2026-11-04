@@ -23,7 +23,7 @@ from devcapsule.configuration.authorization import AuthorizationReview, authoriz
 from devcapsule.configuration.file_formats import canonical_digest, render_toml, selected_version_lock
 from devcapsule.configuration.model import Configuration
 from devcapsule.configuration.capabilities import CapabilityPolicy, LocalCapabilities
-from devcapsule.configuration.capability_selection import usable_lock
+from devcapsule.configuration.capability_selection import matrix_for, usable_lock
 from devcapsule.configuration.trust import HomeTrust
 from devcapsule.configuration.storage import (
     load_settings,
@@ -33,7 +33,6 @@ from devcapsule.configuration.storage import (
 from devcapsule.environment_realization import RealizedEnvironment, realize_environment
 from devcapsule.materialization import ArtifactSpec, acquire_artifact, cache_root, parse_locked_environment, sha256_file
 from devcapsule.platforms import Platform, XdgHomes
-from devcapsule.resolution_matrix import MATRICES
 from devcapsule import runtime_configuration
 from devcapsule.build_info import current_build_info
 from devcapsule.component_status import CompatibilityLookup
@@ -137,7 +136,7 @@ def _validation(lock: Mapping[str, Any], checkout: Mapping[str, Any]) -> tuple[t
         missing = tuple(f"{name} {metadata.get('version')} on local base {local_base}"
                         for name, metadata in lock["components"].items() if isinstance(metadata, dict))
         return (), missing
-    return MATRICES[Platform.parse(str(lock.get("platform")))].validation_evidence(lock)
+    return matrix_for(lock).validation_evidence(lock)
 
 
 INSPECTION_SCHEMA_VERSION = 1
@@ -410,7 +409,7 @@ def preview(start: Path, component: str, version: str, *, report: Callable[[str]
     if channel is None:
         raise CliError(f"{component}: {definition.channel_omission_reason() or 'no distribution channel declared'}")
     selection = channel.select(version, str(workspace.lock["platform"]))
-    matrix = MATRICES[Platform.parse(str(workspace.lock["platform"]))]
+    matrix = matrix_for(workspace.lock)
     if workspace.lock["platform"] not in selection.platforms:
         raise CliError("Candidate does not support the selected platform.")
     if selection.base_families and matrix.base_family(workspace.lock) not in selection.base_families:

@@ -26,7 +26,6 @@ from typing import Any, Mapping
 
 from devcapsule.compat import DecisionPending
 from devcapsule.materialization import validate_base_image
-from devcapsule.platforms import Platform
 from devcapsule.project import sanitize_name
 from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix, known_base_image
 

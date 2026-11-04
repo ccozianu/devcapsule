@@ -32,6 +32,7 @@ from devcapsule.commands.framework import (
     Command,
     Group,
     add_carrier_options,
+    capsule_platform_argument,
     carrier_answers,
 )
 from devcapsule.components.catalog import COMPONENTS
@@ -53,8 +54,8 @@ from devcapsule import version_sets
 from devcapsule import runtime_configuration
 from devcapsule.runtime_configuration import CapsuleAccess
 from devcapsule.compat import CliError, DecisionPending
-from devcapsule.platforms import Platform
 import difflib
+from devcapsule.configuration.capability_selection import lock_platform
 from devcapsule.configuration.capabilities import CapabilityPolicy, LocalCapabilities
 from devcapsule.configuration.console_requests import deferred_rows
 from devcapsule.configuration.listing import Listing, assess_checkout
@@ -311,6 +312,11 @@ class ProjectInitCommand(Command):
             help="A capability the project offers and a developer may leave out, such as browser-automation. Repeatable.",
         )
         _add_owner_options(parser)
+        parser.add_argument(
+            "--platform", type=capsule_platform_argument, metavar="PLATFORM",
+            help="Add the lock for this capsule platform, such as linux-arm64; the project then runs as it here. "
+                 "Default: the platform this host runs the project as.",
+        )
         _retired_option(parser, "--agent", "devcapsule project init --with CAPABILITY")
         parser.add_argument(
             "--regenerate",
@@ -352,6 +358,7 @@ class ProjectInitCommand(Command):
                 answers=answers,
                 regenerate=arguments.regenerate,
                 allow_unverified=arguments.allow_unverified,
+                platform=arguments.platform,
             )
         )
         print(report.render())
@@ -2437,7 +2444,7 @@ class ProjectRunCommand(Command):
                 enable_host_browser=selected_host_browser,
                 display_transport=display_transport,
                 web_console=web_console,
-                capsule_platform=Platform.parse(str(lock["platform"])),
+                capsule_platform=lock_platform(lock),
             )
         )
         if command_report is not None:
@@ -2539,13 +2546,6 @@ class ProjectCommand(Group):
             type=Path,
             help="Project root or descendant; defaults to discovery from the current directory.",
         )
-        parser.add_argument(
-            "--platform",
-            dest="capsule_platform",
-            metavar="PLATFORM",
-            help="Capsule platform for this command, such as linux-arm64; defaults to the first one "
-                 "this host runs that the project has a lock for.",
-        )
 
     @classmethod
     def make_context(cls, arguments: argparse.Namespace, parent: object | None) -> object | None:
@@ -2560,7 +2560,6 @@ class ProjectCommand(Group):
         launcher.
         """
         context = ProjectCommandContext(arguments.selected_path)
-        _name_capsule_platform(getattr(arguments, "capsule_platform", None))
         tokens: list[str] = list(arguments.rest)
         parsed_tokens = tokens[:tokens.index("--")] if "--" in tokens else tokens
         if any(token in {"-h", "--help"} for token in parsed_tokens):
@@ -2604,23 +2603,6 @@ class ProjectCommand(Group):
             RecursiveE2EGroup.name: RecursiveE2EGroup,
             ProjectRunCommand.name: ProjectRunCommand,
         }
-
-
-def _name_capsule_platform(named: str | None) -> None:
-    """Record the platform ``--platform`` named for this command, or clear it.
-
-    Without one, each step asks ``project_platform`` for the project's
-    platform, which its locks decide on a host that runs two. Naming one is
-    how ``project --platform linux-arm64 init`` adds that platform's lock to a
-    project, since init completes what a project lacks.
-    """
-    from devcapsule.configuration.storage import name_platform
-    from devcapsule.platforms import Platform, UnsupportedPlatformError
-
-    try:
-        name_platform(Platform.parse(named) if named is not None else None)
-    except UnsupportedPlatformError as exc:
-        raise ProjectConfigurationError(str(exc)) from exc
 
 
 def _capsule_access(leaf: type[Command]) -> CapsuleAccess:

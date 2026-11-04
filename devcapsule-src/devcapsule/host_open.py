@@ -35,7 +35,7 @@ RATE_LIMIT_REQUESTS = 30
 RATE_LIMIT_WINDOW_SECONDS = 60.0
 _UNIX_PATH_LIMIT = 100
 HOST_OPEN_UNAVAILABLE_ON_MACOS = (
-    "devcapsule: warning: host-browser is unavailable on macOS: Docker Desktop does not carry the "
+    "Warning: host-browser is unavailable on macOS: Docker Desktop does not carry the "
     "host's Unix sockets into a capsule. Links open in the capsule's own browser instead."
 )
 
@@ -194,7 +194,6 @@ class HostOpenBroker:
             detail = str(exc) or "request rejected"
             try:
                 connection.sendall(_encode_frame({"ok": False, "error": detail}))
-                _drain(connection)
             except OSError:
                 pass
 
@@ -320,19 +319,6 @@ def _encode_frame(value: Mapping[str, Any]) -> bytes:
     return (
         json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
     ).encode("utf-8")
-
-
-def _drain(connection: socket.socket) -> None:
-    """Consume what a rejected client sent, up to its end or the frame limit.
-
-    Closing a socket with unread input resets the connection on macOS, and
-    the client then loses the rejection it was just sent.
-    """
-
-    connection.shutdown(socket.SHUT_WR)
-    remaining = MAX_FRAME_BYTES
-    while remaining > 0 and (chunk := connection.recv(min(4096, remaining))):
-        remaining -= len(chunk)
 
 
 def _read_frame(connection: socket.socket, limit: int) -> bytes:

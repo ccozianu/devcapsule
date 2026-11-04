@@ -19,7 +19,7 @@ from python_on_whales import docker
 from python_on_whales.exceptions import DockerException
 
 from devcapsule.compat import CliError, copy_resource_tree
-from devcapsule import host_daemon
+from devcapsule.host_daemon import daemon_architecture
 from devcapsule.platforms import Platform
 
 
@@ -258,11 +258,10 @@ class BuildxImageBuilder:
     def __init__(self, context_root: Path | None = None) -> None:
         self.context_root = context_root
 
-    def build(self, spec: ImageBuildSpec, *, network: str = "default", platform: Platform | None = None) -> None:
-        """Build ``spec`` for ``platform``: a project's lock names it; a base build without one
-        is for the platform this host creates projects for."""
+    def build(self, spec: ImageBuildSpec, *, platform: Platform, network: str = "default") -> None:
+        """Build ``spec`` for the capsule ``platform``."""
         plan = spec.build_plan()
-        capsule_platform = platform or Platform.current()
+        emulated = platform.emulated_docker_platform(daemon_architecture())
         try:
             with self._context_directory() as context_root:
                 rendered = render_build_context(plan, context_root)
@@ -271,10 +270,7 @@ class BuildxImageBuilder:
                     file=rendered.dockerfile,
                     tags=[plan.image],
                     load=True,
-                    # A daemon of the capsule platform's architecture builds as
-                    # before; another must be told the platform, not left its own.
-                    platforms=([capsule_platform.docker_platform]
-                               if capsule_platform.emulated(host_daemon.daemon_architecture()) else None),
+                    platforms=[emulated] if emulated is not None else None,
                     network=network,
                     build_contexts={name: str(path) for name, path in rendered.named_contexts.items()},
                     allow=["network.host"] if network == "host" else [],

@@ -18,7 +18,6 @@ from pathlib import Path
 
 import pytest
 
-from devcapsule.configuration.storage import project_platform
 from devcapsule.platforms import HostOs
 from devcapsule.runtime_artifact import RUNTIME_PEX_ENV, executable_platform
 from tests.e2e.ide_session import SURFACES, IdeSurface, capture_desktop, command, desktop_page_answers, ide_session, launched_ide, stop_session, wait_for_console_url, wait_for_ide_window
@@ -163,13 +162,14 @@ def delivered_runtime(executable: Path, workspace: Path) -> Path:
 
     Derived independently of the launcher's choice: itself when it is a Linux
     executable; for a macOS launcher, the Linux runtime its environment names,
-    from a directory the one for the platform the workspace's locks select.
+    from a directory the one for the platform of the one lock the smoke's init wrote.
     """
     if executable_platform(executable) is not HostOs.DARWIN:
         return executable
     named = Path(os.environ[RUNTIME_PEX_ENV]).expanduser().resolve()
     if named.is_dir():
-        return named / f"devcapsule-{project_platform(workspace)}"
+        (lock,) = (workspace / ".devcapsule").glob("devcapsule.*.lock")
+        return named / f"devcapsule-{lock.name.split('.')[1]}"
     return named
 
 
