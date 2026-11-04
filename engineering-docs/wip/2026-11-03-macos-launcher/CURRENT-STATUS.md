@@ -97,6 +97,16 @@ Reading for slice 4 found that a supported macOS release reopens
 launcher cannot deliver its own bytes there. Today's path is the explicit user override
 D-0009 admits. The design note's section 4 states the question for the owner.
 
+**2026-11-04, development sudo.** The human's first own launch on this Mac, a project with
+development sudo, stopped at "Permission denied": the sudo policy must be root's, and Docker
+Desktop shares a Mac file as the Mac user, which even root in the helper container cannot
+change. Neither smoke nor probe had enabled sudo. On macOS root now writes the policy into a
+Docker volume named after the container, mounted read-only and removed when the session
+ends (e5bd8acd); the Linux helper gained `--platform` when emulating. A live VSCodium launch
+with development sudo: the policy `0 0 0440` in the capsule, `sudo -n id -u` as the IDE user
+prints 0, the volume gone afterwards. Unit suite on this Mac: 2,729 passed, 19 skipped. The
+fixed pair is installed in the human's `~/.local`.
+
 ## Next Resumable Task
 
 None in the plan; the slices are done. Publish the workstream and push the branch once the
