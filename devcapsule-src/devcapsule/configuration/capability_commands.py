@@ -22,7 +22,9 @@ from .manifest import current_manifest
 from .manifest_document import capability_reasons, capability_table, manifest_preamble, render_manifest
 from .manifest_schemas import ManifestV2
 from .nodes import build_node_registry
-from .storage import atomic_write, checkout_record_paths, discover_project, load_toml, require_settled
+from .storage import (
+    atomic_write, checkout_record_paths, discover_project, load_toml, platform_lock_path, project_platform, require_settled,
+)
 
 
 def paths(root: Path) -> tuple[Path, Path, Path]:
@@ -31,7 +33,7 @@ def paths(root: Path) -> tuple[Path, Path, Path]:
     ``root`` is the project directory. This only constructs paths.
     """
     directory = root / ".devcapsule"
-    return (directory / "devcapsule.toml", directory / f"devcapsule.{Platform.current()}.lock",
+    return (directory / "devcapsule.toml", platform_lock_path(root, project_platform(root)),
             directory / ".capability-transaction.toml")
 
 
@@ -192,7 +194,7 @@ def configure(start: Path, *, required: Sequence[str] | None = None,
     local_edit = local is not None or without is not None or providers is not None
     if project_edit == local_edit:
         raise ProjectConfigurationError("Choose either project flags (--required/--optional) or local flags (--local/--without).")
-    matrix = MATRICES[Platform.current()]
+    matrix = MATRICES[project_platform(root)]
     if project_edit:
         return configure_project(root, manifest, lock, matrix, required=required, optional=optional,
                                  preview=preview, allow_unverified=allow_unverified)

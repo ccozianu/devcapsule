@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from devcapsule.platforms import Platform
+
 import hashlib
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -317,8 +319,9 @@ def build_base_image(
     *,
     network: str = "default",
     source_verifier: Callable[[BuildInfo], None] = verify_public_github_revision,
+    platform: Platform | None = None,
 ) -> None:
     spec = build_base_image_spec(options)
     if not options.allow_local_source:
         source_verifier(pex_build_info(options))
-    (builder or BuildxImageBuilder()).build(spec, network=network)
+    (builder or BuildxImageBuilder()).build(spec, network=network, platform=platform)

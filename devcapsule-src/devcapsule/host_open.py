@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections import deque
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
-import errno
 import json
 import os
 from pathlib import Path
@@ -39,9 +38,6 @@ HOST_OPEN_UNAVAILABLE_ON_MACOS = (
     "devcapsule: warning: host-browser is unavailable on macOS: Docker Desktop does not carry the "
     "host's Unix sockets into a capsule. Links open in the capsule's own browser instead."
 )
-# macOS: SOL_LOCAL, and the leading fields of struct xucred (cr_version, cr_uid).
-_SOL_LOCAL = 0
-_XUCRED_SIZE = 76
 
 
 class HostOpenError(Exception):
@@ -89,13 +85,7 @@ def open_host_url(
             connection.settimeout(timeout)
             connection.connect(str(path))
             connection.sendall(request)
-            try:
-                connection.shutdown(socket.SHUT_WR)
-            except OSError as exc:
-                # macOS refuses shutdown once the broker has answered and
-                # closed; the answer is still buffered and is read below.
-                if exc.errno != errno.ENOTCONN:
-                    raise
+            connection.shutdown(socket.SHUT_WR)
             response = _read_frame(connection, MAX_RESPONSE_BYTES)
     except (OSError, TimeoutError) as exc:
         raise HostOpenError("host-browser broker is unavailable") from exc
@@ -261,10 +251,10 @@ def host_open_bridge(
         # It may only propagate a bridge explicitly inherited from its owner.
         yield None
         return
-    if HostOs.current() is not HostOs.LINUX:
+    if not HostOs.current().binds_unix_sockets:
         # The broker is a host Unix socket bound into the capsule. Docker
-        # Desktop refuses that bind source (observed on 29.3.1, macOS 27), so
-        # the optional integration is unavailable rather than fatal.
+        # Desktop refuses that bind source, so the optional integration is
+        # unavailable rather than fatal.
         print(HOST_OPEN_UNAVAILABLE_ON_MACOS, file=sys.stderr)
         yield None
         return
@@ -312,15 +302,11 @@ def _broker_socket_path(parent: str | None) -> Iterator[Path]:
 
 
 def _peer_uid(connection: socket.socket) -> int:
-    if hasattr(socket, "SO_PEERCRED"):
-        credentials = connection.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize("3i"))
-        _pid, uid, _gid = struct.unpack("3i", credentials)
-        return uid
-    if hasattr(socket, "LOCAL_PEERCRED"):
-        credentials = connection.getsockopt(_SOL_LOCAL, socket.LOCAL_PEERCRED, _XUCRED_SIZE)
-        _version, uid = struct.unpack_from("=II", credentials)
-        return uid
-    raise HostOpenError("peer credentials are unavailable on this platform")
+    if not hasattr(socket, "SO_PEERCRED"):
+        raise HostOpenError("peer credentials are unavailable on this platform")
+    credentials = connection.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize("3i"))
+    _pid, uid, _gid = struct.unpack("3i", credentials)
+    return uid
 
 
 def _is_socket(path: Path) -> bool:

@@ -13,7 +13,6 @@ of DevCapsule's.
 
 from __future__ import annotations
 
-from contextvars import ContextVar
 from dataclasses import dataclass, field
 from enum import StrEnum
 import os
@@ -21,25 +20,34 @@ from pathlib import Path
 import platform as host_platform
 from typing import Mapping
 
-__all__ = ["HostOs", "Platform", "UnsupportedPlatformError", "XdgHomes", "host_architecture"]
+__all__ = ["HostOs", "Platform", "UnsupportedPlatformError", "XdgHomes", "architecture_key", "host_architecture"]
 
 
 class UnsupportedPlatformError(ValueError):
     """A platform key outside the supported set; the message is displayable."""
 
 
+def architecture_key(machine: str) -> str:
+    """A CPU architecture as a machine or a Docker daemon reports it, in the platform keys' spelling."""
+
+    lowered = machine.lower()
+    return {"x86_64": "amd64", "aarch64": "arm64"}.get(lowered, lowered)
+
+
 def host_architecture() -> str:
     """This host's CPU architecture in the platform keys' spelling."""
 
-    machine = host_platform.machine().lower()
-    return {"x86_64": "amd64", "aarch64": "arm64"}.get(machine, machine)
+    return architecture_key(host_platform.machine())
 
 
 class HostOs(StrEnum):
     """The host operating system, for the mechanisms that differ by host.
 
     Locks never carry it: capsules are Linux on every host, and the lock
-    names the capsule platform (``Platform``).
+    names the capsule platform (``Platform``). On macOS the container runtime
+    is Docker Desktop's virtual machine; its conventions, observed on Docker
+    Desktop 29.3.1, are the properties below, which feature code consults
+    instead of asking which host it is on.
     """
 
     LINUX = "linux"
@@ -56,18 +64,66 @@ class HostOs(StrEnum):
                 f"Unsupported host operating system {system!r}; supported: {supported}."
             ) from None
 
+    @property
+    def docker_socket_gid(self) -> int | None:
+        """The group owning the Docker socket inside a container, when the host decides it.
 
-# The capsule platforms each host runs, preferred first. A Linux host runs its
-# own platform. Apple Silicon runs linux-arm64 natively and linux-amd64 under
+        Docker Desktop presents its socket as ``root:root``, mode 0660, in every
+        container, whatever the Mac file's owner. None on Linux, where the host
+        socket file's own group applies.
+        """
+
+        return 0 if self is HostOs.DARWIN else None
+
+    @property
+    def host_network_reachable(self) -> bool:
+        """Whether a listener on Docker's host network is reachable from this host.
+
+        Docker Desktop's host network is its virtual machine's, out of the Mac's reach.
+        """
+
+        return self is HostOs.LINUX
+
+    @property
+    def binds_unix_sockets(self) -> bool:
+        """Whether a host Unix socket can be bind-mounted into a container.
+
+        Docker Desktop rewrites the source under ``/socket_mnt`` and refuses it.
+        """
+
+        return self is HostOs.LINUX
+
+    @property
+    def chown_reaches_bind_mounts(self) -> bool:
+        """Whether root in a container can change a bind-mounted host file's owner.
+
+        Docker Desktop shares Mac files as the Mac user; a chown inside is refused.
+        """
+
+        return self is HostOs.LINUX
+
+
+# The capsule platforms each host runs, native first. A Linux host runs its
+# own platform; Apple Silicon runs linux-arm64 natively and linux-amd64 under
 # Docker Desktop's emulation; an Intel Mac runs linux-amd64.
-_CAPSULE_PLATFORMS_OF_HOST: Mapping[str, tuple[str, ...]] = {
-    "darwin-arm64": ("linux-arm64", "linux-amd64"),
-    "darwin-amd64": ("linux-amd64",),
+_CAPSULE_PLATFORMS_OF_HOST: Mapping[tuple[HostOs, str], tuple[str, ...]] = {
+    (HostOs.LINUX, "amd64"): ("linux-amd64",),
+    (HostOs.LINUX, "arm64"): ("linux-arm64",),
+    (HostOs.DARWIN, "arm64"): ("linux-arm64", "linux-amd64"),
+    (HostOs.DARWIN, "amd64"): ("linux-amd64",),
 }
 
-# The platform selected for the project this process works on, if any; see
-# Platform.select_for_project.
-_selected_platform: ContextVar[Platform | None] = ContextVar("devcapsule_capsule_platform", default=None)
+# The platform a host creates a new project for, where it is not the native
+# one. Apple Silicon creates linux-amd64 projects, as before linux-arm64
+# existed, while the linux-arm64 base is unpublished: the human's ruling of
+# 2026-11-04 runs a project as linux-arm64 when it is locked for it, and a
+# developer adds that lock deliberately (project --platform linux-arm64 init).
+_NEW_PROJECT_PLATFORM_OF_HOST: Mapping[tuple[HostOs, str], str] = {
+    (HostOs.DARWIN, "arm64"): "linux-amd64",
+}
+
+# The platform whose executables carry each ELF e_machine value.
+_PLATFORM_OF_ELF_MACHINE: Mapping[int, str] = {0x3E: "linux-amd64", 0xB7: "linux-arm64"}
 
 
 class Platform(StrEnum):
@@ -80,9 +136,12 @@ class Platform(StrEnum):
     Because committed locks carry these values, members are append-only and
     never renamed.
 
-    A client never constructs a key from parts: it obtains one from
-    ``current()`` (the platform this host runs capsules as) or ``parse()``
-    (the platform a lock records), and only carries it between those points.
+    A client never constructs a key from parts. Host detection gives
+    ``current()`` (the platform this host creates a project for) and
+    ``runnable()`` (every platform it runs); ``parse()`` gives the platform a
+    lock records, and ``of_elf_machine()`` the one an executable is for.
+    Which platform a project runs as is the configuration's question
+    (``configuration.storage.project_platform``), answered from its locks.
     """
 
     LINUX_AMD64 = "linux-amd64"
@@ -90,58 +149,30 @@ class Platform(StrEnum):
 
     @classmethod
     def current(cls) -> Platform:
-        """The platform this process runs capsules as.
+        """The platform this host creates a new project for.
 
-        The platform selected for its project, when one was; otherwise the
-        host's preferred platform: on Linux the host's own, on Apple Silicon
-        linux-arm64.
+        On Linux the host's own. On a Mac linux-amd64, natively on Intel and
+        under Docker Desktop's emulation on Apple Silicon.
         """
 
-        return _selected_platform.get() or cls.runnable()[0]
+        host = (HostOs.current(), host_architecture())
+        created = _NEW_PROJECT_PLATFORM_OF_HOST.get(host)
+        return cls.parse(created) if created is not None else cls.runnable()[0]
 
     @classmethod
     def runnable(cls) -> tuple[Platform, ...]:
-        """The platforms this host runs capsules as, preferred first."""
+        """Every platform this host runs capsules as, native first."""
 
-        host = f"{host_platform.system().lower()}-{host_architecture()}"
-        return tuple(cls.parse(key) for key in _CAPSULE_PLATFORMS_OF_HOST.get(host, (host,)))
-
-    @classmethod
-    def select_for_project(cls, root: Path | None) -> Platform:
-        """Select, for this process, the platform the project at ``root`` runs as.
-
-        The first platform this host runs that the project has a lock for;
-        without one, as for a project not yet initialized, the preferred
-        platform. Apple Silicon so runs a project locked for linux-arm64
-        natively and one locked only for linux-amd64 under emulation.
-        """
-
-        runnable = cls.runnable()
-        locks = root / ".devcapsule" if root is not None else None
-        selected = next(
-            (platform for platform in runnable
-             if locks is not None and (locks / f"devcapsule.{platform}.lock").is_file()),
-            runnable[0],
-        )
-        _selected_platform.set(selected)
-        return selected
+        host_os, architecture = HostOs.current(), host_architecture()
+        keys = _CAPSULE_PLATFORMS_OF_HOST.get((host_os, architecture), (f"{host_os}-{architecture}",))
+        return tuple(cls.parse(key) for key in keys)
 
     @classmethod
-    def select(cls, platform: Platform) -> Platform:
-        """Select ``platform`` for this process, as the user named it; refuse one this host cannot run."""
+    def of_elf_machine(cls, machine: int) -> Platform | None:
+        """The platform an ELF executable of ``machine`` runs on, or None for another architecture."""
 
-        runnable = cls.runnable()
-        if platform not in runnable:
-            names = ", ".join(str(member) for member in runnable)
-            raise UnsupportedPlatformError(f"This host runs {names} capsules, not {platform}.")
-        _selected_platform.set(platform)
-        return platform
-
-    @classmethod
-    def clear_selection(cls) -> None:
-        """Forget the project selection; ``current()`` is the host's preference again."""
-
-        _selected_platform.set(None)
+        key = _PLATFORM_OF_ELF_MACHINE.get(machine)
+        return cls(key) if key is not None else None
 
     @property
     def architecture(self) -> str:
@@ -153,19 +184,19 @@ class Platform(StrEnum):
 
         return self.value.replace("-", "/", 1)
 
-    def emulated(self) -> bool:
-        """Whether this host's CPU runs capsules of this platform only under emulation."""
+    def emulated(self, daemon_architecture: str) -> bool:
+        """Whether a Docker daemon of ``daemon_architecture`` runs this platform only under emulation."""
 
-        return host_architecture() != self.architecture
+        return daemon_architecture != self.architecture
 
-    def docker_platform_args(self) -> list[str]:
-        """The ``--platform`` option every run and build carries under emulation.
+    def docker_platform_args(self, daemon_architecture: str) -> list[str]:
+        """The ``--platform`` option every run, build and pull carries under emulation.
 
-        Empty on a native host, so a Linux launch composes the same command
-        as before the option existed.
+        Empty when the daemon runs this platform natively, so a native launch
+        composes the same command as before the option existed.
         """
 
-        return [f"--platform={self.docker_platform}"] if self.emulated() else []
+        return [f"--platform={self.docker_platform}"] if self.emulated(daemon_architecture) else []
 
     @classmethod
     def parse(cls, key: str) -> Platform:

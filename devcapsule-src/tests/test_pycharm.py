@@ -19,7 +19,7 @@ from devcapsule.launch.pycharm import (
     build_run_config,
 )
 from devcapsule.container_runtime.contract import INFRASTRUCTURE_FAILURE_EXIT_CODE
-from devcapsule.platforms import HostOs
+from devcapsule.platforms import HostOs, Platform
 from devcapsule.launch.pycharm._launcher import (
     AttachedResult,
     display_disclosure,
@@ -747,7 +747,7 @@ def test_sudoers_ownership_helper_is_constrained(tmp_path: Path) -> None:
     )
     config = cast(
         PycharmRunConfig,
-        SimpleNamespace(enable_sudo=True, image="devcapsule-local-pycharm:canonical"),
+        SimpleNamespace(enable_sudo=True, image="devcapsule-local-pycharm:canonical", capsule_platform=Platform.LINUX_AMD64),
     )
 
     with (
@@ -781,7 +781,7 @@ def test_sudoers_ownership_helper_failure_is_actionable(tmp_path: Path) -> None:
     )
     config = cast(
         PycharmRunConfig,
-        SimpleNamespace(enable_sudo=True, image="devcapsule-local-pycharm:canonical"),
+        SimpleNamespace(enable_sudo=True, image="devcapsule-local-pycharm:canonical", capsule_platform=Platform.LINUX_AMD64),
     )
 
     with (
@@ -804,7 +804,8 @@ def _macos_sudo_files(tmp_path: Path) -> tuple[PycharmRunConfig, TempRuntimeFile
     )
     config = cast(
         PycharmRunConfig,
-        SimpleNamespace(enable_sudo=True, image="devcapsule-local-pycharm:canonical", name="capsule"),
+        SimpleNamespace(enable_sudo=True, image="devcapsule-local-pycharm:canonical", name="capsule",
+                        capsule_platform=Platform.LINUX_AMD64),
     )
     return config, files
 
@@ -815,7 +816,7 @@ def test_macos_sudo_policy_is_written_into_a_volume_by_root(
     # Docker Desktop shares Mac files as the Mac user: no chown makes a
     # bind-mounted policy root's, so the policy lives in a volume.
     monkeypatch.setattr(HostOs, "current", classmethod(lambda cls: HostOs.DARWIN))
-    monkeypatch.setattr("devcapsule.platforms.host_architecture", lambda: "arm64")
+    monkeypatch.setattr("devcapsule.host_daemon.daemon_architecture", lambda: "arm64")
     config, files = _macos_sudo_files(tmp_path)
 
     with (
@@ -827,7 +828,11 @@ def test_macos_sudo_policy_is_written_into_a_volume_by_root(
 
     chown.assert_not_called()
     assert files.sudoers_volume == "capsule-sudoers"
-    create, write = (call.args[0] for call in run.call_args_list)
+    prune, create, write = (call.args[0] for call in run.call_args_list)
+    # Volumes earlier launches left behind, killed or interrupted, go first;
+    # prune removes only those no container uses.
+    assert prune == ["docker", "volume", "prune", "--all", "--force", "--filter",
+                     "label=devcapsule.purpose=development-sudo-policy"]
     assert create == ["docker", "volume", "create", "--label", "devcapsule.purpose=development-sudo-policy",
                       "capsule-sudoers"]
     assert write[:4] == ["docker", "run", "--rm", "-i"]
@@ -840,7 +845,7 @@ def test_macos_sudo_policy_is_written_into_a_volume_by_root(
     assert "type=volume,src=capsule-sudoers,dst=/policy" in write
     assert write[-1].startswith("umask 0337;")
     assert write[-1].endswith("/policy/policy")
-    assert run.call_args_list[1].kwargs["input"] == SUDOERS_POLICY
+    assert run.call_args_list[2].kwargs["input"] == SUDOERS_POLICY
 
 
 def test_macos_sudo_policy_failure_removes_its_volume(
@@ -851,6 +856,7 @@ def test_macos_sudo_policy_failure_removes_its_volume(
 
     with patch("devcapsule.launch.pycharm._launcher.subprocess.run") as run:
         run.side_effect = [
+            SimpleNamespace(returncode=0, stderr=""),
             SimpleNamespace(returncode=0, stderr=""),
             SimpleNamespace(returncode=125, stderr="no such image"),
             SimpleNamespace(returncode=0, stderr=""),

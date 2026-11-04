@@ -382,6 +382,50 @@ def manifest_source_digest(root: Path) -> str | None:
         return None
 
 
+# The platform a command was told to use (`project --platform`), if any. A
+# command runs for one project, so this is the process's; see project_platform.
+_named_platform: Platform | None = None
+
+
+def name_platform(platform: Platform | None) -> None:
+    """Make ``platform`` the one project commands in this process use, or clear it.
+
+    It must be one this host runs; the error names the ones it does.
+    """
+    global _named_platform
+    if platform is not None and platform not in Platform.runnable():
+        names = ", ".join(str(member) for member in Platform.runnable())
+        raise ProjectConfigurationError(f"This host runs {names} capsules, not {platform}.")
+    _named_platform = platform
+
+
+def platform_lock_path(root: Path, platform: Platform) -> Path:
+    """The path of the project's lock for ``platform``."""
+    return root / ".devcapsule" / f"devcapsule.{platform}.lock"
+
+
+def project_platform(root: Path | None) -> Platform:
+    """The capsule platform this host runs the project at ``root`` as.
+
+    The platform named for this command, if any; otherwise the first platform
+    this host runs that the project has a lock for, so Apple Silicon runs a
+    project locked for linux-arm64 natively and one locked only for
+    linux-amd64 under emulation; otherwise, as for a project not yet
+    initialized, the platform this host creates projects for. Reads only.
+    """
+    if _named_platform is not None:
+        return _named_platform
+    try:
+        runnable = Platform.runnable()
+        if root is not None:
+            for platform in runnable:
+                if platform_lock_path(root, platform).is_file():
+                    return platform
+        return Platform.current()
+    except UnsupportedPlatformError as exc:
+        raise ProjectConfigurationError(str(exc)) from exc
+
+
 def recommendation_lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict[str, Any]]:
     """Load the committed platform lock for this host's platform.
 
@@ -404,15 +448,13 @@ def recommendation_lock_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Pa
     to keep existing committed locks working.
     """
 
-    try:
-        current = Platform.current()
-    except UnsupportedPlatformError as exc:
-        raise ProjectConfigurationError(str(exc)) from exc
-    path = root / ".devcapsule" / f"devcapsule.{current}.lock"
+    platform = project_platform(root)
+    path = platform_lock_path(root, platform)
     if not path.is_file():
         raise ProjectConfigurationError(
-            f"Missing {path}: this project carries no platform lock for {current}. "
-            "The platform lock is authored on the project side and committed with the project."
+            f"Missing {path}: this project carries no platform lock for {platform}. "
+            "The platform lock is authored on the project side and committed with the project; "
+            f"'devcapsule project --platform {platform} init' adds it."
         )
     value = load_toml(path)
     validate_file_format(value, ConfigurationFileKind.lock, path)
@@ -439,9 +481,10 @@ def composition_for(root: Path, manifest: Mapping[str, Any]) -> tuple[Path, dict
     checkout = load_checkout(record, manifest, root) if record is not None else {}
     selected = selected_version_lock(checkout)
     if selected is not None:
-        if selected.get("platform") != str(Platform.current()):
+        platform = project_platform(root)
+        if selected.get("platform") != str(platform):
             raise ProjectConfigurationError("Local version set is for another platform; follow the project explicitly.")
-        path, shared = root / ".devcapsule" / f"devcapsule.{Platform.current()}.lock", selected
+        path, shared = platform_lock_path(root, platform), selected
     else:
         path, shared = recommendation_lock_for(root, manifest)
     return path, compose_lock(manifest, shared, checkout), checkout

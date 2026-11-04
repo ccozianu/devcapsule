@@ -26,17 +26,19 @@ def pytest_configure(config: pytest.Config) -> None:
 _SHORT_BASETEMP = pytest.StashKey[Path]()
 
 
-def pytest_unconfigure(config: pytest.Config) -> None:
-    """Remove the short temporary root this session created.
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    """Remove the short temporary root this session created, once every test passed.
 
-    pytest prunes its own default roots, but not one it was given; a root per
-    session would otherwise outlive every run, and a full disk fails Docker
-    Desktop's virtual machine with it.
+    pytest prunes its own default roots, but not one it was given, so a root
+    per session would otherwise outlive every run and fill the disk; a failed
+    session keeps its root, and its path, for inspection.
     """
 
-    created = config.stash.get(_SHORT_BASETEMP, None)
-    if created is not None:
+    created = session.config.stash.get(_SHORT_BASETEMP, None)
+    if created is not None and exitstatus == 0:
         shutil.rmtree(created, ignore_errors=True)
+    elif created is not None:
+        print(f"\nTemporary files of this failed session: {created}")
 
 
 @pytest.fixture(autouse=True)
@@ -67,7 +69,7 @@ def linux_host_by_default(request: pytest.FixtureRequest, monkeypatch: pytest.Mo
     ``HostOs.current`` themselves. Docker-marked tests keep the real host.
     """
 
-    if any(request.node.get_closest_marker(marker) for marker in (*DOCKER_MARKERS, "real_host_os")):
+    if any(request.node.get_closest_marker(marker) for marker in (*DOCKER_MARKERS, "own_host_patches")):
         return
     from devcapsule.platforms import HostOs
     monkeypatch.setattr(HostOs, "current", classmethod(lambda cls: HostOs.LINUX))
@@ -75,20 +77,24 @@ def linux_host_by_default(request: pytest.FixtureRequest, monkeypatch: pytest.Mo
 
 @pytest.fixture(autouse=True)
 def amd64_capsules_by_default(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
-    """Make capsule-platform tests run as linux-amd64 wherever they run.
+    """Make capsule-platform tests run on an amd64 host with an amd64 daemon.
 
-    An Apple Silicon host prefers linux-arm64; the suite's fixtures and
-    golden locks are linux-amd64. Tests of other platforms patch
-    ``Platform.runnable`` themselves; Docker-marked and ``real_host_os``
-    tests keep the real host. No project selection outlives its test.
+    With ``linux_host_by_default`` the suite's host is then an amd64 Linux
+    machine wherever it runs: it creates and runs linux-amd64 capsules, and
+    its Docker daemon needs no ``--platform``, as on the Linux CI. Tests of
+    other hosts patch the host themselves and carry ``own_host_patches``;
+    Docker-marked tests keep the real host. No ``--platform`` choice outlives
+    its test.
     """
 
-    from devcapsule.platforms import Platform
-    Platform.clear_selection()
-    if not any(request.node.get_closest_marker(marker) for marker in (*DOCKER_MARKERS, "real_host_os")):
-        monkeypatch.setattr(Platform, "runnable", classmethod(lambda cls: (Platform.LINUX_AMD64,)))
+    from devcapsule.configuration import storage
+
+    storage.name_platform(None)
+    if not any(request.node.get_closest_marker(marker) for marker in (*DOCKER_MARKERS, "own_host_patches")):
+        monkeypatch.setattr("devcapsule.platforms.host_architecture", lambda: "amd64")
+        monkeypatch.setattr("devcapsule.host_daemon.daemon_architecture", lambda: "amd64")
     yield
-    Platform.clear_selection()
+    storage.name_platform(None)
 
 
 DOCKER_MARKERS = ("e2e", "base_build_e2e", "recursive_e2e", "contributor_e2e", "ide_smoke")

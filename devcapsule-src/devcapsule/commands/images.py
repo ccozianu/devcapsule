@@ -110,9 +110,25 @@ class ImagesBuildCommand(Command):
             default="default",
             help="Build network mode forwarded to Docker buildx (default: default).",
         )
+        parser.add_argument(
+            "--platform",
+            dest="capsule_platform",
+            metavar="PLATFORM",
+            help="Capsule platform to build for, such as linux-arm64. An environment build defaults to "
+                 "the first one this host runs that the project has a lock for; a base build to the one "
+                 "this host creates projects for.",
+        )
 
     @classmethod
     def run(cls, arguments: argparse.Namespace, context: object | None) -> int:
+        from devcapsule.configuration.storage import name_platform
+        from devcapsule.platforms import Platform, UnsupportedPlatformError
+
+        try:
+            capsule_platform = Platform.parse(arguments.capsule_platform) if arguments.capsule_platform else None
+        except UnsupportedPlatformError as exc:
+            raise CliError(str(exc)) from exc
+        name_platform(capsule_platform)
         if arguments.image_type == "environment":
             return _build_environment(
                 project=arguments.project,
@@ -153,6 +169,7 @@ class ImagesBuildCommand(Command):
         build_base_image(
             options,
             network=arguments.network,
+            platform=capsule_platform,
         )
         image = inspect_local_image(arguments.tag)
         labels = dict(image.config.labels or {})

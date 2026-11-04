@@ -31,17 +31,22 @@ the base recipe, on top of `macos-launcher`'s platform split. File references ar
 
 ## 3. Design
 
-1. **`Platform.LINUX_ARM64`.** The capsule platform a host can run, in preference order:
-   `linux-amd64` hosts run amd64; `linux-arm64` hosts run arm64; Apple Silicon prefers arm64
-   and can emulate amd64; Intel Macs run amd64. A project's platform is the first preferred
-   platform it has a lock for; a project with no lock yet takes the first. Where callers now
-   ask `Platform.current()` without a project, the design keeps one answer per process,
-   chosen when the project is known; slice 1 settles the mechanism after reading the callers.
+1. **`Platform.LINUX_ARM64`.** Host detection stays in `platforms.py`: `runnable()`, every
+   platform a host runs, native first (Apple Silicon: arm64, then amd64 under emulation),
+   and `current()`, the platform a host creates a new project for, `linux-amd64` on a Mac
+   while the arm64 base is unpublished, per the ruling in section 2. Which platform a
+   project runs as is the configuration's question: `configuration.storage.project_platform`,
+   read-only, answers the first runnable platform the project has a lock for, else
+   `current()`; `project --platform` and `images build --platform` name one for a command.
+   Below the configuration, the platform is the lock's, passed down explicitly to the base
+   pull, the image build, the runtime choice and the launch (D-0006's consequence).
+   Emulation is judged against the Docker daemon's architecture, not the launcher's CPU.
 2. **The runtime.** An arm64 capsule needs a `linux-aarch64` executable. A launcher whose own
    binary runs on the capsule platform delivers itself (R-RUNTIME-001). Otherwise the user
-   names the runtime: `DEVCAPSULE_RUNTIME_PEX` keeps naming one file, and a directory holding
-   `devcapsule-linux-amd64` and `devcapsule-linux-arm64` serves both platforms from one
-   setting.
+   names the runtime: `DEVCAPSULE_RUNTIME_PEX` names one file, or a directory holding
+   `devcapsule-linux-amd64` and `devcapsule-linux-arm64`. A runtime that is not the
+   launcher's own bytes must be its build: the same version, and the same revision where
+   both record one.
 3. **The base.** Built natively on this Mac by `devcapsule images build --type base`, and
    approved per checkout by the documented local-base path. Whether the `linux-arm64` matrix
    can resolve without a published base pin is slice 2's first question.
@@ -62,7 +67,23 @@ the base recipe, on top of `macos-launcher`'s platform split. File references ar
 4. **Live and documentation.** `nox -s ide-smoke` for every surface natively on this Mac;
    the Linux, macOS and install pages.
 
-## 5. What this does not decide
+## 5. Review, 2026-11-04
+
+The human's `/review` of all changes since `main`, run by a separate agent, rejected the
+branch with seven high findings: a Mac's new projects defaulting to the unpublished arm64
+base; `images build` ignoring the project's locks; the platform read from a process-wide
+selection below the configuration instead of from the lock; no version check on the
+delivered runtime; personal pins re-derived on their own platform; a leaking sudo-policy
+volume; a hash test that skipped three components. Fourteen medium and three low findings
+followed. The human said "fix all"; each is fixed as described in section 3, except that a
+lock naming an unpublished base is reported, not refused, since the human's ruling has the
+checkout select a local base for it.
+
+## 6. What this does not decide
 
 - Publishing an arm64 or multi-platform base, or arm64 release executables: the owner's.
 - Whether ARM Linux becomes a supported release platform: the owner's.
+- D-0006 says host detection is `current()` and parsing a lock is `parse()`, with
+  deliberately no third way to obtain a `Platform`. `runnable()`, a host's list, and
+  `of_elf_machine()`, an executable's platform, are two more; amending D-0006 to name them
+  is the owner's.

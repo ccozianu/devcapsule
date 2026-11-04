@@ -4,7 +4,7 @@ Mnemonic: `linux-arm64`
 
 Start date: 2026-11-04
 
-State: active; slices 1 to 3 committed 2026-11-04; native smokes in progress
+State: active; slices 1 to 3 and the review's fixes committed 2026-11-04; native smokes pending Docker
 
 Branch association: `ws-linux-arm64/capsules`, forked from local `main` at b3f10b7d, with
 `ws-macos-launcher/host-port` merged in as its foundation
@@ -65,6 +65,18 @@ root; each run had left one in `/tmp`.
 Found for `maintenance`, not fixed here: the amd64 Eclipse closure's `libsoup-3.0-0` and
 `libsoup-3.0-common` 3.4.4-5ubuntu0.8 URLs return 404, since Ubuntu removed that version from
 every noble pocket on 2026-10-08, so Eclipse cannot be acquired afresh on amd64.
+
+**2026-11-04, review and fixes.** The human ran the `/review` skill of `~/work/teachme` on all
+changes since `main`, through a separate agent: rejected, seven high, fourteen medium, three
+low findings. The human said "fix all"; the design note's section 5 records them, and
+section 3 the design they produced. In short: a Mac creates `linux-amd64` projects again and
+runs a project as the first platform it has a lock for; the configuration answers which
+(`storage.project_platform`), and below it the lock's platform is passed down explicitly; a
+delivered runtime must be the launcher's build; the unpublished arm64 base is reported at
+init and refused at launch without a local base; Docker Desktop's conventions are `HostOs`
+properties; emulation is the daemon's. Unit suite on this Mac: 2,749 passed, 25 skipped.
+The human's `~/hello-devcapsule` checkout holds amd64 VSCodium pins labelled arm64, written
+by the bug since fixed; re-choosing its IDE through DevCapsule commands repairs it.
 
 ## Next Resumable Task
 

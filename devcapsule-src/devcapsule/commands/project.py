@@ -53,6 +53,7 @@ from devcapsule import version_sets
 from devcapsule import runtime_configuration
 from devcapsule.runtime_configuration import CapsuleAccess
 from devcapsule.compat import CliError, DecisionPending
+from devcapsule.platforms import Platform
 import difflib
 from devcapsule.configuration.capabilities import CapabilityPolicy, LocalCapabilities
 from devcapsule.configuration.console_requests import deferred_rows
@@ -755,9 +756,9 @@ def _load_checkout_documents(context: object | None) -> CheckoutDocuments | runt
 def _assess(documents: CheckoutDocuments) -> Listing:
     from devcapsule.configuration.authorization import authorized_base_selection
     from devcapsule.configuration.trust import HomeTrust
-    from devcapsule.platforms import Platform
+    from devcapsule.configuration.storage import project_platform
     from devcapsule.resolution_matrix import MATRICES, known_base_image
-    matrix = MATRICES[Platform.current()]
+    matrix = MATRICES[project_platform(documents.root)]
     answers = documents.checkout.get("authorization", {})
     base_answer = answers.get("base-image", {}) if isinstance(answers, dict) else {}
     base_reference = base_answer.get("reference") if isinstance(base_answer, dict) else None
@@ -1702,12 +1703,12 @@ class ConfigCheckCommand(Command):
 
 def _local_selection(context: object | None) -> tuple[Path, dict[str, Any], LocalCapabilities, dict[str, str]]:
     """The checkout's current selection and the catalog's IDE names, for the selection verbs."""
-    from devcapsule.platforms import Platform
+    from devcapsule.configuration.storage import project_platform
     from devcapsule.resolution_matrix import MATRICES
     root, manifest = manifest_for(_project_context(context).start_path())
     record = find_checkout_record(manifest, root)
     current = LocalCapabilities.read(load_checkout(record, manifest, root)) if record is not None else LocalCapabilities()
-    matrix = MATRICES[Platform.current()]
+    matrix = MATRICES[project_platform(root)]
     surfaces = {name: matrix.resolve_provider(name) or name for name in matrix.ide_capabilities()}
     return root, manifest, current, surfaces
 
@@ -2436,6 +2437,7 @@ class ProjectRunCommand(Command):
                 enable_host_browser=selected_host_browser,
                 display_transport=display_transport,
                 web_console=web_console,
+                capsule_platform=Platform.parse(str(lock["platform"])),
             )
         )
         if command_report is not None:
@@ -2558,6 +2560,7 @@ class ProjectCommand(Group):
         launcher.
         """
         context = ProjectCommandContext(arguments.selected_path)
+        _name_capsule_platform(getattr(arguments, "capsule_platform", None))
         tokens: list[str] = list(arguments.rest)
         parsed_tokens = tokens[:tokens.index("--")] if "--" in tokens else tokens
         if any(token in {"-h", "--help"} for token in parsed_tokens):
@@ -2584,7 +2587,6 @@ class ProjectCommand(Group):
             context = replace(context, capsule_root=runtime_configuration.capsule_project_root(Path(".")))
         if access.needs_launcher:
             runtime_configuration.require_launcher(context.start_path(), tokens)
-        _select_capsule_platform(context, getattr(arguments, "capsule_platform", None))
         return context
 
     @classmethod
@@ -2604,31 +2606,21 @@ class ProjectCommand(Group):
         }
 
 
-def _select_capsule_platform(context: ProjectCommandContext, named: str | None = None) -> None:
-    """Run the selected project as the platform it is locked for on this host.
+def _name_capsule_platform(named: str | None) -> None:
+    """Record the platform ``--platform`` named for this command, or clear it.
 
-    See ``Platform.select_for_project``: where a host runs two platforms, the
-    project's locks choose. Without an enclosing project, as for ``init`` in
-    a fresh directory, the host's preferred platform stands. ``--platform``
-    names one instead: ``project --platform linux-arm64 init`` adds that
-    platform's lock to a project, as init completes what a project lacks.
+    Without one, each step asks ``project_platform`` for the project's
+    platform, which its locks decide on a host that runs two. Naming one is
+    how ``project --platform linux-arm64 init`` adds that platform's lock to a
+    project, since init completes what a project lacks.
     """
+    from devcapsule.configuration.storage import name_platform
     from devcapsule.platforms import Platform, UnsupportedPlatformError
 
-    if named is not None:
-        try:
-            Platform.select(Platform.parse(named))
-        except UnsupportedPlatformError as exc:
-            raise ProjectConfigurationError(str(exc)) from exc
-        return
     try:
-        root: Path | None = discover_project(context.start_path())
-    except ProjectConfigurationError:
-        root = None
-    try:
-        Platform.select_for_project(root)
-    except UnsupportedPlatformError:
-        pass  # Each platform-dependent step reports it in its own terms.
+        name_platform(Platform.parse(named) if named is not None else None)
+    except UnsupportedPlatformError as exc:
+        raise ProjectConfigurationError(str(exc)) from exc
 
 
 def _capsule_access(leaf: type[Command]) -> CapsuleAccess:

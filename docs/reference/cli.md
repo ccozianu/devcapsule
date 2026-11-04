@@ -13,9 +13,10 @@ checks even when given `--help`.
 To target another directory, pass `--path` before the subcommand:
 `devcapsule project --path PROJECT config show`. On a host that runs two capsule
 platforms, an Apple Silicon Mac, a project runs as the first one it has a lock
-for, `linux-arm64` before `linux-amd64`; `--platform PLATFORM` before the
-subcommand names one for that command, so `devcapsule project --platform
-linux-arm64 init` adds an arm64 lock to a project. Inside a capsule, inspection
+for, `linux-arm64` before `linux-amd64`, and a new project as `linux-amd64`;
+`--platform PLATFORM` before the subcommand names one for that command, so
+`devcapsule project --platform linux-arm64 init` adds an arm64 lock to a
+project. `devcapsule images build` takes `--platform` too. Inside a capsule, inspection
 commands distinguish captured launch data from next-launch choices where available. Commands that need launcher-owned state
 print the exact `devcapsule` command to run outside.
 

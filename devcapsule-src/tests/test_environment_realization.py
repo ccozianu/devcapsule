@@ -11,6 +11,7 @@ from devcapsule.components.claude_code import (
     CLAUDE_CODE_TERMS_URL,
 )
 from devcapsule.environment_realization import ensure_local_image, realize_environment
+from devcapsule.platforms import Platform
 from devcapsule.materialization import ImageDetails
 from devcapsule.runtime_command import RuntimeCommand
 from devcapsule.configuration.storage import (
@@ -286,18 +287,18 @@ def test_ensure_local_image_pulls_only_when_missing(already_local: bool) -> None
     require.assert_called_once_with(BASE_REFERENCE)
 
 
-def test_an_emulating_host_pulls_the_capsule_platform() -> None:
-    # Apple Silicon runs linux-amd64 capsules; the pull must not resolve a
-    # multi-platform reference to the host's arm64 image.
+@pytest.mark.parametrize("daemon,expected", [("arm64", {"platform": "linux/amd64"}), ("amd64", {})])
+def test_a_daemon_of_another_architecture_pulls_the_lock_platform(daemon: str, expected: dict[str, str]) -> None:
+    # Docker Desktop on Apple Silicon is an arm64 daemon; a linux-amd64 lock's
+    # base must not resolve to its arm64 variant. A native daemon pulls as before.
     with (
-        patch("devcapsule.platforms.host_platform.system", return_value="Darwin"),
-        patch("devcapsule.platforms.host_architecture", return_value="arm64"),
+        patch("devcapsule.host_daemon.daemon_architecture", return_value=daemon),
         patch("devcapsule.environment_realization.docker.image.exists", return_value=False),
         patch("devcapsule.environment_realization.docker.image.pull") as pull,
         patch("devcapsule.environment_realization.required_local_image", return_value=base_image()),
     ):
-        ensure_local_image(BASE_REFERENCE)
-    pull.assert_called_once_with(BASE_REFERENCE, platform="linux/amd64")
+        ensure_local_image(BASE_REFERENCE, Platform.LINUX_AMD64)
+    pull.assert_called_once_with(BASE_REFERENCE, **expected)
 
 
 def test_realize_environment_allows_explicit_managed_base_override(tmp_path: Path) -> None:
@@ -413,7 +414,7 @@ def test_realizer_uses_resolved_shipped_command_choice(tmp_path, monkeypatch, co
         selected.resolution["runtime"]["devcapsule-command"] = command
     materialize = Mock(return_value=(CANONICAL_IMAGE, True))
     monkeypatch.setattr("devcapsule.environment_realization.ensure_materialized_surface", materialize)
-    monkeypatch.setattr("devcapsule.environment_realization.runtime_artifact", lambda: tmp_path / "runtime.pex")
+    monkeypatch.setattr("devcapsule.environment_realization.runtime_artifact", lambda _platform: tmp_path / "runtime.pex")
     realize_environment(selected, root=tmp_path / "cache", obtain_image=lambda _ref: base_image(),
                         require_image=lambda _ref: completed_image(), build=Mock(), inspect_image=Mock())
     assert materialize.call_args.kwargs["runtime_command"] is RuntimeCommand(command or "devcapsule")

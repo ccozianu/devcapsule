@@ -182,7 +182,7 @@ def test_base_image_build_forwards_host_network_to_buildx(tmp_path: Path) -> Non
     source_verifier.assert_called_once()
     builder.build.assert_called_once()
     assert builder.build.call_args.args[0].image == "test-base:latest"
-    assert builder.build.call_args.kwargs == {"network": "host"}
+    assert builder.build.call_args.kwargs == {"network": "host", "platform": None}
 
 
 def test_base_image_rejects_unreachable_revision_before_buildx(tmp_path: Path) -> None:

@@ -43,70 +43,53 @@ def _host(monkeypatch: pytest.MonkeyPatch, system: str, machine: str) -> None:
     monkeypatch.setattr(platforms.host_platform, "machine", lambda: machine)
 
 
-@pytest.mark.real_host_os
-@pytest.mark.parametrize("system,machine,runnable", [
-    ("Linux", "x86_64", ("linux-amd64",)),
-    ("Linux", "aarch64", ("linux-arm64",)),
-    ("Darwin", "x86_64", ("linux-amd64",)),
-    ("Darwin", "arm64", ("linux-arm64", "linux-amd64")),
+@pytest.mark.own_host_patches
+@pytest.mark.parametrize("system,machine,runnable,created", [
+    ("Linux", "x86_64", ("linux-amd64",), "linux-amd64"),
+    ("Linux", "aarch64", ("linux-arm64",), "linux-arm64"),
+    ("Darwin", "x86_64", ("linux-amd64",), "linux-amd64"),
+    ("Darwin", "arm64", ("linux-arm64", "linux-amd64"), "linux-amd64"),
 ])
-def test_each_host_runs_its_capsule_platforms_preferring_native(monkeypatch, system, machine, runnable) -> None:
-    # A Mac runs Linux capsules: Apple Silicon natively as linux-arm64 and
-    # under Docker's emulation as linux-amd64; Intel natively as linux-amd64.
+def test_each_host_runs_its_platforms_and_creates_projects_for_one(monkeypatch, system, machine, runnable, created) -> None:
+    # A Mac runs Linux capsules. Apple Silicon runs linux-arm64 natively and
+    # linux-amd64 under emulation, and creates linux-amd64 projects while the
+    # linux-arm64 base is unpublished (the human's ruling of 2026-11-04).
     _host(monkeypatch, system, machine)
     assert tuple(str(platform) for platform in Platform.runnable()) == runnable
-    assert Platform.current() is Platform.parse(runnable[0])
-    assert not Platform.current().emulated()
-    assert Platform.current().docker_platform_args() == []
+    assert Platform.current() is Platform.parse(created)
 
 
-@pytest.mark.real_host_os
-def test_apple_silicon_names_the_emulated_platform_to_docker(monkeypatch) -> None:
-    _host(monkeypatch, "Darwin", "arm64")
-    assert Platform.LINUX_AMD64.emulated()
-    assert Platform.LINUX_AMD64.docker_platform_args() == ["--platform=linux/amd64"]
-    assert Platform.LINUX_ARM64.docker_platform_args() == []
+def test_emulation_is_the_daemons() -> None:
+    # Docker Desktop on Apple Silicon is an arm64 daemon, whatever runs the launcher.
+    assert Platform.LINUX_AMD64.emulated("arm64")
+    assert Platform.LINUX_AMD64.docker_platform_args("arm64") == ["--platform=linux/amd64"]
+    assert Platform.LINUX_AMD64.docker_platform_args("amd64") == []
+    assert Platform.LINUX_ARM64.docker_platform_args("arm64") == []
 
 
-@pytest.mark.real_host_os
-@pytest.mark.parametrize("system,machine", [("Linux", "riscv64"), ("Windows", "AMD64"), ("Darwin", "ppc")])
-def test_current_refuses_a_host_without_a_capsule_platform(monkeypatch, system, machine) -> None:
+@pytest.mark.own_host_patches
+@pytest.mark.parametrize("system,machine,message", [
+    ("Linux", "riscv64", "supported platforms: linux-amd64, linux-arm64"),
+    ("Darwin", "ppc", "supported platforms: linux-amd64, linux-arm64"),
+    ("Windows", "AMD64", "supported: linux, darwin"),
+])
+def test_current_refuses_a_host_without_a_capsule_platform(monkeypatch, system, machine, message) -> None:
     _host(monkeypatch, system, machine)
-    with pytest.raises(UnsupportedPlatformError, match="supported platforms: linux-amd64, linux-arm64"):
+    with pytest.raises(UnsupportedPlatformError, match=message):
         Platform.current()
 
 
-@pytest.mark.real_host_os
-@pytest.mark.parametrize("locks,selected", [
-    ((), "linux-arm64"),
-    (("linux-amd64",), "linux-amd64"),
-    (("linux-arm64",), "linux-arm64"),
-    (("linux-amd64", "linux-arm64"), "linux-arm64"),
-])
-def test_apple_silicon_runs_a_project_as_the_platform_it_is_locked_for(
-    tmp_path: Path, monkeypatch, locks, selected,
-) -> None:
-    # The human's ruling of 2026-11-04: natively when the project has an
-    # arm64 lock, else its amd64 lock under emulation; a new project native.
-    _host(monkeypatch, "Darwin", "arm64")
-    (tmp_path / ".devcapsule").mkdir()
-    for platform in locks:
-        (tmp_path / ".devcapsule" / f"devcapsule.{platform}.lock").write_text("")
-    assert Platform.select_for_project(tmp_path) is Platform.parse(selected)
-    assert Platform.current() is Platform.parse(selected)
-    Platform.clear_selection()
-    assert Platform.current() is Platform.LINUX_ARM64
+def test_an_elf_machine_names_its_platform() -> None:
+    assert Platform.of_elf_machine(0x3E) is Platform.LINUX_AMD64
+    assert Platform.of_elf_machine(0xB7) is Platform.LINUX_ARM64
+    assert Platform.of_elf_machine(0xF3) is None
 
 
-@pytest.mark.real_host_os
-def test_a_host_selects_only_a_platform_it_runs(tmp_path: Path, monkeypatch) -> None:
-    # An amd64 Linux host cannot run an arm64-only project; it keeps its own
-    # platform, and the missing lock is reported where the lock is read.
-    _host(monkeypatch, "Linux", "x86_64")
-    (tmp_path / ".devcapsule").mkdir()
-    (tmp_path / ".devcapsule" / "devcapsule.linux-arm64.lock").write_text("")
-    assert Platform.select_for_project(tmp_path) is Platform.LINUX_AMD64
-    assert Platform.select_for_project(None) is Platform.LINUX_AMD64
+def test_docker_desktop_facts_are_the_macos_hosts() -> None:
+    assert HostOs.DARWIN.docker_socket_gid == 0 and HostOs.LINUX.docker_socket_gid is None
+    assert not HostOs.DARWIN.host_network_reachable and HostOs.LINUX.host_network_reachable
+    assert not HostOs.DARWIN.binds_unix_sockets and HostOs.LINUX.binds_unix_sockets
+    assert not HostOs.DARWIN.chown_reaches_bind_mounts and HostOs.LINUX.chown_reaches_bind_mounts
 
 
 def test_docker_spelling_and_architecture() -> None:
@@ -116,7 +99,7 @@ def test_docker_spelling_and_architecture() -> None:
     assert Platform.LINUX_ARM64.architecture == "arm64"
 
 
-@pytest.mark.real_host_os
+@pytest.mark.own_host_patches
 def test_host_os_names_linux_and_macos_only(monkeypatch) -> None:
     _host(monkeypatch, "Darwin", "arm64")
     assert HostOs.current() is HostOs.DARWIN

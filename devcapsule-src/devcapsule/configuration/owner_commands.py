@@ -37,7 +37,7 @@ from .manifest_document import (
     environment_name,
 )
 from .sources import WrappedSource, WrappedSources, has_control_characters, java_line, source_path
-from .storage import discover_project, load_toml, require_settled
+from .storage import discover_project, load_toml, project_platform, require_settled
 from .values import normalize_memory_size
 
 __all__ = [
@@ -59,7 +59,7 @@ def _project(start: Path, *, check_resolutions: bool = True) -> tuple[Path, dict
     manifest_path, lock_path, _ = paths(root)
     manifest, lock = current_manifest(load_toml(manifest_path), manifest_path).document(), load_toml(lock_path)
     check_documents(manifest, lock, check_resolutions=check_resolutions)
-    return root, manifest, lock, MATRICES[Platform.current()]
+    return root, manifest, lock, MATRICES[project_platform(root)]
 
 
 def _policy_edit(

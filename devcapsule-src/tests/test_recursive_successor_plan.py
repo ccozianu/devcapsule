@@ -566,3 +566,17 @@ def test_duplicate_mount_destination_is_rejected() -> None:
     inspection["Mounts"].append(dict(inspection["Mounts"][0]))
 
     assert "declared more than once" in rejected(inspection)
+
+
+@pytest.mark.parametrize("spelling", [["--platform=linux/amd64"], ["--platform", "linux/amd64"]])
+def test_an_emulated_launch_plans_its_platform_and_the_successor_must_run_it(spelling: list[str]) -> None:
+    # The launcher names the platform when the daemon emulates it; both of
+    # Docker's spellings parse, and a successor that ran another is refused.
+    plan = build_plan([*docker_args(), *spelling])
+    assert plan.platform == "linux/amd64"
+    inspection = matching_inspection(plan)
+    inspection["ImageManifestDescriptor"] = {"platform": {"os": "linux", "architecture": "amd64"}}
+    compare_inspection(plan, inspection)
+    inspection["ImageManifestDescriptor"] = {"platform": {"os": "linux", "architecture": "arm64"}}
+    with pytest.raises(SuccessorPlanError, match="successor platform does not match the planned --platform"):
+        compare_inspection(plan, inspection)

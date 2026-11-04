@@ -19,6 +19,7 @@ from python_on_whales import docker
 from python_on_whales.exceptions import DockerException
 
 from devcapsule.compat import CliError, copy_resource_tree
+from devcapsule import host_daemon
 from devcapsule.platforms import Platform
 
 
@@ -257,8 +258,11 @@ class BuildxImageBuilder:
     def __init__(self, context_root: Path | None = None) -> None:
         self.context_root = context_root
 
-    def build(self, spec: ImageBuildSpec, *, network: str = "default") -> None:
+    def build(self, spec: ImageBuildSpec, *, network: str = "default", platform: Platform | None = None) -> None:
+        """Build ``spec`` for ``platform``: a project's lock names it; a base build without one
+        is for the platform this host creates projects for."""
         plan = spec.build_plan()
+        capsule_platform = platform or Platform.current()
         try:
             with self._context_directory() as context_root:
                 rendered = render_build_context(plan, context_root)
@@ -267,9 +271,10 @@ class BuildxImageBuilder:
                     file=rendered.dockerfile,
                     tags=[plan.image],
                     load=True,
-                    # Native hosts build as before; an emulating host must
-                    # build for the capsule platform, not its own CPU.
-                    platforms=[capsule.docker_platform] if (capsule := Platform.current()).emulated() else None,
+                    # A daemon of the capsule platform's architecture builds as
+                    # before; another must be told the platform, not left its own.
+                    platforms=([capsule_platform.docker_platform]
+                               if capsule_platform.emulated(host_daemon.daemon_architecture()) else None),
                     network=network,
                     build_contexts={name: str(path) for name, path in rendered.named_contexts.items()},
                     allow=["network.host"] if network == "host" else [],

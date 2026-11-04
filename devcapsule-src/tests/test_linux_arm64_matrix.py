@@ -35,15 +35,35 @@ def test_no_arm64_pin_names_an_amd64_artifact() -> None:
                 assert not AMD64_MARKERS.search(url), (component, pin.version, url)
 
 
-def test_every_arm64_artifact_is_hash_pinned_and_differs_from_amd64() -> None:
+def _artifacts(value: Any) -> list[dict[str, Any]]:
+    """Every table at any depth that names a download by ``url``."""
+    if isinstance(value, dict):
+        own = [value] if "url" in value else []
+        return own + [found for item in value.values() for found in _artifacts(item)]
+    if isinstance(value, (list, tuple)):
+        return [found for item in value for found in _artifacts(item)]
+    return []
+
+
+def test_every_arm64_artifact_is_hash_pinned() -> None:
     for component, pins in ARM64._components.items():
-        for arm64, amd64 in zip(pins, AMD64._components[component]):
-            if arm64.lock_table.get("delivery-policy") == "base-image":
-                assert arm64 is amd64
-                continue
-            assert re.fullmatch(r"[0-9a-f]{64}", str(arm64.lock_table.get("sha256", "0" * 64)))
-            if "url" in arm64.lock_table and not str(arm64.lock_table["url"]).endswith("codex-" + arm64.version + ".tgz"):
-                assert arm64.lock_table["sha256"] != amd64.lock_table["sha256"], (component, arm64.version)
+        for pin in pins:
+            for artifact in _artifacts(pin.lock_table):
+                assert re.fullmatch(r"[0-9a-f]{64}", str(artifact.get("sha256"))), (component, pin.version, artifact)
+
+
+def test_arm64_artifacts_are_not_amd64_bytes() -> None:
+    # Architecture-independent files are shared: Codex's JavaScript package,
+    # pure-Python wheels, and Ubuntu _all packages. Everything else differs.
+    shared = {artifact["sha256"] for pins in AMD64._components.values() for pin in pins
+              for artifact in _artifacts(pin.lock_table)}
+    for component, pins in ARM64._components.items():
+        for pin in pins:
+            for artifact in _artifacts(pin.lock_table):
+                url = str(artifact["url"])
+                independent = url.endswith(("_all.deb", "-none-any.whl")) or url.endswith(f"codex-{pin.version}.tgz")
+                if not independent:
+                    assert artifact["sha256"] not in shared, (component, pin.version, url)
 
 
 def test_platform_fields_and_artifact_keys_name_arm64() -> None:
@@ -93,9 +113,9 @@ def test_personal_pins_take_the_artifacts_of_the_platform_they_run_on() -> None:
     assert on_arm64["components"]["codium"] == dict(ARM64.component_pins()["codium"])
     assert on_arm64["components"]["interactive-surface"] == "codium"
     assert amd64["components"]["codium"] == dict(AMD64.component_pins()["codium"])  # input unchanged
-    # Pins already written wrongly, arm64 platform with amd64 bytes, are healed too.
-    mislabelled = dict(amd64, platform="linux-arm64")
-    assert pins_for_platform(mislabelled, ARM64)["components"]["codium"] == dict(ARM64.component_pins()["codium"])
+    # Pins written for the platform they run on are records, returned as they stand.
+    recorded = {**amd64, "components": {**amd64["components"], "codium": {**amd64["components"]["codium"], "note": "kept"}}}
+    assert pins_for_platform(recorded, AMD64) == recorded
     assert pins_for_platform(on_arm64, AMD64)["components"]["codium"] == dict(AMD64.component_pins()["codium"])
 
 

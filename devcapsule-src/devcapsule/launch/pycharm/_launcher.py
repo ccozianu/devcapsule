@@ -58,6 +58,7 @@ from ...display_client import (
     print_only_opener,
     watch_display_ready,
 )
+from ... import host_daemon
 from ...host_daemon import (
     current_container,
     docker_socket,
@@ -236,6 +237,8 @@ class PycharmRunOptions:
     # caller (commands/project.py); without it the launcher announces the
     # absence once and plans no console: no port, no token, no wait.
     web_console: WebConsoleAvailability = WebConsoleAvailability(True, None)
+    # The lock's platform; without a lock, the one this host creates projects for.
+    capsule_platform: Platform | None = None
 
 
 @dataclass
@@ -289,6 +292,8 @@ class PycharmRunConfig:
     console_token: str = ""
     open_console_url: Callable[[str], None] | None = None
     web_console: WebConsoleAvailability = WebConsoleAvailability(True, None)
+    # The lock's platform; without a lock, the one this host creates projects for.
+    capsule_platform: Platform = field(default_factory=Platform.current)
     # This session's log directory on the host, bound into the capsule at
     # SESSION_LOG_DESTINATION: the launcher's own log, the supervisor's, and
     # one file per supervised child (see devcapsule.logs).
@@ -305,11 +310,6 @@ class PycharmRunConfig:
     libgl_dri3_disable: str = "1"
 
 
-# Docker Desktop presents its socket inside every container as root:root,
-# mode 0660, whatever the macOS file's owner (observed on 29.3.1). The capsule
-# user joins group 0 to use it. A capsule granted the host daemon already
-# holds root on Docker Desktop's VM, so the group adds no authority.
-DOCKER_DESKTOP_SOCKET_GID = 0
 HOST_NETWORK_UNAVAILABLE_ON_MACOS = (
     "devcapsule: warning: host networking is unavailable on macOS: Docker Desktop's host network "
     "is its virtual machine's, out of the Mac's reach. This launch uses bridge networking; "
@@ -835,7 +835,7 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         )
     if options.network_mode not in {"bridge", "host", "none"}:
         raise PycharmRunError("The Docker network mode must be bridge, host, or none.")
-    if options.network_mode == "host" and HostOs.current() is HostOs.DARWIN:
+    if options.network_mode == "host" and not HostOs.current().host_network_reachable:
         # Docker Desktop's host network is its VM's: a listener on loopback
         # there is unreachable from the Mac (observed on 29.3.1), so the
         # desktop and console would never answer. Bridge is the narrower grant.
@@ -982,10 +982,12 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
                 "Start Docker on the host, set HOST_DOCKER_SOCKET, or launch with --docker-in-docker / --no-docker."
             )
         host_docker_socket = host_docker_socket.resolve()
-        host_docker_gid = (
-            DOCKER_DESKTOP_SOCKET_GID if HostOs.current() is HostOs.DARWIN
-            else host_docker_socket.stat().st_gid
-        )
+        # Where the host decides the socket's group inside containers (Docker
+        # Desktop: root), the capsule user joins it; a capsule granted the
+        # daemon already holds root on its virtual machine, so the group adds
+        # no authority. Elsewhere the host socket file's group applies.
+        socket_gid = HostOs.current().docker_socket_gid
+        host_docker_gid = socket_gid if socket_gid is not None else host_docker_socket.stat().st_gid
 
     if enable_sudo:
         while ide_sudo_gid in {0, host_user.gid, host_docker_gid}:
@@ -1192,6 +1194,7 @@ def build_run_config(options: PycharmRunOptions, env: Mapping[str, str]) -> Pych
         console_token=console_token,
         open_console_url=options.open_console_url,
         web_console=options.web_console,
+        capsule_platform=options.capsule_platform or Platform.current(),
         interactive_state_mounts=tuple(interactive_state_mounts),
         additional_state_mounts=tuple(additional_state_mounts),
         additional_environment=tuple(additional_environment),
@@ -1321,7 +1324,7 @@ def build_docker_args(
     args = [
         "--rm",
         "-i",
-        *Platform.current().docker_platform_args(),
+        *config.capsule_platform.docker_platform_args(host_daemon.daemon_architecture()),
         "--name",
         config.name,
         "--workdir",
@@ -1874,7 +1877,7 @@ def ensure_sudoers_policy_ownership(
     policy = files.sudoers_file
     if not config.enable_sudo or policy is None:
         raise PycharmRunError("Development sudo requires a generated sudoers policy.")
-    if HostOs.current() is HostOs.DARWIN:
+    if not HostOs.current().chown_reaches_bind_mounts:
         files.sudoers_volume = prepare_sudoers_policy_volume(config, policy, env)
         return
     try:
@@ -1886,7 +1889,7 @@ def ensure_sudoers_policy_ownership(
             "run",
             "--rm",
             "--pull=never",
-            *Platform.current().docker_platform_args(),
+            *config.capsule_platform.docker_platform_args(host_daemon.daemon_architecture()),
             "--network",
             "none",
             "--read-only",
@@ -1935,11 +1938,16 @@ def prepare_sudoers_policy_volume(config: PycharmRunConfig, policy: Path, env: M
     with its virtual machine as the Mac user: a bind-mounted file is owned by
     that user inside every container, and not even root there can chown it.
     A volume lives on the virtual machine's own disk, where root's ownership
-    holds. The name follows the container's, so a volume a killed launcher
-    left behind is rewritten and then removed by the next launch.
+    holds. The session removes it at its end; one a killed or interrupted
+    launch left behind carries the label, and the next launch prunes every
+    such volume no container uses before it creates its own.
     """
 
     volume = f"{config.name}-sudoers"
+    subprocess.run(
+        ["docker", "volume", "prune", "--all", "--force", "--filter", f"label={SUDOERS_VOLUME_LABEL}"],
+        check=False, env=dict(env), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
     created = subprocess.run(
         ["docker", "volume", "create", "--label", SUDOERS_VOLUME_LABEL, volume],
         check=False, env=dict(env), stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True,
@@ -1956,7 +1964,7 @@ def prepare_sudoers_policy_volume(config: PycharmRunConfig, policy: Path, env: M
         "--rm",
         "-i",
         "--pull=never",
-        *Platform.current().docker_platform_args(),
+        *config.capsule_platform.docker_platform_args(host_daemon.daemon_architecture()),
         "--network",
         "none",
         "--read-only",

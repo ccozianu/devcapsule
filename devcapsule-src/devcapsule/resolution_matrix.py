@@ -122,6 +122,9 @@ class _BasePin:
     display: str = HOST_X11_ONLY_DISPLAY
     runtime: str = LAUNCHER_SUPPLIED_RUNTIME
     source_revision: str | None = None
+    # False while the reference names an image its registry does not hold
+    # yet: only a locally built base of the same recipe stands in for it.
+    published: bool = True
     # A clean public-source builder need not have a release tag.
 
     @property
@@ -246,6 +249,10 @@ class ResolutionMatrix:
         reference = lock.get("base", {}).get("reference")
         return next((base.base_family for base in self._bases
                      if base.lock_table.get("reference") == reference), None)
+
+    def base_unpublished(self, reference: str) -> bool:
+        """Whether the pinned base at ``reference`` is not in its registry yet."""
+        return any(base.lock_table.get("reference") == reference and not base.published for base in self._bases)
 
     def base_image(self, reference: str) -> BaseImage | None:
         """The pinned base at ``reference``, described by its contract."""
@@ -1733,6 +1740,7 @@ _LINUX_ARM64_RECIPE_11_BASE = _BasePin(
     recipe=11,
     display=CONTAINED_DISPLAY,
     runtime=LAUNCHER_SUPPLIED_RUNTIME,
+    published=False,
     lock_table={
         "reference": (
             "docker.io/mycodespaceai/devcapsule-base"

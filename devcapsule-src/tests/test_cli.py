@@ -370,7 +370,7 @@ def test_images_build_base_maps_cli_options(tmp_path: Path, capsys) -> None:
     assert options.source_revision == "revision-1"
     assert options.allow_local_source is False
     assert options.recipe == "ubuntu-24.04"
-    assert build.call_args.kwargs == {"network": "host"}
+    assert build.call_args.kwargs == {"network": "host", "platform": None}
     output = capsys.readouterr().out
     assert "Image ID: sha256:abc123" in output
     assert "Runtime: supplied by the launcher" in output

@@ -35,6 +35,7 @@ _VALUE_FLAGS = frozenset(
         "--name",
         "--network",
         "--pids-limit",
+        "--platform",
         "--restart",
         "--security-opt",
         "--tmpfs",
@@ -43,11 +44,9 @@ _VALUE_FLAGS = frozenset(
     }
 )
 _BOOLEAN_FLAGS = frozenset({"--detach", "--privileged", "--read-only", "--rm", "-i"})
-# Flags that describe how Docker obtains or executes the image rather than the
-# resulting container. They are deliberately not part of the comparable plan.
-# The launcher emits each as one inline token (``--platform=linux/amd64`` on
-# a host that emulates the capsule platform).
-_IGNORED_FLAGS = frozenset({"--platform", "--pull"})
+# Flags that describe how Docker obtains the image rather than the resulting
+# container. They are deliberately not part of the comparable plan.
+_IGNORED_FLAGS = frozenset({"--pull"})
 
 
 class SuccessorPlanError(Exception):
@@ -111,6 +110,9 @@ class ExpectedSuccessorPlan:
     security_opt: tuple[str, ...]
     runtime_plan_destination: str
     runtime_plan_digest: str
+    # The planned ``--platform`` (``linux/amd64``), when the daemon emulates the
+    # capsule platform; None when the image's own platform is the daemon's.
+    platform: str | None = None
 
     def to_mapping(self, *, show_host_paths: bool = False) -> dict[str, Any]:
         return {
@@ -272,6 +274,7 @@ class ExpectedSuccessorPlan:
             security_opt=tuple(sorted(parsed.repeated("--security-opt"))),
             runtime_plan_destination=runtime_plan_destination,
             runtime_plan_digest=runtime_plan_digest,
+            platform=parsed.optional("--platform"),
         )
 
 
@@ -293,6 +296,13 @@ def compare_inspection(
         raise SuccessorPlanError("successor name does not match the deterministic run name")
     if inspection.get("Image") != plan.image_identity:
         raise SuccessorPlanError("successor image ID does not match materialization evidence")
+    # The image ID fixes the architecture; where the daemon also reports the
+    # platform it ran, an emulated plan must have run as the one it named.
+    descriptor = inspection.get("ImageManifestDescriptor")
+    reported = descriptor.get("platform") if isinstance(descriptor, Mapping) else None
+    if plan.platform is not None and isinstance(reported, Mapping):
+        if f"{reported.get('os')}/{reported.get('architecture')}" != plan.platform:
+            raise SuccessorPlanError("successor platform does not match the planned --platform")
     if config.get("Image") != plan.image_reference:
         raise SuccessorPlanError("successor image reference does not match the canonical environment")
 

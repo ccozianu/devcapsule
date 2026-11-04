@@ -66,6 +66,8 @@ from .nodes import (
     build_node_registry,
 )
 from .storage import (
+    platform_lock_path,
+    project_platform,
     atomic_write,
     checkout_record_paths,
     load_checkout,
@@ -80,13 +82,10 @@ from .storage import (
 from .values import checkout_omitted_values, normalize_configuration_value
 
 
-def _current_matrix() -> ResolutionMatrix:
-    """This host's resolution matrix, with platform failures as user errors."""
+def _project_matrix(root: Path) -> ResolutionMatrix:
+    """The resolution matrix of the platform this host runs the project at ``root`` as."""
 
-    try:
-        return MATRICES[Platform.current()]
-    except UnsupportedPlatformError as exc:
-        raise ProjectConfigurationError(str(exc)) from exc
+    return MATRICES[project_platform(root)]
 
 __all__ = [
     "CheckoutRecord",
@@ -313,6 +312,8 @@ class InitializeReport:
     checkout_record: Path
     # None when the owner's checkout has no IDE yet: nothing to resolve.
     resolve: ResolveReport | None
+    # The lock pins a base its registry does not hold yet (see ResolutionMatrix.base_unpublished).
+    base_unpublished: bool = False
 
     def render(self) -> str:
         required = " ".join(self.required) or "none"
@@ -326,6 +327,9 @@ class InitializeReport:
         if self.offered:
             lines.append(f"Offers: {' '.join(self.offered)}")
         lines.append(f"{self.lock_action} {self.lock_path} (base {self.base_display})")
+        if self.base_unpublished:
+            lines.append("Its base is not published yet: a checkout runs this lock only on a locally built base of "
+                         "the same recipe, selected with 'devcapsule project config authorize base-image <local tag>'.")
         for name, value, justification in self.recommendations:
             line = f"Recommended {name} = {value} for every checkout"
             lines.append(f"{line} ({justification})." if justification else f"{line}.")
@@ -402,12 +406,9 @@ def initialize_project(
         raise ProjectConfigurationError(f"Project directory does not exist: {root}")
     require_settled(root)
     manifest_path = root / ".devcapsule" / "devcapsule.toml"
-    try:
-        platform = Platform.current()
-    except UnsupportedPlatformError as exc:
-        raise ProjectConfigurationError(str(exc)) from exc
-    lock_path = root / ".devcapsule" / f"devcapsule.{platform}.lock"
-    matrix = _current_matrix()
+    platform = project_platform(root)
+    lock_path = platform_lock_path(root, platform)
+    matrix = MATRICES[platform]
 
     existing_manifest: dict[str, Any] | None = None
     existing_lock: dict[str, Any] | None = None
@@ -546,6 +547,7 @@ def initialize_project(
             base_display=_base_display(shared_lock), recommendations=recommendations,
             selection=selection, answered=(), carried=(), recommended=(),
             checkout_record=record.input_path, resolve=None,
+            base_unpublished=matrix.base_unpublished(str(shared_lock.get("base", {}).get("reference"))),
         )
     lock = effective_lock(manifest, compose_lock(manifest, shared_lock, record.document), record.document, warn=False)
     declarations = authorization_declarations(manifest, lock)
@@ -573,6 +575,7 @@ def initialize_project(
         answered=tuple(settled.answered), carried=tuple(settled.carried),
         recommended=accepted_recommendations, checkout_record=record.input_path,
         resolve=resolve_report,
+        base_unpublished=matrix.base_unpublished(str(shared_lock.get("base", {}).get("reference"))),
     )
 
 
@@ -580,7 +583,7 @@ def _initialize_report(
     manifest_path: Path, manifest_action: str, identity: _ProjectIdentity, lock_path: Path, lock_action: str,
     *, base_display: str, recommendations: list[tuple[str, str]], selection: _OwnerSelection,
     answered: tuple[str, ...], carried: tuple[str, ...], recommended: tuple[str, ...],
-    checkout_record: Path, resolve: ResolveReport | None,
+    checkout_record: Path, resolve: ResolveReport | None, base_unpublished: bool = False,
 ) -> InitializeReport:
     return InitializeReport(
         manifest_path=manifest_path,
@@ -605,6 +608,7 @@ def _initialize_report(
         recommended=recommended,
         checkout_record=checkout_record,
         resolve=resolve,
+        base_unpublished=base_unpublished,
     )
 
 
@@ -653,7 +657,7 @@ def _existing_selection(root: Path, manifest: Mapping[str, Any] | None) -> _Owne
     if not input_path.is_file():
         return _OwnerSelection(None, ())
     local = LocalCapabilities.read(load_toml(input_path))
-    matrix = _current_matrix()
+    matrix = _project_matrix(root)
     surfaces = set(matrix.ide_capabilities())
     ide = next((name for name in local.selected if name in surfaces), None)
     return _OwnerSelection(ide, tuple(name for name in local.selected if name not in surfaces))
