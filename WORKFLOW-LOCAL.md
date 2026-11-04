@@ -452,7 +452,10 @@ by merging `main` in. The hosting platform allows merge commits only. It
 deletes the head branch on merge. It refuses force pushes to `main` and
 deletion of `main`. The merge commit is the record of the branch: its second
 parent is the merged head and its message names the source branch. Delete a
-merged branch.
+merged branch. Owner setting, 2026-11-04: the merge commit's title is the
+pull request's title and its message is the pull request's description, so
+the description an agent writes, and the coverage block CI appends to it,
+are the merge commit's detail as they stand at merge time.
 The earlier ruling that `ws-workflow-improvements/v1` rebases onto `main` is
 retired. That branch merges like the others. The engineering source is
 [merge strategy and commit identity](engineering-docs/implementation-notes/workflow/2026-08-17-merge-strategy-and-commit-identity.md).

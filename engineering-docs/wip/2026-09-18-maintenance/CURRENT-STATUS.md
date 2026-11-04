@@ -35,8 +35,12 @@ and runs the step on pull requests after diff coverage. Its tests are the
 third mirror file, 9 cases in triple form. The merge commit part needs no
 code: the owner sets the repository's default merge commit message to the
 pull request's title and description, and the block travels into `main`'s
-history as it stands at merge time. Until that setting is flipped, the
-numbers are in the pull request only.
+history as it stands at merge time. The owner set it from the command line
+the same day; verified through the API: `merge_commit_title` PR_TITLE,
+`merge_commit_message` PR_BODY. Recorded under *Integration Method* in
+WORKFLOW-LOCAL.md. The first run on #336 spliced the block into prose that
+quoted the markers and reported 100% of zero measured lines; both fixed at
+87bba34e, the second run appended the block correctly.
 
 ## Unit-test conventions — 2026-11-03
 
