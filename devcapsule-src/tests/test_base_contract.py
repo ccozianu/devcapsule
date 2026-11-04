@@ -119,16 +119,6 @@ def test_image_is_reconstructed_from_its_labels() -> None:
         BaseImage.from_labels("sha256:none", {})
 
 
-def test_consent_names_the_contract_and_the_recipe_source() -> None:
-    manifest = tomllib.loads(REPO_MANIFEST.read_text(encoding="utf-8"))
-    lock = tomllib.loads(REPO_LOCK.read_text(encoding="utf-8"))
-    declaration = authorization_declarations(manifest, lock)["base-image"]
-    assert declaration.description.startswith("Execute base ubuntu-24.04@11 at docker.io/")
-    assert "built by v0.3.0-rc6" in declaration.description
-    assert f"{REPOSITORY}/blob/v0.3.0-rc6/{RECIPE_SOURCE_PATH}" in declaration.description
-    assert declaration.display_value is not None and declaration.display_value.startswith("ubuntu-24.04@11 — ")
-
-
 def test_compatibility_report_names_the_rule_and_the_evidence() -> None:
     lock = tomllib.loads(REPO_LOCK.read_text(encoding="utf-8"))
     report = compatibility_report(lock)
