@@ -4,12 +4,12 @@ Mnemonic: `linux-arm64`
 
 Start date: 2026-11-04
 
-State: active; slices 1 to 4 done 2026-11-04, six IDEs running natively; waits on publication and the owner
+State: active; slices 1 to 4 merged in #338; the one-line install on `ws-linux-arm64/one-line-install` awaits its pull request
 
-Branch association: `ws-linux-arm64/capsules`, forked from local `main` at b3f10b7d, with
-`ws-macos-launcher/host-port` merged in as its foundation
+Branch association: `ws-linux-arm64/one-line-install`, forked from `main` at bf7e5d66 after
+`ws-linux-arm64/capsules` merged there in #338
 
-Integration target: `main`, after `macos-launcher`'s pull request
+Integration target: `main`
 
 Delivery method: pull request, merge commit; the human opens and merges it
 
@@ -33,7 +33,8 @@ In scope, by the human's answers of 2026-11-04:
   and otherwise as `linux-amd64` under emulation, as today;
 - a `linux-aarch64` runtime executable for arm64 capsules.
 
-Out of scope: publishing images or executables; release automation.
+Out of scope: publishing images; release automation, except the per-platform release
+executables and the install script the human directed on 2026-11-04.
 
 ## Current State
 
@@ -112,19 +113,37 @@ arm64 on arm"). `Platform.current()` is now the native platform, and init asks t
 elicitor before the identity questions: Enter, or a run without a terminal, takes it. A
 project with a lock the host runs is not asked, and a Linux host never is.
 
+**2026-11-04, one-line install.** #338 merged. Reading the install page, the human asked
+for one command instead of the nine-line block, working on a Mac too ("we need ot make it
+actually work for mac too"), then directed it on a new branch from `main` with its own
+pull request: the scope above widened to the release's executables. A release now builds
+`devcapsule-linux-arm64` and `devcapsule-macos-arm64` on native runners beside
+`devcapsule.pex`, records them in the manifest, and publishes `SHA256SUMS` and an
+`install.sh` with its own URL written in. The script picks the executable for the computer,
+checks everything against `SHA256SUMS` before installing anything, and on a Mac puts both
+Linux runtimes in `~/.local/lib/devcapsule`, where a packaged launcher now looks when
+`DEVCAPSULE_RUNTIME_PEX` is unset. Verified here: the script piped into `sh` installed this
+Mac's local builds from a `file://` release and the launcher answered `version`; integration
+tests run it as each platform behind a stubbed `uname`. The release workflow itself runs
+only on a tag.
+
 ## Next Resumable Task
 
-Publish this workstream and `macos-launcher` once the SSH agent holds a key, and hand both
-pull requests to the human, the macOS one first. The owner's rulings and the arm64 base's
-publication follow.
+Hand the one-line install's pull request to the human. The owner's rulings and the arm64
+base's publication follow.
 
 ## Open Threads
 
-- The SSH agent on this Mac holds no identity, so the workstream cannot be published or
-  pushed; registration is local, as is `macos-launcher`'s.
-- This branch builds on `ws-macos-launcher/host-port`, which is not yet on `main`. The
-  registration commit is forked from `main` as topic 7.5 requires, and the macOS branch is
-  merged after it; this pull request follows that one.
+- The SSH agent on this Mac holds no identity, so the coordination branch cannot be
+  published; branches are pushed over HTTPS with the GitHub CLI's credentials.
+- `main` fails its test-conventions check since #338: `tests/test_linux_arm64_matrix.py`
+  and `tests/test_project_platform_selection.py` are outside the unit mirror without a
+  heavier suite's marker, and eighteen of their tests lack docstrings. They are this
+  workstream's; bringing them to the convention is the next slice unless the human
+  routes it elsewhere.
+- The first release built by the new workflow is the first proof of the `ubuntu-24.04-arm`
+  and `macos-15` builds; a rerun of the workflow for a release made before it would look
+  for executables that release does not have.
 - An arm64 base on `docker.io/mycodespaceai`, and its digest in the matrix, need the owner.
   The pin holds the digest a push of this Mac's exact image keeps; a rebuild must re-pin.
 - The libsoup 404 on amd64 goes to `maintenance` by intake mail once the coordination branch

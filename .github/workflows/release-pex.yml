@@ -20,8 +20,73 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # The Linux x86-64 executable, devcapsule.pex, is built and proven below.
+  # These are the other platforms' executables of the same tag, each built on
+  # its own architecture: the install script picks the one for the computer,
+  # and on a Mac also takes both Linux ones as the runtimes its capsules run.
+  build-other-platforms:
+    name: Build ${{ matrix.asset }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-24.04-arm
+            scie-platform: linux-aarch64
+            asset: devcapsule-linux-arm64
+          - runner: macos-15
+            scie-platform: macos-aarch64
+            asset: devcapsule-macos-arm64
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.release_tag }}
+    defaults:
+      run:
+        working-directory: devcapsule-src
+
+    steps:
+      - name: Check out the release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+
+      - name: Set up Python 3.12 for the backend build
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: devcapsule-src/dev-requirements.txt
+
+      - name: Install locked build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r dev-requirements.txt
+          python -m pip install -e . --no-deps
+
+      - name: Build and smoke the self-contained executable
+        env:
+          DEVCAPSULE_SOURCE_REPOSITORY: ${{ github.server_url }}/${{ github.repository }}
+          DEVCAPSULE_SCIE_PLATFORM: ${{ matrix.scie-platform }}
+          ASSET: ${{ matrix.asset }}
+        run: |
+          scripts/build-pex.sh \
+            --source-revision "$(git rev-parse HEAD)" \
+            --release-mnemonic "$RELEASE_TAG" \
+            --output "dist/$ASSET"
+          "dist/$ASSET" --help >/dev/null
+          "dist/$ASSET" version --json | tee "$RUNNER_TEMP/version.json"
+          test "$(python -c 'import json, sys; print(json.load(open(sys.argv[1]))["build_mnemonic"])' "$RUNNER_TEMP/version.json")" = "$RELEASE_TAG"
+
+      - name: Hand the executable to the publishing job
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: devcapsule-src/dist/${{ matrix.asset }}
+          if-no-files-found: error
+          retention-days: 30
+
   build-publish-and-prove:
     name: Build, publish, and prove
+    needs: build-other-platforms
     runs-on: ubuntu-24.04
     env:
       RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.release_tag }}
@@ -91,10 +156,13 @@ jobs:
           if grep -Fxq "$RELEASE_TAG" "$RUNNER_TEMP/releases"; then
             gh release download "$RELEASE_TAG" --dir dist \
               --pattern devcapsule.pex --pattern devcapsule.pex.sha256 \
+              --pattern devcapsule-linux-arm64 --pattern devcapsule-macos-arm64 \
+              --pattern SHA256SUMS --pattern install.sh \
               --pattern release-manifest.json
-            (cd dist && sha256sum --check devcapsule.pex.sha256)
-            chmod 0755 dist/devcapsule.pex
-            manifest_args=(--gate "$RUNNER_TEMP/release-gate.json")
+            (cd dist && sha256sum --check devcapsule.pex.sha256 && sha256sum --check SHA256SUMS)
+            chmod 0755 dist/devcapsule.pex dist/devcapsule-linux-arm64 dist/devcapsule-macos-arm64
+            manifest_args=(--gate "$RUNNER_TEMP/release-gate.json"
+              --artifact dist/devcapsule-linux-arm64 --artifact dist/devcapsule-macos-arm64)
             if [ "$RELEASE_PRERELEASE" = false ]; then
               manifest_args+=(--candidate "$RUNNER_TEMP/accepted-candidate/release-manifest.json")
             fi
@@ -102,6 +170,14 @@ jobs:
             chmod 0755 dist/devcapsule.pex
             echo 'exists=true' >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Take the other platforms' executables
+        if: steps.recover.outputs.exists != 'true'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: devcapsule-*-arm64
+          merge-multiple: true
+          path: devcapsule-src/dist
 
       - name: Build the self-contained release PEX
         if: steps.recover.outputs.exists != 'true'
@@ -114,12 +190,27 @@ jobs:
           dist/devcapsule.pex --help >/dev/null
           dist/devcapsule.pex version --json | tee dist/devcapsule-version.json
           test "$(python -c 'import json; print(json.load(open("dist/devcapsule-version.json"))["build_mnemonic"])')" = "$RELEASE_TAG"
+          chmod 0755 dist/devcapsule-linux-arm64 dist/devcapsule-macos-arm64
           (cd dist && sha256sum devcapsule.pex > devcapsule.pex.sha256)
-          manifest_args=(--gate "$RUNNER_TEMP/release-gate.json")
+          (cd dist && sha256sum devcapsule.pex devcapsule-linux-arm64 devcapsule-macos-arm64 > SHA256SUMS)
+          manifest_args=(--gate "$RUNNER_TEMP/release-gate.json"
+            --artifact dist/devcapsule-linux-arm64 --artifact dist/devcapsule-macos-arm64)
           if [ "$RELEASE_PRERELEASE" = false ]; then
             manifest_args+=(--candidate "$RUNNER_TEMP/accepted-candidate/release-manifest.json")
           fi
           python scripts/release-manifest.py "$RELEASE_TAG" "$(git rev-parse HEAD)" "${manifest_args[@]}"
+
+      - name: Write the install script for this release
+        run: |
+          release_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/$RELEASE_TAG"
+          sed "s|@RELEASE_URL@|$release_url|" scripts/install.sh > "$RUNNER_TEMP/install.sh"
+          if grep -q '@RELEASE_URL@' "$RUNNER_TEMP/install.sh"; then exit 1; fi
+          sh -n "$RUNNER_TEMP/install.sh"
+          if [ "${{ steps.recover.outputs.exists }}" = true ]; then
+            cmp "$RUNNER_TEMP/install.sh" dist/install.sh
+          else
+            install -m 0755 "$RUNNER_TEMP/install.sh" dist/install.sh
+          fi
 
       - name: Run packaging integration tests against the release PEX
         env:
@@ -142,6 +233,10 @@ jobs:
           path: |
             devcapsule-src/dist/devcapsule.pex
             devcapsule-src/dist/devcapsule.pex.sha256
+            devcapsule-src/dist/devcapsule-linux-arm64
+            devcapsule-src/dist/devcapsule-macos-arm64
+            devcapsule-src/dist/SHA256SUMS
+            devcapsule-src/dist/install.sh
             devcapsule-src/dist/release-manifest.json
           if-no-files-found: error
           retention-days: 30
@@ -150,8 +245,12 @@ jobs:
         if: steps.recover.outputs.exists != 'true' && env.RELEASE_PRERELEASE == 'true'
         run: |
           gh release create "$RELEASE_TAG" \
+            "dist/install.sh#Installer for Linux and Apple Silicon Macs" \
             "dist/devcapsule.pex#Self-contained Linux x86-64 CLI" \
+            "dist/devcapsule-linux-arm64#Self-contained Linux ARM64 CLI (experimental)" \
+            "dist/devcapsule-macos-arm64#Self-contained macOS Apple Silicon CLI (experimental)" \
             "dist/devcapsule.pex.sha256#SHA-256 checksum" \
+            "dist/SHA256SUMS#SHA-256 checksums of every executable" \
             "dist/release-manifest.json#Release inputs and artifact checksums" \
             --verify-tag --generate-notes --draft --prerelease="$RELEASE_PRERELEASE" --latest=false
 
@@ -160,8 +259,12 @@ jobs:
         run: |
           python scripts/release-docs.py notes "${RELEASE_TAG#v}" > "$RUNNER_TEMP/release-notes.md"
           gh release create "$RELEASE_TAG" \
+            "dist/install.sh#Installer for Linux and Apple Silicon Macs" \
             "dist/devcapsule.pex#Self-contained Linux x86-64 CLI" \
+            "dist/devcapsule-linux-arm64#Self-contained Linux ARM64 CLI (experimental)" \
+            "dist/devcapsule-macos-arm64#Self-contained macOS Apple Silicon CLI (experimental)" \
             "dist/devcapsule.pex.sha256#SHA-256 checksum" \
+            "dist/SHA256SUMS#SHA-256 checksums of every executable" \
             "dist/release-manifest.json#Release inputs and artifact checksums" \
             --verify-tag --notes-file "$RUNNER_TEMP/release-notes.md" --draft --prerelease="$RELEASE_PRERELEASE" --latest=false
 
@@ -172,11 +275,16 @@ jobs:
           gh release download "$RELEASE_TAG" \
             --pattern devcapsule.pex \
             --pattern devcapsule.pex.sha256 \
+            --pattern devcapsule-linux-arm64 \
+            --pattern devcapsule-macos-arm64 \
+            --pattern SHA256SUMS \
+            --pattern install.sh \
             --pattern release-manifest.json \
             --dir "$published"
-          (cd "$published" && sha256sum --check devcapsule.pex.sha256)
-          cmp dist/devcapsule.pex "$published/devcapsule.pex"
-          cmp dist/release-manifest.json "$published/release-manifest.json"
+          (cd "$published" && sha256sum --check devcapsule.pex.sha256 && sha256sum --check SHA256SUMS)
+          for asset in devcapsule.pex devcapsule-linux-arm64 devcapsule-macos-arm64 SHA256SUMS install.sh release-manifest.json; do
+            cmp "dist/$asset" "$published/$asset"
+          done
           chmod 0755 "$published/devcapsule.pex"
 
       - name: Publish the complete release
@@ -216,6 +324,7 @@ jobs:
             echo
             echo "- Tag: \`$RELEASE_TAG\`"
             echo "- Revision: \`$(git rev-parse HEAD)\`"
-            echo "- $(cat dist/devcapsule.pex.sha256)"
+            echo "- Executables:"
+            sed 's/^/  - /' dist/SHA256SUMS
             echo "- Built and retested after downloading from GitHub Releases"
           } >> "$GITHUB_STEP_SUMMARY"

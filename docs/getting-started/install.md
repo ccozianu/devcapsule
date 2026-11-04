@@ -1,21 +1,21 @@
 ---
-description: Check prerequisites, download the DevCapsule executable for this release, verify its SHA-256 checksum, and install it under ~/.local/bin.
+description: Check prerequisites, then install DevCapsule with one command that downloads the executable for your computer, verifies its SHA-256 checksum, and installs it under ~/.local/bin.
 weight: 1
-updated: 2026-11-03
+updated: 2026-11-04
 ---
 # Install DevCapsule
 
 DevCapsule ships as a single executable for **Linux (`x86_64` / Intel-AMD
-64-bit)**. It requires a web browser and a working Docker daemon on the same
-machine. It does not run natively on macOS, Windows, or ARM. **On Windows, read
-[Windows via WSL2](../platforms/windows-wsl2.md) first** and run every command
-below inside your WSL2 Linux terminal. On an Apple Silicon Mac, read
-[macOS](../platforms/macos.md) for the experimental launcher you build from
-source; the steps below do not apply.
+64-bit)**, with experimental executables for **Apple Silicon Macs** and **ARM
+Linux (`aarch64`)**. It requires a web browser and a working Docker daemon on
+the same machine. **On Windows, read [Windows via WSL2](../platforms/windows-wsl2.md)
+first** and run every command below inside your WSL2 Linux terminal. **On a
+Mac, read [macOS](../platforms/macos.md) first**: it runs against Docker
+Desktop, and what differs from Linux is listed there.
 
 ## Check your computer
 
-In a Linux terminal:
+In a terminal:
 
 ```bash
 uname -sm
@@ -23,19 +23,43 @@ docker info
 docker buildx version
 ```
 
-Expect `Linux x86_64`, Docker server details, and a Buildx version. If Docker
-is missing or prints a connection or permission error, complete [Docker Engine
-installation](https://docs.docker.com/engine/install/) first. Docker must work
-for your ordinary user account—never run `devcapsule` with `sudo`.
+Expect `Linux x86_64` (or `Darwin arm64` on a Mac, `Linux aarch64` on ARM
+Linux), Docker server details, and a Buildx version. If Docker is missing or
+prints a connection or permission error, complete [Docker Engine
+installation](https://docs.docker.com/engine/install/) first, or Docker
+Desktop on a Mac. Docker must work for your ordinary user account—never run
+`devcapsule` with `sudo`.
 
-You also need `curl` and `sha256sum`. Allow several gigabytes of free disk
-space for the base image and IDE on your first launch; subsequent launches
-reuse those cached layers.
+You also need `curl`, and `sha256sum` or `shasum`. Allow several gigabytes of
+free disk space for the base image and IDE on your first launch; subsequent
+launches reuse those cached layers.
 
-## Download, verify, install
+## Install
 
-Paste this block into your terminal to download the release executable, check
-its SHA-256 digest, and install it to `~/.local/bin/devcapsule`:
+Paste this into your terminal:
+
+```bash
+curl -fsSL {{download_url}}/install.sh | sh
+```
+
+The script downloads the release's executable for your computer and the
+release's `SHA256SUMS`, checks the executable against it, and installs it as
+`~/.local/bin/devcapsule`. On a Mac it also installs the Linux executables your
+capsules run, in `~/.local/lib/devcapsule`, where the launcher finds them. If a
+checksum does not match, the script stops and installs nothing: run it again,
+and never install an unverified binary. It ends by printing the installed
+version.
+
+To read the script before it runs, download it first:
+
+```bash
+curl -fsSLO {{download_url}}/install.sh
+less install.sh
+sh install.sh
+```
+
+On Linux `x86_64` you can also install by hand. This is the same download and
+check the script makes:
 
 ```bash
 (
@@ -50,9 +74,6 @@ its SHA-256 digest, and install it to `~/.local/bin/devcapsule`:
   install -m 0755 devcapsule.pex "$HOME/.local/bin/devcapsule"
 )
 ```
-
-Expect `devcapsule.pex: OK`. If checksum verification fails, delete the
-temporary file and retry—never install an unverified binary.
 
 Check the installed version:
 

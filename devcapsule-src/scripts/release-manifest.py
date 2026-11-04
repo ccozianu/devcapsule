@@ -9,6 +9,7 @@ import os
 import subprocess
 from zipfile import ZipFile
 import tomllib
+from collections.abc import Sequence
 from pathlib import Path
 
 from devcapsule.build_info import read_pex_build_info
@@ -16,7 +17,8 @@ from devcapsule.resolution_matrix import MATRICES
 from devcapsule.platforms import Platform
 
 
-def manifest(pex: Path, tag: str, revision: str) -> dict[str, object]:
+def manifest(pex: Path, tag: str, revision: str, others: Sequence[Path] = ()) -> dict[str, object]:
+    """The release record of ``pex`` and of ``others``, the other platforms' executables of its build."""
     info = read_pex_build_info(pex)
     if (info.build_mnemonic, info.version, info.source_revision) != (tag, tag.removeprefix("v").replace("-rc", "rc"), revision):
         raise ValueError("Release PEX identity disagrees with the selected tag and revision")
@@ -31,8 +33,19 @@ def manifest(pex: Path, tag: str, revision: str) -> dict[str, object]:
         "source-revision": revision,
         "version": info.version,
         "base-references": bases,
-        "artifacts": {pex.name: hashlib.sha256(pex.read_bytes()).hexdigest()},
+        "artifacts": {
+            pex.name: hashlib.sha256(pex.read_bytes()).hexdigest(),
+            **{other.name: artifact_digest(other, tag, revision) for other in others},
+        },
     }
+
+
+def artifact_digest(executable: Path, tag: str, revision: str) -> str:
+    """The SHA-256 of another platform's executable of the same release build."""
+    info = read_pex_build_info(executable)
+    if (info.build_mnemonic, info.source_revision) != (tag, revision):
+        raise ValueError(f"{executable.name} identity disagrees with the selected tag and revision")
+    return hashlib.sha256(executable.read_bytes()).hexdigest()
 
 
 def frozen_inputs(pex: Path) -> dict:
@@ -69,8 +82,10 @@ def main() -> None:
     parser.add_argument("--verify", action="store_true")
     parser.add_argument("--gate", type=Path, required=True)
     parser.add_argument("--candidate", type=Path)
+    parser.add_argument("--artifact", type=Path, action="append", default=[],
+                        help="Another platform's executable of this build, recorded beside devcapsule.pex")
     arguments = parser.parse_args()
-    expected = manifest(Path("dist/devcapsule.pex"), arguments.tag, arguments.revision)
+    expected = manifest(Path("dist/devcapsule.pex"), arguments.tag, arguments.revision, arguments.artifact)
     expected["frozen-inputs"] = frozen_inputs(Path("dist/devcapsule.pex"))
     gate = json.loads(arguments.gate.read_text())
     if gate["tag"] != arguments.tag or gate["source-revision"] != arguments.revision:

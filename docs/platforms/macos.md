@@ -1,16 +1,13 @@
 ---
-description: An experimental launcher you build from source runs on Apple Silicon Macs against Docker Desktop, with capsules emulated or native.
+description: An experimental launcher runs on Apple Silicon Macs against Docker Desktop, with capsules emulated or native.
 weight: 3
 updated: 2026-11-04
 ---
 # macOS
 
-DevCapsule {{tag}} ships no macOS executable. The release executable is for
-64-bit Intel/AMD Linux and does not run on macOS.
-
-The launcher in the source tree runs natively on **Apple Silicon Macs**
-(`darwin-arm64`) against **Docker Desktop**, built by you. This is
-experimental and not a supported platform in {{tag}}. Intel Macs are untested.
+DevCapsule {{tag}} ships an experimental launcher for **Apple Silicon Macs**
+(`darwin-arm64`), which runs natively against **Docker Desktop**. It is not a
+supported platform in {{tag}}. There is no executable for Intel Macs.
 
 A project runs as one of two capsule platforms:
 
@@ -26,13 +23,12 @@ as `linux-amd64`.
 
 ## What differs from Linux
 
-- **Two executables, or three.** On Linux the launcher copies itself into the
-  capsule. A macOS executable cannot run there, so you build the Linux runtime
-  for each capsule platform you use and put them in one directory that
-  `DEVCAPSULE_RUNTIME_PEX` names. Each launch delivers the one for its
-  project's platform and refuses one of another DevCapsule version. Rebuild
-  them whenever you rebuild the launcher: runtimes of the same version from
-  another commit are not told apart.
+- **Three executables.** On Linux the launcher copies itself into the
+  capsule. A macOS executable cannot run there, so the launcher delivers the
+  Linux runtime for the project's platform from `~/.local/lib/devcapsule`,
+  where the install script puts one for each platform, or from the directory
+  `DEVCAPSULE_RUNTIME_PEX` names instead. A launch refuses a runtime of
+  another DevCapsule version, so install all three together.
 - **Emulation.** Under `linux-amd64`, the first launch of an IDE builds its
   image under emulation: about ten minutes for PyCharm on a 14-core Mac. Later
   launches reuse the image. The IDE runs slower than on a native host.
@@ -52,11 +48,28 @@ as `linux-amd64`.
   default `/Users`, `/Volumes`, `/private`, `/tmp` and `/var/folders`. Files the
   capsule writes there belong to your user.
 
-## Build and install
+## Install
 
 You need Docker Desktop with several gigabytes free under **Settings →
-Resources → Disk usage limit**, and about as much free on the Mac itself, plus
-Git and Python 3.12. From a clean checkout of a published commit:
+Resources → Disk usage limit**, and about as much free on the Mac itself.
+Install with the command on the [install page](../getting-started/install.md):
+
+```bash
+curl -fsSL {{download_url}}/install.sh | sh
+```
+
+It installs the launcher as `~/.local/bin/devcapsule` and the `linux-amd64`
+and `linux-arm64` runtimes in `~/.local/lib/devcapsule`. If you set
+`DEVCAPSULE_RUNTIME_PEX` for an earlier build, remove it from your shell
+profile: it takes precedence over that directory. Add `$HOME/.local/bin` to
+your `PATH`, then build the arm64 base below, or continue with [your first
+session](../getting-started/first-session.md) and answer `linux-amd64` when
+init asks for the platform.
+
+### Build from source
+
+To run a commit that is not released, you need Git and Python 3.12 as well.
+From a clean checkout of a published commit:
 
 ```bash
 git clone https://github.com/ccozianu/devcapsule.git
@@ -82,27 +95,25 @@ done
 This writes the macOS launcher and a Linux runtime for each capsule platform,
 all from the same commit. `--allow-unpublished-revision` skips only the check
 that the commit is a branch tip; the commit itself must be public, since a base
-build installs the web console from it. Install them:
+build installs the web console from it. Install them where the launcher looks:
 
 ```bash
 mkdir -p ~/.local/bin ~/.local/lib/devcapsule
 install -m 0755 dist/devcapsule-macos-arm64 ~/.local/bin/devcapsule
 install -m 0755 dist/devcapsule-linux-amd64 dist/devcapsule-linux-arm64 ~/.local/lib/devcapsule/
-export DEVCAPSULE_RUNTIME_PEX="$HOME/.local/lib/devcapsule"
 ~/.local/bin/devcapsule version
 ```
 
-Add the `export` line, and `$HOME/.local/bin` on your `PATH`, to your shell
-profile. Then build the arm64 base below, or continue with
-[your first session](../getting-started/first-session.md) and answer
-`linux-amd64` when init asks for the platform.
+Rebuild and reinstall all three together: the runtimes record no commit, so
+one built from another commit of the same version is not told apart.
 
 ## Run a project natively as `linux-arm64`
 
 Build the arm64 base once, natively, with the launcher you installed and the
-revision it was built from (`devcapsule version` shows it):
+revision it was built from, which `devcapsule version` shows:
 
 ```bash
+revision="$(devcapsule version | sed -n 's/^Source revision: //p')"
 devcapsule images build --type base --recipe ubuntu-24.04 --platform linux-arm64 \
   --tag devcapsule-base-local:arm64 --source-revision "$revision"
 ```

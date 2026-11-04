@@ -10,7 +10,15 @@ from devcapsule.build_info import BuildInfo, BuildInfoError, current_build_info,
 from devcapsule.compat import CliError
 from devcapsule.platforms import HostOs, Platform
 
+__all__ = ["DEFAULT_RUNTIME_DIRECTORY", "RUNTIME_PEX_ENV", "executable_platform", "runtime_artifact"]
+
 RUNTIME_PEX_ENV = "DEVCAPSULE_RUNTIME_PEX"
+
+DEFAULT_RUNTIME_DIRECTORY = "~/.local/lib/devcapsule"
+"""Where a packaged launcher looks for its runtimes when ``DEVCAPSULE_RUNTIME_PEX`` is unset.
+
+The release's install script puts a Mac's Linux runtimes here.
+"""
 
 _MACH_O_MAGICS = (b"\xcf\xfa\xed\xfe", b"\xce\xfa\xed\xfe", b"\xca\xfe\xba\xbe")
 _UNKNOWN_REVISION = "unknown"
@@ -23,10 +31,11 @@ def runtime_artifact(capsule_platform: Platform) -> Path:
     (D-0009). A launcher that cannot, such as a macOS executable launching
     Linux capsules, delivers the runtime ``DEVCAPSULE_RUNTIME_PEX`` names: one
     executable, or a directory holding one per capsule platform as
-    ``devcapsule-<platform>``. A source-form launcher names its built runtime
-    the same way. A delivered runtime that is not the launcher's own bytes
-    must be the launcher's build: the same version, and the same source
-    revision wherever both record one (R-RUNTIME-001).
+    ``devcapsule-<platform>``. Unset, it delivers the ``devcapsule-<platform>``
+    in ``DEFAULT_RUNTIME_DIRECTORY`` when there is one. A source-form launcher
+    names its built runtime with the variable. A delivered runtime that is not
+    the launcher's own bytes must be the launcher's build: the same version,
+    and the same source revision wherever both record one (R-RUNTIME-001).
     """
 
     # scie preserves the executable's path in SCIE; PEX points to the original
@@ -38,6 +47,8 @@ def runtime_artifact(capsule_platform: Platform) -> Path:
         delivered = own
     elif named:
         delivered = _named_runtime(Path(named).expanduser(), capsule_platform)
+    elif own is not None and (installed := _installed_runtime(capsule_platform)) is not None:
+        delivered = installed
     else:
         delivered = own or _resolved(sys.argv[0])
     try:
@@ -52,7 +63,8 @@ def runtime_artifact(capsule_platform: Platform) -> Path:
         raise CliError(
             f"{delivered} is {_describe(executable_platform(delivered))} and cannot run inside "
             f"{capsule_platform} capsules. Set {RUNTIME_PEX_ENV} to a {capsule_platform} DevCapsule "
-            f"executable of the same version, or to a directory holding it as devcapsule-{capsule_platform}."
+            f"executable of the same version, or to a directory holding it as devcapsule-{capsule_platform}, "
+            f"or put it in {DEFAULT_RUNTIME_DIRECTORY} as devcapsule-{capsule_platform}."
         )
     if delivered != own:
         _require_same_build(delivered, delivered_build, current_build_info())
@@ -92,6 +104,11 @@ def _runs_in(path: Path, capsule_platform: Platform) -> bool:
     if runs_on is None:
         return HostOs.current() is HostOs.LINUX and Platform.runnable() == (capsule_platform,)
     return runs_on == capsule_platform
+
+
+def _installed_runtime(capsule_platform: Platform) -> Path | None:
+    candidate = Path(DEFAULT_RUNTIME_DIRECTORY).expanduser() / f"devcapsule-{capsule_platform}"
+    return _resolved(str(candidate)) if candidate.is_file() else None
 
 
 def _named_runtime(named: Path, capsule_platform: Platform) -> Path:

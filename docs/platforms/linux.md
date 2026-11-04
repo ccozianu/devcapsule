@@ -1,7 +1,7 @@
 ---
 description: What DevCapsule needs from a Linux computer, and which distributions and Docker setups are supported.
 weight: 1
-updated: 2026-10-30
+updated: 2026-11-04
 ---
 # Linux
 
@@ -17,7 +17,11 @@ DevCapsule {{tag}} ships as a single executable for **64-bit Intel/AMD Linux
 
 [Install](../getting-started/install.md) starts with three commands to check
 the architecture, Docker daemon, and Buildx.
-ARM Linux (`aarch64` / `linux-arm64`) is not supported in {{tag}}.
+ARM Linux (`aarch64` / `linux-arm64`) has an experimental executable in {{tag}},
+which the install command picks on an ARM computer. It has not been tried on an
+ARM Linux host yet, and its capsules need an arm64 base you build yourself
+until one is published, as [macOS](macos.md#run-a-project-natively-as-linux-arm64)
+describes.
 
 DevCapsule is developed and tested on Ubuntu-family desktops using Docker
 Engine from [Docker's official repository](https://docs.docker.com/engine/install/).
