@@ -112,6 +112,10 @@ jobs:
     needs: changes
     if: needs.changes.outputs.python == 'true'
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      # The coverage numbers are written into the pull request's description.
+      pull-requests: write
     defaults:
       run:
         working-directory: devcapsule-src
@@ -169,6 +173,18 @@ jobs:
             --format markdown:diff-cover.md,json:diff-cover.json
           python scripts/diff_coverage_annotations.py
 
+      # Both figures go into the PR description between marker comments, so
+      # a merge that takes the description as its message carries them too.
+      - name: Publish coverage numbers to the pull request
+        if: github.event_name == 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python -m coverage json -o coverage.json
+          python scripts/publish_coverage_numbers_to_pr.py
+
       - name: Publish coverage summary
         if: ${{ always() && hashFiles('devcapsule-src/.coverage') != '' }}
         run: |
@@ -185,6 +201,7 @@ jobs:
           name: python-coverage
           path: |
             devcapsule-src/coverage.xml
+            devcapsule-src/coverage.json
             devcapsule-src/htmlcov/
             devcapsule-src/diff-cover.md
             devcapsule-src/diff-cover.json

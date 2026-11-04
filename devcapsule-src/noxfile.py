@@ -176,6 +176,7 @@ def run_typecheck(session: nox.Session) -> None:
         str(VERSION_SCRIPT),
         str(PROJECT_ROOT / "scripts" / "release-manifest.py"),
         str(PROJECT_ROOT / "scripts" / "validate_unittests_follow_conventions.py"),
+        str(PROJECT_ROOT / "scripts" / "publish_coverage_numbers_to_pr.py"),
         str(PROJECT_ROOT / "scripts" / "release-protocol.py"),
         str(PROJECT_ROOT / "scripts" / "prepare-promotion.py"),
     )
