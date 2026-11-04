@@ -591,6 +591,9 @@ def test_authorized_runtime_effects_build_the_complete_docker_plan(tmp_path: Pat
             assert sudoers_file.read_text(encoding="utf-8") == SUDOERS_POLICY
             assert sudoers_file.stat().st_mode & 0o777 == 0o440
             args = build_docker_args(config, files, env)
+            files.sudoers_volume = "capsule-sudoers"
+            volume_args = build_docker_args(config, files, env)
+            files.sudoers_volume = None
             files.sudoers_file = None
             with pytest.raises(PycharmRunError, match="shadow and sudoers files"):
                 build_docker_args(config, files, env)
@@ -603,6 +606,9 @@ def test_authorized_runtime_effects_build_the_complete_docker_plan(tmp_path: Pat
     assert ["--user", "1000:1000"] == args[args.index("--user") : args.index("--user") + 2]
     assert "ENABLE_SUDO=1" in args
     assert f"type=bind,src={sudoers_file},dst={SUDOERS_POLICY_PATH},ro" in args
+    # On macOS the policy comes from its volume, not the Mac's file.
+    assert f"type=volume,src=capsule-sudoers,volume-subpath=policy,dst={SUDOERS_POLICY_PATH},ro" in volume_args
+    assert f"type=bind,src={sudoers_file},dst={SUDOERS_POLICY_PATH},ro" not in volume_args
     assert not sudoers_file.exists()
     assert not sudoers_directory.exists()
     assert "DOCKER_HOST=unix:///run/host-docker.sock" in args
@@ -787,6 +793,75 @@ def test_sudoers_ownership_helper_failure_is_actionable(tmp_path: Path) -> None:
             ensure_sudoers_policy_ownership(config, files, {})
 
 
+def _macos_sudo_files(tmp_path: Path) -> tuple[PycharmRunConfig, TempRuntimeFiles]:
+    policy = tmp_path / "sudoers"
+    policy.write_text(SUDOERS_POLICY, encoding="utf-8")
+    files = TempRuntimeFiles(
+        xauth_file=tmp_path / "xauth",
+        passwd_file=tmp_path / "passwd",
+        group_file=tmp_path / "group",
+        sudoers_file=policy,
+    )
+    config = cast(
+        PycharmRunConfig,
+        SimpleNamespace(enable_sudo=True, image="devcapsule-local-pycharm:canonical", name="capsule"),
+    )
+    return config, files
+
+
+def test_macos_sudo_policy_is_written_into_a_volume_by_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Docker Desktop shares Mac files as the Mac user: no chown makes a
+    # bind-mounted policy root's, so the policy lives in a volume.
+    monkeypatch.setattr(HostOs, "current", classmethod(lambda cls: HostOs.DARWIN))
+    monkeypatch.setattr("devcapsule.platforms.host_architecture", lambda: "arm64")
+    config, files = _macos_sudo_files(tmp_path)
+
+    with (
+        patch("devcapsule.launch.pycharm._launcher.os.chown") as chown,
+        patch("devcapsule.launch.pycharm._launcher.subprocess.run") as run,
+    ):
+        run.return_value = SimpleNamespace(returncode=0, stderr="")
+        ensure_sudoers_policy_ownership(config, files, {"PATH": "/usr/bin"})
+
+    chown.assert_not_called()
+    assert files.sudoers_volume == "capsule-sudoers"
+    create, write = (call.args[0] for call in run.call_args_list)
+    assert create == ["docker", "volume", "create", "--label", "devcapsule.purpose=development-sudo-policy",
+                      "capsule-sudoers"]
+    assert write[:4] == ["docker", "run", "--rm", "-i"]
+    assert "--platform=linux/amd64" in write
+    assert ["--network", "none"] == write[write.index("--network") : write.index("--network") + 2]
+    assert ["--cap-drop", "ALL"] == write[write.index("--cap-drop") : write.index("--cap-drop") + 2]
+    assert "--cap-add" not in write
+    assert ["--user", "0:0"] == write[write.index("--user") : write.index("--user") + 2]
+    assert {"--read-only", "--pull=never", "no-new-privileges"} <= set(write)
+    assert "type=volume,src=capsule-sudoers,dst=/policy" in write
+    assert write[-1].startswith("umask 0337;")
+    assert write[-1].endswith("/policy/policy")
+    assert run.call_args_list[1].kwargs["input"] == SUDOERS_POLICY
+
+
+def test_macos_sudo_policy_failure_removes_its_volume(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(HostOs, "current", classmethod(lambda cls: HostOs.DARWIN))
+    config, files = _macos_sudo_files(tmp_path)
+
+    with patch("devcapsule.launch.pycharm._launcher.subprocess.run") as run:
+        run.side_effect = [
+            SimpleNamespace(returncode=0, stderr=""),
+            SimpleNamespace(returncode=125, stderr="no such image"),
+            SimpleNamespace(returncode=0, stderr=""),
+        ]
+        with pytest.raises(PycharmRunError, match="no such image"):
+            ensure_sudoers_policy_ownership(config, files, {})
+
+    assert run.call_args_list[-1].args[0] == ["docker", "volume", "rm", "--force", "capsule-sudoers"]
+    assert files.sudoers_volume is None
+
+
 def test_sudo_banner_is_printed_after_complete_policy_preparation(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -799,8 +874,10 @@ def test_sudo_banner_is_printed_after_complete_policy_preparation(
     with (
         patch("devcapsule.launch.pycharm._launcher.shutil.which", return_value=None),
         patch(
-            "devcapsule.launch.pycharm._launcher.ensure_sudoers_policy_ownership"
+            "devcapsule.launch.pycharm._launcher.ensure_sudoers_policy_ownership",
+            side_effect=lambda _config, files, _env: setattr(files, "sudoers_volume", "capsule-sudoers"),
         ) as ensure,
+        patch("devcapsule.launch.pycharm._launcher.remove_sudoers_policy_volume") as remove,
         patch("devcapsule.launch.pycharm._launcher.run_attached") as run,
     ):
         run.return_value = AttachedResult(0, interrupted=False, stopped=True)
@@ -821,7 +898,9 @@ def test_sudo_banner_is_printed_after_complete_policy_preparation(
     ensure.assert_called_once()
     assert "DEVELOPMENT SUDO IS ENABLED" in capsys.readouterr().err
     command = run.call_args.args[0]
-    assert any(SUDOERS_POLICY_PATH in argument for argument in command)
+    assert any(SUDOERS_POLICY_PATH in argument and "src=capsule-sudoers" in argument for argument in command)
+    # The policy volume outlives nothing but the session.
+    assert remove.call_args.args[0] == "capsule-sudoers"
 
 
 def test_sudo_policy_preparation_failure_cleans_files_without_enabled_banner(

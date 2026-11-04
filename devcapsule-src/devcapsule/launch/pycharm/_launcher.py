@@ -128,10 +128,15 @@ class TempRuntimeFiles:
     # The console's configuration channel: a directory the capsule writes
     # requests into and reads the launch-time listing from; CHANNEL_PATH inside.
     configuration_directory: Path | None = None
+    # On macOS, the Docker volume that holds the root-owned sudo policy.
+    sudoers_volume: str | None = None
 
 
 SUDOERS_POLICY_PATH = "/etc/sudoers.d/devcapsule-development-sudo"
 SUDOERS_POLICY = "%ide-sudo ALL=(ALL:ALL) NOPASSWD: ALL\n"
+SUDOERS_VOLUME_FILE = "policy"
+"""The policy's name inside its macOS volume."""
+SUDOERS_VOLUME_LABEL = "devcapsule.purpose=development-sudo-policy"
 
 
 
@@ -416,6 +421,7 @@ def run_pycharm(options: PycharmRunOptions, env: Mapping[str, str] | None = None
                 print(session_result_text(config, result), file=sys.stderr, flush=True)
                 return exit_code
             finally:
+                remove_sudoers_policy_volume(files.sudoers_volume, runtime_env)
                 cleanup_temp_runtime_files(files)
     except HostOpenError as exc:
         raise PycharmRunError(str(exc)) from exc
@@ -1417,12 +1423,12 @@ def build_docker_args(
                 "Development sudo requires generated shadow and sudoers files."
             )
         args.extend(["--mount", f"type=bind,src={files.shadow_file},dst=/etc/shadow,ro"])
-        args.extend(
-            [
-                "--mount",
-                f"type=bind,src={files.sudoers_file},dst={SUDOERS_POLICY_PATH},ro",
-            ]
+        policy_source = (
+            f"type=volume,src={files.sudoers_volume},volume-subpath={SUDOERS_VOLUME_FILE}"
+            if files.sudoers_volume
+            else f"type=bind,src={files.sudoers_file}"
         )
+        args.extend(["--mount", f"{policy_source},dst={SUDOERS_POLICY_PATH},ro"])
     if files.runtime_plan_file is not None:
         args.extend(
             [
@@ -1868,6 +1874,9 @@ def ensure_sudoers_policy_ownership(
     policy = files.sudoers_file
     if not config.enable_sudo or policy is None:
         raise PycharmRunError("Development sudo requires a generated sudoers policy.")
+    if HostOs.current() is HostOs.DARWIN:
+        files.sudoers_volume = prepare_sudoers_policy_volume(config, policy, env)
+        return
     try:
         os.chown(policy, 0, 0)
     except PermissionError:
@@ -1877,6 +1886,7 @@ def ensure_sudoers_policy_ownership(
             "run",
             "--rm",
             "--pull=never",
+            *Platform.current().docker_platform_args(),
             "--network",
             "none",
             "--read-only",
@@ -1915,6 +1925,84 @@ def ensure_sudoers_policy_ownership(
     if file_owner_uid(policy) != 0:
         raise PycharmRunError(
             "Development-sudo policy ownership is not root after preparation."
+        )
+
+
+def prepare_sudoers_policy_volume(config: PycharmRunConfig, policy: Path, env: Mapping[str, str]) -> str:
+    """Write the sudo policy into a Docker volume as root; return the volume's name.
+
+    sudo ignores a policy root does not own. Docker Desktop shares Mac files
+    with its virtual machine as the Mac user: a bind-mounted file is owned by
+    that user inside every container, and not even root there can chown it.
+    A volume lives on the virtual machine's own disk, where root's ownership
+    holds. The name follows the container's, so a volume a killed launcher
+    left behind is rewritten and then removed by the next launch.
+    """
+
+    volume = f"{config.name}-sudoers"
+    created = subprocess.run(
+        ["docker", "volume", "create", "--label", SUDOERS_VOLUME_LABEL, volume],
+        check=False, env=dict(env), stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True,
+    )
+    if created.returncode != 0:
+        detail = created.stderr.strip()
+        raise PycharmRunError(
+            "Could not create the volume for the development-sudo policy" + (f": {detail}" if detail else ".")
+        )
+    staged = f"/policy/{SUDOERS_VOLUME_FILE}.new"
+    command = [
+        "docker",
+        "run",
+        "--rm",
+        "-i",
+        "--pull=never",
+        *Platform.current().docker_platform_args(),
+        "--network",
+        "none",
+        "--read-only",
+        "--pids-limit",
+        "64",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--user",
+        "0:0",
+        "--mount",
+        f"type=volume,src={volume},dst=/policy",
+        "--entrypoint",
+        "/bin/sh",
+        config.image,
+        "-ec",
+        # 0440 root:root, as sudo requires. A policy left by an earlier
+        # launch is read-only even to root without capabilities: replace it.
+        f"umask 0337; rm -f {staged}; cat > {staged}; mv -f {staged} /policy/{SUDOERS_VOLUME_FILE}",
+    ]
+    completed = subprocess.run(
+        command,
+        check=False,
+        env=dict(env),
+        input=policy.read_text(encoding="utf-8"),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    if completed.returncode != 0:
+        remove_sudoers_policy_volume(volume, env)
+        detail = completed.stderr.strip()
+        raise PycharmRunError(
+            "Could not prepare the root-owned development-sudo policy" + (f": {detail}" if detail else ".")
+        )
+    return volume
+
+
+def remove_sudoers_policy_volume(volume: str | None, env: Mapping[str, str]) -> None:
+    """Remove the policy volume; a capsule still using it keeps it until the next launch."""
+
+    if volume:
+        subprocess.run(
+            ["docker", "volume", "rm", "--force", volume],
+            check=False, env=dict(env), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
 
 
