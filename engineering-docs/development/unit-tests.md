@@ -28,6 +28,13 @@ unit suite; the heavier suites are chosen by marker, never by accident. The
 `flaky` marker runs a test for visibility with a temporarily non-blocking
 result; the other markers belong to the heavier suites.
 
+On a pull request the hosted workflow also writes both coverage figures,
+changed lines covered and the whole package, into the pull request's
+description between two marker comments, through
+`scripts/publish_coverage_numbers_to_pr.py`; a merge that takes the
+description as its message carries them into `main`'s history. The block is
+replaced on every run and the author's text around it is never touched.
+
 The hosted `tests.yml` workflow selects the existing serial unit suite when
 runtime, test, build or unclassified inputs change. It runs no Docker.
 Planning/status-only PRs skip heavy jobs; website inputs run the website's

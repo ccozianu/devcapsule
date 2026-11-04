@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-11-03; unit-test conventions slice delivered for the owner's merge; 0.3.1 queue preserved
+State: active 2026-11-04; PR #335 merged at 650e2be3; coverage-numbers slice delivered for the owner's merge; 0.3.1 queue preserved
 
 Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@65501b3407db
 
@@ -12,9 +12,30 @@ Integration target: `main`
 
 Delivery method: ordinary maintenance PRs to `main`; owner merges. No records-only PR. The 0.3.0 release is published; website production promotion remains owner-operated.
 
-Branch association: `ws-maintenance/test-conventions`, from `ws-maintenance/0.3.1-preparation` merged with main b3f10b7d, carrying the 0.3.1 preparation records to main with this slice; `ws-maintenance/0.3.1-preparation` from main 31d44fa4; `release-0.3.0` closed after final publication and retained with its tags; `ws-maintenance/0.3.0-acceptance` merged through #332 and closed; earlier slice branches are historical
+Branch association: `ws-maintenance/coverage-in-pr` from main 650e2be3; `ws-maintenance/test-conventions` merged through #335 and closed; `ws-maintenance/0.3.1-preparation` from main 31d44fa4; `release-0.3.0` closed after final publication and retained with its tags; `ws-maintenance/0.3.0-acceptance` merged through #332 and closed; earlier slice branches are historical
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`, `R-CONSOLE-001`
+
+## Coverage numbers in the pull request — 2026-11-04
+
+The owner merged #335 at 650e2be3 and asked for the next slice from the
+2026-11-03 question: the diff coverage and the overall coverage in the pull
+request's summary, and later in the merge commit's detail. CI already
+computed both, the overall figure into the job summary and diff-cover's
+report into an artifact and annotations; nothing reached the pull request.
+
+Delivered on `ws-maintenance/coverage-in-pr` as a PR to `main`:
+`scripts/publish_coverage_numbers_to_pr.py` reads `coverage.json` and
+`diff-cover.json`, renders one block between `<!-- coverage-numbers:begin -->`
+and `<!-- coverage-numbers:end -->`, and replaces that block in the pull
+request's description through the REST API, appending it when absent; the
+author's text is never touched. The pytest job gains `pull-requests: write`
+and runs the step on pull requests after diff coverage. Its tests are the
+third mirror file, 9 cases in triple form. The merge commit part needs no
+code: the owner sets the repository's default merge commit message to the
+pull request's title and description, and the block travels into `main`'s
+history as it stands at merge time. Until that setting is flipped, the
+numbers are in the pull request only.
 
 ## Unit-test conventions — 2026-11-03
 
