@@ -111,6 +111,40 @@ def local_pins(checkout: Mapping[str, Any]) -> dict[str, Any]:
         raise ProjectConfigurationError(f"Invalid local capability pins: {exc}") from exc
 
 
+def pins_for_platform(pins: Mapping[str, Any], matrix: ResolutionMatrix) -> dict[str, Any]:
+    """Return personal pins with each component's artifacts for ``matrix``'s platform.
+
+    A checkout keeps one set of personal pins, and a project may run as two
+    platforms: Apple Silicon runs linux-arm64 and linux-amd64. A component
+    version both platforms pin takes this platform's embedded table, so pins
+    written for one platform never deliver its artifacts to the other. A
+    version this platform does not pin is kept only when the pins were
+    written for this platform; otherwise ProjectConfigurationError names the
+    remedy. The input is unchanged.
+    """
+    if not pins:
+        return {}
+    result = deepcopy(dict(pins))
+    platform = str(matrix.platform)
+    components = result.get("components")
+    if isinstance(components, dict):
+        for name, metadata in components.items():
+            if not isinstance(metadata, dict):
+                continue
+            native = matrix.component_pin(name, metadata.get("version"))
+            if native is not None:
+                components[name] = deepcopy(dict(native))
+            elif str(pins.get("platform")) != platform:
+                raise ProjectConfigurationError(
+                    f"This checkout's {name} {metadata.get('version')} is pinned for {pins.get('platform')}, "
+                    f"and {platform} has no pin for that version; choose it again for {platform}, "
+                    f"for example with 'project --platform {platform} config ide IDE'."
+                )
+    if "platform" in result:
+        result["platform"] = platform
+    return result
+
+
 def pin_selection(matrix: ResolutionMatrix, policy: CapabilityPolicy, selection: LocalCapabilities,
                   source: Mapping[str, Any], previous: LocalCapabilities, previous_pins: Mapping[str, Any], *,
                   allow_unverified: bool, recommendations: Mapping[str, str] | None = None) -> dict[str, Any]:
@@ -123,6 +157,7 @@ def pin_selection(matrix: ResolutionMatrix, policy: CapabilityPolicy, selection:
     selector and materialization follow the IDE component's document. Catalog
     resolution failures raise ProjectConfigurationError. Inputs are unchanged.
     """
+    previous_pins = pins_for_platform(previous_pins, matrix)
     active_names = set(known_policy_names(policy, matrix).values()) | {matrix.canonical_name(name) for name in selection.selected}
     reset = (set(previous.providers) - set(selection.providers)) & active_names
     capabilities = tuple(dict.fromkeys((*selection.selected, *selection.providers, *sorted(reset))))
@@ -191,6 +226,7 @@ def compose_lock(manifest: Mapping[str, Any], shared: Mapping[str, Any],
     if not pins:
         raise ProjectConfigurationError("Local capability pins are missing; choose it again with 'project config ide IDE'.")
     matrix = matrix_for(lock)
+    pins = pins_for_platform(pins, matrix)
     if policy is None:
         policy = CapabilityPolicy.read(manifest)
     canonical = {**known_policy_names(policy, matrix), **{name: matrix.canonical_name(name) for name in local.selected}}

@@ -74,3 +74,37 @@ def test_arm64_base_is_its_own_unpublished_recipe_11_pin() -> None:
     assert base.contract.recipe == 11
     assert base.reference.startswith("docker.io/mycodespaceai/devcapsule-base@sha256:")
     assert base.reference not in {image.reference for image in AMD64.base_images()}
+
+
+def _personal_pins(platform: str, component: str, matrix: Any) -> dict[str, Any]:
+    pin = matrix.component_pins()[component]
+    return {"platform": platform, "components": {component: dict(pin), "interactive-surface": component}}
+
+
+def test_personal_pins_take_the_artifacts_of_the_platform_they_run_on() -> None:
+    # A checkout chose codium while the project ran as linux-amd64; the
+    # project then gained an arm64 lock. Its pins must deliver arm64 bytes.
+    from devcapsule.configuration.capability_selection import pins_for_platform
+
+    amd64 = _personal_pins("linux-amd64", "codium", AMD64)
+    on_arm64 = pins_for_platform(amd64, ARM64)
+    assert on_arm64["platform"] == "linux-arm64"
+    assert on_arm64["components"]["codium"] == dict(ARM64.component_pins()["codium"])
+    assert on_arm64["components"]["interactive-surface"] == "codium"
+    assert amd64["components"]["codium"] == dict(AMD64.component_pins()["codium"])  # input unchanged
+    # Pins already written wrongly, arm64 platform with amd64 bytes, are healed too.
+    mislabelled = dict(amd64, platform="linux-arm64")
+    assert pins_for_platform(mislabelled, ARM64)["components"]["codium"] == dict(ARM64.component_pins()["codium"])
+    assert pins_for_platform(on_arm64, AMD64)["components"]["codium"] == dict(AMD64.component_pins()["codium"])
+
+
+def test_a_personal_version_the_other_platform_lacks_asks_for_a_new_choice() -> None:
+    import pytest
+
+    from devcapsule.configuration.capability_selection import pins_for_platform
+    from devcapsule.configuration.storage import ProjectConfigurationError
+
+    channel = {"platform": "linux-amd64", "components": {"codex": {"version": "9.9.9", "url": "https://example.test/x64.tgz"}}}
+    with pytest.raises(ProjectConfigurationError, match="codex 9.9.9 is pinned for linux-amd64.*linux-arm64 has no pin"):
+        pins_for_platform(channel, ARM64)
+    assert pins_for_platform(channel, AMD64)["components"]["codex"]["version"] == "9.9.9"

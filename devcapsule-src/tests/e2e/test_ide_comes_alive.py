@@ -18,6 +18,7 @@ from pathlib import Path
 
 import pytest
 
+from devcapsule.platforms import Platform
 from devcapsule.runtime_artifact import RUNTIME_PEX_ENV, executable_platform
 from tests.e2e.ide_session import SURFACES, IdeSurface, capture_desktop, command, desktop_page_answers, ide_session, launched_ide, stop_session, wait_for_console_url, wait_for_ide_window
 
@@ -80,7 +81,7 @@ def test_ide_comes_alive(surface: IdeSurface, built_pex: Path, tmp_path: Path, e
         identity = command("docker", "inspect", "--format", '{{json .Id}} {{json .Image}}', session.container)
         (evidence / "container-identity.txt").write_text(identity.stdout, encoding="utf-8")
         child_digest = command("docker", "exec", session.container, "sha256sum", "/opt/devcapsule/bin/devcapsule.pex").stdout.split()[0]
-        assert child_digest == hashlib.sha256(delivered_runtime(built_pex).read_bytes()).hexdigest(), \
+        assert child_digest == hashlib.sha256(delivered_runtime(built_pex, session.workspace).read_bytes()).hexdigest(), \
             "Child runtime differs from the runtime the selected executable delivers"
         if surface.name == "eclipse":
             package = command("docker", "exec", "--user", f"{os.getuid()}:{os.getgid()}",
@@ -156,15 +157,19 @@ def test_ide_comes_alive(surface: IdeSurface, built_pex: Path, tmp_path: Path, e
                     }, indent=2) + "\n", encoding="utf-8")
 
 
-def delivered_runtime(executable: Path) -> Path:
+def delivered_runtime(executable: Path, workspace: Path) -> Path:
     """The executable a launch from ``executable`` delivers into the capsule.
 
     Itself when it runs on the capsule platform; a macOS launcher delivers the
-    Linux runtime its environment names instead.
+    Linux runtime its environment names instead: the file, or, from a
+    directory, the one for the platform the project's locks select.
     """
-    if executable_platform(executable) == "darwin":
-        return Path(os.environ[RUNTIME_PEX_ENV]).expanduser().resolve()
-    return executable
+    if executable_platform(executable) != "darwin":
+        return executable
+    named = Path(os.environ[RUNTIME_PEX_ENV]).expanduser().resolve()
+    if named.is_dir():
+        return named / f"devcapsule-{Platform.select_for_project(workspace)}"
+    return named
 
 
 def editor_font_size(container: str) -> float:

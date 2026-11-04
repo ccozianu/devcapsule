@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from collections.abc import Iterator
 from pathlib import Path
+import shutil
 import sys
 import tempfile
 
@@ -19,6 +20,23 @@ def pytest_configure(config: pytest.Config) -> None:
 
     if sys.platform == "darwin" and not config.option.basetemp:
         config.option.basetemp = tempfile.mkdtemp(prefix="dcpt-", dir="/tmp")
+        config.stash[_SHORT_BASETEMP] = Path(config.option.basetemp)
+
+
+_SHORT_BASETEMP = pytest.StashKey[Path]()
+
+
+def pytest_unconfigure(config: pytest.Config) -> None:
+    """Remove the short temporary root this session created.
+
+    pytest prunes its own default roots, but not one it was given; a root per
+    session would otherwise outlive every run, and a full disk fails Docker
+    Desktop's virtual machine with it.
+    """
+
+    created = config.stash.get(_SHORT_BASETEMP, None)
+    if created is not None:
+        shutil.rmtree(created, ignore_errors=True)
 
 
 @pytest.fixture(autouse=True)

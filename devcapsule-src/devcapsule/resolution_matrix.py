@@ -395,6 +395,14 @@ class ResolutionMatrix:
         """The latest embedded table for each component on this platform."""
         return {name: pins[-1].lock_table for name, pins in self._components.items() if pins}
 
+    @property
+    def platform(self) -> Platform:
+        return self._platform
+
+    def component_pin(self, component: str, version: object) -> Mapping[str, Any] | None:
+        """This platform's embedded table for one component version, or None."""
+        return next((pin.lock_table for pin in self._components.get(component, ()) if pin.version == version), None)
+
     def component_closure(self, capability: str, minimum: str | None = None,
                           lock: Mapping[str, Any] | None = None, *,
                           choice: str | None = None, recommended: str | None = None) -> tuple[str, ...]:
