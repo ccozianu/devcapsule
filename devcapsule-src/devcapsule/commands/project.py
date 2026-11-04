@@ -2537,6 +2537,13 @@ class ProjectCommand(Group):
             type=Path,
             help="Project root or descendant; defaults to discovery from the current directory.",
         )
+        parser.add_argument(
+            "--platform",
+            dest="capsule_platform",
+            metavar="PLATFORM",
+            help="Capsule platform for this command, such as linux-arm64; defaults to the first one "
+                 "this host runs that the project has a lock for.",
+        )
 
     @classmethod
     def make_context(cls, arguments: argparse.Namespace, parent: object | None) -> object | None:
@@ -2577,7 +2584,7 @@ class ProjectCommand(Group):
             context = replace(context, capsule_root=runtime_configuration.capsule_project_root(Path(".")))
         if access.needs_launcher:
             runtime_configuration.require_launcher(context.start_path(), tokens)
-        _select_capsule_platform(context)
+        _select_capsule_platform(context, getattr(arguments, "capsule_platform", None))
         return context
 
     @classmethod
@@ -2597,15 +2604,23 @@ class ProjectCommand(Group):
         }
 
 
-def _select_capsule_platform(context: ProjectCommandContext) -> None:
+def _select_capsule_platform(context: ProjectCommandContext, named: str | None = None) -> None:
     """Run the selected project as the platform it is locked for on this host.
 
     See ``Platform.select_for_project``: where a host runs two platforms, the
     project's locks choose. Without an enclosing project, as for ``init`` in
-    a fresh directory, the host's preferred platform stands.
+    a fresh directory, the host's preferred platform stands. ``--platform``
+    names one instead: ``project --platform linux-arm64 init`` adds that
+    platform's lock to a project, as init completes what a project lacks.
     """
     from devcapsule.platforms import Platform, UnsupportedPlatformError
 
+    if named is not None:
+        try:
+            Platform.select(Platform.parse(named))
+        except UnsupportedPlatformError as exc:
+            raise ProjectConfigurationError(str(exc)) from exc
+        return
     try:
         root: Path | None = discover_project(context.start_path())
     except ProjectConfigurationError:

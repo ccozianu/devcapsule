@@ -127,6 +127,17 @@ class Platform(StrEnum):
         return selected
 
     @classmethod
+    def select(cls, platform: Platform) -> Platform:
+        """Select ``platform`` for this process, as the user named it; refuse one this host cannot run."""
+
+        runnable = cls.runnable()
+        if platform not in runnable:
+            names = ", ".join(str(member) for member in runnable)
+            raise UnsupportedPlatformError(f"This host runs {names} capsules, not {platform}.")
+        _selected_platform.set(platform)
+        return platform
+
+    @classmethod
     def clear_selection(cls) -> None:
         """Forget the project selection; ``current()`` is the host's preference again."""
 

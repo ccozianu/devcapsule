@@ -1702,13 +1702,46 @@ _LINUX_AMD64_MATRIX = ResolutionMatrix(
     },
 )
 
+# The linux-arm64 base, recipe 11: the amd64 recipe-11 recipe built natively
+# on an Apple Silicon Mac (Docker Desktop 29.3.1) on 2026-11-04 by
+# `images build --type base --recipe ubuntu-24.04` from a launcher built at
+# the public main commit b3f10b7d, whose devcapsule-webconsole the image
+# installed. Inspected: linux/arm64, recipe 11 ready, display=contained,
+# runtime=launcher-supplied, all six services, the web console root.
+# NOT YET PUBLISHED. The reference is the digest of the OCI image index in
+# the builder's containerd store, which a push of this exact image to
+# mycodespaceai/devcapsule-base keeps; a rebuild gets another digest and
+# must be pinned again. Until the owner pushes it, a checkout selects the
+# local image: `project config authorize base-image <its local tag>`.
+_LINUX_ARM64_RECIPE_11_BASE = _BasePin(
+    mnemonic="v0.3.1.dev0-local-macos-aarch64",
+    source_revision="b3f10b7d95aec659f268afecc03d0912a2e89d2f",
+    base_family=_BASE_FAMILY_UBUNTU_24_04,
+    satisfies={
+        "python": "3.12", "docker-cli": None, "node": NODE_VERSION,
+        "java": TEMURIN_VERSION, "maven": MAVEN_VERSION, "postgresql-client": None,
+    },
+    recipe=11,
+    display=CONTAINED_DISPLAY,
+    runtime=LAUNCHER_SUPPLIED_RUNTIME,
+    lock_table={
+        "reference": (
+            "docker.io/mycodespaceai/devcapsule-base"
+            "@sha256:7d32268065b60b6ad75139d23c1e6fbb2daa43b3f2c53d2856c5e2e39891652b"
+        ),
+        "build-mnemonic": "v0.3.1.dev0-local-macos-aarch64",
+        "contract": "ubuntu-24.04@11",
+        "recipe-source": RECIPE_SOURCE_PATH,
+    },
+)
+
 # linux-arm64 offers the same vocabulary and the same materialization
 # recipes as linux-amd64; its bases, pins and verified edges are its own,
 # because a validation on one architecture establishes nothing on another.
 _LINUX_ARM64_MATRIX = ResolutionMatrix(
     platform=Platform.LINUX_ARM64,
     matrix_version=_MATRIX_VERSION,
-    bases=(),
+    bases=(_LINUX_ARM64_RECIPE_11_BASE,),
     components={},
     edges=(),
     couplings=(),
