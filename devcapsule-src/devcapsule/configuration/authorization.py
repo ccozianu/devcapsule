@@ -12,6 +12,19 @@ from devcapsule.components.catalog import COMPONENTS
 from .file_formats import AuthorizationScalar, ProjectConfigurationError, canonical_digest
 from .trust import BASE_CHANNEL, Channel, HomeTrust, channels_for
 
+__all__ = [
+    # The catalog of decisions a checkout carries, and its review.
+    "AuthorizationDeclaration", "AuthorizationChoice", "AuthorizationReview", "AuthorizedBaseSelection",
+    "authorization_declarations", "authorization_deny_value", "base_recovery_choices",
+    "review_authorizations", "resolved_checkout_authorizations",
+    "normalize_authorization_value", "render_authorization_value",
+    # What the platform lock says about the base, validated.
+    "immutable_registry_reference", "locked_base_reference", "locked_base_contract", "locked_base_build_mnemonic",
+    "authorized_base_selection", "authorized_base_reference",
+    # The curated V1 vocabularies.
+    "CURATED_HOST_RECOMMENDATIONS", "HOME_CAPABILITY_DEFAULTS",
+]
+
 
 OCI_REPOSITORY_COMPONENT_PATTERN = re.compile(r"^[a-z0-9]+(?:[._-][a-z0-9]+)*$")
 
