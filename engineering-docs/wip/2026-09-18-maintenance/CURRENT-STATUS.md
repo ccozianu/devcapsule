@@ -29,7 +29,8 @@ and recipe permalink; a lock without a builder; a lock predating recorded
 contracts with the legacy recipe path; a lock without a base. Every expected
 value is derived from the lock the test built. Rule 4 applies to the unit:
 the module now declares `__all__`. Checker: 110 legacy files, 1523 tests,
-4 files follow the convention, 0 breaches. The xfail stays uncommitted in
+4 files follow the convention, 0 breaches. Delivered as
+[PR #337](https://github.com/ccozianu/devcapsule/pull/337). The xfail stays uncommitted in
 the owner's checkout until this merges and is dropped at the next sync.
 
 ## Coverage numbers in the pull request — 2026-11-04
