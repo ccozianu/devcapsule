@@ -179,8 +179,11 @@ def initialize_project(executable: Path, surface: IdeSurface, workspace: Path, e
     """
     environment = dict(os.environ, BROWSER="true")  # webbrowser runs `true URL`: no tab opens
     built_base = os.environ.get("DEVCAPSULE_E2E_BASE_IMAGE")
+    # DEVCAPSULE_SMOKE_PLATFORM creates the project for that capsule platform,
+    # such as linux-arm64 on Apple Silicon, whose new projects are linux-amd64.
+    platform = os.environ.get("DEVCAPSULE_SMOKE_PLATFORM")
     init = subprocess.run(
-        [str(executable), "project", "init",
+        [str(executable), "project", *(["--platform", platform] if platform else []), "init",
          *(flag for need in surface.needs for flag in ("--ide" if need.endswith("-ide") else "--require", need)),
          "--creator", CREATOR, "--slug", slug,
          "--authorize", "base-image", "default",

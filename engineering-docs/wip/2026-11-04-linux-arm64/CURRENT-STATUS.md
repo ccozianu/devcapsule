@@ -78,6 +78,17 @@ properties; emulation is the daemon's. Unit suite on this Mac: 2,749 passed, 25 
 The human's `~/hello-devcapsule` checkout holds amd64 VSCodium pins labelled arm64, written
 by the bug since fixed; re-choosing its IDE through DevCapsule commands repairs it.
 
+**2026-11-04, after the fixes.** A personal pin is remapped when its table is exactly
+another platform's embedded pin, whatever its label, so the human's checkout healed without
+a command (4d2aeb28): their `~/hello-devcapsule` capsule runs natively, `aarch64`, an arm64
+VSCodium. The unit suite in Linux containers: amd64, emulated, 2,770 passed, 4 failed; arm64,
+native, 2,757 passed, 17 failed. Both fail three recursive-orchestrator tests that need a host
+X11 directory, as `main` does in a headless container now that the skip is Linux-only. The
+amd64 run fails a console test whose 0.3 s timeout emulated Python misses; it passes natively.
+The arm64 run fails 14 console-channel tests whose real `devcapsule` subprocess sees the
+arm64 host while the suite's fixtures are amd64: a limit of the suite on ARM Linux, not CI.
+The IDE smoke takes `DEVCAPSULE_SMOKE_PLATFORM` to create its project for a platform.
+
 ## Next Resumable Task
 
 Record the rerun smokes; add arm64 verified edges for the surfaces that pass, with their
