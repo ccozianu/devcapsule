@@ -18,6 +18,8 @@ from devcapsule.configuration.capability_commands import paths
 from devcapsule.configuration.docker_arguments import arguments_path, read_arguments
 from devcapsule.configuration.storage import checkout_record_paths, load_toml, registered_checkouts, settings_path
 
+pytestmark = pytest.mark.legacy
+
 
 @pytest.fixture
 def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:

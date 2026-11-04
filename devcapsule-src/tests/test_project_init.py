@@ -28,6 +28,8 @@ from devcapsule.configuration.file_formats import (
 from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES, ResolutionMatrix
 
+pytestmark = pytest.mark.legacy
+
 
 def matrix_without_antigravity_validation() -> ResolutionMatrix:
     """The embedded matrix with the Antigravity CLI's validation removed.

@@ -23,6 +23,8 @@ from devcapsule.configuration.file_formats import ProjectConfigurationError, ren
 from devcapsule.configuration.storage import interrupted_activation, load_toml, manifest_for
 from tests.test_upgrade_recovery import checkout, install_external_fakes, invoke, review  # noqa: F401
 
+pytestmark = pytest.mark.legacy
+
 CLAUDE_TERMS = "https://www.anthropic.com/legal/commercial-terms"
 ANTIGRAVITY_TERMS = "https://antigravity.google/terms/"
 GUIDE = "https://devcapsule.mycodespace.ai/docs/current/configuration/software-approvals/"

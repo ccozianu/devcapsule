@@ -28,6 +28,8 @@ from devcapsule.diagnostics import (
 )
 from devcapsule.launch.session_logs import session_logs_root
 
+pytestmark = pytest.mark.legacy
+
 
 def _init_project(project: Path) -> dict[str, Any]:
     target = project / ".devcapsule"

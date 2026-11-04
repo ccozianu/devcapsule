@@ -3,6 +3,9 @@ import ast
 from pathlib import Path
 
 from devcapsule import configuration
+import pytest
+
+pytestmark = pytest.mark.legacy
 
 
 PACKAGE = "devcapsule.configuration"

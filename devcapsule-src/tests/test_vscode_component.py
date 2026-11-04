@@ -59,6 +59,8 @@ from devcapsule.materialization import (
 from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES
 
+pytestmark = pytest.mark.legacy
+
 
 MATRIX = MATRICES[Platform.LINUX_AMD64]
 

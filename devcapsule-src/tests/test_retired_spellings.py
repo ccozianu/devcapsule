@@ -6,6 +6,8 @@ import pytest
 from devcapsule import cli
 from tests.test_checkout_commands import project, runtime_project  # noqa: F401
 
+pytestmark = pytest.mark.legacy
+
 
 SPELLINGS = [
     (("config", "capabilities", "--local", "python-ide"), "config ide"),

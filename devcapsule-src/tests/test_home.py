@@ -12,6 +12,8 @@ from devcapsule.configuration.home_channels import known_channels
 from devcapsule.platforms import Platform, XdgHomes
 from devcapsule.resolution_matrix import MATRICES
 
+pytestmark = pytest.mark.legacy
+
 
 @pytest.fixture
 def home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:

@@ -11,6 +11,8 @@ from devcapsule.runtime_artifact import runtime_artifact
 from devcapsule.runtime_command import RuntimeCommand
 from tests.test_base_image import pex_fixture
 
+pytestmark = pytest.mark.legacy
+
 
 def test_packaged_launcher_supplies_itself_despite_source_override(tmp_path: Path, monkeypatch) -> None:
     launcher = pex_fixture(tmp_path / "launcher.pex")

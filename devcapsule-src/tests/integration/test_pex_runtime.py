@@ -15,6 +15,8 @@ import pytest
 import tomllib
 from devcapsule.host_open import HOST_OPEN_SOCKET_ENV, HostOpenBroker
 
+pytestmark = pytest.mark.legacy
+
 # The artifact under test is built from this tree, so compare against the
 # authored version, not installed metadata an editable install may have frozen.
 PACKAGE_VERSION = os.environ.get("DEVCAPSULE_EXPECTED_RELEASE_VERSION") or tomllib.loads(

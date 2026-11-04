@@ -13,6 +13,8 @@ from typing import Any
 import pytest
 import yaml
 
+pytestmark = pytest.mark.legacy
+
 ROOT = Path(__file__).parents[2]
 
 

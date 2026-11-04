@@ -52,6 +52,11 @@ def run_tests(session: nox.Session) -> None:
     session.run("python", "-m", "pytest", str(PROJECT_ROOT / "tests"))
 
 
+def check_test_conventions(session: nox.Session) -> None:
+    """Hold the suite to *Unit Tests* in WORKFLOW-LOCAL.md; legacy files are compared with the diff base."""
+    session.run("python", str(PROJECT_ROOT / "scripts" / "validate_unittests_follow_conventions.py"))
+
+
 def run_packaging_tests(session: nox.Session) -> None:
     session.run(
         "python",
@@ -170,6 +175,7 @@ def run_typecheck(session: nox.Session) -> None:
         str(PROJECT_ROOT / "noxfile.py"),
         str(VERSION_SCRIPT),
         str(PROJECT_ROOT / "scripts" / "release-manifest.py"),
+        str(PROJECT_ROOT / "scripts" / "validate_unittests_follow_conventions.py"),
         str(PROJECT_ROOT / "scripts" / "release-protocol.py"),
         str(PROJECT_ROOT / "scripts" / "prepare-promotion.py"),
     )
@@ -357,6 +363,7 @@ def bump_version(session: nox.Session) -> None:
 def tests(session: nox.Session) -> None:
     install_locked(session)
     check_python_syntax(session)
+    check_test_conventions(session)
     run_tests(session)
 
 
@@ -534,6 +541,7 @@ def build(session: nox.Session) -> None:
     check_python_syntax(session)
     check_shell_syntax(session)
     run_typecheck(session)
+    check_test_conventions(session)
     run_tests(session)
     run_smoke(session)
     build_test_pex(session)

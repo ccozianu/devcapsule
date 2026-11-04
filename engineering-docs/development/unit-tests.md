@@ -2,6 +2,16 @@
 
 [Development](README.md) · [Developer environment](developer-environment.md) · [Source layout](source-layout.md) · [Integration tests](integration-tests.md) · [End-to-end tests](e2e-tests.md)
 
+## Conventions
+
+*Unit Tests* in [`WORKFLOW-LOCAL.md`](../../WORKFLOW-LOCAL.md) binds: a
+unit test file mirrors its module under `tests/unit/`, a test is a
+precondition, one call and a postcondition, and its docstring states the
+contract. The companion explains why. `scripts/validate_unittests_follow_conventions.py` is the
+gate's check; its summary line counts the files still marked `legacy`. The
+flat files under `tests/` are those legacy files: they only lose tests, and
+a test you change moves to the mirror with you.
+
 ## Running them
 
 ```text
@@ -105,11 +115,16 @@ so prefer the existing laws and an acceptance step for what the user sees.
 
 ## Fixtures
 
-`tests/conftest.py` holds two fixtures and nothing else:
+`tests/conftest.py` holds three fixtures and nothing else:
 
 - `host_launch_by_default`, autouse: makes launcher tests behave as if they
   run on the host, since the launcher translates bind sources when it finds
   itself inside a capsule and the suite is often run from one.
+- `private_user_directories`, autouse: moves `HOME` and every XDG directory
+  under the test's `tmp_path` for non-Docker tests. Inside a capsule this is
+  not yet a private home: a home with no settings of its own reads the
+  launcher's mounted settings, so tests that assume no accepted vendor
+  channel fail there. Recorded on 2026-11-03 for the 0.3.1 fixture slice.
 - `built_pex`: the executable under test, `DEVCAPSULE_PEX_UNDER_TEST` when
   set, otherwise `dist/devcapsule-local.pex`; it fails with the Nox session
   to run when the file is missing. The integration and end-to-end suites use

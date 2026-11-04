@@ -13,6 +13,8 @@ from devcapsule.launch.pycharm._image_build import (
 )
 from devcapsule.images.build import BuildxImageBuilder, ImageBuildSpec, normalize_pycharm_source, render_build_context
 
+pytestmark = pytest.mark.legacy
+
 
 def test_parse_pycharm_build_options_rejects_missing_source(tmp_path: Path) -> None:
     with pytest.raises(CliError, match="does not exist"):

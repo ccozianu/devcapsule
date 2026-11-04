@@ -21,6 +21,8 @@ from devcapsule.configuration.storage import checkout_record_paths, load_toml, l
 from devcapsule.configuration.file_formats import render_toml
 from devcapsule.configuration.trust import BASE_CHANNEL, Channel, HomeTrust, channels_for
 
+pytestmark = pytest.mark.legacy
+
 CLAUDE_TERMS = "https://www.anthropic.com/legal/commercial-terms"
 
 

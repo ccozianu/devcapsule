@@ -53,6 +53,8 @@ from devcapsule.project import plan_project
 from devcapsule.container_runtime.contract import ConsolePlan
 from devcapsule.display_client import display_url
 
+pytestmark = pytest.mark.legacy
+
 def base_env(tmp_path: Path) -> dict[str, str]:
     return {
         "DISPLAY": ":1",

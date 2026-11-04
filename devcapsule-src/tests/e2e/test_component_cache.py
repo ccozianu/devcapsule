@@ -21,6 +21,8 @@ from devcapsule.images.build import (
 from devcapsule.materialization import ArtifactSpec, ensure_materialized_surface
 from devcapsule.runtime_command import RuntimeCommand
 
+pytestmark = pytest.mark.legacy
+
 
 def docker(*args: str) -> str:
     completed = subprocess.run(["docker", *args], check=False, text=True, capture_output=True)
