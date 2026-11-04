@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-11-04; PR #335 merged at 650e2be3; coverage-numbers slice delivered for the owner's merge; 0.3.1 queue preserved
+State: active 2026-11-04; #335 and #336 merged; first legacy test moved under the new rule, delivered for the owner's merge; 0.3.1 queue preserved
 
 Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@65501b3407db
 
@@ -12,9 +12,25 @@ Integration target: `main`
 
 Delivery method: ordinary maintenance PRs to `main`; owner merges. No records-only PR. The 0.3.0 release is published; website production promotion remains owner-operated.
 
-Branch association: `ws-maintenance/coverage-in-pr` from main 650e2be3; `ws-maintenance/test-conventions` merged through #335 and closed; `ws-maintenance/0.3.1-preparation` from main 31d44fa4; `release-0.3.0` closed after final publication and retained with its tags; `ws-maintenance/0.3.0-acceptance` merged through #332 and closed; earlier slice branches are historical
+Branch association: `ws-maintenance/base-consent-test` from main 445469f1; `ws-maintenance/coverage-in-pr` merged through #336 and closed; `ws-maintenance/test-conventions` merged through #335 and closed; `ws-maintenance/0.3.1-preparation` from main 31d44fa4; `release-0.3.0` closed after final publication and retained with its tags; `ws-maintenance/0.3.0-acceptance` merged through #332 and closed; earlier slice branches are historical
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`, `R-CONSOLE-001`
+
+## The first legacy test moves — 2026-11-04
+
+The owner had marked `test_consent_names_the_contract_and_the_recipe_source`
+expected-to-fail with a note to rewrite or eliminate it, the rc6 string pin
+dissected on 2026-11-03. Under *Unit Tests* rule 5 the fix is the move: the
+test leaves `tests/test_base_contract.py`, and its unit,
+`devcapsule.configuration.authorization`, gains the mirror file
+`tests/unit/devcapsule/configuration/test_authorization.py` with four
+triples over constructed locks: the full declaration with contract, builder
+and recipe permalink; a lock without a builder; a lock predating recorded
+contracts with the legacy recipe path; a lock without a base. Every expected
+value is derived from the lock the test built. Rule 4 applies to the unit:
+the module now declares `__all__`. Checker: 110 legacy files, 1523 tests,
+4 files follow the convention, 0 breaches. The xfail stays uncommitted in
+the owner's checkout until this merges and is dropped at the next sync.
 
 ## Coverage numbers in the pull request — 2026-11-04
 
