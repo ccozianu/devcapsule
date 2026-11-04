@@ -59,6 +59,7 @@ from devcapsule.platforms import Platform
 from devcapsule.components.catalog import COMPONENTS
 from devcapsule.components.playwright_pin import PIN as PLAYWRIGHT_PIN
 from devcapsule.components.eclipse_native_pin import PACKAGES as ECLIPSE_NATIVE_PACKAGES
+from devcapsule.components.linux_arm64_pins import COMPONENT_LOCK_TABLES as LINUX_ARM64_LOCK_TABLES
 from devcapsule.configuration.file_formats import (
     ProjectConfigurationError,
     canonical_digest,
@@ -1735,14 +1736,33 @@ _LINUX_ARM64_RECIPE_11_BASE = _BasePin(
     },
 )
 
-# linux-arm64 offers the same vocabulary and the same materialization
-# recipes as linux-amd64; its bases, pins and verified edges are its own,
-# because a validation on one architecture establishes nothing on another.
+def _on_linux_arm64(pin: _ComponentPin) -> _ComponentPin:
+    """The arm64 build of a linux-amd64 pin: same version, its own artifacts.
+
+    A base-delivered component carries no artifact and is the same pin on
+    both platforms; every other pin must have its arm64 table, so an amd64
+    version added without one fails here rather than at a user's launch.
+    """
+
+    table = LINUX_ARM64_LOCK_TABLES.get((pin.component_id, pin.version))
+    if table is None and pin.lock_table.get("delivery-policy") == "base-image":
+        return pin
+    if table is None:
+        raise RuntimeError(f"{pin.component_id} {pin.version} has no linux-arm64 pin in components/linux_arm64_pins.py")
+    return _ComponentPin(pin.component_id, pin.version, table)
+
+
+# linux-arm64 offers the same vocabulary, versions and materialization
+# recipes as linux-amd64; its bases, artifacts and verified edges are its
+# own, because a validation on one architecture establishes nothing on another.
 _LINUX_ARM64_MATRIX = ResolutionMatrix(
     platform=Platform.LINUX_ARM64,
     matrix_version=_MATRIX_VERSION,
     bases=(_LINUX_ARM64_RECIPE_11_BASE,),
-    components={},
+    components={
+        component: tuple(_on_linux_arm64(pin) for pin in pins)
+        for component, pins in _LINUX_AMD64_MATRIX._components.items()
+    },
     edges=(),
     couplings=(),
     capability_table=_LINUX_AMD64_MATRIX._capability_table,
