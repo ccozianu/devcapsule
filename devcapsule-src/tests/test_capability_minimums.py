@@ -21,6 +21,8 @@ from devcapsule.configuration.trust import HomeTrust, channels_for
 from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import Capability, MATRICES, ResolutionMatrix, _BasePin, _ComponentPin, _VerifiedEdge
 
+pytestmark = pytest.mark.legacy
+
 MATRIX = MATRICES[Platform.LINUX_AMD64]
 GOLDEN = Path(__file__).parent / "resources" / "golden_locks"
 MANIFEST = '''devcapsule-schema-version = 2

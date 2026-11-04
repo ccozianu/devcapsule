@@ -12,6 +12,8 @@ import pytest
 from devcapsule import cli
 from devcapsule.build_info import BuildInfo, BuildInfoError, current_build_info, read_pex_build_info
 
+pytestmark = pytest.mark.legacy
+
 
 def test_public_build_identity_requires_canonical_github_commit_url() -> None:
     revision = "a" * 40

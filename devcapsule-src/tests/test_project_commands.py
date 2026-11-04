@@ -30,6 +30,8 @@ from devcapsule.configuration.storage import (
 )
 from devcapsule.project import project_namespace
 
+pytestmark = pytest.mark.legacy
+
 
 LOCKED_BASE = f"docker.io/example/devcapsule-base@sha256:{'b' * 64}"
 

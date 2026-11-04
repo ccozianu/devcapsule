@@ -8,6 +8,8 @@ import pytest
 
 from devcapsule.platforms import Platform, UnsupportedPlatformError, XdgHomes
 
+pytestmark = pytest.mark.legacy
+
 
 def test_platform_values_are_the_wire_format() -> None:
     assert Platform.LINUX_AMD64.value == "linux-amd64"

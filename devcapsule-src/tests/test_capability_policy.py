@@ -24,6 +24,8 @@ from devcapsule.configuration.storage import checkout_record_paths, load_toml, l
 from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES
 
+pytestmark = pytest.mark.legacy
+
 MATRIX = MATRICES[Platform.LINUX_AMD64]
 
 

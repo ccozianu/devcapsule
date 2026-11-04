@@ -17,6 +17,8 @@ import pytest
 
 from tests.e2e.ide_session import SURFACES, command, ide_session, wait_for_console_url, wait_for_ide_window
 
+pytestmark = pytest.mark.legacy
+
 
 def connected(page: Any) -> None:
     page.evaluate("async () => { window.authSmokeUI = (await import('/app/ui.js')).default; }")

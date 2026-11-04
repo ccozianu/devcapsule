@@ -29,6 +29,8 @@ from devcapsule.recursive_successor_plan import (
     compare_inspection,
 )
 
+pytestmark = pytest.mark.legacy
+
 
 RUNTIME_PLAN_DESTINATION = "/etc/devcapsule/runtime-plan.json"
 RUNTIME_PLAN_DIGEST = "a" * 64

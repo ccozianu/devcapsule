@@ -8,6 +8,8 @@ from devcapsule import cli
 from devcapsule.configuration import storage
 from devcapsule.configuration.file_formats import ProjectConfigurationError
 
+pytestmark = pytest.mark.legacy
+
 
 def test_empty_and_legacy_files_are_not_read(tmp_path: Path) -> None:
     env = {"DEVCAPSULE_CONFIG_HOME": str(tmp_path / "home")}

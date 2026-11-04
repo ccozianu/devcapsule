@@ -46,6 +46,8 @@ from tests.test_upgrade_recovery import (
 from devcapsule.launch.pycharm import DockerMode, PycharmRunOptions, build_run_config
 from tests.test_pycharm import base_env
 
+pytestmark = pytest.mark.legacy
+
 
 def declare_values(project, extra=''):
     path = project / '.devcapsule/devcapsule.toml'

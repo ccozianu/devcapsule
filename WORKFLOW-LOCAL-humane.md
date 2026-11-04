@@ -122,6 +122,38 @@ remark exists because a capsule's `/tmp` is a 2 GB tmpfs that the gate's
 scratch overflows, which cost a resumed session a failed gate before the cause
 was found.
 
+## Unit Tests
+
+**Rule.** A unit test file is named after its module and mirrors the
+package tree; a test is a precondition it establishes, one call to a public
+operation, and a postcondition the unit promises; every test says in a
+docstring what contract it tests; existing files are marked legacy and only
+shrink, a touched test is fixed and moved; the gate checks what a machine
+can check and the reviewer checks the rest.
+
+**Intended effect.** A reader sees which unit a test tests from its path
+and what it tests from its first line. A test fails only when the unit
+breaks its contract, never because a release moved, a lock was regenerated,
+or the capsule that runs it has already accepted a vendor's terms.
+
+**Motivation.** On 2026-11-03 the gate failed eighteen tests in the owner's
+own capsule. None was a bug. Thirteen read the owner's accepted trust
+record through the launcher's mounted settings, because the isolation
+fixture moved the home and the product's fallback did not know. Four
+asserted the repository's own lock, byte for byte, down to the release
+candidate that built the base. One scanned every file under `tests/` and
+found a forbidden word inside a sample project's virtualenv. These tests
+had been written by three different models under pair review, and the
+reviewer had named one of them "the right test". A test that copies the
+value it finds is a change detector, not a contract: both a bug and an
+intentional change fail it, and the fix is always to update the string.
+The triple forces the precondition into the open, which is exactly what
+the thirteen had left to chance. The mirror makes the unit obvious before
+the first line is read. The legacy marker turns 1525 existing tests into a
+debt that is paid at the moment someone is already in the file, rather than
+a rewrite nobody will order. The gate carries the mechanical part because a
+rule an agent must read is a rule an agent can skim.
+
 ## Reasoning And Code Navigation
 
 **Rule.** Start from the contract, state the uncertainty, navigate from the

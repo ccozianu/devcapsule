@@ -27,6 +27,8 @@ from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES
 from devcapsule.version_sets import state_directory
 
+pytestmark = pytest.mark.legacy
+
 MATRIX = MATRICES[Platform.LINUX_AMD64]
 CREATOR = "mailto:owner@example.test"
 

@@ -22,6 +22,8 @@ from devcapsule.recursive_orchestrator import (
     prepare_recursive_e2e_dry_run,
 )
 
+pytestmark = pytest.mark.legacy
+
 
 @dataclass
 class RecursiveFixture:

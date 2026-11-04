@@ -31,6 +31,8 @@ from devcapsule.materialization import (
     verify_materialized_image,
 )
 
+pytestmark = pytest.mark.legacy
+
 
 def fixture_archive(path: Path) -> bytes:
     content = b"#!/bin/sh\n"

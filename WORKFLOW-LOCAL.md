@@ -155,6 +155,43 @@ in [`INFORMATION-MODEL.md`](devcapsule-src/devcapsule/assets/project_workflow/de
   end-to-end suites are not in it. The [developer brief](DEVELOPING.md) says
   when they run.
 
+## Unit Tests
+
+Owner direction, 2026-11-03, after eighteen tests failed in the owner's
+capsule for reasons that were not bugs.
+
+1. A unit test file mirrors the module it tests:
+   `tests/unit/<path>/test_<name>.py` tests `<path>/<name>.py` or
+   `<path>/_<name>.py` under `devcapsule-src`. The unit under test is that
+   module. A test of a heavier suite lives outside the mirror and carries
+   that suite's marker at module level.
+2. A test is a Hoare triple. It establishes its precondition in its own
+   fixtures or asserts it first; a precondition inherited from the
+   repository's checkout, the host or the capsule that runs the test is not
+   a precondition. It performs one action: a call to one public operation
+   of the unit, or the raise it expects. It verifies a postcondition the
+   unit promises, never a value copied from a run. Release identifiers,
+   version strings and digests are not assertions of the unit suite.
+3. Every test function has a docstring stating, in plain English, the
+   contract or the part of it under test. One line is enough when the body
+   is already plain; the reviewer decides that, not the author.
+4. A unit with no declared public surface is not testable under rule 2
+   until it declares one: `__all__`, or a module docstring that names the
+   public operations and leaves the rest private.
+5. Existing test files carry `pytestmark = pytest.mark.legacy`. A legacy
+   file only loses test functions. A test function you change is brought
+   to rules 1 to 3 and moved to the mirror. A legacy test broken by a
+   legitimate change is fixed or replaced by a conforming one, never marked
+   expected to fail or deselected. No marker but `legacy` is added to a
+   legacy file.
+6. The gate holds rules 1, 3 and 5: `scripts/validate_unittests_follow_conventions.py` runs in
+   the `tests` and `build` sessions and in `tests.yml`, comparing legacy
+   files with the pull request's base. Its summary line counts the legacy
+   files and tests; the count goes down and never up.
+7. In a Pair Review Loop, the brief instructs the reviewer to verify rules
+   1 to 4 on every new or changed test, and to name for each what would
+   make it fail for a reason that is not a bug.
+
 ## Reasoning And Code Navigation
 
 1. Start with the behavior's contract: ownership, inputs, preconditions,
@@ -376,6 +413,8 @@ of `WORKFLOW.md`, in this checkout.
    the chat or the terminal of that session: at least when the partner
    starts, at each commit or gate it makes, and when it ends. The
    partner's own log is evidence, not a report.
+9. Owner direction, 2026-11-03. The brief carries the reviewer's duty under
+   *Unit Tests*, rule 7, for every loop.
 
 ## Commit Authorship
 
@@ -413,7 +452,10 @@ by merging `main` in. The hosting platform allows merge commits only. It
 deletes the head branch on merge. It refuses force pushes to `main` and
 deletion of `main`. The merge commit is the record of the branch: its second
 parent is the merged head and its message names the source branch. Delete a
-merged branch.
+merged branch. Owner setting, 2026-11-04: the merge commit's title is the
+pull request's title and its message is the pull request's description, so
+the description an agent writes, and the coverage block CI appends to it,
+are the merge commit's detail as they stand at merge time.
 The earlier ruling that `ws-workflow-improvements/v1` rebases onto `main` is
 retired. That branch merges like the others. The engineering source is
 [merge strategy and commit identity](engineering-docs/implementation-notes/workflow/2026-08-17-merge-strategy-and-commit-identity.md).

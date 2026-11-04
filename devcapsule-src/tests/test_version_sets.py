@@ -36,6 +36,8 @@ from devcapsule.materialization import ImageDetails, cache_root
 from devcapsule.platforms import Platform
 from devcapsule.resolution_matrix import MATRICES
 
+pytestmark = pytest.mark.legacy
+
 
 def invoke(project, *args):
     return cli.main(["project", "--path", str(project), *map(str, args)])

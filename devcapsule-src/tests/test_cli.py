@@ -21,6 +21,8 @@ from devcapsule.configuration.file_formats import (
     canonical_digest,
 )
 
+pytestmark = pytest.mark.legacy
+
 
 def test_top_level_help_returns_success(capsys) -> None:
     result = cli.main(["--help"])

@@ -16,6 +16,8 @@ from devcapsule.configuration.file_formats import (
     ProjectConfigurationError,
 )
 
+pytestmark = pytest.mark.legacy
+
 
 def example_manifest() -> dict:
     return {

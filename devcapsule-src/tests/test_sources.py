@@ -11,6 +11,8 @@ from devcapsule.configuration.manifest_document import render_manifest
 from devcapsule.configuration.manifest_schemas import ManifestV2, read_manifest
 from devcapsule.configuration.sources import WrappedSource, WrappedSources, java_line, source_path
 
+pytestmark = pytest.mark.legacy
+
 PROJECT = {"name": "FRC learning", "slug": "frc-learning", "creator": "mailto:owner@example.test", "mount": "/workspace/frc-learning"}
 
 

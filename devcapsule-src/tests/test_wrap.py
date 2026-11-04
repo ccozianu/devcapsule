@@ -14,6 +14,8 @@ from devcapsule.configuration.file_formats import ProjectConfigurationError
 from devcapsule.configuration.storage import load_toml
 from devcapsule.wrap import GUIDANCE_MARKER, WrapRequest, _add_submodule, wrap_project
 
+pytestmark = pytest.mark.legacy
+
 
 def git(cwd: Path, *args: str) -> str:
     return subprocess.run(["git", "-C", str(cwd), *args], capture_output=True, text=True, check=True).stdout.strip()

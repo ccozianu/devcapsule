@@ -46,6 +46,8 @@ from devcapsule.launch.pycharm import DockerMode, PycharmRunOptions, build_run_c
 from tests.test_pycharm import base_env
 from tests.test_upgrade_recovery import checkout, invoke, install_external_fakes
 
+pytestmark = pytest.mark.legacy
+
 
 def replace_document(path, edit):
     document = load_toml(path)
