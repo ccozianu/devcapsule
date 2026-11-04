@@ -60,7 +60,8 @@ def test_platform_fields_and_artifact_keys_name_arm64() -> None:
 def test_eclipse_native_closure_is_arm64_or_architecture_independent() -> None:
     (eclipse,) = ARM64._components["eclipse"]
     packages = eclipse.lock_table["native-packages"]
-    assert len(packages) == len(AMD64._components["eclipse"][0].lock_table["native-packages"])
+    # The same packages, plus what arm64's own dependencies add.
+    assert set(packages) - set(AMD64._components["eclipse"][0].lock_table["native-packages"]) == {"libunwind8"}
     for name, entry in packages.items():
         # Architecture-independent packages keep the amd64 closure's bytes.
         if entry["url"].endswith("_all.deb"):
