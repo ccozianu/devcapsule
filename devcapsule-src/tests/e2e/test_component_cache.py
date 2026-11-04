@@ -19,6 +19,7 @@ from devcapsule.images.build import (
     FileComponent, ImageBuildSpec,
 )
 from devcapsule.materialization import ArtifactSpec, ensure_materialized_surface
+from devcapsule.platforms import Platform
 from devcapsule.runtime_command import RuntimeCommand
 
 pytestmark = pytest.mark.legacy
@@ -64,7 +65,7 @@ def test_installation_is_reused_across_images_and_invalidated_by_recipe(tmp_path
             stages = (contribution(version), sibling) if index == 0 else (sibling, contribution(version))
             builder.build(ImageBuildSpec(image, base_reference, (
                 *stages, FileComponent(runtime, "/runtime"),
-            )), network="none")
+            )), platform=Platform.current(), network="none")
             observed.append(docker("run", "--rm", "--network=none", image,
                                    "cat", f"/opt/jdk/current/installed-{token}"))
             assert docker("run", "--rm", image, "cat", "/runtime") == f"launcher-{index}"
@@ -101,7 +102,7 @@ def test_formation_receives_exact_launcher_on_runtime_free_base(
                                   hashlib.sha256(archive_path.read_bytes()).hexdigest(),
                                   "professional" if surface == "pycharm" else None),
             cache_root=tmp_path / "cache", inspect_image=optional_local_image,
-            build=lambda spec: BuildxImageBuilder().build(spec, network="none"),
+            build=lambda spec: BuildxImageBuilder().build(spec, platform=Platform.current(), network="none"),
             recipe_id="jetbrains-local-materialization" if surface == "pycharm" else "vscode-local-materialization",
             recipe_version="1" if surface == "pycharm" else "2",
             component_id=surface, runtime_pex=built_pex, runtime_command=command,
