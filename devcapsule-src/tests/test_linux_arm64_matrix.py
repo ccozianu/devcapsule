@@ -113,6 +113,10 @@ def test_personal_pins_take_the_artifacts_of_the_platform_they_run_on() -> None:
     assert on_arm64["components"]["codium"] == dict(ARM64.component_pins()["codium"])
     assert on_arm64["components"]["interactive-surface"] == "codium"
     assert amd64["components"]["codium"] == dict(AMD64.component_pins()["codium"])  # input unchanged
+    # A table that is another platform's embedded pin is that platform's,
+    # whatever the label says: pins written wrongly by an earlier build heal.
+    mislabelled = dict(amd64, platform="linux-arm64")
+    assert pins_for_platform(mislabelled, ARM64)["components"]["codium"] == dict(ARM64.component_pins()["codium"])
     # Pins written for the platform they run on are records, returned as they stand.
     recorded = {**amd64, "components": {**amd64["components"], "codium": {**amd64["components"]["codium"], "note": "kept"}}}
     assert pins_for_platform(recorded, AMD64) == recorded

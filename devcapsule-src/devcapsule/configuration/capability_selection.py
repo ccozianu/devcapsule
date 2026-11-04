@@ -112,19 +112,22 @@ def local_pins(checkout: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def pins_for_platform(pins: Mapping[str, Any], matrix: ResolutionMatrix) -> dict[str, Any]:
-    """Return personal pins written for another platform, remapped to ``matrix``'s platform.
+    """Return personal pins with every component's artifacts for ``matrix``'s platform.
 
     A checkout keeps one set of personal pins, and a project may run as two
-    platforms: Apple Silicon runs linux-arm64 and linux-amd64. Pins written
-    for this platform are returned as they stand, records not to be
-    re-derived. Pins written for the other take this platform's embedded
-    table for each component version, so one platform's artifacts never reach
-    the other's capsules; a version this platform does not pin raises
+    platforms: Apple Silicon runs linux-arm64 and linux-amd64. A component
+    table that is exactly another platform's embedded table for its version
+    is that platform's pin, whatever the pins' label says, and takes this
+    platform's table for the version; one that matches no embedded table is a
+    record this launcher did not write, kept as it stands on the platform its
+    pins name. Everything else is returned unchanged. A component written for
+    another platform at a version this platform does not pin raises
     ProjectConfigurationError naming how to choose again. The input is unchanged.
     """
+    if not pins:
+        return {}
     platform = str(matrix.platform)
-    if not pins or str(pins.get("platform")) == platform:
-        return deepcopy(dict(pins))
+    labelled = str(pins.get("platform"))
     repinned = deepcopy(dict(pins))
     components = repinned.get("components")
     surface = components.get("interactive-surface") if isinstance(components, dict) else None
@@ -132,18 +135,30 @@ def pins_for_platform(pins: Mapping[str, Any], matrix: ResolutionMatrix) -> dict
         for component, metadata in components.items():
             if not isinstance(metadata, dict):
                 continue
+            written_for = _embedded_platform_of(component, metadata) or labelled
+            if written_for == platform:
+                continue
             matrix_table = matrix.component_pin(component, metadata.get("version"))
             if matrix_table is None:
                 remedy = (f"'devcapsule project --platform {platform} config ide {component}'" if component == surface
                           else f"'devcapsule project --platform {platform} config use' for the capability it provides")
                 raise ProjectConfigurationError(
-                    f"This checkout's {component} {metadata.get('version')} is pinned for {pins.get('platform')}, "
+                    f"This checkout's {component} {metadata.get('version')} is pinned for {written_for}, "
                     f"and {platform} has no pin for that version; choose it again with {remedy}."
                 )
             components[component] = deepcopy(dict(matrix_table))
     if "platform" in repinned:
         repinned["platform"] = platform
     return repinned
+
+
+def _embedded_platform_of(component: str, table: Mapping[str, Any]) -> str | None:
+    """The platform whose embedded table for this component version ``table`` is, if any."""
+    for platform, embedded in MATRICES.items():
+        candidate = embedded.component_pin(component, table.get("version"))
+        if candidate is not None and dict(candidate) == dict(table):
+            return str(platform)
+    return None
 
 
 def pin_selection(matrix: ResolutionMatrix, policy: CapabilityPolicy, selection: LocalCapabilities,
