@@ -4,7 +4,7 @@ Mnemonic: `maintenance`
 
 Start date: 2026-09-18
 
-State: active 2026-11-04; #335 and #336 merged; first legacy test moved under the new rule, delivered for the owner's merge; 0.3.1 queue preserved
+State: active 2026-11-04; #335, #336 and #337 merged; seventeen capsule-reading tests marked expected to fail at the owner's direction, their fix queued here; 0.3.1 queue preserved
 
 Definition read: WORKFLOW.md@d2ccbbe43dfa, WORKFLOW-LOCAL.md@65501b3407db
 
@@ -15,6 +15,79 @@ Delivery method: ordinary maintenance PRs to `main`; owner merges. No records-on
 Branch association: `ws-maintenance/base-consent-test` from main 445469f1; `ws-maintenance/coverage-in-pr` merged through #336 and closed; `ws-maintenance/test-conventions` merged through #335 and closed; `ws-maintenance/0.3.1-preparation` from main 31d44fa4; `release-0.3.0` closed after final publication and retained with its tags; `ws-maintenance/0.3.0-acceptance` merged through #332 and closed; earlier slice branches are historical
 
 Requirements: `R-PRODUCT-006`, `R-COMPAT-001`, `R-PRODUCT-002`, `R-CONSOLE-001`
+
+## Seventeen tests expected to fail for reading the capsule — 2026-11-04
+
+The owner ran the unit suite in the capsule after syncing
+`ws-wrapped-projects/wrap` with `main` at `cc8f1288`: 17 failed, 2809
+passed. A clean checkout of `main` fails the same tests, so no workstream
+broke them; each reads a precondition from outside the test, which *Unit
+Tests* rule 2 forbids. The owner's disposition: mark every one of them
+expected to fail with the reason `TODO: fix the wrong approach to testing`
+and assign the fix to this workstream. Three causes:
+
+1. **The capsule's mounted launcher settings.** Inside a capsule
+   `mounted_settings_path` in `devcapsule/runtime_configuration.py`
+   answers `/etc/devcapsule/home/settings.toml` whenever the launch context
+   file exists, and the owner's capsule has accepted the Claude Code
+   download there. `private_user_directories` in `tests/conftest.py`
+   redirects `HOME` and the XDG variables but has no hold on that path, so
+   every test that assumes no accepted vendor channel sees one. Pointing
+   `HOME_PATH` at an empty directory makes them pass. Thirteen tests:
+   six in `tests/test_trust.py`, three in
+   `tests/test_capability_commands_v2.py`, one each in
+   `tests/test_capability_minimums.py`, `tests/test_console_channel.py`,
+   `tests/test_environment_realization.py` and `tests/test_project_init.py`.
+   This is the private-home fixture already noted in
+   `engineering-docs/development/unit-tests.md` for the 0.3.1 fixture slice.
+2. **The live repository configuration.** The three tests in
+   `tests/test_repository_manifest_compatibility.py` load this checkout's
+   `.devcapsule/devcapsule.toml`; the owner's uncommitted schema-2 rewrite
+   renames `need` to `required` and they raise `KeyError`.
+3. **An ignored directory under the resources.** `test_replaced_scope_word_is_absent`
+   in `tests/test_home.py` walks `tests/resources` and finds a `.venv`
+   inside the `fastapi-webapp` sample project, vendored pip sources included.
+
+The marker is on the 14 functions (three are parametrized). As written in
+the eight legacy files the convention gate refused it, 14 breaches of the
+form `changed in a legacy file`, since rule 5 never marks a legacy test
+expected to fail and the gate compares each function's source, decorators
+included, with the base. The owner's second disposition: move the marked
+tests out of the legacy files into the mirror, against a dummy target
+where the unit has none. So each test left its legacy file verbatim, with
+a one-line docstring naming its cause, and sits in
+`tests/unit/devcapsule/legacy_refactoring/test_<legacy file>.py`, one
+file per legacy file because their `project` fixtures and `config` and
+`snapshot` helpers collide by name; each imports its fixtures and helpers
+from the legacy module as the existing mirror files do. The targets are
+the temporary package `devcapsule/legacy_refactoring/`, eight modules
+holding no code but a docstring saying why they exist; each is deleted
+when its last test is rewritten against its real unit, and the package
+with the last module. The owner's worry at the merge, that the move undermines the safety
+the bad tests still gave, is answered by the marker's condition: it is
+`pytest.mark.xfail(IN_CAPSULE, ...)`, with `IN_CAPSULE` the presence of
+the launch context file, so the tests are expected to fail only inside a
+capsule, where they inherit its state, and run as the tests they were on
+the hosted workflow and on any host. The one change to a body is in
+`test_replaced_scope_word_is_absent`, whose path to `devcapsule-src` is
+taken from the mirror file's deeper place. Verified in the capsule: `nox -s tests` green, the
+checker at 108 legacy files holding 1447 legacy tests, 30 files following
+the convention, 0 breaches; `nox -s typecheck` green. Nothing committed;
+the move is in the owner's checkout.
+
+Two environment findings from the same run, both for the owner:
+
+- Under `devcapsule-src/.venv`, `tests/test_console_channel.py` fails 16
+  tests that pass under the nox session's own environment. The venv's
+  site-packages still carries `devcapsule-0.2.15.dist-info`, so a
+  subprocess started outside `devcapsule-src`, as the console channel's
+  `config` command is, reports itself as 0.2.15 and is refused by the
+  0.3.0 home. The documented one-module command
+  `.venv/bin/python -m pytest tests/<module>.py` is therefore unreliable in
+  this checkout until the editable install is redone:
+  `.venv/bin/python -m pip install -e . --no-deps` from `devcapsule-src`.
+- The suite used about 215 MB of the capsule's 2 GB `/tmp`; no scratch
+  relocation is needed.
 
 ## The first legacy test moves — 2026-11-04
 
@@ -178,6 +251,7 @@ coordination mail at 35e5c6a599cd. GitHub Latest now resolves to v0.3.0.
 
 | Item | Owner | Disposition / next action |
 |---|---|---|
+| Seventeen tests reading the capsule, the repository config or an ignored directory | maintenance | Marked expected to fail on 2026-11-04 at the owner's direction, reason `TODO: fix the wrong approach to testing`, and moved to `tests/unit/devcapsule/legacy_refactoring/` against the temporary targets in `devcapsule/legacy_refactoring/`. Next: rewrite each against its real unit, the private-home fixture first, and delete the targets as they empty. See *Seventeen tests expected to fail for reading the capsule* above. |
 | [Release-independent test fixtures](../../bugs/devcapsule/2026-10-31-release-dependent-test-fixtures.md) | maintenance | Confirmed minor, target 0.3.1; proposed first implementation slice. Use stable fixtures for behavior tests and retain independent real-pin/historical-contract checks. |
 | [October 25 documentation order](../../work-orders/2026-10-25-documentation-orientation-and-concepts.md) | maintenance | Parts A and B assigned to 0.3.1; plan their delivery against the now-complete 0.3.0 guides. |
 | C17 generic project-operation instructions | workflow-improvements | Moved to 0.3.1 planning by the owner's final disposition; scheduling mail delivered at 6fe8ac4cfbb9. Do not implement from maintenance. |
