@@ -80,7 +80,9 @@ def amd64_linux_host_by_default(request: pytest.FixtureRequest, monkeypatch: pyt
         monkeypatch.setattr(f"devcapsule.{module}.daemon_architecture", lambda: "amd64")
 
 
-DOCKER_MARKERS = ("e2e", "base_build_e2e", "recursive_e2e", "contributor_e2e", "ide_smoke")
+DOCKER_MARKERS = ("e2e", "base_build_e2e", "recursive_e2e", "contributor_e2e", "ide_smoke", "docker")
+"""The markers of tests that need the Docker daemon: the end-to-end suites and the integration tests marked
+``docker``. They keep the real host and the inherited directories, so builds reuse the real artifact cache."""
 
 
 def inherited_cache_home() -> Path:
@@ -104,6 +106,11 @@ def private_user_directories(request: pytest.FixtureRequest, tmp_path: Path, mon
     if any(request.node.get_closest_marker(marker) for marker in DOCKER_MARKERS):
         return
     monkeypatch.delenv("DEVCAPSULE_CONFIG_HOME", raising=False)
+    monkeypatch.delenv("DEVCAPSULE_DEV_WEBCONSOLE", raising=False)
+    monkeypatch.setattr(
+        "devcapsule.container_runtime.console.LAUNCHER_CONSOLE_SOURCE",
+        str(tmp_path / "user" / "absent-launcher-webconsole"),
+    )
     # The build tools' caches are content-addressed and shared by the
     # developer's own builds: pex's under PEX_ROOT, and the scie launcher's
     # unpacked Python under SCIE_BASE. Moving them under the scratch made every

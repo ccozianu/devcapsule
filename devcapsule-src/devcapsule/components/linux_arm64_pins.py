@@ -7,11 +7,11 @@ and signed Ubuntu index available (Ubuntu's InRelease files verified with
 gpgv against the archive signing key). Notes on particular entries:
 
 - Eclipse's WebKitGTK closure is the amd64 closure's package versions from
-  ports.ubuntu.com, except libsoup: Ubuntu removed 3.4.4-5ubuntu0.8 from
-  every noble pocket on 2026-10-08, so both libsoup packages are
-  3.4.4-5ubuntu0.10 from noble-security. Architecture-independent packages
-  are the amd64 closure's own bytes. libunwind8 is added: arm64's
-  libgstreamer1.0-0 depends on it.
+  ports.ubuntu.com. Both libsoup packages are 3.4.4-5ubuntu0.10: Ubuntu
+  removed 3.4.4-5ubuntu0.8 from every noble pocket on 2026-10-08, and the
+  amd64 closure moved to the same build on 2026-11-07. Architecture-
+  independent packages are the amd64 closure's own bytes. libunwind8 is
+  added: arm64's libgstreamer1.0-0 depends on it.
 - Playwright 1.63.0's Chromium comes from Chrome for Testing's linux-arm64
   build of 153.0.8010.12 on Playwright's CDN, byte-identical to Google's.
 - Antigravity's arm64 builds live under ``linux-arm/``; VS Code's arm64
@@ -383,6 +383,15 @@ COMPONENT_LOCK_TABLES: dict[tuple[str, str], dict[str, Any]] = {
      'artifacts': {'linux-arm64': {'npm-package': '@openai/codex-linux-arm64',
                                    'url': 'https://registry.npmjs.org/@openai/codex/-/codex-0.166.0-linux-arm64.tgz',
                                    'sha256': '9044e840397864fc6c539d13719b25fb26abb35d5353366cbabf7b4555406acd'}}},
+    ('codex', '0.167.0'): {'version': '0.167.0',
+     'delivery-policy': 'local-materialization',
+     'license': 'Apache-2.0',
+     'npm-package': '@openai/codex',
+     'url': 'https://registry.npmjs.org/@openai/codex/-/codex-0.167.0.tgz',
+     'sha256': 'e858522a37b85b5bbe695919190cfb0974aee5ae739d84d8d629c39735fb03a9',
+     'artifacts': {'linux-arm64': {'npm-package': '@openai/codex-linux-arm64',
+                                   'url': 'https://registry.npmjs.org/@openai/codex/-/codex-0.167.0-linux-arm64.tgz',
+                                   'sha256': 'e24d7b6f0af5695a36c04692c3a79672bdadebcac7c44005259cb3cad36ac40e'}}},
     ('claude-code', '2.1.227'): {'version': '2.1.227',
      'delivery-policy': 'local-materialization',
      'acquisition-authorization': 'claude-code-download',
@@ -431,6 +440,14 @@ COMPONENT_LOCK_TABLES: dict[tuple[str, str], dict[str, Any]] = {
      'distribution': 'user-acquired-not-redistributed',
      'artifacts': {'linux-arm64': {'url': 'https://downloads.claude.ai/claude-code-releases/2.1.314/linux-arm64/claude',
                                    'sha256': 'a66c0a8f5d0c87a439953d797985192bbcbaefbce2e0d7b2eaa8df30ef0f3ef2'}}},
+    ('claude-code', '2.1.321'): {'version': '2.1.321',
+     'delivery-policy': 'local-materialization',
+     'acquisition-authorization': 'claude-code-download',
+     'license': 'Proprietary',
+     'terms-url': 'https://www.anthropic.com/legal/commercial-terms',
+     'distribution': 'user-acquired-not-redistributed',
+     'artifacts': {'linux-arm64': {'url': 'https://downloads.claude.ai/claude-code-releases/2.1.321/linux-arm64/claude',
+                                   'sha256': '6bea0633074627ba79328e00115ed0588c3acf906a8463612b25db696dbfd3f0'}}},
     ('antigravity-cli', '1.1.24'): {'version': '1.1.24',
      'delivery-policy': 'local-materialization',
      'acquisition-authorization': 'antigravity-download',

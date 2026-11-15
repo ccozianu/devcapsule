@@ -53,6 +53,9 @@ status file; internal WIP/archive documents use the local index in that status.
 - [0.2.15 release notes](engineering-docs/releases/v0.2.15/notes.md)
 - [0.2.14 release notes](engineering-docs/releases/v0.2.14/notes.md)
 
+- [0.3.1 release work, scope and candidates](engineering-docs/releases/v0.3.1/README.md)
+- [0.3.1 changelog since 0.3.0](engineering-docs/releases/v0.3.1/changelog.md)
+- [0.3.1 bug table](engineering-docs/releases/v0.3.1/bugs.md)
 - [0.3.0 release work, scope and candidates](engineering-docs/releases/v0.3.0/README.md)
 - [0.3.0 changelog since 0.2.15](engineering-docs/releases/v0.3.0/changelog.md)
 - [0.3.0 bug table](engineering-docs/releases/v0.3.0/bugs.md)
@@ -100,6 +103,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Capability configuration: implementation and test correctness](engineering-docs/implementation-notes/devcapsule/2026-10-06-configuration-correctness.md)
 - [Capability configuration: persistent selection versus execution projection](engineering-docs/implementation-notes/devcapsule/2026-10-08-configuration-composition-correctness.md)
 - [Scenario-driven E2E IDE controller and pause-free WebM video recorder](engineering-docs/implementation-notes/devcapsule/2026-10-21-e2e-scenario-video-recorder.md)
+- [Testing the macOS launcher on cloud Mac hardware, and the alternatives](engineering-docs/implementation-notes/devcapsule/2026-11-08-testing-the-macos-launcher-on-cloud-mac-hardware.md)
 - [Eclipse Java component and recorded smoke validation](engineering-docs/implementation-notes/devcapsule/2026-10-04-eclipse-validation.md)
 - [Linux .NET SDK and Rider validation](engineering-docs/implementation-notes/devcapsule/2026-10-04-dotnet-rider-validation.md)
 - [IntelliJ, Playwright and graphical smoke validation](engineering-docs/implementation-notes/devcapsule/2026-10-04-intellij-playwright-validation.md)
@@ -116,6 +120,7 @@ status file; internal WIP/archive documents use the local index in that status.
 - [D-0014 The IDE Role Stays As It Is, Or Generalizes To An Entry Point That Owns The Container's Lifetime](engineering-docs/decisions/product/d-0014-entry-point-generalizes-the-ide-role.md) (proposed, in scope for V1)
 - [D-0015 A Project Constrains Its Base Directly, Not Through Capabilities Or Components](engineering-docs/decisions/product/d-0015-a-project-constrains-its-base-directly.md) (proposed, in scope for V1)
 - [D-0016 A Required IDE Stays Required; One Launch May Depart From It Explicitly](engineering-docs/decisions/product/d-0016-explicit-launch-departure-from-a-required-ide.md) (accepted 2026-10-28)
+- [D-0017 The Launcher Delivers Its Web Console Package On The Base Interpreter](engineering-docs/decisions/product/d-0017-launcher-delivers-web-console-package.md) (accepted 2026-11-08)
 
 - [Decision record template](engineering-docs/decisions/product/_template.md)
 - [D-0001 Capability-First CLI Model](engineering-docs/decisions/product/d-0001-capability-first-cli-model.md)
@@ -133,8 +138,14 @@ status file; internal WIP/archive documents use the local index in that status.
 - [DevCapsule V1 state and persistence](engineering-docs/specifications/product/state-and-persistence.md)
 - [Project workflow bootstrap](engineering-docs/specifications/product/project-workflow-bootstrap.md)
 
+## Pile Of Ideas
+
+- [The pile of ideas](engineering-docs/pile-of-ideas/README.md): untriaged
+  ideas, one file each; the files themselves are not listed here.
+
 ## Work Orders
 
+- [Test improvements: declared public surfaces, no patching of project modules, the discovery module first](engineering-docs/work-orders/2026-11-08-test-improvements.md)
 - [Wrapped projects: a foreign repository as a submodule, three commands](engineering-docs/work-orders/2026-11-02-wrapped-projects.md)
 - [0.3.0 user documentation CLI alignment, full stub authoring, and prose review — maintenance, 0.3.0](engineering-docs/work-orders/2026-10-30-user-docs-0-3-0-cli-alignment.md)
 - [CI path gating and advisory diff coverage — maintenance, 0.3.0](engineering-docs/work-orders/2026-10-30-ci-path-gating-and-diff-coverage.md)
@@ -230,10 +241,10 @@ status file; internal WIP/archive documents use the local index in that status.
 - [Preamble, for humans: why the workflow is opinionated, and for whom](devcapsule-src/devcapsule/assets/project_workflow/definition/PREAMBLE.md)
 - [PyCharm image vibe-coding bootstrap template](devcapsule-src/devcapsule/assets/pycharm/image-assets/vibe-coding-process.md)
 - [Legacy-compatible PyCharm bootstrap template copy](devcapsule-src/devcapsule/assets/docker4pycharm/image-assets/vibe-coding-process.md)
-- [TypeScript five-in-a-row sample project](devcapsule-src/tests/resources/sample_projects/typescript_tictactoe_5inrow/README.md)
 
 ## Development Blog
 
+- [Thirteen hours, thirty-five tests. Part 1: the AI's audit](engineering-docs/blog/2026-11-13-thirteen-hours-thirty-five-tests.md) — Claude's unedited audit of its own pull request against stricter test standards: the ledger, what got worse, where the rules are wrong, and why LLMs wrote tests the other way; Part 2 to follow.
 - [Diagnosing a capsule from both sides](engineering-docs/blog/2026-10-28-diagnosing-a-capsule-from-both-sides.md) — probing a live browser desktop from outside and inside a nested PyCharm capsule, with embedded recording; draft for owner review.
 - [An AI takes our IDEs for a test drive](engineering-docs/blog/2026-10-04-an-ai-takes-intellij-for-a-test-drive.md) — shared AI graphical tests across IntelliJ, Rider and Eclipse, the .NET build, and three original recordings; draft for owner review.
 - [The workflow explains itself](engineering-docs/blog/2026-10-03-the-workflow-explains-itself.md) — preamble, information model, merge rule, and a bug filed against ourselves; draft for owner review.
@@ -300,6 +311,11 @@ history; record current decisions in the active documents above.
 
 ## Bugs
 
+- [Markdown-only changes run the whole Python unit suite: the hosted path filter lists too few non-inputs, and the local gate has no filter](engineering-docs/bugs/devcapsule/2026-11-10-markdown-only-changes-run-the-python-unit-suite.md)
+- [Unit tests read the developer's real launcher settings inside a capsule: the consent and trust tests fail or prove nothing there](engineering-docs/bugs/devcapsule/2026-11-10-unit-tests-read-the-capsules-mounted-launcher-settings.md)
+- [Web console changes in `v0.3.1-rc1` do not reach capsules: the PEX omits the console package and the self-hosting override shadows it](engineering-docs/bugs/devcapsule/2026-11-08-webconsole-changes-do-not-ship-without-a-base-rebuild.md)
+- [Codex status and version checks fail: the npm registry document exceeds the channel's 16 MiB cap](engineering-docs/bugs/devcapsule/2026-11-08-codex-npm-metadata-exceeds-16-mib.md)
+- [Eclipse cannot be acquired from scratch on amd64: the libsoup package URLs return 404](engineering-docs/bugs/devcapsule/2026-11-07-eclipse-amd64-libsoup-urls-return-404.md)
 - [Release-dependent test fixtures cause avoidable release PR churn](engineering-docs/bugs/devcapsule/2026-10-31-release-dependent-test-fixtures.md)
 
 - [Concurrent web consoles on `127.0.0.1` overwrite one another's authentication cookie across ports](engineering-docs/bugs/devcapsule/2026-10-31-webconsole-cookie-collides-across-ports.md)

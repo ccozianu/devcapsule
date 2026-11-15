@@ -6,11 +6,15 @@
 
 *Unit Tests* in [`WORKFLOW-LOCAL.md`](../../WORKFLOW-LOCAL.md) binds: a
 unit test file mirrors its module under `tests/unit/`, a test is a
-precondition, one call and a postcondition, and its docstring states the
-contract. The companion explains why. `scripts/validate_unittests_follow_conventions.py` is the
+precondition, one call and a postcondition, its outcome is a function of
+inputs the test constructs, with the clock, other processes and services
+among the inputs, and its docstring states the contract. The companion
+explains why. `scripts/validate_unittests_follow_conventions.py` is the
 gate's check; its summary line counts the files still marked `legacy`. The
-flat files under `tests/` are those legacy files: they only lose tests, and
-a test you change moves to the mirror with you.
+flat files under `tests/` are those legacy files: they are never edited in
+place or shrunk one function at a time, and touching one, or adding,
+changing or deleting a test in a `tests/unit/` file of the same name,
+retires the entire legacy file into the mirror.
 
 ## Running them
 
@@ -164,9 +168,6 @@ services, temporary XDG roots, and the `tmp_path` pytest provides.
   regenerated, proving R-COMPAT-001: a newer client needs no user action
   for a project, checkout or lock an older one created. [Its README](../../devcapsule-src/tests/resources/compat/README.md)
   names each client and what was templated.
-- `sample_projects/`: three sample projects as submodules, fixtures for the
-  project model; they have their own suites and are excluded from this one
-  by `norecursedirs`.
 - `supervisor_driver.py`: a driver that runs the supervisor over a JSON
   child-set specification, used by the supervisor and runtime tests.
 
