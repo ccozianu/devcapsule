@@ -6,7 +6,7 @@ Start date: `2026-09-16`
 
 State: paused 2026-11-15; website presentations prepared for review; integration and publication remain
 
-Definition read: WORKFLOW.md@89c7023c443d, WORKFLOW-LOCAL.md@39bae456ae83
+Definition read: WORKFLOW.md@89de30622697, WORKFLOW-LOCAL.md@d92bdcbb0a01
 
 Branch association: `ws-website/contract-v1`, forked from `main` at `d9b9975` on 2026-09-28 under the `ws-` form; the earlier `website/initial-cut` is closed, everything it held is on `main`
 
